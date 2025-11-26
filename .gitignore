@@ -49,3 +49,13 @@ Thumbs.db
 *.pid
 *.seed
 *.pid.lock
+
+# Project-specific
+backend/.env
+backend/database.db
+backend/__pycache__/
+backend/**/__pycache__/
+backend/snapshots/
+data/snapshots/
+*.db
+

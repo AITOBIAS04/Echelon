@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 # Import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.database import SessionLocal, engine, Base, User as DBUser
+from backend.core.database import SessionLocal, engine, Base, User as DBUser
 
 # --- CONFIGURATION ---
 
@@ -126,13 +126,102 @@ async def get_world_state():
     Returns the current 'Mind' of the AI Agent.
     """
     try:
-        with open("simulation/world_state.json", "r") as f:
+        with open("backend/simulation/world_state.json", "r") as f:
             data = json.load(f)
         return data
     except FileNotFoundError:
         return {"error": "Agent has not run yet."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+@app.get("/timelines")
+async def get_timelines():
+    """
+    Returns all simulation timelines for the Butterfly Effect visualization.
+    """
+    try:
+        from backend.simulation.timeline_manager import TimelineManager
+        
+        tm = TimelineManager()
+        timelines = tm.list_timelines()
+        
+        return {
+            "timelines": [
+                {
+                    "id": t.id,
+                    "label": t.label,
+                    "status": t.status.value,
+                    "created_at": t.created_at,
+                    "parent_id": t.parent_id,
+                    "fork_reason": t.fork_reason,
+                    "matchday": t.matchday,
+                    "tick": t.tick,
+                }
+                for t in timelines
+            ],
+            "active_forks": len(tm.active_forks),
+            "total": len(timelines),
+        }
+    except Exception as e:
+        # Return mock data if timeline manager not available
+        return {
+            "timelines": [],
+            "active_forks": 0,
+            "total": 0,
+            "error": str(e)
+        }
+
+
+
+
+@app.post("/timelines/snapshot")
+async def create_snapshot(label: str = "MANUAL"):
+    """
+    Create a new timeline snapshot.
+    """
+    try:
+        from backend.simulation.timeline_manager import TimelineManager
+        
+        tm = TimelineManager()
+        snapshot_id = tm.create_snapshot(label)
+        
+        return {
+            "success": True,
+            "snapshot_id": snapshot_id,
+            "message": f"Snapshot created: {snapshot_id}"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+@app.post("/timelines/fork")
+async def create_fork(source_id: str, fork_name: str, reason: str = None):
+    """
+    Create a fork from an existing snapshot.
+    """
+    try:
+        from backend.simulation.timeline_manager import TimelineManager
+        
+        tm = TimelineManager()
+        fork_id = tm.fork_timeline(source_id, fork_name, reason)
+        
+        return {
+            "success": True,
+            "fork_id": fork_id,
+            "message": f"Fork created: {fork_id}"
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
 
 # --- NEW: x402 PREMIUM CONTENT ENDPOINT ---
 @app.get("/premium-intel")
@@ -228,15 +317,17 @@ async def play_match(
     
     # Router for different game engines
     if bet.engine_name == "geopolitics":
-        engine_script = "simulation/sim_geopolitics_engine.py"
+        engine_script = "backend/simulation/sim_geopolitics_engine.py"
     elif bet.engine_name == "market":
-        engine_script = "simulation/sim_market_engine.py"
+        engine_script = "backend/simulation/sim_market_engine.py"
     elif bet.engine_name == "election":
-        engine_script = "simulation/sim_election_engine.py"
+        engine_script = "backend/simulation/sim_election_engine.py"
     elif bet.engine_name == "duel":
-        engine_script = "simulation/digital_twin_engine.py"
+        engine_script = "backend/simulation/digital_twin_engine.py"
     elif bet.engine_name == "chess":
-        engine_script = "simulation/engine.py"
+        engine_script = "backend/simulation/engine.py"
+    elif bet.engine_name == "football":
+        engine_script = "backend/simulation/sim_football_engine.py"
     else:
         raise HTTPException(status_code=400, detail="Invalid engine name")
     
@@ -279,7 +370,7 @@ async def play_match(
             message = "You bet on WAR, but peace was maintained. You lost."
         else:
             message = "The simulation was a draw."
-    
+
     elif bet.engine_name == "market":
         if game_result == "SAPL_UP":
             current_user.play_money_balance += bet.wager
@@ -311,6 +402,18 @@ async def play_match(
         else:
             current_user.play_money_balance -= bet.wager
             message = f"You bet on White, but the result was {game_result}. You lost."
+
+    elif bet.engine_name == "football":
+        # Football: HOME_WIN, AWAY_WIN, DRAW
+        if game_result == "HOME_WIN":
+            current_user.play_money_balance += bet.wager
+            message = "You bet on HOME and won!"
+        elif game_result == "AWAY_WIN":
+            current_user.play_money_balance -= bet.wager
+            message = "You bet on HOME, but AWAY won. You lost."
+        else:  # DRAW
+            current_user.play_money_balance -= bet.wager * 0.5  # Half loss on draw
+            message = "The match was a DRAW. Half stake returned."
 
     # Final Database Update (Only happens once now!)
     db.commit()

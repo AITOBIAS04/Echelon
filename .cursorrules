@@ -31,7 +31,7 @@
 
 # COST OPTIMIZATION STRATEGY:
 - ROUTINE CHATTER: Use 'claude-3-5-haiku-20241022'
-- CRITICAL LOGIC: Use 'claude-3-5-opus-latest' (New Flagship)
+- CRITICAL LOGIC: Use 'claude-opus-4-5-20251101' (New Flagship)
 
 # SECURITY REVIEW REQUIREMENTS:
 ALWAYS review code for:

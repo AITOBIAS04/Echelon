@@ -116,9 +116,11 @@ class GeopoliticalAgent:
         
         # 1. Select the Brain based on the stakes
         if mode == "critical":
-            model_id = "claude-3-5-opus-latest"  # The genius (New Flagship)
+            # Use the official Opus 4.5 ID
+            model_id = "claude-opus-4-5-20251101"
         else:
-            model_id = "claude-3-5-haiku-20241022"  # The worker (10x cheaper)
+            # Keep Haiku 3.5 (this ID is correct)
+            model_id = "claude-3-5-haiku-20241022"
 
         # 2. Inject Live Data
         wallet_status = await self.check_wallet()

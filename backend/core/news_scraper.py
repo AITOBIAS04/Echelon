@@ -1,15 +1,24 @@
 import requests
 import json
+import os
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from datetime import datetime, timezone
 
-# --- CONFIGURATION --- 
-GNEWS_API_KEY = "9f7e717acb032ceaadb99476cdaff97a"
-NEWSAPI_API_KEY = "727b143d1e6c4b2299c1988de58663fa"
-NEWSDATA_API_KEY = "pub_07c21dcbcd814b6e958e6ed63972d53b"
+# Load environment variables
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-# Output file
-OUTPUT_FILE = "simulation/world_state.json"
+# --- CONFIGURATION (from environment) --- 
+GNEWS_API_KEY = os.getenv("GNEWS_API_KEY", "")
+NEWSAPI_API_KEY = os.getenv("NEWSAPI_API_KEY", "")
+NEWSDATA_API_KEY = os.getenv("NEWSDATA_API_KEY", "")
+
+# Output file - relative to backend directory
+OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "simulation", "world_state.json")
+
 
 def fetch_news_sentiment():
     all_headlines = []
@@ -108,6 +117,7 @@ def fetch_news_sentiment():
 
     return total_score / valid_count
 
+
 def save_world_state(sentiment_score):
     if sentiment_score is None: 
         return
@@ -126,11 +136,15 @@ def save_world_state(sentiment_score):
     }
 
     try:
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+        
         with open(OUTPUT_FILE, 'w') as f:
             json.dump(world_state, f, indent=2)
         print(f"\n💾 Saved World State: Tension = {tension:.4f}")
     except Exception as e:
         print(f"Error saving file: {e}")
+
 
 if __name__ == "__main__":
     score = fetch_news_sentiment()
