@@ -115,6 +115,7 @@ class APIConfig:
     
     # --- AI ---
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
     
     @classmethod
     def print_status(cls):
@@ -1094,6 +1095,7 @@ class EventOrchestrator:
     The main interface for event orchestration.
     
     Combines news ingestion, virality scoring, market creation, and agent dispatch.
+    Now with persistence - markets survive server restarts!
     """
     
     def __init__(self):
@@ -1111,6 +1113,22 @@ class EventOrchestrator:
             "markets_created": 0,
             "markets_auto_created": 0,
         }
+        
+        # Initialize persistence
+        try:
+            from backend.core.persistence_manager import get_persistence_manager
+            self.persistence = get_persistence_manager()
+        except ImportError:
+            try:
+                from core.persistence_manager import get_persistence_manager
+                self.persistence = get_persistence_manager()
+            except ImportError:
+                self.persistence = None
+                print("⚠️ Persistence manager not available for EventOrchestrator")
+        
+        # Load saved markets on startup
+        if self.persistence:
+            self._load_markets_state()
     
     def ingest_events(self, queries: List[str] = None) -> List[RawEvent]:
         """Fetch and process events from news sources."""
@@ -1200,6 +1218,9 @@ class EventOrchestrator:
         self.markets[market_id] = market
         self.stats["markets_created"] += 1
         
+        # Save markets state after creation
+        self._save_markets_state()
+        
         print(f"📊 Created market: {market_id} ({duration.value})")
         
         return market
@@ -1241,6 +1262,71 @@ class EventOrchestrator:
     def get_active_markets(self) -> List[BettingMarket]:
         """Get all open markets."""
         return [m for m in self.markets.values() if m.status == "OPEN"]
+    
+    def _save_markets_state(self):
+        """Save all markets to disk."""
+        if not self.persistence:
+            return
+        
+        markets_data = {}
+        for market_id, market in self.markets.items():
+            markets_data[market_id] = {
+                "id": market.id,
+                "event_id": market.event_id,
+                "title": market.title,
+                "description": market.description,
+                "domain": market.domain.value if hasattr(market.domain, "value") else market.domain,
+                "duration": market.duration.value if hasattr(market.duration, "value") else market.duration,
+                "status": market.status,
+                "created_at": market.created_at.isoformat() if hasattr(market.created_at, "isoformat") else str(market.created_at),
+                "expires_at": market.expires_at.isoformat() if market.expires_at and hasattr(market.expires_at, "isoformat") else None,
+                "outcomes": market.outcomes,
+                "outcome_odds": market.outcome_odds,
+                "total_volume": market.total_volume,
+                "virality_score": market.virality_score,
+            }
+        
+        self.persistence.save("markets", markets_data)
+        self.persistence.save("stats", self.stats)
+    
+    def _load_markets_state(self):
+        """Load markets from disk and restore BettingMarket objects."""
+        if not self.persistence:
+            return
+        
+        markets_data = self.persistence.load("markets", default={})
+        stats_data = self.persistence.load("stats", default={})
+        
+        # Restore stats
+        if stats_data:
+            self.stats.update(stats_data)
+        
+        # Restore BettingMarket objects from saved data
+        for market_id, market_dict in markets_data.items():
+            try:
+                # Reconstruct BettingMarket from saved data
+                market = BettingMarket(
+                    id=market_dict["id"],
+                    event_id=market_dict.get("event_id", market_id),
+                    title=market_dict["title"],
+                    description=market_dict.get("description", ""),
+                    domain=EventDomain(market_dict["domain"]) if isinstance(market_dict["domain"], str) else market_dict["domain"],
+                    duration=BetDuration(market_dict["duration"]) if isinstance(market_dict["duration"], str) else market_dict["duration"],
+                    status=market_dict.get("status", "OPEN"),
+                    created_at=datetime.fromisoformat(market_dict["created_at"]) if isinstance(market_dict["created_at"], str) else market_dict["created_at"],
+                    expires_at=datetime.fromisoformat(market_dict["expires_at"]) if market_dict.get("expires_at") and isinstance(market_dict["expires_at"], str) else market_dict.get("expires_at"),
+                    outcomes=market_dict.get("outcomes", ["YES", "NO"]),
+                    outcome_odds=market_dict.get("outcome_odds", {"YES": 0.5, "NO": 0.5}),
+                    total_volume=market_dict.get("total_volume", 0.0),
+                    virality_score=market_dict.get("virality_score", 0.0),
+                    source_event=None,  # Source event not saved, can be None
+                )
+                self.markets[market_id] = market
+            except Exception as e:
+                print(f"⚠️ Failed to restore market {market_id}: {e}")
+                continue
+        
+        print(f"📂 Loaded {len(self.markets)} markets from disk")
 
 
 

@@ -1,0 +1,4836 @@
+{
+  "_meta": {
+    "saved_at": "2025-11-28T19:16:36.788119+00:00",
+    "state_name": "osint_state",
+    "version": "1.0"
+  },
+  "data": {
+    "last_updated": "2025-11-28T19:16:36.788029+00:00",
+    "signals": [
+      {
+        "id": "ca53769926fc",
+        "source": "google_trends",
+        "region": "washington_dc",
+        "level": 0.74,
+        "confidence": 1.0,
+        "severity": "MODERATE",
+        "description": "Simulated spike in search interest for 'pentagon alert': trend level 74/100",
+        "timestamp": "2025-11-28T19:12:33.564484+00:00",
+        "expires_at": "2025-11-29T07:12:33.564484+00:00",
+        "correlated_signals": [
+          "e8cefb61a25b",
+          "f3c0978d8c81",
+          "9bcc09b8fb4d",
+          "89c086d29722"
+        ],
+        "raw_data": {
+          "keyword": "pentagon alert",
+          "trend_level": 74,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "e8cefb61a25b",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.26263768945145927,
+        "confidence": 1.0,
+        "severity": "LOW",
+        "description": "Elevated conflict chatter detected for washington_dc: 2.6x normal volume, sentiment -0.32",
+        "timestamp": "2025-11-28T19:12:33.564532+00:00",
+        "expires_at": "2025-11-28T22:12:33.564532+00:00",
+        "correlated_signals": [
+          "ca53769926fc",
+          "f3c0978d8c81",
+          "9bcc09b8fb4d",
+          "89c086d29722"
+        ],
+        "raw_data": {
+          "category": "conflict",
+          "keywords_matched": [
+            "casualties",
+            "attack"
+          ],
+          "volume_multiplier": 2.63,
+          "sentiment_score": -0.32,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "014b925ca7e3",
+        "source": "flight_radar",
+        "region": "taipei",
+        "level": 0.9,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over taipei: 90% below normal (12 vs 120 baseline)",
+        "timestamp": "2025-11-28T19:12:33.564574+00:00",
+        "expires_at": "2025-11-28T23:12:33.564574+00:00",
+        "correlated_signals": [
+          "cb1fab81015d",
+          "9686df01a7a7",
+          "16c2782b2d69",
+          "9d3dcc6bd614",
+          "3de66aae3b6a",
+          "b00985bcbcf5",
+          "57e7ab39a340",
+          "470cd4194732",
+          "b37589bd36a5"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 25.033,
+            "lng": 121.5654,
+            "radius_km": 150
+          },
+          "baseline_flights": 120,
+          "current_flights": 12,
+          "deviation_pct": 90.0,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "d6acc64d976c",
+        "source": "social_chatter",
+        "region": "kyiv",
+        "level": 0.45053001666940273,
+        "confidence": 1.0,
+        "severity": "LOW",
+        "description": "Elevated conflict chatter detected for kyiv: 4.5x normal volume, sentiment -0.36",
+        "timestamp": "2025-11-28T19:12:33.752431+00:00",
+        "expires_at": "2025-11-28T22:12:33.752431+00:00",
+        "correlated_signals": [
+          "fd89b90b0dad",
+          "9f9f5c893e18",
+          "f4f745d7c222",
+          "42c7d30f5e27",
+          "07ad04de14b9"
+        ],
+        "raw_data": {
+          "category": "conflict",
+          "keywords_matched": [
+            "attack",
+            "explosion"
+          ],
+          "volume_multiplier": 4.51,
+          "sentiment_score": -0.36,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "02584c9d272a",
+        "source": "google_trends",
+        "region": "tehran",
+        "level": 0.56,
+        "confidence": 1.0,
+        "severity": "MODERATE",
+        "description": "Simulated spike in search interest for 'iran attack': trend level 56/100",
+        "timestamp": "2025-11-28T19:12:33.752467+00:00",
+        "expires_at": "2025-11-29T07:12:33.752467+00:00",
+        "correlated_signals": [
+          "742a930b5453",
+          "2291352c739d",
+          "7d39d57869ec",
+          "724054d1230f",
+          "64708185b263",
+          "f0d11d38efbc"
+        ],
+        "raw_data": {
+          "keyword": "iran attack",
+          "trend_level": 56,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "742a930b5453",
+        "source": "social_chatter",
+        "region": "tehran",
+        "level": 0.7494727703970618,
+        "confidence": 1.0,
+        "severity": "MODERATE",
+        "description": "Elevated conflict chatter detected for tehran: 7.5x normal volume, sentiment -0.37",
+        "timestamp": "2025-11-28T19:12:33.752477+00:00",
+        "expires_at": "2025-11-28T22:12:33.752477+00:00",
+        "correlated_signals": [
+          "02584c9d272a",
+          "2291352c739d",
+          "7d39d57869ec",
+          "724054d1230f",
+          "64708185b263",
+          "f0d11d38efbc"
+        ],
+        "raw_data": {
+          "category": "conflict",
+          "keywords_matched": [
+            "explosion",
+            "casualties"
+          ],
+          "volume_multiplier": 7.49,
+          "sentiment_score": -0.37,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "f565800a1f1c",
+        "source": "flight_radar",
+        "region": "strait_hormuz",
+        "level": 0.95,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over strait_hormuz: 95% below normal (4 vs 80 baseline)",
+        "timestamp": "2025-11-28T19:12:33.752488+00:00",
+        "expires_at": "2025-11-28T23:12:33.752488+00:00",
+        "correlated_signals": [
+          "945490ad3a64",
+          "641531acfa91",
+          "437706332b3f",
+          "4b03fa0460f3",
+          "db2cde843a25",
+          "55e1d0d205a9"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 26.5667,
+            "lng": 56.25,
+            "radius_km": 100
+          },
+          "baseline_flights": 80,
+          "current_flights": 4,
+          "deviation_pct": 95.0,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "945490ad3a64",
+        "source": "social_chatter",
+        "region": "strait_hormuz",
+        "level": 0.859449773912942,
+        "confidence": 1.0,
+        "severity": "HIGH",
+        "description": "Elevated military chatter detected for strait_hormuz: 8.6x normal volume, sentiment -0.06",
+        "timestamp": "2025-11-28T19:12:33.888040+00:00",
+        "expires_at": "2025-11-28T22:12:33.888040+00:00",
+        "correlated_signals": [
+          "f565800a1f1c",
+          "641531acfa91",
+          "437706332b3f",
+          "4b03fa0460f3",
+          "db2cde843a25",
+          "55e1d0d205a9"
+        ],
+        "raw_data": {
+          "category": "military",
+          "keywords_matched": [
+            "aircraft spotted",
+            "naval movement"
+          ],
+          "volume_multiplier": 8.59,
+          "sentiment_score": -0.06,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "4fba833a6fef",
+        "source": "flight_radar",
+        "region": "south_china_sea",
+        "level": 0.945,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over south_china_sea: 94% below normal (11 vs 200 baseline)",
+        "timestamp": "2025-11-28T19:12:33.888060+00:00",
+        "expires_at": "2025-11-28T23:12:33.888060+00:00",
+        "correlated_signals": [
+          "9704d1098cd4",
+          "41edb1bdade6",
+          "5dece96240e8",
+          "b2fcb8df8c40"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 15.0,
+            "lng": 115.0,
+            "radius_km": 500
+          },
+          "baseline_flights": 200,
+          "current_flights": 11,
+          "deviation_pct": 94.5,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "55b8686f57e6",
+        "source": "flight_radar",
+        "region": "tehran",
+        "level": 0.8767262757175491,
+        "confidence": 0.85,
+        "severity": "HIGH",
+        "description": "\u2708\ufe0f E-3 Sentry (AWACS 1): NATO AWACS orbiting over Baltic Sea. Increased surveillance activity",
+        "timestamp": "2025-11-28T19:12:34.483637+00:00",
+        "expires_at": "2025-11-28T23:12:34.483637+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "callsign": "AWACS 1",
+          "aircraft_type": "E-3 Sentry",
+          "scenario": "NATO AWACS orbiting over Baltic Sea",
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "949af324a18b",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 1.0,
+        "confidence": 0.7,
+        "severity": "CRITICAL",
+        "description": "\ud83d\udef0\ufe0f Low traffic at Home Depot (HD): 58% below normal. Potential earnings miss",
+        "timestamp": "2025-11-28T19:12:34.582937+00:00",
+        "expires_at": "2025-11-29T19:12:34.582937+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "company": "Home Depot",
+          "ticker": "HD",
+          "location": "Atlanta HQ",
+          "baseline_occupancy": 0.55,
+          "current_occupancy": 0.229,
+          "change_pct": -58.3,
+          "sentiment": "bearish",
+          "source": "simulated_satellite"
+        }
+      },
+      {
+        "id": "c06966215b01",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.38546903195570614,
+        "confidence": 0.7,
+        "severity": "LOW",
+        "description": "\ud83d\udef0\ufe0f Low traffic at Amazon (AMZN): 19% below normal. Potential earnings miss",
+        "timestamp": "2025-11-28T19:12:34.582937+00:00",
+        "expires_at": "2025-11-29T19:12:34.582937+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "company": "Amazon",
+          "ticker": "AMZN",
+          "location": "Seattle Fulfillment",
+          "baseline_occupancy": 0.75,
+          "current_occupancy": 0.605,
+          "change_pct": -19.3,
+          "sentiment": "bearish",
+          "source": "simulated_satellite"
+        }
+      },
+      {
+        "id": "d03b64e36882",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.65,
+        "severity": "MODERATE",
+        "description": "\ud83d\udcbc Apple (AAPL) posting 104 new quantum computing roles. Potential pivot into quantum computing - watch for announcements",
+        "timestamp": "2025-11-28T19:12:34.582967+00:00",
+        "expires_at": "2025-12-01T19:12:34.582967+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "company": "Apple",
+          "ticker": "AAPL",
+          "baseline_openings": 5000,
+          "change_type": "new_sector",
+          "sentiment": "bullish",
+          "sectors": [
+            "engineering",
+            "retail",
+            "AI/ML"
+          ],
+          "source": "simulated_jobs"
+        }
+      },
+      {
+        "id": "2b6ada401878",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.48,
+        "confidence": 0.6,
+        "severity": "LOW",
+        "description": "\ud83d\udcf1 Disney+ (DIS) dropped 24 spots to #32 in Entertainment. User engagement declining - potential subscriber miss",
+        "timestamp": "2025-11-28T19:12:34.582983+00:00",
+        "expires_at": "2025-11-30T19:12:34.582983+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "app": "Disney+",
+          "company": "Disney",
+          "ticker": "DIS",
+          "category": "Entertainment",
+          "baseline_rank": 8,
+          "new_rank": 32,
+          "direction": "declined",
+          "review_sentiment": "mixed",
+          "sentiment": "bearish",
+          "source": "simulated_appstore"
+        }
+      },
+      {
+        "id": "5c8d22d8efd8",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Coors Field (Colorado Rockies): High winds (23 mph) favor pitchers, reduce home runs. High altitude at Coors Field - expect more offense, ball carries further",
+        "timestamp": "2025-11-28T19:12:34.583000+00:00",
+        "expires_at": "2025-11-29T01:12:34.583000+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Coors Field",
+          "team": "Colorado Rockies",
+          "sport": "MLB",
+          "temperature_f": 89.92880166789497,
+          "wind_speed_mph": 22.79905468146728,
+          "wind_direction": "E",
+          "precipitation_chance": 0.20181855687316555,
+          "conditions": "Windy",
+          "impacts": [
+            "High winds (23 mph) favor pitchers, reduce home runs",
+            "High altitude at Coors Field - expect more offense, ball carries further"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "ce4a6513b6ba",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Soldier Field (Chicago Bears): High winds (28 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:12:34.583000+00:00",
+        "expires_at": "2025-11-29T01:12:34.583000+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Soldier Field",
+          "team": "Chicago Bears",
+          "sport": "NFL",
+          "temperature_f": 57.43220397747247,
+          "wind_speed_mph": 27.613312198222197,
+          "wind_direction": "E",
+          "precipitation_chance": 0.18655055661517653,
+          "conditions": "Snow",
+          "impacts": [
+            "High winds (28 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "5c8925c5d845",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Soldier Field (Chicago Bears): High winds (27 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:12:34.583040+00:00",
+        "expires_at": "2025-11-29T01:12:34.583040+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Soldier Field",
+          "team": "Chicago Bears",
+          "sport": "NFL",
+          "temperature_f": 51.14794361037866,
+          "wind_speed_mph": 27.076698381859842,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.29688047496112707,
+          "conditions": "Snow",
+          "impacts": [
+            "High winds (27 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "535d79306b4c",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Arrowhead Stadium (Kansas City Chiefs): High winds (26 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:12:34.583040+00:00",
+        "expires_at": "2025-11-29T01:12:34.583040+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Arrowhead Stadium",
+          "team": "Kansas City Chiefs",
+          "sport": "NFL",
+          "temperature_f": 52.08799491876231,
+          "wind_speed_mph": 26.350522689229365,
+          "wind_direction": "N",
+          "precipitation_chance": 0.027845785425199845,
+          "conditions": "Cloudy",
+          "impacts": [
+            "High winds (26 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "da85bc38b7f0",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Old Trafford (Manchester United): Rain likely (56% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:12:34.583062+00:00",
+        "expires_at": "2025-11-29T01:12:34.583062+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Old Trafford",
+          "team": "Manchester United",
+          "sport": "Soccer",
+          "temperature_f": 79.10156797059709,
+          "wind_speed_mph": 32.07624696201209,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.5597919834771091,
+          "conditions": "Snow",
+          "impacts": [
+            "Rain likely (56% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "2876470a3a09",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Coors Field (Colorado Rockies): High winds (28 mph) favor pitchers, reduce home runs. Rain likely (56% chance) - affects ball handling. High altitude at Coors Field - expect more offense, ball carries further",
+        "timestamp": "2025-11-28T19:12:34.583062+00:00",
+        "expires_at": "2025-11-29T01:12:34.583062+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Coors Field",
+          "team": "Colorado Rockies",
+          "sport": "MLB",
+          "temperature_f": 70.7117213601321,
+          "wind_speed_mph": 27.843969339369615,
+          "wind_direction": "W",
+          "precipitation_chance": 0.5629044122202922,
+          "conditions": "Rain",
+          "impacts": [
+            "High winds (28 mph) favor pitchers, reduce home runs",
+            "Rain likely (56% chance) - affects ball handling",
+            "High altitude at Coors Field - expect more offense, ball carries further"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "45dc0c301251",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Arrowhead Stadium (Kansas City Chiefs): High winds (21 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:12:34.583062+00:00",
+        "expires_at": "2025-11-29T01:12:34.583062+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Arrowhead Stadium",
+          "team": "Kansas City Chiefs",
+          "sport": "NFL",
+          "temperature_f": 36.00670585910373,
+          "wind_speed_mph": 20.880222808950982,
+          "wind_direction": "SE",
+          "precipitation_chance": 0.42869351904853437,
+          "conditions": "Snow",
+          "impacts": [
+            "High winds (21 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "81387f2b5f0e",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Lambeau Field (Green Bay Packers): High winds (24 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:12:34.583088+00:00",
+        "expires_at": "2025-11-29T01:12:34.583088+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Lambeau Field",
+          "team": "Green Bay Packers",
+          "sport": "NFL",
+          "temperature_f": 89.24601159730327,
+          "wind_speed_mph": 24.49605962502431,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.386847855694845,
+          "conditions": "Cloudy",
+          "impacts": [
+            "High winds (24 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "be659785d7a1",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Emirates Stadium (Arsenal): Rain likely (72% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:12:34.583088+00:00",
+        "expires_at": "2025-11-29T01:12:34.583088+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Emirates Stadium",
+          "team": "Arsenal",
+          "sport": "Soccer",
+          "temperature_f": 53.93291538755657,
+          "wind_speed_mph": 15.78293171586458,
+          "wind_direction": "NE",
+          "precipitation_chance": 0.7213832715000339,
+          "conditions": "Cloudy",
+          "impacts": [
+            "Rain likely (72% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "a7d37bcd356f",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Coors Field (Colorado Rockies): High winds (33 mph) favor pitchers, reduce home runs. High altitude at Coors Field - expect more offense, ball carries further",
+        "timestamp": "2025-11-28T19:12:34.583106+00:00",
+        "expires_at": "2025-11-29T01:12:34.583106+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Coors Field",
+          "team": "Colorado Rockies",
+          "sport": "MLB",
+          "temperature_f": 42.29681840067541,
+          "wind_speed_mph": 32.892098844209976,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.4567731562405113,
+          "conditions": "Clear",
+          "impacts": [
+            "High winds (33 mph) favor pitchers, reduce home runs",
+            "High altitude at Coors Field - expect more offense, ball carries further"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "8455fd23915c",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Emirates Stadium (Arsenal): Snow likely (72% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:12:34.583119+00:00",
+        "expires_at": "2025-11-29T01:12:34.583119+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Emirates Stadium",
+          "team": "Arsenal",
+          "sport": "Soccer",
+          "temperature_f": 29.64761499745254,
+          "wind_speed_mph": 31.650829081630672,
+          "wind_direction": "W",
+          "precipitation_chance": 0.7165973020140194,
+          "conditions": "Rain",
+          "impacts": [
+            "Snow likely (72% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "2faa155f1ba8",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Soldier Field (Chicago Bears): High winds (20 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:12:34.583119+00:00",
+        "expires_at": "2025-11-29T01:12:34.583119+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Soldier Field",
+          "team": "Chicago Bears",
+          "sport": "NFL",
+          "temperature_f": 61.782525299007,
+          "wind_speed_mph": 19.875121839675252,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.062811840378781,
+          "conditions": "Rain",
+          "impacts": [
+            "High winds (20 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "3ab6952b4ed4",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Highmark Stadium (Buffalo Bills): Snow likely (80% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:12:34.583119+00:00",
+        "expires_at": "2025-11-29T01:12:34.583119+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Highmark Stadium",
+          "team": "Buffalo Bills",
+          "sport": "NFL",
+          "temperature_f": 32.224340389927825,
+          "wind_speed_mph": 5.560492993390671,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.7998468387582551,
+          "conditions": "Clear",
+          "impacts": [
+            "Snow likely (80% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "33b30da66a86",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Anfield (Liverpool): High heat (93\u00b0F) increases fatigue and injury risk. Rain likely (76% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:12:34.583141+00:00",
+        "expires_at": "2025-11-29T01:12:34.583141+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Anfield",
+          "team": "Liverpool",
+          "sport": "Soccer",
+          "temperature_f": 93.11559719597277,
+          "wind_speed_mph": 7.938515445616861,
+          "wind_direction": "NE",
+          "precipitation_chance": 0.7572564231325235,
+          "conditions": "Clear",
+          "impacts": [
+            "High heat (93\u00b0F) increases fatigue and injury risk",
+            "Rain likely (76% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "7be29466a930",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Coors Field (Colorado Rockies): High altitude at Coors Field - expect more offense, ball carries further",
+        "timestamp": "2025-11-28T19:12:34.583141+00:00",
+        "expires_at": "2025-11-29T01:12:34.583141+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Coors Field",
+          "team": "Colorado Rockies",
+          "sport": "MLB",
+          "temperature_f": 24.090828548641255,
+          "wind_speed_mph": 3.020429893299962,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.2635254931066037,
+          "conditions": "Rain",
+          "impacts": [
+            "High altitude at Coors Field - expect more offense, ball carries further"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "bcb0aac7e888",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Emirates Stadium (Arsenal): High heat (95\u00b0F) increases fatigue and injury risk. Rain likely (68% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:12:34.583160+00:00",
+        "expires_at": "2025-11-29T01:12:34.583160+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Emirates Stadium",
+          "team": "Arsenal",
+          "sport": "Soccer",
+          "temperature_f": 94.93627176873018,
+          "wind_speed_mph": 6.3635169902593605,
+          "wind_direction": "SE",
+          "precipitation_chance": 0.683258193248371,
+          "conditions": "Clear",
+          "impacts": [
+            "High heat (95\u00b0F) increases fatigue and injury risk",
+            "Rain likely (68% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "985802662895",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Old Trafford (Manchester United): Rain likely (76% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:12:34.583160+00:00",
+        "expires_at": "2025-11-29T01:12:34.583160+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Old Trafford",
+          "team": "Manchester United",
+          "sport": "Soccer",
+          "temperature_f": 77.52123135852715,
+          "wind_speed_mph": 13.92242448363185,
+          "wind_direction": "S",
+          "precipitation_chance": 0.7611665298170761,
+          "conditions": "Rain",
+          "impacts": [
+            "Rain likely (76% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "51174f119a8d",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\u26a0\ufe0f Negative chatter about Kylian Mbapp\u00e9 (Real Madrid). Keywords: conflict, unhappy. Team chemistry or personal issues may affect performance",
+        "timestamp": "2025-11-28T19:12:34.583179+00:00",
+        "expires_at": "2025-11-29T19:12:34.583179+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Kylian Mbapp\u00e9",
+          "team": "Real Madrid",
+          "sport": "Soccer",
+          "sentiment_score": -0.22,
+          "volume_spike": 5.9,
+          "key_topics": [
+            "conflict",
+            "unhappy"
+          ],
+          "signal_type": "drama",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "245ef990b37c",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.85,
+        "confidence": 0.6,
+        "severity": "HIGH",
+        "description": "\ud83d\udea8 Injury buzz around Patrick Mahomes (Kansas City Chiefs). Keywords: limited, injury, DNP. Possible undisclosed injury - check lineup closer to game",
+        "timestamp": "2025-11-28T19:12:34.583201+00:00",
+        "expires_at": "2025-11-29T19:12:34.583201+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Patrick Mahomes",
+          "team": "Kansas City Chiefs",
+          "sport": "NFL",
+          "sentiment_score": -0.65,
+          "volume_spike": 6.4,
+          "key_topics": [
+            "limited",
+            "injury",
+            "DNP"
+          ],
+          "signal_type": "injury",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "56d67825490b",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\ud83d\udcc8 Positive momentum for LeBron James (LA Lakers). Keywords: MVP, beast mode, unstoppable. Player confidence high - could exceed expectations",
+        "timestamp": "2025-11-28T19:12:34.583201+00:00",
+        "expires_at": "2025-11-29T19:12:34.583201+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "LeBron James",
+          "team": "LA Lakers",
+          "sport": "NBA",
+          "sentiment_score": 0.67,
+          "volume_spike": 3.6,
+          "key_topics": [
+            "MVP",
+            "beast mode",
+            "unstoppable"
+          ],
+          "signal_type": "hype",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "179c3fee5102",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\ud83d\udcc8 Positive momentum for Kylian Mbapp\u00e9 (Real Madrid). Keywords: MVP, beast mode, unstoppable. Player confidence high - could exceed expectations",
+        "timestamp": "2025-11-28T19:12:34.583201+00:00",
+        "expires_at": "2025-11-29T19:12:34.583201+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Kylian Mbapp\u00e9",
+          "team": "Real Madrid",
+          "sport": "Soccer",
+          "sentiment_score": 0.57,
+          "volume_spike": 3.1,
+          "key_topics": [
+            "MVP",
+            "beast mode",
+            "unstoppable"
+          ],
+          "signal_type": "hype",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "8cfe5281d98a",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.85,
+        "confidence": 0.6,
+        "severity": "HIGH",
+        "description": "\ud83d\udea8 Injury buzz around Erling Haaland (Manchester City). Keywords: limited, injury, hurt. Possible undisclosed injury - check lineup closer to game",
+        "timestamp": "2025-11-28T19:12:34.583228+00:00",
+        "expires_at": "2025-11-29T19:12:34.583228+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Erling Haaland",
+          "team": "Manchester City",
+          "sport": "Soccer",
+          "sentiment_score": -0.73,
+          "volume_spike": 5.8,
+          "key_topics": [
+            "limited",
+            "injury",
+            "hurt"
+          ],
+          "signal_type": "injury",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "98b39890baa4",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\u26a0\ufe0f Negative chatter about Stephen Curry (Golden State Warriors). Keywords: trade, rumors, moving. Team chemistry or personal issues may affect performance",
+        "timestamp": "2025-11-28T19:12:34.583238+00:00",
+        "expires_at": "2025-11-29T19:12:34.583238+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Stephen Curry",
+          "team": "Golden State Warriors",
+          "sport": "NBA",
+          "sentiment_score": 0.0,
+          "volume_spike": 7.6,
+          "key_topics": [
+            "trade",
+            "rumors",
+            "moving"
+          ],
+          "signal_type": "drama",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "142856716a09",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\u26a0\ufe0f Negative chatter about Stephen Curry (Golden State Warriors). Keywords: suspension, conflict. Team chemistry or personal issues may affect performance",
+        "timestamp": "2025-11-28T19:12:34.583248+00:00",
+        "expires_at": "2025-11-29T19:12:34.583248+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Stephen Curry",
+          "team": "Golden State Warriors",
+          "sport": "NBA",
+          "sentiment_score": -0.44,
+          "volume_spike": 2.9,
+          "key_topics": [
+            "suspension",
+            "conflict"
+          ],
+          "signal_type": "drama",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "f1ed948124d7",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\u26a0\ufe0f Negative chatter about Aaron Judge (NY Yankees). Keywords: trade, rumors, moving. Team chemistry or personal issues may affect performance",
+        "timestamp": "2025-11-28T19:12:34.583248+00:00",
+        "expires_at": "2025-11-29T19:12:34.583248+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Aaron Judge",
+          "team": "NY Yankees",
+          "sport": "MLB",
+          "sentiment_score": -0.15,
+          "volume_spike": 6.0,
+          "key_topics": [
+            "trade",
+            "rumors",
+            "moving"
+          ],
+          "signal_type": "drama",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "6fb35b67ff11",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.85,
+        "confidence": 0.6,
+        "severity": "HIGH",
+        "description": "\ud83d\udea8 Injury buzz around Mohamed Salah (Liverpool). Keywords: DNP, out, surgery. Possible undisclosed injury - check lineup closer to game",
+        "timestamp": "2025-11-28T19:12:34.583264+00:00",
+        "expires_at": "2025-11-29T19:12:34.583264+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Mohamed Salah",
+          "team": "Liverpool",
+          "sport": "Soccer",
+          "sentiment_score": -0.52,
+          "volume_spike": 5.3,
+          "key_topics": [
+            "DNP",
+            "out",
+            "surgery"
+          ],
+          "signal_type": "injury",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "d7c401e2f0e6",
+        "source": "flight_radar",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.75,
+        "severity": "MODERATE",
+        "description": "\u2708\ufe0f Golden State Warriors back-to-back after cross-country flight. Travel fatigue + B2B = significant handicap",
+        "timestamp": "2025-11-28T19:12:34.583277+00:00",
+        "expires_at": "2025-11-29T07:12:34.583277+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "team": "Golden State Warriors",
+          "situation": "back-to-back after cross-country flight",
+          "impact_type": "b2b_road",
+          "disadvantage": "Travel fatigue + B2B = significant handicap",
+          "source": "schedule_analysis"
+        }
+      },
+      {
+        "id": "3099dd885cf4",
+        "source": "social_chatter",
+        "region": "moscow",
+        "level": 0.6618074800004259,
+        "confidence": 0.8450000000000001,
+        "severity": "MODERATE",
+        "description": "Elevated crisis chatter detected for moscow: 6.6x normal volume, sentiment -0.76",
+        "timestamp": "2025-11-28T19:13:33.898483+00:00",
+        "expires_at": "2025-11-28T22:13:33.898483+00:00",
+        "correlated_signals": [
+          "8a044e0c8699",
+          "cc572627b3b8"
+        ],
+        "raw_data": {
+          "category": "crisis",
+          "keywords_matched": [
+            "developing situation",
+            "urgent"
+          ],
+          "volume_multiplier": 6.62,
+          "sentiment_score": -0.76,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "cb1fab81015d",
+        "source": "flight_radar",
+        "region": "taipei",
+        "level": 0.9,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over taipei: 90% below normal (12 vs 120 baseline)",
+        "timestamp": "2025-11-28T19:13:33.898921+00:00",
+        "expires_at": "2025-11-28T23:13:33.898921+00:00",
+        "correlated_signals": [
+          "014b925ca7e3",
+          "9686df01a7a7",
+          "16c2782b2d69",
+          "9d3dcc6bd614",
+          "3de66aae3b6a",
+          "b00985bcbcf5",
+          "57e7ab39a340",
+          "470cd4194732",
+          "b37589bd36a5"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 25.033,
+            "lng": 121.5654,
+            "radius_km": 150
+          },
+          "baseline_flights": 120,
+          "current_flights": 12,
+          "deviation_pct": 90.0,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "9686df01a7a7",
+        "source": "google_trends",
+        "region": "taipei",
+        "level": 0.64,
+        "confidence": 1.0,
+        "severity": "MODERATE",
+        "description": "Simulated spike in search interest for 'china taiwan war': trend level 64/100",
+        "timestamp": "2025-11-28T19:13:34.004731+00:00",
+        "expires_at": "2025-11-29T07:13:34.004731+00:00",
+        "correlated_signals": [
+          "014b925ca7e3",
+          "cb1fab81015d",
+          "16c2782b2d69",
+          "9d3dcc6bd614",
+          "3de66aae3b6a",
+          "b00985bcbcf5",
+          "57e7ab39a340",
+          "470cd4194732",
+          "b37589bd36a5"
+        ],
+        "raw_data": {
+          "keyword": "china taiwan war",
+          "trend_level": 64,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "fd89b90b0dad",
+        "source": "google_trends",
+        "region": "kyiv",
+        "level": 0.81,
+        "confidence": 1.0,
+        "severity": "HIGH",
+        "description": "Simulated spike in search interest for 'kyiv bombing': trend level 81/100",
+        "timestamp": "2025-11-28T19:13:34.093500+00:00",
+        "expires_at": "2025-11-29T07:13:34.093500+00:00",
+        "correlated_signals": [
+          "d6acc64d976c",
+          "9f9f5c893e18",
+          "f4f745d7c222",
+          "42c7d30f5e27",
+          "07ad04de14b9"
+        ],
+        "raw_data": {
+          "keyword": "kyiv bombing",
+          "trend_level": 81,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "2291352c739d",
+        "source": "google_trends",
+        "region": "tehran",
+        "level": 0.96,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Simulated spike in search interest for 'iran war': trend level 96/100",
+        "timestamp": "2025-11-28T19:13:34.093544+00:00",
+        "expires_at": "2025-11-29T07:13:34.093544+00:00",
+        "correlated_signals": [
+          "02584c9d272a",
+          "742a930b5453",
+          "7d39d57869ec",
+          "724054d1230f",
+          "64708185b263",
+          "f0d11d38efbc"
+        ],
+        "raw_data": {
+          "keyword": "iran war",
+          "trend_level": 96,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "7d39d57869ec",
+        "source": "google_trends",
+        "region": "tehran",
+        "level": 0.67,
+        "confidence": 1.0,
+        "severity": "MODERATE",
+        "description": "Simulated spike in search interest for 'strait of hormuz': trend level 67/100",
+        "timestamp": "2025-11-28T19:13:34.093544+00:00",
+        "expires_at": "2025-11-29T07:13:34.093544+00:00",
+        "correlated_signals": [
+          "02584c9d272a",
+          "742a930b5453",
+          "2291352c739d",
+          "724054d1230f",
+          "64708185b263",
+          "f0d11d38efbc"
+        ],
+        "raw_data": {
+          "keyword": "strait of hormuz",
+          "trend_level": 67,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "641531acfa91",
+        "source": "flight_radar",
+        "region": "strait_hormuz",
+        "level": 0.95,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over strait_hormuz: 95% below normal (4 vs 80 baseline)",
+        "timestamp": "2025-11-28T19:13:34.093570+00:00",
+        "expires_at": "2025-11-28T23:13:34.093570+00:00",
+        "correlated_signals": [
+          "f565800a1f1c",
+          "945490ad3a64",
+          "437706332b3f",
+          "4b03fa0460f3",
+          "db2cde843a25",
+          "55e1d0d205a9"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 26.5667,
+            "lng": 56.25,
+            "radius_km": 100
+          },
+          "baseline_flights": 80,
+          "current_flights": 4,
+          "deviation_pct": 95.0,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "9704d1098cd4",
+        "source": "flight_radar",
+        "region": "south_china_sea",
+        "level": 0.95,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over south_china_sea: 95% below normal (10 vs 200 baseline)",
+        "timestamp": "2025-11-28T19:13:34.204368+00:00",
+        "expires_at": "2025-11-28T23:13:34.204368+00:00",
+        "correlated_signals": [
+          "4fba833a6fef",
+          "41edb1bdade6",
+          "5dece96240e8",
+          "b2fcb8df8c40"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 15.0,
+            "lng": 115.0,
+            "radius_km": 500
+          },
+          "baseline_flights": 200,
+          "current_flights": 10,
+          "deviation_pct": 95.0,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "7f52ae981c58",
+        "source": "flight_radar",
+        "region": "strait_hormuz",
+        "level": 0.642667820970456,
+        "confidence": 0.85,
+        "severity": "MODERATE",
+        "description": "\u2708\ufe0f C-17 Globemaster (RCH 871): USAF heavy cargo aircraft en route to Ramstein. Possible troop/equipment deployment",
+        "timestamp": "2025-11-28T19:13:34.994669+00:00",
+        "expires_at": "2025-11-28T23:13:34.994669+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "callsign": "RCH 871",
+          "aircraft_type": "C-17 Globemaster",
+          "scenario": "USAF heavy cargo aircraft en route to Ramstein",
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "746ceeaeb1a4",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 1.0,
+        "confidence": 0.7,
+        "severity": "CRITICAL",
+        "description": "\ud83d\udef0\ufe0f High traffic at Walmart (WMT): 51% above normal. Potential earnings beat",
+        "timestamp": "2025-11-28T19:13:34.994775+00:00",
+        "expires_at": "2025-11-29T19:13:34.994775+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "company": "Walmart",
+          "ticker": "WMT",
+          "location": "Bentonville HQ",
+          "baseline_occupancy": 0.65,
+          "current_occupancy": 0.984,
+          "change_pct": 51.4,
+          "sentiment": "bullish",
+          "source": "simulated_satellite"
+        }
+      },
+      {
+        "id": "1d74f294942e",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.65,
+        "severity": "MODERATE",
+        "description": "\ud83d\udcbc Amazon (AMZN) posting 189 new blockchain roles. Potential pivot into blockchain - watch for announcements",
+        "timestamp": "2025-11-28T19:13:34.994814+00:00",
+        "expires_at": "2025-12-01T19:13:34.994814+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "company": "Amazon",
+          "ticker": "AMZN",
+          "baseline_openings": 15000,
+          "change_type": "new_sector",
+          "sentiment": "bullish",
+          "sectors": [
+            "logistics",
+            "engineering",
+            "AWS"
+          ],
+          "source": "simulated_jobs"
+        }
+      },
+      {
+        "id": "519dba257c33",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.2,
+        "confidence": 0.6,
+        "severity": "MINIMAL",
+        "description": "\ud83d\udcf1 Robinhood (HOOD) climbed 6 spots to #9 in Finance. Increased user acquisition - potential revenue beat",
+        "timestamp": "2025-11-28T19:13:34.994838+00:00",
+        "expires_at": "2025-11-30T19:13:34.994838+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "app": "Robinhood",
+          "company": "Robinhood",
+          "ticker": "HOOD",
+          "category": "Finance",
+          "baseline_rank": 15,
+          "new_rank": 9,
+          "direction": "improved",
+          "review_sentiment": "mixed",
+          "sentiment": "bullish",
+          "source": "simulated_appstore"
+        }
+      },
+      {
+        "id": "626b5282e5b9",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f MetLife Stadium (NY Giants/Jets): High winds (23 mph) will affect passing game and field goals. Snow likely (73% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:13:34.994868+00:00",
+        "expires_at": "2025-11-29T01:13:34.994868+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "MetLife Stadium",
+          "team": "NY Giants/Jets",
+          "sport": "NFL",
+          "temperature_f": 32.48876917688144,
+          "wind_speed_mph": 23.07920139855609,
+          "wind_direction": "NE",
+          "precipitation_chance": 0.7317371438818645,
+          "conditions": "Snow",
+          "impacts": [
+            "High winds (23 mph) will affect passing game and field goals",
+            "Snow likely (73% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "5eb986b70ffd",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Old Trafford (Manchester United): Rain likely (60% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:13:34.994920+00:00",
+        "expires_at": "2025-11-29T01:13:34.994920+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Old Trafford",
+          "team": "Manchester United",
+          "sport": "Soccer",
+          "temperature_f": 47.64771875071078,
+          "wind_speed_mph": 5.287664480219781,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.5978938919732257,
+          "conditions": "Clear",
+          "impacts": [
+            "Rain likely (60% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "19b5cd1c696a",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Coors Field (Colorado Rockies): High altitude at Coors Field - expect more offense, ball carries further",
+        "timestamp": "2025-11-28T19:13:34.994938+00:00",
+        "expires_at": "2025-11-29T01:13:34.994938+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Coors Field",
+          "team": "Colorado Rockies",
+          "sport": "MLB",
+          "temperature_f": 61.18877029469183,
+          "wind_speed_mph": 4.117504820109445,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.023246244015400833,
+          "conditions": "Clear",
+          "impacts": [
+            "High altitude at Coors Field - expect more offense, ball carries further"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "917bcb53cee6",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Lambeau Field (Green Bay Packers): High winds (34 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:13:34.994938+00:00",
+        "expires_at": "2025-11-29T01:13:34.994938+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Lambeau Field",
+          "team": "Green Bay Packers",
+          "sport": "NFL",
+          "temperature_f": 63.942780211209126,
+          "wind_speed_mph": 34.30218736404794,
+          "wind_direction": "S",
+          "precipitation_chance": 0.24510611889981498,
+          "conditions": "Clear",
+          "impacts": [
+            "High winds (34 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "6747e3de3b96",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Old Trafford (Manchester United): Rain likely (76% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:13:34.994961+00:00",
+        "expires_at": "2025-11-29T01:13:34.994961+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Old Trafford",
+          "team": "Manchester United",
+          "sport": "Soccer",
+          "temperature_f": 37.49080296966879,
+          "wind_speed_mph": 0.8112281946345706,
+          "wind_direction": "N",
+          "precipitation_chance": 0.7554121583872319,
+          "conditions": "Snow",
+          "impacts": [
+            "Rain likely (76% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "1b871d051e01",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Highmark Stadium (Buffalo Bills): High winds (22 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:13:34.994961+00:00",
+        "expires_at": "2025-11-29T01:13:34.994961+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Highmark Stadium",
+          "team": "Buffalo Bills",
+          "sport": "NFL",
+          "temperature_f": 32.84945243921289,
+          "wind_speed_mph": 22.01799466240084,
+          "wind_direction": "S",
+          "precipitation_chance": 0.18279314510168954,
+          "conditions": "Rain",
+          "impacts": [
+            "High winds (22 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "66fb133ea12b",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Emirates Stadium (Arsenal): Rain likely (71% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:13:34.994961+00:00",
+        "expires_at": "2025-11-29T01:13:34.994961+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Emirates Stadium",
+          "team": "Arsenal",
+          "sport": "Soccer",
+          "temperature_f": 50.83067126120521,
+          "wind_speed_mph": 7.664532360719775,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.7116151108137281,
+          "conditions": "Clear",
+          "impacts": [
+            "Rain likely (71% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "1eba9708fafe",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Stamford Bridge (Chelsea): High heat (92\u00b0F) increases fatigue and injury risk. Rain likely (73% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:13:34.994985+00:00",
+        "expires_at": "2025-11-29T01:13:34.994985+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Stamford Bridge",
+          "team": "Chelsea",
+          "sport": "Soccer",
+          "temperature_f": 92.47424386125584,
+          "wind_speed_mph": 28.718227737246153,
+          "wind_direction": "S",
+          "precipitation_chance": 0.7280079652872186,
+          "conditions": "Cloudy",
+          "impacts": [
+            "High heat (92\u00b0F) increases fatigue and injury risk",
+            "Rain likely (73% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "383948c481d8",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Fenway Park (Boston Red Sox): High heat (93\u00b0F) increases fatigue and injury risk",
+        "timestamp": "2025-11-28T19:13:34.994999+00:00",
+        "expires_at": "2025-11-29T01:13:34.994999+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Fenway Park",
+          "team": "Boston Red Sox",
+          "sport": "MLB",
+          "temperature_f": 92.51064060799091,
+          "wind_speed_mph": 7.801406469680546,
+          "wind_direction": "W",
+          "precipitation_chance": 0.340550575027811,
+          "conditions": "Clear",
+          "impacts": [
+            "High heat (93\u00b0F) increases fatigue and injury risk"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "87d673c3ad69",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Soldier Field (Chicago Bears): High winds (29 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:13:34.994999+00:00",
+        "expires_at": "2025-11-29T01:13:34.994999+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Soldier Field",
+          "team": "Chicago Bears",
+          "sport": "NFL",
+          "temperature_f": 49.782306470384356,
+          "wind_speed_mph": 29.086912856176863,
+          "wind_direction": "S",
+          "precipitation_chance": 0.08686470205828574,
+          "conditions": "Clear",
+          "impacts": [
+            "High winds (29 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "b1c73c806c09",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Fenway Park (Boston Red Sox): High winds (22 mph) favor pitchers, reduce home runs. Rain likely (51% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:13:34.995016+00:00",
+        "expires_at": "2025-11-29T01:13:34.995016+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Fenway Park",
+          "team": "Boston Red Sox",
+          "sport": "MLB",
+          "temperature_f": 45.83546105952489,
+          "wind_speed_mph": 21.93929001360571,
+          "wind_direction": "NE",
+          "precipitation_chance": 0.5061694320956023,
+          "conditions": "Snow",
+          "impacts": [
+            "High winds (22 mph) favor pitchers, reduce home runs",
+            "Rain likely (51% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "ba3174892d9b",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Anfield (Liverpool): Rain likely (59% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:13:34.995016+00:00",
+        "expires_at": "2025-11-29T01:13:34.995016+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Anfield",
+          "team": "Liverpool",
+          "sport": "Soccer",
+          "temperature_f": 49.341708249501444,
+          "wind_speed_mph": 34.74426915936468,
+          "wind_direction": "N",
+          "precipitation_chance": 0.589584765838224,
+          "conditions": "Snow",
+          "impacts": [
+            "Rain likely (59% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "fbf107283b13",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Emirates Stadium (Arsenal): Snow likely (67% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:13:34.995040+00:00",
+        "expires_at": "2025-11-29T01:13:34.995040+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Emirates Stadium",
+          "team": "Arsenal",
+          "sport": "Soccer",
+          "temperature_f": 20.25522418002564,
+          "wind_speed_mph": 19.63485086254161,
+          "wind_direction": "S",
+          "precipitation_chance": 0.6714117537688753,
+          "conditions": "Snow",
+          "impacts": [
+            "Snow likely (67% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "32bc33b50d93",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f MetLife Stadium (NY Giants/Jets): High winds (17 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:13:34.995040+00:00",
+        "expires_at": "2025-11-29T01:13:34.995040+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "MetLife Stadium",
+          "team": "NY Giants/Jets",
+          "sport": "NFL",
+          "temperature_f": 38.34666657996348,
+          "wind_speed_mph": 16.949423432738442,
+          "wind_direction": "N",
+          "precipitation_chance": 0.06739710286446572,
+          "conditions": "Clear",
+          "impacts": [
+            "High winds (17 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "1ffc59b0bc65",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Arrowhead Stadium (Kansas City Chiefs): High winds (33 mph) will affect passing game and field goals. Freezing temps (27\u00b0F) affect ball handling and player performance. Snow likely (60% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:13:34.995040+00:00",
+        "expires_at": "2025-11-29T01:13:34.995040+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Arrowhead Stadium",
+          "team": "Kansas City Chiefs",
+          "sport": "NFL",
+          "temperature_f": 27.432377930536003,
+          "wind_speed_mph": 32.558424522337795,
+          "wind_direction": "E",
+          "precipitation_chance": 0.5992118945760658,
+          "conditions": "Rain",
+          "impacts": [
+            "High winds (33 mph) will affect passing game and field goals",
+            "Freezing temps (27\u00b0F) affect ball handling and player performance",
+            "Snow likely (60% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "7e2ff0041ba4",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\ud83d\udcc8 Positive momentum for Kylian Mbapp\u00e9 (Real Madrid). Keywords: MVP, beast mode, unstoppable. Player confidence high - could exceed expectations",
+        "timestamp": "2025-11-28T19:13:34.995063+00:00",
+        "expires_at": "2025-11-29T19:13:34.995063+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Kylian Mbapp\u00e9",
+          "team": "Real Madrid",
+          "sport": "Soccer",
+          "sentiment_score": 0.76,
+          "volume_spike": 3.0,
+          "key_topics": [
+            "MVP",
+            "beast mode",
+            "unstoppable"
+          ],
+          "signal_type": "hype",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "ed1afcefc8f9",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\u26a0\ufe0f Negative chatter about Erling Haaland (Manchester City). Keywords: trade, benched. Team chemistry or personal issues may affect performance",
+        "timestamp": "2025-11-28T19:13:34.995094+00:00",
+        "expires_at": "2025-11-29T19:13:34.995094+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Erling Haaland",
+          "team": "Manchester City",
+          "sport": "Soccer",
+          "sentiment_score": -0.29,
+          "volume_spike": 4.4,
+          "key_topics": [
+            "trade",
+            "benched"
+          ],
+          "signal_type": "drama",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "7e1c60451e52",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\u26a0\ufe0f Negative chatter about Kylian Mbapp\u00e9 (Real Madrid). Keywords: trade, rumors, moving. Team chemistry or personal issues may affect performance",
+        "timestamp": "2025-11-28T19:13:34.995106+00:00",
+        "expires_at": "2025-11-29T19:13:34.995106+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Kylian Mbapp\u00e9",
+          "team": "Real Madrid",
+          "sport": "Soccer",
+          "sentiment_score": -0.3,
+          "volume_spike": 7.1,
+          "key_topics": [
+            "trade",
+            "rumors",
+            "moving"
+          ],
+          "signal_type": "drama",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "7779a17b6e3d",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\ud83d\udcc8 Positive momentum for Mohamed Salah (Liverpool). Keywords: MVP, beast mode, unstoppable. Player confidence high - could exceed expectations",
+        "timestamp": "2025-11-28T19:13:34.995123+00:00",
+        "expires_at": "2025-11-29T19:13:34.995123+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Mohamed Salah",
+          "team": "Liverpool",
+          "sport": "Soccer",
+          "sentiment_score": 0.46,
+          "volume_spike": 3.6,
+          "key_topics": [
+            "MVP",
+            "beast mode",
+            "unstoppable"
+          ],
+          "signal_type": "hype",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "16c2782b2d69",
+        "source": "flight_radar",
+        "region": "taipei",
+        "level": 0.9,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over taipei: 90% below normal (12 vs 120 baseline)",
+        "timestamp": "2025-11-28T19:14:34.550381+00:00",
+        "expires_at": "2025-11-28T23:14:34.550381+00:00",
+        "correlated_signals": [
+          "014b925ca7e3",
+          "cb1fab81015d",
+          "9686df01a7a7",
+          "9d3dcc6bd614",
+          "3de66aae3b6a",
+          "b00985bcbcf5",
+          "57e7ab39a340",
+          "470cd4194732",
+          "b37589bd36a5"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 25.033,
+            "lng": 121.5654,
+            "radius_km": 150
+          },
+          "baseline_flights": 120,
+          "current_flights": 12,
+          "deviation_pct": 90.0,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "9d3dcc6bd614",
+        "source": "google_trends",
+        "region": "taipei",
+        "level": 0.95,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Simulated spike in search interest for 'china taiwan war': trend level 95/100",
+        "timestamp": "2025-11-28T19:14:34.653136+00:00",
+        "expires_at": "2025-11-29T07:14:34.653136+00:00",
+        "correlated_signals": [
+          "014b925ca7e3",
+          "cb1fab81015d",
+          "9686df01a7a7",
+          "16c2782b2d69",
+          "3de66aae3b6a",
+          "b00985bcbcf5",
+          "57e7ab39a340",
+          "470cd4194732",
+          "b37589bd36a5"
+        ],
+        "raw_data": {
+          "keyword": "china taiwan war",
+          "trend_level": 95,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "3de66aae3b6a",
+        "source": "social_chatter",
+        "region": "taipei",
+        "level": 0.8782261262556128,
+        "confidence": 1.0,
+        "severity": "HIGH",
+        "description": "Elevated crisis chatter detected for taipei: 8.8x normal volume, sentiment 0.02",
+        "timestamp": "2025-11-28T19:14:34.653167+00:00",
+        "expires_at": "2025-11-28T22:14:34.653167+00:00",
+        "correlated_signals": [
+          "014b925ca7e3",
+          "cb1fab81015d",
+          "9686df01a7a7",
+          "16c2782b2d69",
+          "9d3dcc6bd614",
+          "b00985bcbcf5",
+          "57e7ab39a340",
+          "470cd4194732",
+          "b37589bd36a5"
+        ],
+        "raw_data": {
+          "category": "crisis",
+          "keywords_matched": [
+            "alert",
+            "urgent"
+          ],
+          "volume_multiplier": 8.78,
+          "sentiment_score": 0.02,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "9f9f5c893e18",
+        "source": "social_chatter",
+        "region": "kyiv",
+        "level": 0.20688157871351773,
+        "confidence": 1.0,
+        "severity": "MINIMAL",
+        "description": "Elevated military chatter detected for kyiv: 2.1x normal volume, sentiment -0.74",
+        "timestamp": "2025-11-28T19:14:34.755878+00:00",
+        "expires_at": "2025-11-28T22:14:34.755878+00:00",
+        "correlated_signals": [
+          "d6acc64d976c",
+          "fd89b90b0dad",
+          "f4f745d7c222",
+          "42c7d30f5e27",
+          "07ad04de14b9"
+        ],
+        "raw_data": {
+          "category": "military",
+          "keywords_matched": [
+            "naval movement",
+            "troops deployed"
+          ],
+          "volume_multiplier": 2.07,
+          "sentiment_score": -0.74,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "724054d1230f",
+        "source": "social_chatter",
+        "region": "tehran",
+        "level": 0.47232670829630896,
+        "confidence": 1.0,
+        "severity": "LOW",
+        "description": "Elevated military chatter detected for tehran: 4.7x normal volume, sentiment -0.68",
+        "timestamp": "2025-11-28T19:14:34.755930+00:00",
+        "expires_at": "2025-11-28T22:14:34.755930+00:00",
+        "correlated_signals": [
+          "02584c9d272a",
+          "742a930b5453",
+          "2291352c739d",
+          "7d39d57869ec",
+          "64708185b263",
+          "f0d11d38efbc"
+        ],
+        "raw_data": {
+          "category": "military",
+          "keywords_matched": [
+            "troops deployed",
+            "aircraft spotted"
+          ],
+          "volume_multiplier": 4.72,
+          "sentiment_score": -0.68,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "64708185b263",
+        "source": "social_chatter",
+        "region": "tehran",
+        "level": 0.4124032588830156,
+        "confidence": 1.0,
+        "severity": "LOW",
+        "description": "Elevated crisis chatter detected for tehran: 4.1x normal volume, sentiment -0.67",
+        "timestamp": "2025-11-28T19:14:34.755930+00:00",
+        "expires_at": "2025-11-28T22:14:34.755930+00:00",
+        "correlated_signals": [
+          "02584c9d272a",
+          "742a930b5453",
+          "2291352c739d",
+          "7d39d57869ec",
+          "724054d1230f",
+          "f0d11d38efbc"
+        ],
+        "raw_data": {
+          "category": "crisis",
+          "keywords_matched": [
+            "breaking",
+            "developing situation"
+          ],
+          "volume_multiplier": 4.12,
+          "sentiment_score": -0.67,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "437706332b3f",
+        "source": "flight_radar",
+        "region": "strait_hormuz",
+        "level": 0.95,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over strait_hormuz: 95% below normal (4 vs 80 baseline)",
+        "timestamp": "2025-11-28T19:14:34.755984+00:00",
+        "expires_at": "2025-11-28T23:14:34.755984+00:00",
+        "correlated_signals": [
+          "f565800a1f1c",
+          "945490ad3a64",
+          "641531acfa91",
+          "4b03fa0460f3",
+          "db2cde843a25",
+          "55e1d0d205a9"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 26.5667,
+            "lng": 56.25,
+            "radius_km": 100
+          },
+          "baseline_flights": 80,
+          "current_flights": 4,
+          "deviation_pct": 95.0,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "41edb1bdade6",
+        "source": "flight_radar",
+        "region": "south_china_sea",
+        "level": 0.95,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over south_china_sea: 95% below normal (10 vs 200 baseline)",
+        "timestamp": "2025-11-28T19:14:34.844861+00:00",
+        "expires_at": "2025-11-28T23:14:34.844861+00:00",
+        "correlated_signals": [
+          "4fba833a6fef",
+          "9704d1098cd4",
+          "5dece96240e8",
+          "b2fcb8df8c40"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 15.0,
+            "lng": 115.0,
+            "radius_km": 500
+          },
+          "baseline_flights": 200,
+          "current_flights": 10,
+          "deviation_pct": 95.0,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "3b05cfb8525d",
+        "source": "flight_radar",
+        "region": "tehran",
+        "level": 0.8594988769434986,
+        "confidence": 0.85,
+        "severity": "HIGH",
+        "description": "\u2708\ufe0f C-17 Globemaster (RCH 871): USAF heavy cargo aircraft en route to Ramstein. Possible troop/equipment deployment",
+        "timestamp": "2025-11-28T19:14:35.515328+00:00",
+        "expires_at": "2025-11-28T23:14:35.515328+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "callsign": "RCH 871",
+          "aircraft_type": "C-17 Globemaster",
+          "scenario": "USAF heavy cargo aircraft en route to Ramstein",
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "2f61338f5deb",
+        "source": "satellite_proxy",
+        "region": "strait_hormuz",
+        "level": 0.25190097626527097,
+        "confidence": 0.75,
+        "severity": "LOW",
+        "description": "\ud83d\udee2\ufe0f Oil tanks draining at Fujairah Storage: 47% full. Supply tightening - bullish for oil prices",
+        "timestamp": "2025-11-28T19:14:35.622165+00:00",
+        "expires_at": "2025-11-30T19:14:35.622165+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "facility": "Fujairah Storage",
+          "region": "UAE",
+          "capacity_barrels": 50000000,
+          "fill_level": 0.474,
+          "baseline_fill": 0.6,
+          "sentiment": "bullish",
+          "source": "simulated_satellite"
+        }
+      },
+      {
+        "id": "c62764f23286",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.06666666666666667,
+        "confidence": 0.6,
+        "severity": "MINIMAL",
+        "description": "\ud83d\udcf1 Spotify (SPOT) climbed 2 spots to #1 in Music. Increased user acquisition - potential revenue beat",
+        "timestamp": "2025-11-28T19:14:35.622230+00:00",
+        "expires_at": "2025-11-30T19:14:35.622230+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "app": "Spotify",
+          "company": "Spotify",
+          "ticker": "SPOT",
+          "category": "Music",
+          "baseline_rank": 3,
+          "new_rank": 1,
+          "direction": "improved",
+          "review_sentiment": "positive",
+          "sentiment": "bullish",
+          "source": "simulated_appstore"
+        }
+      },
+      {
+        "id": "eba554d98dbb",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Wrigley Field (Chicago Cubs): Rain likely (62% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622272+00:00",
+        "expires_at": "2025-11-29T01:14:35.622272+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Wrigley Field",
+          "team": "Chicago Cubs",
+          "sport": "MLB",
+          "temperature_f": 55.68791524714853,
+          "wind_speed_mph": 6.1877786351343875,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.6199300708748249,
+          "conditions": "Windy",
+          "impacts": [
+            "Rain likely (62% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "e2fe501f5ded",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Soldier Field (Chicago Bears): High winds (31 mph) will affect passing game and field goals. Rain likely (66% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622272+00:00",
+        "expires_at": "2025-11-29T01:14:35.622272+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Soldier Field",
+          "team": "Chicago Bears",
+          "sport": "NFL",
+          "temperature_f": 72.93858969567803,
+          "wind_speed_mph": 31.27716315625731,
+          "wind_direction": "W",
+          "precipitation_chance": 0.6620879098624338,
+          "conditions": "Snow",
+          "impacts": [
+            "High winds (31 mph) will affect passing game and field goals",
+            "Rain likely (66% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "20e14fae377c",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Etihad Stadium (Manchester City): Rain likely (63% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622345+00:00",
+        "expires_at": "2025-11-29T01:14:35.622345+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Etihad Stadium",
+          "team": "Manchester City",
+          "sport": "Soccer",
+          "temperature_f": 68.57924616308037,
+          "wind_speed_mph": 24.784887554244435,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.6314237910477646,
+          "conditions": "Cloudy",
+          "impacts": [
+            "Rain likely (63% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "3289ebd9cb61",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Soldier Field (Chicago Bears): High winds (21 mph) will affect passing game and field goals. Rain likely (67% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622345+00:00",
+        "expires_at": "2025-11-29T01:14:35.622345+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Soldier Field",
+          "team": "Chicago Bears",
+          "sport": "NFL",
+          "temperature_f": 86.96098200976236,
+          "wind_speed_mph": 20.6841431955017,
+          "wind_direction": "W",
+          "precipitation_chance": 0.6743354239527056,
+          "conditions": "Rain",
+          "impacts": [
+            "High winds (21 mph) will affect passing game and field goals",
+            "Rain likely (67% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "8c1a65b4e26e",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Arrowhead Stadium (Kansas City Chiefs): High winds (31 mph) will affect passing game and field goals. Freezing temps (24\u00b0F) affect ball handling and player performance",
+        "timestamp": "2025-11-28T19:14:35.622345+00:00",
+        "expires_at": "2025-11-29T01:14:35.622345+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Arrowhead Stadium",
+          "team": "Kansas City Chiefs",
+          "sport": "NFL",
+          "temperature_f": 24.390937276629817,
+          "wind_speed_mph": 31.043791741729848,
+          "wind_direction": "W",
+          "precipitation_chance": 0.1997434193889597,
+          "conditions": "Snow",
+          "impacts": [
+            "High winds (31 mph) will affect passing game and field goals",
+            "Freezing temps (24\u00b0F) affect ball handling and player performance"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "890a2ddfa59c",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Wrigley Field (Chicago Cubs): High winds (29 mph) favor pitchers, reduce home runs",
+        "timestamp": "2025-11-28T19:14:35.622379+00:00",
+        "expires_at": "2025-11-29T01:14:35.622379+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Wrigley Field",
+          "team": "Chicago Cubs",
+          "sport": "MLB",
+          "temperature_f": 26.57448282239619,
+          "wind_speed_mph": 29.419003019082037,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.3221781223626381,
+          "conditions": "Clear",
+          "impacts": [
+            "High winds (29 mph) favor pitchers, reduce home runs"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "ceb10de79e57",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Emirates Stadium (Arsenal): Rain likely (77% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622379+00:00",
+        "expires_at": "2025-11-29T01:14:35.622379+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Emirates Stadium",
+          "team": "Arsenal",
+          "sport": "Soccer",
+          "temperature_f": 85.931154557231,
+          "wind_speed_mph": 27.567921144176733,
+          "wind_direction": "E",
+          "precipitation_chance": 0.7654236818337523,
+          "conditions": "Rain",
+          "impacts": [
+            "Rain likely (77% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "6b4e11331f9e",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Lambeau Field (Green Bay Packers): High winds (31 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:14:35.622379+00:00",
+        "expires_at": "2025-11-29T01:14:35.622379+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Lambeau Field",
+          "team": "Green Bay Packers",
+          "sport": "NFL",
+          "temperature_f": 76.25572867036163,
+          "wind_speed_mph": 31.300404907654777,
+          "wind_direction": "W",
+          "precipitation_chance": 0.02479293217281091,
+          "conditions": "Clear",
+          "impacts": [
+            "High winds (31 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "f3e1df5b47a7",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Fenway Park (Boston Red Sox): High winds (32 mph) favor pitchers, reduce home runs",
+        "timestamp": "2025-11-28T19:14:35.622409+00:00",
+        "expires_at": "2025-11-29T01:14:35.622409+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Fenway Park",
+          "team": "Boston Red Sox",
+          "sport": "MLB",
+          "temperature_f": 34.19714865275371,
+          "wind_speed_mph": 32.28206896534577,
+          "wind_direction": "N",
+          "precipitation_chance": 0.026055416354618013,
+          "conditions": "Cloudy",
+          "impacts": [
+            "High winds (32 mph) favor pitchers, reduce home runs"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "9c790e0c84cd",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f MetLife Stadium (NY Giants/Jets): High winds (31 mph) will affect passing game and field goals. Freezing temps (23\u00b0F) affect ball handling and player performance",
+        "timestamp": "2025-11-28T19:14:35.622409+00:00",
+        "expires_at": "2025-11-29T01:14:35.622409+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "MetLife Stadium",
+          "team": "NY Giants/Jets",
+          "sport": "NFL",
+          "temperature_f": 23.2353641776046,
+          "wind_speed_mph": 31.42607761831442,
+          "wind_direction": "SE",
+          "precipitation_chance": 0.45334033446985966,
+          "conditions": "Windy",
+          "impacts": [
+            "High winds (31 mph) will affect passing game and field goals",
+            "Freezing temps (23\u00b0F) affect ball handling and player performance"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "cdb632e1f454",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Highmark Stadium (Buffalo Bills): Rain likely (57% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622434+00:00",
+        "expires_at": "2025-11-29T01:14:35.622434+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Highmark Stadium",
+          "team": "Buffalo Bills",
+          "sport": "NFL",
+          "temperature_f": 66.95954369454549,
+          "wind_speed_mph": 2.642317991432941,
+          "wind_direction": "NE",
+          "precipitation_chance": 0.5731894999850683,
+          "conditions": "Windy",
+          "impacts": [
+            "Rain likely (57% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "c003336eca30",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Anfield (Liverpool): Rain likely (65% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622434+00:00",
+        "expires_at": "2025-11-29T01:14:35.622434+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Anfield",
+          "team": "Liverpool",
+          "sport": "Soccer",
+          "temperature_f": 46.056145066714805,
+          "wind_speed_mph": 33.76870491633369,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.6456260201725308,
+          "conditions": "Rain",
+          "impacts": [
+            "Rain likely (65% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "0aa432e69b75",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Fenway Park (Boston Red Sox): Rain likely (77% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622458+00:00",
+        "expires_at": "2025-11-29T01:14:35.622458+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Fenway Park",
+          "team": "Boston Red Sox",
+          "sport": "MLB",
+          "temperature_f": 62.821375983562305,
+          "wind_speed_mph": 11.036845525176547,
+          "wind_direction": "S",
+          "precipitation_chance": 0.7682130195826888,
+          "conditions": "Snow",
+          "impacts": [
+            "Rain likely (77% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "9305a9c38e3e",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Old Trafford (Manchester United): Rain likely (54% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622458+00:00",
+        "expires_at": "2025-11-29T01:14:35.622458+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Old Trafford",
+          "team": "Manchester United",
+          "sport": "Soccer",
+          "temperature_f": 55.983239464331746,
+          "wind_speed_mph": 30.450072863610007,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.5407246781082407,
+          "conditions": "Rain",
+          "impacts": [
+            "Rain likely (54% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "a3f28c370264",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Highmark Stadium (Buffalo Bills): High winds (28 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:14:35.622479+00:00",
+        "expires_at": "2025-11-29T01:14:35.622479+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Highmark Stadium",
+          "team": "Buffalo Bills",
+          "sport": "NFL",
+          "temperature_f": 58.209455973532215,
+          "wind_speed_mph": 28.281945066427596,
+          "wind_direction": "NE",
+          "precipitation_chance": 0.13812776302937432,
+          "conditions": "Clear",
+          "impacts": [
+            "High winds (28 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "51bcb47dc07b",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Anfield (Liverpool): Rain likely (72% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622496+00:00",
+        "expires_at": "2025-11-29T01:14:35.622496+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Anfield",
+          "team": "Liverpool",
+          "sport": "Soccer",
+          "temperature_f": 65.45426372035134,
+          "wind_speed_mph": 18.65007340259888,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.7226074778680389,
+          "conditions": "Snow",
+          "impacts": [
+            "Rain likely (72% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "a28d8881f387",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Old Trafford (Manchester United): Snow likely (76% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622496+00:00",
+        "expires_at": "2025-11-29T01:14:35.622496+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Old Trafford",
+          "team": "Manchester United",
+          "sport": "Soccer",
+          "temperature_f": 34.55576708060202,
+          "wind_speed_mph": 32.02105226623188,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.7606518125225963,
+          "conditions": "Snow",
+          "impacts": [
+            "Snow likely (76% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "d1f09bbefc9e",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Soldier Field (Chicago Bears): High winds (26 mph) will affect passing game and field goals. Rain likely (76% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:14:35.622496+00:00",
+        "expires_at": "2025-11-29T01:14:35.622496+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Soldier Field",
+          "team": "Chicago Bears",
+          "sport": "NFL",
+          "temperature_f": 46.340894638471,
+          "wind_speed_mph": 26.33626821387116,
+          "wind_direction": "E",
+          "precipitation_chance": 0.761848232779172,
+          "conditions": "Cloudy",
+          "impacts": [
+            "High winds (26 mph) will affect passing game and field goals",
+            "Rain likely (76% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "25759dce2785",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\ud83d\udcc8 Positive momentum for Kylian Mbapp\u00e9 (Real Madrid). Keywords: MVP, beast mode, unstoppable. Player confidence high - could exceed expectations",
+        "timestamp": "2025-11-28T19:14:35.622525+00:00",
+        "expires_at": "2025-11-29T19:14:35.622525+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Kylian Mbapp\u00e9",
+          "team": "Real Madrid",
+          "sport": "Soccer",
+          "sentiment_score": 0.42,
+          "volume_spike": 3.4,
+          "key_topics": [
+            "MVP",
+            "beast mode",
+            "unstoppable"
+          ],
+          "signal_type": "hype",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "9fd9b9c0bc2c",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\u26a0\ufe0f Negative chatter about Travis Kelce (Kansas City Chiefs). Keywords: trade, rumors, moving. Team chemistry or personal issues may affect performance",
+        "timestamp": "2025-11-28T19:14:35.622562+00:00",
+        "expires_at": "2025-11-29T19:14:35.622562+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Travis Kelce",
+          "team": "Kansas City Chiefs",
+          "sport": "NFL",
+          "sentiment_score": -0.13,
+          "volume_spike": 4.3,
+          "key_topics": [
+            "trade",
+            "rumors",
+            "moving"
+          ],
+          "signal_type": "drama",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "ecba3e8e3b16",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\u26a0\ufe0f Negative chatter about Shohei Ohtani (LA Dodgers). Keywords: trade, rumors, moving. Team chemistry or personal issues may affect performance",
+        "timestamp": "2025-11-28T19:14:35.622582+00:00",
+        "expires_at": "2025-11-29T19:14:35.622582+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Shohei Ohtani",
+          "team": "LA Dodgers",
+          "sport": "MLB",
+          "sentiment_score": 0.1,
+          "volume_spike": 9.7,
+          "key_topics": [
+            "trade",
+            "rumors",
+            "moving"
+          ],
+          "signal_type": "drama",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "5ef0ac923bc7",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.85,
+        "confidence": 0.6,
+        "severity": "HIGH",
+        "description": "\ud83d\udea8 Injury buzz around Erling Haaland (Manchester City). Keywords: surgery, limited, pain. Possible undisclosed injury - check lineup closer to game",
+        "timestamp": "2025-11-28T19:14:35.622582+00:00",
+        "expires_at": "2025-11-29T19:14:35.622582+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Erling Haaland",
+          "team": "Manchester City",
+          "sport": "Soccer",
+          "sentiment_score": -0.72,
+          "volume_spike": 4.0,
+          "key_topics": [
+            "surgery",
+            "limited",
+            "pain"
+          ],
+          "signal_type": "injury",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "91b65b30daf0",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\u26a0\ufe0f Negative chatter about Patrick Mahomes (Kansas City Chiefs). Keywords: trade, rumors, moving. Team chemistry or personal issues may affect performance",
+        "timestamp": "2025-11-28T19:14:35.622582+00:00",
+        "expires_at": "2025-11-29T19:14:35.622582+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Patrick Mahomes",
+          "team": "Kansas City Chiefs",
+          "sport": "NFL",
+          "sentiment_score": 0.09,
+          "volume_spike": 9.9,
+          "key_topics": [
+            "trade",
+            "rumors",
+            "moving"
+          ],
+          "signal_type": "drama",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "ada69673690a",
+        "source": "flight_radar",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.75,
+        "severity": "MODERATE",
+        "description": "\u2708\ufe0f Golden State Warriors playing early East Coast game. Body clock 3 hours behind, expect slow start",
+        "timestamp": "2025-11-28T19:14:35.622616+00:00",
+        "expires_at": "2025-11-29T07:14:35.622616+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "team": "Golden State Warriors",
+          "situation": "playing early East Coast game",
+          "impact_type": "fatigue",
+          "disadvantage": "Body clock 3 hours behind, expect slow start",
+          "source": "schedule_analysis"
+        }
+      },
+      {
+        "id": "f3c0978d8c81",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.5415310247213346,
+        "confidence": 0.8450000000000001,
+        "severity": "MODERATE",
+        "description": "Elevated crisis chatter detected for washington_dc: 5.4x normal volume, sentiment -0.20",
+        "timestamp": "2025-11-28T19:15:35.547990+00:00",
+        "expires_at": "2025-11-28T22:15:35.547990+00:00",
+        "correlated_signals": [
+          "ca53769926fc",
+          "e8cefb61a25b",
+          "9bcc09b8fb4d",
+          "89c086d29722"
+        ],
+        "raw_data": {
+          "category": "crisis",
+          "keywords_matched": [
+            "alert",
+            "urgent"
+          ],
+          "volume_multiplier": 5.42,
+          "sentiment_score": -0.2,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "8a044e0c8699",
+        "source": "social_chatter",
+        "region": "moscow",
+        "level": 0.9240437593024364,
+        "confidence": 0.8450000000000001,
+        "severity": "CRITICAL",
+        "description": "Elevated conflict chatter detected for moscow: 9.2x normal volume, sentiment -0.94",
+        "timestamp": "2025-11-28T19:15:35.548552+00:00",
+        "expires_at": "2025-11-28T22:15:35.548552+00:00",
+        "correlated_signals": [
+          "3099dd885cf4",
+          "cc572627b3b8"
+        ],
+        "raw_data": {
+          "category": "conflict",
+          "keywords_matched": [
+            "casualties",
+            "explosion"
+          ],
+          "volume_multiplier": 9.24,
+          "sentiment_score": -0.94,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "b00985bcbcf5",
+        "source": "flight_radar",
+        "region": "taipei",
+        "level": 0.9,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over taipei: 90% below normal (12 vs 120 baseline)",
+        "timestamp": "2025-11-28T19:15:35.548605+00:00",
+        "expires_at": "2025-11-28T23:15:35.548605+00:00",
+        "correlated_signals": [
+          "014b925ca7e3",
+          "cb1fab81015d",
+          "9686df01a7a7",
+          "16c2782b2d69",
+          "9d3dcc6bd614",
+          "3de66aae3b6a",
+          "57e7ab39a340",
+          "470cd4194732",
+          "b37589bd36a5"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 25.033,
+            "lng": 121.5654,
+            "radius_km": 150
+          },
+          "baseline_flights": 120,
+          "current_flights": 12,
+          "deviation_pct": 90.0,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "57e7ab39a340",
+        "source": "google_trends",
+        "region": "taipei",
+        "level": 0.85,
+        "confidence": 1.0,
+        "severity": "HIGH",
+        "description": "Simulated spike in search interest for 'taiwan emergency': trend level 85/100",
+        "timestamp": "2025-11-28T19:15:35.669331+00:00",
+        "expires_at": "2025-11-29T07:15:35.669331+00:00",
+        "correlated_signals": [
+          "014b925ca7e3",
+          "cb1fab81015d",
+          "9686df01a7a7",
+          "16c2782b2d69",
+          "9d3dcc6bd614",
+          "3de66aae3b6a",
+          "b00985bcbcf5",
+          "470cd4194732",
+          "b37589bd36a5"
+        ],
+        "raw_data": {
+          "keyword": "taiwan emergency",
+          "trend_level": 85,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "f4f745d7c222",
+        "source": "google_trends",
+        "region": "kyiv",
+        "level": 0.73,
+        "confidence": 1.0,
+        "severity": "MODERATE",
+        "description": "Simulated spike in search interest for 'kyiv bombing': trend level 73/100",
+        "timestamp": "2025-11-28T19:15:35.769222+00:00",
+        "expires_at": "2025-11-29T07:15:35.769222+00:00",
+        "correlated_signals": [
+          "d6acc64d976c",
+          "fd89b90b0dad",
+          "9f9f5c893e18",
+          "42c7d30f5e27",
+          "07ad04de14b9"
+        ],
+        "raw_data": {
+          "keyword": "kyiv bombing",
+          "trend_level": 73,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "4b03fa0460f3",
+        "source": "flight_radar",
+        "region": "strait_hormuz",
+        "level": 0.9625,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over strait_hormuz: 96% below normal (3 vs 80 baseline)",
+        "timestamp": "2025-11-28T19:15:35.769267+00:00",
+        "expires_at": "2025-11-28T23:15:35.769267+00:00",
+        "correlated_signals": [
+          "f565800a1f1c",
+          "945490ad3a64",
+          "641531acfa91",
+          "437706332b3f",
+          "db2cde843a25",
+          "55e1d0d205a9"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 26.5667,
+            "lng": 56.25,
+            "radius_km": 100
+          },
+          "baseline_flights": 80,
+          "current_flights": 3,
+          "deviation_pct": 96.2,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "5dece96240e8",
+        "source": "flight_radar",
+        "region": "south_china_sea",
+        "level": 0.95,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over south_china_sea: 95% below normal (10 vs 200 baseline)",
+        "timestamp": "2025-11-28T19:15:35.918276+00:00",
+        "expires_at": "2025-11-28T23:15:35.918276+00:00",
+        "correlated_signals": [
+          "4fba833a6fef",
+          "9704d1098cd4",
+          "41edb1bdade6",
+          "b2fcb8df8c40"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 15.0,
+            "lng": 115.0,
+            "radius_km": 500
+          },
+          "baseline_flights": 200,
+          "current_flights": 10,
+          "deviation_pct": 95.0,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "b491dfe456c5",
+        "source": "shipping_pattern",
+        "region": "strait_hormuz",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83d\udea2 Unusual vessel congestion at Strait of Hormuz: 42 ships vs 21 normal. Significance: 20% of global oil trade",
+        "timestamp": "2025-11-28T19:15:36.702528+00:00",
+        "expires_at": "2025-11-29T01:15:36.702528+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "chokepoint": "Strait of Hormuz",
+          "anomaly_type": "congestion",
+          "baseline_daily": 21,
+          "significance": "20% of global oil trade",
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "d2ea7b1d6bf1",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 1.0,
+        "confidence": 0.7,
+        "severity": "CRITICAL",
+        "description": "\ud83d\udef0\ufe0f Low traffic at Target (TGT): 66% below normal. Potential earnings miss",
+        "timestamp": "2025-11-28T19:15:36.702593+00:00",
+        "expires_at": "2025-11-29T19:15:36.702593+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "company": "Target",
+          "ticker": "TGT",
+          "location": "Minneapolis HQ",
+          "baseline_occupancy": 0.6,
+          "current_occupancy": 0.203,
+          "change_pct": -66.2,
+          "sentiment": "bearish",
+          "source": "simulated_satellite"
+        }
+      },
+      {
+        "id": "75695b761c7b",
+        "source": "satellite_proxy",
+        "region": "strait_hormuz",
+        "level": 0.3532216392623677,
+        "confidence": 0.75,
+        "severity": "LOW",
+        "description": "\ud83d\udee2\ufe0f Oil tanks filling up at Rotterdam Tank Farm: 78% full. Oversupply signal - bearish for oil prices",
+        "timestamp": "2025-11-28T19:15:36.702619+00:00",
+        "expires_at": "2025-11-30T19:15:36.702619+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "facility": "Rotterdam Tank Farm",
+          "region": "Europe",
+          "capacity_barrels": 40000000,
+          "fill_level": 0.777,
+          "baseline_fill": 0.6,
+          "sentiment": "bearish",
+          "source": "simulated_satellite"
+        }
+      },
+      {
+        "id": "3f920aace918",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.85,
+        "confidence": 0.65,
+        "severity": "HIGH",
+        "description": "\ud83d\udcbc NVIDIA (NVDA) removed 1572 job postings in 24h. Possible layoffs or hiring freeze imminent",
+        "timestamp": "2025-11-28T19:15:36.702646+00:00",
+        "expires_at": "2025-12-01T19:15:36.702646+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "company": "NVIDIA",
+          "ticker": "NVDA",
+          "baseline_openings": 2000,
+          "change_type": "mass_removal",
+          "sentiment": "bearish",
+          "sectors": [
+            "engineering",
+            "AI/ML",
+            "hardware"
+          ],
+          "source": "simulated_jobs"
+        }
+      },
+      {
+        "id": "97f0318280cf",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Lambeau Field (Green Bay Packers): High winds (26 mph) will affect passing game and field goals. High heat (94\u00b0F) increases fatigue and injury risk",
+        "timestamp": "2025-11-28T19:15:36.702675+00:00",
+        "expires_at": "2025-11-29T01:15:36.702675+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Lambeau Field",
+          "team": "Green Bay Packers",
+          "sport": "NFL",
+          "temperature_f": 94.19696457794375,
+          "wind_speed_mph": 25.984301607437686,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.3733630666607748,
+          "conditions": "Windy",
+          "impacts": [
+            "High winds (26 mph) will affect passing game and field goals",
+            "High heat (94\u00b0F) increases fatigue and injury risk"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "9bea14b6ef78",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Old Trafford (Manchester United): Rain likely (63% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:15:36.702675+00:00",
+        "expires_at": "2025-11-29T01:15:36.702675+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Old Trafford",
+          "team": "Manchester United",
+          "sport": "Soccer",
+          "temperature_f": 37.78130720130574,
+          "wind_speed_mph": 33.35221909026384,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.6326479058018248,
+          "conditions": "Windy",
+          "impacts": [
+            "Rain likely (63% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "512f64e6ace7",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f MetLife Stadium (NY Giants/Jets): High winds (17 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:15:36.702730+00:00",
+        "expires_at": "2025-11-29T01:15:36.702730+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "MetLife Stadium",
+          "team": "NY Giants/Jets",
+          "sport": "NFL",
+          "temperature_f": 50.860680654916706,
+          "wind_speed_mph": 17.066653964106084,
+          "wind_direction": "E",
+          "precipitation_chance": 0.3145807484027448,
+          "conditions": "Cloudy",
+          "impacts": [
+            "High winds (17 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "625ebd034e10",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Arrowhead Stadium (Kansas City Chiefs): High winds (31 mph) will affect passing game and field goals. Freezing temps (30\u00b0F) affect ball handling and player performance",
+        "timestamp": "2025-11-28T19:15:36.702748+00:00",
+        "expires_at": "2025-11-29T01:15:36.702748+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Arrowhead Stadium",
+          "team": "Kansas City Chiefs",
+          "sport": "NFL",
+          "temperature_f": 30.421872591035218,
+          "wind_speed_mph": 31.131388036609724,
+          "wind_direction": "E",
+          "precipitation_chance": 0.17736168669115637,
+          "conditions": "Rain",
+          "impacts": [
+            "High winds (31 mph) will affect passing game and field goals",
+            "Freezing temps (30\u00b0F) affect ball handling and player performance"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "489a33fbee30",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Anfield (Liverpool): Snow likely (76% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:15:36.702748+00:00",
+        "expires_at": "2025-11-29T01:15:36.702748+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Anfield",
+          "team": "Liverpool",
+          "sport": "Soccer",
+          "temperature_f": 32.1901418474495,
+          "wind_speed_mph": 19.390280491650174,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.764760723888681,
+          "conditions": "Clear",
+          "impacts": [
+            "Snow likely (76% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "bd3c22bf2961",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Soldier Field (Chicago Bears): High winds (30 mph) will affect passing game and field goals. Freezing temps (23\u00b0F) affect ball handling and player performance",
+        "timestamp": "2025-11-28T19:15:36.702748+00:00",
+        "expires_at": "2025-11-29T01:15:36.702748+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Soldier Field",
+          "team": "Chicago Bears",
+          "sport": "NFL",
+          "temperature_f": 23.025097641646436,
+          "wind_speed_mph": 30.143144235075315,
+          "wind_direction": "S",
+          "precipitation_chance": 0.4942990701728025,
+          "conditions": "Cloudy",
+          "impacts": [
+            "High winds (30 mph) will affect passing game and field goals",
+            "Freezing temps (23\u00b0F) affect ball handling and player performance"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "b15b5f0ad6ea",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Highmark Stadium (Buffalo Bills): High winds (18 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:15:36.702773+00:00",
+        "expires_at": "2025-11-29T01:15:36.702773+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Highmark Stadium",
+          "team": "Buffalo Bills",
+          "sport": "NFL",
+          "temperature_f": 46.64452103656081,
+          "wind_speed_mph": 18.100167579910977,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.3358980295232923,
+          "conditions": "Clear",
+          "impacts": [
+            "High winds (18 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "68e6d12cab95",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Lambeau Field (Green Bay Packers): High winds (18 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:15:36.702773+00:00",
+        "expires_at": "2025-11-29T01:15:36.702773+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Lambeau Field",
+          "team": "Green Bay Packers",
+          "sport": "NFL",
+          "temperature_f": 46.63914786324192,
+          "wind_speed_mph": 17.525266814304572,
+          "wind_direction": "N",
+          "precipitation_chance": 0.47650520864785656,
+          "conditions": "Snow",
+          "impacts": [
+            "High winds (18 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "288d5f32aab8",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Etihad Stadium (Manchester City): Rain likely (66% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:15:36.702791+00:00",
+        "expires_at": "2025-11-29T01:15:36.702791+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Etihad Stadium",
+          "team": "Manchester City",
+          "sport": "Soccer",
+          "temperature_f": 58.43250694931289,
+          "wind_speed_mph": 13.411887688466802,
+          "wind_direction": "E",
+          "precipitation_chance": 0.6608855088422398,
+          "conditions": "Cloudy",
+          "impacts": [
+            "Rain likely (66% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "33a4767220cb",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Highmark Stadium (Buffalo Bills): High winds (33 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:15:36.702791+00:00",
+        "expires_at": "2025-11-29T01:15:36.702791+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Highmark Stadium",
+          "team": "Buffalo Bills",
+          "sport": "NFL",
+          "temperature_f": 50.82554669321328,
+          "wind_speed_mph": 33.08201830593857,
+          "wind_direction": "E",
+          "precipitation_chance": 0.12129526149991002,
+          "conditions": "Rain",
+          "impacts": [
+            "High winds (33 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "e51a74f49e63",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Old Trafford (Manchester United): High heat (90\u00b0F) increases fatigue and injury risk",
+        "timestamp": "2025-11-28T19:15:36.702791+00:00",
+        "expires_at": "2025-11-29T01:15:36.702791+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Old Trafford",
+          "team": "Manchester United",
+          "sport": "Soccer",
+          "temperature_f": 90.3925502886816,
+          "wind_speed_mph": 2.067003458597288,
+          "wind_direction": "E",
+          "precipitation_chance": 0.4386968813991257,
+          "conditions": "Rain",
+          "impacts": [
+            "High heat (90\u00b0F) increases fatigue and injury risk"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "8d4f28028d67",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Lambeau Field (Green Bay Packers): High winds (32 mph) will affect passing game and field goals. Rain likely (58% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:15:36.702813+00:00",
+        "expires_at": "2025-11-29T01:15:36.702813+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Lambeau Field",
+          "team": "Green Bay Packers",
+          "sport": "NFL",
+          "temperature_f": 73.9082580267571,
+          "wind_speed_mph": 31.92332153467263,
+          "wind_direction": "W",
+          "precipitation_chance": 0.5801985577908207,
+          "conditions": "Clear",
+          "impacts": [
+            "High winds (32 mph) will affect passing game and field goals",
+            "Rain likely (58% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "9d90b6dfb515",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Coors Field (Colorado Rockies): High winds (23 mph) favor pitchers, reduce home runs. High altitude at Coors Field - expect more offense, ball carries further",
+        "timestamp": "2025-11-28T19:15:36.702813+00:00",
+        "expires_at": "2025-11-29T01:15:36.702813+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Coors Field",
+          "team": "Colorado Rockies",
+          "sport": "MLB",
+          "temperature_f": 54.43162045696398,
+          "wind_speed_mph": 23.47275857528683,
+          "wind_direction": "N",
+          "precipitation_chance": 0.38337471291872954,
+          "conditions": "Rain",
+          "impacts": [
+            "High winds (23 mph) favor pitchers, reduce home runs",
+            "High altitude at Coors Field - expect more offense, ball carries further"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "75474a7bf825",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Stamford Bridge (Chelsea): High heat (93\u00b0F) increases fatigue and injury risk",
+        "timestamp": "2025-11-28T19:15:36.702813+00:00",
+        "expires_at": "2025-11-29T01:15:36.702813+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Stamford Bridge",
+          "team": "Chelsea",
+          "sport": "Soccer",
+          "temperature_f": 92.75362246986379,
+          "wind_speed_mph": 7.324381835011228,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.075421312878205,
+          "conditions": "Clear",
+          "impacts": [
+            "High heat (93\u00b0F) increases fatigue and injury risk"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "5390ac0cbe5f",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Lambeau Field (Green Bay Packers): Rain likely (54% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:15:36.702836+00:00",
+        "expires_at": "2025-11-29T01:15:36.702836+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Lambeau Field",
+          "team": "Green Bay Packers",
+          "sport": "NFL",
+          "temperature_f": 40.245675254230136,
+          "wind_speed_mph": 9.00909206213868,
+          "wind_direction": "W",
+          "precipitation_chance": 0.5385667108725535,
+          "conditions": "Snow",
+          "impacts": [
+            "Rain likely (54% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "70e231c0ddc6",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Soldier Field (Chicago Bears): High winds (21 mph) will affect passing game and field goals. High heat (92\u00b0F) increases fatigue and injury risk",
+        "timestamp": "2025-11-28T19:15:36.702849+00:00",
+        "expires_at": "2025-11-29T01:15:36.702849+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Soldier Field",
+          "team": "Chicago Bears",
+          "sport": "NFL",
+          "temperature_f": 91.54697303418496,
+          "wind_speed_mph": 21.264713170626248,
+          "wind_direction": "SE",
+          "precipitation_chance": 0.08529567354987658,
+          "conditions": "Clear",
+          "impacts": [
+            "High winds (21 mph) will affect passing game and field goals",
+            "High heat (92\u00b0F) increases fatigue and injury risk"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "cd0d456585f0",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f MetLife Stadium (NY Giants/Jets): High winds (22 mph) will affect passing game and field goals. Rain likely (61% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:15:36.702849+00:00",
+        "expires_at": "2025-11-29T01:15:36.702849+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "MetLife Stadium",
+          "team": "NY Giants/Jets",
+          "sport": "NFL",
+          "temperature_f": 81.26092759966747,
+          "wind_speed_mph": 21.573698378593836,
+          "wind_direction": "SE",
+          "precipitation_chance": 0.6119329050398183,
+          "conditions": "Snow",
+          "impacts": [
+            "High winds (22 mph) will affect passing game and field goals",
+            "Rain likely (61% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "e0ff2257a5a8",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.85,
+        "confidence": 0.6,
+        "severity": "HIGH",
+        "description": "\ud83d\udea8 Injury buzz around Shohei Ohtani (LA Dodgers). Keywords: out, hurt, doubtful. Possible undisclosed injury - check lineup closer to game",
+        "timestamp": "2025-11-28T19:15:36.702867+00:00",
+        "expires_at": "2025-11-29T19:15:36.702867+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Shohei Ohtani",
+          "team": "LA Dodgers",
+          "sport": "MLB",
+          "sentiment_score": -0.4,
+          "volume_spike": 5.7,
+          "key_topics": [
+            "out",
+            "hurt",
+            "doubtful"
+          ],
+          "signal_type": "injury",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "0b45d8f301ef",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.85,
+        "confidence": 0.6,
+        "severity": "HIGH",
+        "description": "\ud83d\udea8 Injury buzz around Erling Haaland (Manchester City). Keywords: out, injury, limited. Possible undisclosed injury - check lineup closer to game",
+        "timestamp": "2025-11-28T19:15:36.702882+00:00",
+        "expires_at": "2025-11-29T19:15:36.702882+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Erling Haaland",
+          "team": "Manchester City",
+          "sport": "Soccer",
+          "sentiment_score": -0.73,
+          "volume_spike": 7.6,
+          "key_topics": [
+            "out",
+            "injury",
+            "limited"
+          ],
+          "signal_type": "injury",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "59c3c78124e4",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.85,
+        "confidence": 0.6,
+        "severity": "HIGH",
+        "description": "\ud83d\udea8 Injury buzz around LeBron James (LA Lakers). Keywords: hurt, out, limited. Possible undisclosed injury - check lineup closer to game",
+        "timestamp": "2025-11-28T19:15:36.702882+00:00",
+        "expires_at": "2025-11-29T19:15:36.702882+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "LeBron James",
+          "team": "LA Lakers",
+          "sport": "NBA",
+          "sentiment_score": -0.44,
+          "volume_spike": 5.8,
+          "key_topics": [
+            "hurt",
+            "out",
+            "limited"
+          ],
+          "signal_type": "injury",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "47497ad6b082",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.85,
+        "confidence": 0.6,
+        "severity": "HIGH",
+        "description": "\ud83d\udea8 Injury buzz around Patrick Mahomes (Kansas City Chiefs). Keywords: injury, out, DNP. Possible undisclosed injury - check lineup closer to game",
+        "timestamp": "2025-11-28T19:15:36.702882+00:00",
+        "expires_at": "2025-11-29T19:15:36.702882+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Patrick Mahomes",
+          "team": "Kansas City Chiefs",
+          "sport": "NFL",
+          "sentiment_score": -0.59,
+          "volume_spike": 6.8,
+          "key_topics": [
+            "injury",
+            "out",
+            "DNP"
+          ],
+          "signal_type": "injury",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "d234f206e42d",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\ud83d\udcc8 Positive momentum for Josh Allen (Buffalo Bills). Keywords: MVP, beast mode, unstoppable. Player confidence high - could exceed expectations",
+        "timestamp": "2025-11-28T19:15:36.702916+00:00",
+        "expires_at": "2025-11-29T19:15:36.702916+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Josh Allen",
+          "team": "Buffalo Bills",
+          "sport": "NFL",
+          "sentiment_score": 0.43,
+          "volume_spike": 2.1,
+          "key_topics": [
+            "MVP",
+            "beast mode",
+            "unstoppable"
+          ],
+          "signal_type": "hype",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "049efc6aa489",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\u26a0\ufe0f Negative chatter about Mohamed Salah (Liverpool). Keywords: suspension, benched. Team chemistry or personal issues may affect performance",
+        "timestamp": "2025-11-28T19:15:36.702935+00:00",
+        "expires_at": "2025-11-29T19:15:36.702935+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Mohamed Salah",
+          "team": "Liverpool",
+          "sport": "Soccer",
+          "sentiment_score": -0.51,
+          "volume_spike": 2.7,
+          "key_topics": [
+            "suspension",
+            "benched"
+          ],
+          "signal_type": "drama",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "00836189948d",
+        "source": "flight_radar",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.75,
+        "severity": "MODERATE",
+        "description": "\u2708\ufe0f Golden State Warriors back-to-back after cross-country flight. Travel fatigue + B2B = significant handicap",
+        "timestamp": "2025-11-28T19:15:36.702946+00:00",
+        "expires_at": "2025-11-29T07:15:36.702946+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "team": "Golden State Warriors",
+          "situation": "back-to-back after cross-country flight",
+          "impact_type": "b2b_road",
+          "disadvantage": "Travel fatigue + B2B = significant handicap",
+          "source": "schedule_analysis"
+        }
+      },
+      {
+        "id": "eed4c9f51b1b",
+        "source": "flight_radar",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.75,
+        "severity": "MODERATE",
+        "description": "\u2708\ufe0f San Francisco 49ers playing early East Coast game. Body clock 3 hours behind, expect slow start",
+        "timestamp": "2025-11-28T19:15:36.702954+00:00",
+        "expires_at": "2025-11-29T07:15:36.702954+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "team": "San Francisco 49ers",
+          "situation": "playing early East Coast game",
+          "impact_type": "fatigue",
+          "disadvantage": "Body clock 3 hours behind, expect slow start",
+          "source": "schedule_analysis"
+        }
+      },
+      {
+        "id": "6550bc422ded",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.85,
+        "confidence": 0.7,
+        "severity": "HIGH",
+        "description": "\ud83d\udccb LINEUP INTEL: NY Yankees - Scratched from start, bullpen game instead. Major edge loss - total should drop significantly",
+        "timestamp": "2025-11-28T19:15:36.702964+00:00",
+        "expires_at": "2025-11-29T01:15:36.702964+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player_role": "Ace pitcher",
+          "team": "NY Yankees",
+          "sport": "MLB",
+          "change": "Scratched from start, bullpen game instead",
+          "betting_impact": "Major edge loss - total should drop significantly",
+          "source": "simulated_beat_reporter"
+        }
+      },
+      {
+        "id": "9bcc09b8fb4d",
+        "source": "google_trends",
+        "region": "washington_dc",
+        "level": 0.55,
+        "confidence": 0.78,
+        "severity": "MODERATE",
+        "description": "Simulated spike in search interest for 'military mobilization': trend level 55/100",
+        "timestamp": "2025-11-28T19:16:35.619132+00:00",
+        "expires_at": "2025-11-29T07:16:35.619132+00:00",
+        "correlated_signals": [
+          "ca53769926fc",
+          "e8cefb61a25b",
+          "f3c0978d8c81",
+          "89c086d29722"
+        ],
+        "raw_data": {
+          "keyword": "military mobilization",
+          "trend_level": 55,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "89c086d29722",
+        "source": "google_trends",
+        "region": "washington_dc",
+        "level": 0.95,
+        "confidence": 0.78,
+        "severity": "CRITICAL",
+        "description": "Simulated spike in search interest for 'defcon': trend level 95/100",
+        "timestamp": "2025-11-28T19:16:35.619132+00:00",
+        "expires_at": "2025-11-29T07:16:35.619132+00:00",
+        "correlated_signals": [
+          "ca53769926fc",
+          "e8cefb61a25b",
+          "f3c0978d8c81",
+          "9bcc09b8fb4d"
+        ],
+        "raw_data": {
+          "keyword": "defcon",
+          "trend_level": 95,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "cc572627b3b8",
+        "source": "social_chatter",
+        "region": "moscow",
+        "level": 0.7448800163206116,
+        "confidence": 0.65,
+        "severity": "MODERATE",
+        "description": "Elevated military chatter detected for moscow: 7.4x normal volume, sentiment -0.48",
+        "timestamp": "2025-11-28T19:16:35.619428+00:00",
+        "expires_at": "2025-11-28T22:16:35.619428+00:00",
+        "correlated_signals": [
+          "3099dd885cf4",
+          "8a044e0c8699"
+        ],
+        "raw_data": {
+          "category": "military",
+          "keywords_matched": [
+            "aircraft spotted",
+            "military convoy"
+          ],
+          "volume_multiplier": 7.45,
+          "sentiment_score": -0.48,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "99bbdafd82a0",
+        "source": "social_chatter",
+        "region": "beijing",
+        "level": 0.800342661598272,
+        "confidence": 0.65,
+        "severity": "HIGH",
+        "description": "Elevated military chatter detected for beijing: 8.0x normal volume, sentiment 0.08",
+        "timestamp": "2025-11-28T19:16:35.619506+00:00",
+        "expires_at": "2025-11-28T22:16:35.619506+00:00",
+        "correlated_signals": [
+          "f215f996659c",
+          "4e32b610800a"
+        ],
+        "raw_data": {
+          "category": "military",
+          "keywords_matched": [
+            "military convoy",
+            "aircraft spotted"
+          ],
+          "volume_multiplier": 8.0,
+          "sentiment_score": 0.08,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "f215f996659c",
+        "source": "social_chatter",
+        "region": "beijing",
+        "level": 0.6392795836060341,
+        "confidence": 0.65,
+        "severity": "MODERATE",
+        "description": "Elevated crisis chatter detected for beijing: 6.4x normal volume, sentiment -0.56",
+        "timestamp": "2025-11-28T19:16:35.619506+00:00",
+        "expires_at": "2025-11-28T22:16:35.619506+00:00",
+        "correlated_signals": [
+          "99bbdafd82a0",
+          "4e32b610800a"
+        ],
+        "raw_data": {
+          "category": "crisis",
+          "keywords_matched": [
+            "alert",
+            "urgent"
+          ],
+          "volume_multiplier": 6.39,
+          "sentiment_score": -0.56,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "4e32b610800a",
+        "source": "social_chatter",
+        "region": "beijing",
+        "level": 0.5087391027115371,
+        "confidence": 0.65,
+        "severity": "MODERATE",
+        "description": "Elevated conflict chatter detected for beijing: 5.1x normal volume, sentiment -0.08",
+        "timestamp": "2025-11-28T19:16:35.619506+00:00",
+        "expires_at": "2025-11-28T22:16:35.619506+00:00",
+        "correlated_signals": [
+          "99bbdafd82a0",
+          "f215f996659c"
+        ],
+        "raw_data": {
+          "category": "conflict",
+          "keywords_matched": [
+            "attack",
+            "explosion"
+          ],
+          "volume_multiplier": 5.09,
+          "sentiment_score": -0.08,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "470cd4194732",
+        "source": "flight_radar",
+        "region": "taipei",
+        "level": 0.8833333333333333,
+        "confidence": 1.0,
+        "severity": "HIGH",
+        "description": "Significant drop in commercial air traffic over taipei: 88% below normal (14 vs 120 baseline)",
+        "timestamp": "2025-11-28T19:16:35.619561+00:00",
+        "expires_at": "2025-11-28T23:16:35.619561+00:00",
+        "correlated_signals": [
+          "014b925ca7e3",
+          "cb1fab81015d",
+          "9686df01a7a7",
+          "16c2782b2d69",
+          "9d3dcc6bd614",
+          "3de66aae3b6a",
+          "b00985bcbcf5",
+          "57e7ab39a340",
+          "b37589bd36a5"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 25.033,
+            "lng": 121.5654,
+            "radius_km": 150
+          },
+          "baseline_flights": 120,
+          "current_flights": 14,
+          "deviation_pct": 88.3,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "b37589bd36a5",
+        "source": "social_chatter",
+        "region": "taipei",
+        "level": 0.5514106760452683,
+        "confidence": 0.65,
+        "severity": "MODERATE",
+        "description": "Elevated crisis chatter detected for taipei: 5.5x normal volume, sentiment -0.77",
+        "timestamp": "2025-11-28T19:16:35.741527+00:00",
+        "expires_at": "2025-11-28T22:16:35.741527+00:00",
+        "correlated_signals": [
+          "014b925ca7e3",
+          "cb1fab81015d",
+          "9686df01a7a7",
+          "16c2782b2d69",
+          "9d3dcc6bd614",
+          "3de66aae3b6a",
+          "b00985bcbcf5",
+          "57e7ab39a340",
+          "470cd4194732"
+        ],
+        "raw_data": {
+          "category": "crisis",
+          "keywords_matched": [
+            "urgent",
+            "alert"
+          ],
+          "volume_multiplier": 5.51,
+          "sentiment_score": -0.77,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "42c7d30f5e27",
+        "source": "google_trends",
+        "region": "kyiv",
+        "level": 0.76,
+        "confidence": 0.78,
+        "severity": "HIGH",
+        "description": "Simulated spike in search interest for 'ukraine war': trend level 76/100",
+        "timestamp": "2025-11-28T19:16:35.832182+00:00",
+        "expires_at": "2025-11-29T07:16:35.832182+00:00",
+        "correlated_signals": [
+          "d6acc64d976c",
+          "fd89b90b0dad",
+          "9f9f5c893e18",
+          "f4f745d7c222",
+          "07ad04de14b9"
+        ],
+        "raw_data": {
+          "keyword": "ukraine war",
+          "trend_level": 76,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "07ad04de14b9",
+        "source": "social_chatter",
+        "region": "kyiv",
+        "level": 0.5872427627133888,
+        "confidence": 0.65,
+        "severity": "MODERATE",
+        "description": "Elevated crisis chatter detected for kyiv: 5.9x normal volume, sentiment -0.76",
+        "timestamp": "2025-11-28T19:16:35.832208+00:00",
+        "expires_at": "2025-11-28T22:16:35.832208+00:00",
+        "correlated_signals": [
+          "d6acc64d976c",
+          "fd89b90b0dad",
+          "9f9f5c893e18",
+          "f4f745d7c222",
+          "42c7d30f5e27"
+        ],
+        "raw_data": {
+          "category": "crisis",
+          "keywords_matched": [
+            "urgent",
+            "alert"
+          ],
+          "volume_multiplier": 5.87,
+          "sentiment_score": -0.76,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "f0d11d38efbc",
+        "source": "social_chatter",
+        "region": "tehran",
+        "level": 0.9472514774108932,
+        "confidence": 0.65,
+        "severity": "CRITICAL",
+        "description": "Elevated military chatter detected for tehran: 9.5x normal volume, sentiment -0.64",
+        "timestamp": "2025-11-28T19:16:35.832227+00:00",
+        "expires_at": "2025-11-28T22:16:35.832227+00:00",
+        "correlated_signals": [
+          "02584c9d272a",
+          "742a930b5453",
+          "2291352c739d",
+          "7d39d57869ec",
+          "724054d1230f",
+          "64708185b263"
+        ],
+        "raw_data": {
+          "category": "military",
+          "keywords_matched": [
+            "troops deployed",
+            "naval movement"
+          ],
+          "volume_multiplier": 9.47,
+          "sentiment_score": -0.64,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "db2cde843a25",
+        "source": "flight_radar",
+        "region": "strait_hormuz",
+        "level": 0.9625,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over strait_hormuz: 96% below normal (3 vs 80 baseline)",
+        "timestamp": "2025-11-28T19:16:35.832246+00:00",
+        "expires_at": "2025-11-28T23:16:35.832246+00:00",
+        "correlated_signals": [
+          "f565800a1f1c",
+          "945490ad3a64",
+          "641531acfa91",
+          "437706332b3f",
+          "4b03fa0460f3",
+          "55e1d0d205a9"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 26.5667,
+            "lng": 56.25,
+            "radius_km": 100
+          },
+          "baseline_flights": 80,
+          "current_flights": 3,
+          "deviation_pct": 96.2,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "55e1d0d205a9",
+        "source": "social_chatter",
+        "region": "strait_hormuz",
+        "level": 0.6832056815549064,
+        "confidence": 0.65,
+        "severity": "MODERATE",
+        "description": "Elevated military chatter detected for strait_hormuz: 6.8x normal volume, sentiment -0.61",
+        "timestamp": "2025-11-28T19:16:35.918197+00:00",
+        "expires_at": "2025-11-28T22:16:35.918197+00:00",
+        "correlated_signals": [
+          "f565800a1f1c",
+          "945490ad3a64",
+          "641531acfa91",
+          "437706332b3f",
+          "4b03fa0460f3",
+          "db2cde843a25"
+        ],
+        "raw_data": {
+          "category": "military",
+          "keywords_matched": [
+            "troops deployed",
+            "naval movement"
+          ],
+          "volume_multiplier": 6.83,
+          "sentiment_score": -0.61,
+          "source": "simulated"
+        }
+      },
+      {
+        "id": "b2fcb8df8c40",
+        "source": "flight_radar",
+        "region": "south_china_sea",
+        "level": 0.955,
+        "confidence": 1.0,
+        "severity": "CRITICAL",
+        "description": "Significant drop in commercial air traffic over south_china_sea: 95% below normal (9 vs 200 baseline)",
+        "timestamp": "2025-11-28T19:16:35.918234+00:00",
+        "expires_at": "2025-11-28T23:16:35.918234+00:00",
+        "correlated_signals": [
+          "4fba833a6fef",
+          "9704d1098cd4",
+          "41edb1bdade6",
+          "5dece96240e8"
+        ],
+        "raw_data": {
+          "zone": {
+            "lat": 15.0,
+            "lng": 115.0,
+            "radius_km": 500
+          },
+          "baseline_flights": 200,
+          "current_flights": 9,
+          "deviation_pct": 95.5,
+          "source": "opensky"
+        }
+      },
+      {
+        "id": "75a8d2a6f792",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.7897809704122429,
+        "confidence": 0.65,
+        "severity": "HIGH",
+        "description": "\ud83d\udcbc Apple (AAPL) job postings surge: +79% (8948 openings). Aggressive expansion - bullish signal",
+        "timestamp": "2025-11-28T19:16:36.776896+00:00",
+        "expires_at": "2025-12-01T19:16:36.776896+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "company": "Apple",
+          "ticker": "AAPL",
+          "baseline_openings": 5000,
+          "change_type": "surge",
+          "sentiment": "bullish",
+          "sectors": [
+            "engineering",
+            "retail",
+            "AI/ML"
+          ],
+          "source": "simulated_jobs"
+        }
+      },
+      {
+        "id": "54ff70b28452",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.5052677137130739,
+        "confidence": 0.65,
+        "severity": "MODERATE",
+        "description": "\ud83d\udcbc Salesforce (CRM) job postings decline: -51% (1978 openings). Hiring freeze or restructuring - cautious signal",
+        "timestamp": "2025-11-28T19:16:36.776896+00:00",
+        "expires_at": "2025-12-01T19:16:36.776896+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "company": "Salesforce",
+          "ticker": "CRM",
+          "baseline_openings": 4000,
+          "change_type": "decline",
+          "sentiment": "bearish",
+          "sectors": [
+            "engineering",
+            "sales",
+            "AI"
+          ],
+          "source": "simulated_jobs"
+        }
+      },
+      {
+        "id": "8fd7474bd47c",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Coors Field (Colorado Rockies): Rain likely (70% chance) - affects ball handling. High altitude at Coors Field - expect more offense, ball carries further",
+        "timestamp": "2025-11-28T19:16:36.777010+00:00",
+        "expires_at": "2025-11-29T01:16:36.777010+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Coors Field",
+          "team": "Colorado Rockies",
+          "sport": "MLB",
+          "temperature_f": 75.43133864070072,
+          "wind_speed_mph": 13.434039952996153,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.6985666780521179,
+          "conditions": "Snow",
+          "impacts": [
+            "Rain likely (70% chance) - affects ball handling",
+            "High altitude at Coors Field - expect more offense, ball carries further"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "30872c5141bc",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Soldier Field (Chicago Bears): High winds (16 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:16:36.777010+00:00",
+        "expires_at": "2025-11-29T01:16:36.777010+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Soldier Field",
+          "team": "Chicago Bears",
+          "sport": "NFL",
+          "temperature_f": 74.88992685961378,
+          "wind_speed_mph": 15.799063595013271,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.4865769233672181,
+          "conditions": "Windy",
+          "impacts": [
+            "High winds (16 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "c51fe6e8205b",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Emirates Stadium (Arsenal): Rain likely (72% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777097+00:00",
+        "expires_at": "2025-11-29T01:16:36.777097+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Emirates Stadium",
+          "team": "Arsenal",
+          "sport": "Soccer",
+          "temperature_f": 89.59076741199505,
+          "wind_speed_mph": 10.062425226859789,
+          "wind_direction": "S",
+          "precipitation_chance": 0.7231335199703917,
+          "conditions": "Clear",
+          "impacts": [
+            "Rain likely (72% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "d3ef321f5052",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Etihad Stadium (Manchester City): Rain likely (68% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777097+00:00",
+        "expires_at": "2025-11-29T01:16:36.777097+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Etihad Stadium",
+          "team": "Manchester City",
+          "sport": "Soccer",
+          "temperature_f": 71.42842872635393,
+          "wind_speed_mph": 2.3597382819745523,
+          "wind_direction": "N",
+          "precipitation_chance": 0.6822470695855123,
+          "conditions": "Clear",
+          "impacts": [
+            "Rain likely (68% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "f7b463d33c14",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Etihad Stadium (Manchester City): Rain likely (72% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777133+00:00",
+        "expires_at": "2025-11-29T01:16:36.777133+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Etihad Stadium",
+          "team": "Manchester City",
+          "sport": "Soccer",
+          "temperature_f": 35.57051656939325,
+          "wind_speed_mph": 12.209407229263768,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.7156852450667786,
+          "conditions": "Clear",
+          "impacts": [
+            "Rain likely (72% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "ad240e9358ff",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Stamford Bridge (Chelsea): Rain likely (71% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777133+00:00",
+        "expires_at": "2025-11-29T01:16:36.777133+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Stamford Bridge",
+          "team": "Chelsea",
+          "sport": "Soccer",
+          "temperature_f": 36.135985109766,
+          "wind_speed_mph": 13.653405228830486,
+          "wind_direction": "E",
+          "precipitation_chance": 0.7079424231731396,
+          "conditions": "Clear",
+          "impacts": [
+            "Rain likely (71% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "e7087ef61b7d",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Old Trafford (Manchester United): Rain likely (53% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777163+00:00",
+        "expires_at": "2025-11-29T01:16:36.777163+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Old Trafford",
+          "team": "Manchester United",
+          "sport": "Soccer",
+          "temperature_f": 45.120178586509596,
+          "wind_speed_mph": 17.893362466517193,
+          "wind_direction": "S",
+          "precipitation_chance": 0.5310936174119262,
+          "conditions": "Snow",
+          "impacts": [
+            "Rain likely (53% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "c4a96537da5f",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Emirates Stadium (Arsenal): Rain likely (73% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777163+00:00",
+        "expires_at": "2025-11-29T01:16:36.777163+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Emirates Stadium",
+          "team": "Arsenal",
+          "sport": "Soccer",
+          "temperature_f": 76.21980970135562,
+          "wind_speed_mph": 28.083233953798533,
+          "wind_direction": "N",
+          "precipitation_chance": 0.7325629595416501,
+          "conditions": "Cloudy",
+          "impacts": [
+            "Rain likely (73% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "21ab3f5a93a8",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Coors Field (Colorado Rockies): Rain likely (51% chance) - affects ball handling. High altitude at Coors Field - expect more offense, ball carries further",
+        "timestamp": "2025-11-28T19:16:36.777163+00:00",
+        "expires_at": "2025-11-29T01:16:36.777163+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Coors Field",
+          "team": "Colorado Rockies",
+          "sport": "MLB",
+          "temperature_f": 79.29101960746165,
+          "wind_speed_mph": 1.4567386845985286,
+          "wind_direction": "N",
+          "precipitation_chance": 0.5143741447194151,
+          "conditions": "Clear",
+          "impacts": [
+            "Rain likely (51% chance) - affects ball handling",
+            "High altitude at Coors Field - expect more offense, ball carries further"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "0146090dd837",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Highmark Stadium (Buffalo Bills): High winds (29 mph) will affect passing game and field goals. Freezing temps (23\u00b0F) affect ball handling and player performance",
+        "timestamp": "2025-11-28T19:16:36.777201+00:00",
+        "expires_at": "2025-11-29T01:16:36.777201+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Highmark Stadium",
+          "team": "Buffalo Bills",
+          "sport": "NFL",
+          "temperature_f": 23.055616588413557,
+          "wind_speed_mph": 29.402912969178267,
+          "wind_direction": "N",
+          "precipitation_chance": 0.46129787842065756,
+          "conditions": "Cloudy",
+          "impacts": [
+            "High winds (29 mph) will affect passing game and field goals",
+            "Freezing temps (23\u00b0F) affect ball handling and player performance"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "d91d13595a7b",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Lambeau Field (Green Bay Packers): Freezing temps (30\u00b0F) affect ball handling and player performance. Snow likely (51% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777201+00:00",
+        "expires_at": "2025-11-29T01:16:36.777201+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Lambeau Field",
+          "team": "Green Bay Packers",
+          "sport": "NFL",
+          "temperature_f": 29.972071133662,
+          "wind_speed_mph": 1.8469705702024242,
+          "wind_direction": "W",
+          "precipitation_chance": 0.5131957813489553,
+          "conditions": "Windy",
+          "impacts": [
+            "Freezing temps (30\u00b0F) affect ball handling and player performance",
+            "Snow likely (51% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "62ae53d2db98",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Etihad Stadium (Manchester City): Snow likely (50% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777201+00:00",
+        "expires_at": "2025-11-29T01:16:36.777201+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Etihad Stadium",
+          "team": "Manchester City",
+          "sport": "Soccer",
+          "temperature_f": 27.52546420851966,
+          "wind_speed_mph": 20.977964431554465,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.5028287194011942,
+          "conditions": "Windy",
+          "impacts": [
+            "Snow likely (50% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "107c6d58bb2c",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Old Trafford (Manchester United): Rain likely (57% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777239+00:00",
+        "expires_at": "2025-11-29T01:16:36.777239+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Old Trafford",
+          "team": "Manchester United",
+          "sport": "Soccer",
+          "temperature_f": 43.01221949251094,
+          "wind_speed_mph": 0.9114738651669518,
+          "wind_direction": "NW",
+          "precipitation_chance": 0.5747980077431313,
+          "conditions": "Clear",
+          "impacts": [
+            "Rain likely (57% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "a13e2c307f05",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Soldier Field (Chicago Bears): High winds (24 mph) will affect passing game and field goals",
+        "timestamp": "2025-11-28T19:16:36.777239+00:00",
+        "expires_at": "2025-11-29T01:16:36.777239+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Soldier Field",
+          "team": "Chicago Bears",
+          "sport": "NFL",
+          "temperature_f": 64.2578528764015,
+          "wind_speed_mph": 23.549410752600178,
+          "wind_direction": "NE",
+          "precipitation_chance": 0.10166465650524162,
+          "conditions": "Rain",
+          "impacts": [
+            "High winds (24 mph) will affect passing game and field goals"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "63e2ad4497b9",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Lambeau Field (Green Bay Packers): High winds (17 mph) will affect passing game and field goals. Rain likely (61% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777239+00:00",
+        "expires_at": "2025-11-29T01:16:36.777239+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Lambeau Field",
+          "team": "Green Bay Packers",
+          "sport": "NFL",
+          "temperature_f": 39.9849174724707,
+          "wind_speed_mph": 16.9009477799019,
+          "wind_direction": "S",
+          "precipitation_chance": 0.6116443461212087,
+          "conditions": "Rain",
+          "impacts": [
+            "High winds (17 mph) will affect passing game and field goals",
+            "Rain likely (61% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "b8fbf4b70b69",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Coors Field (Colorado Rockies): High winds (17 mph) favor pitchers, reduce home runs. High altitude at Coors Field - expect more offense, ball carries further",
+        "timestamp": "2025-11-28T19:16:36.777275+00:00",
+        "expires_at": "2025-11-29T01:16:36.777275+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Coors Field",
+          "team": "Colorado Rockies",
+          "sport": "MLB",
+          "temperature_f": 88.42133539754815,
+          "wind_speed_mph": 17.021729898631364,
+          "wind_direction": "N",
+          "precipitation_chance": 0.46838475065387186,
+          "conditions": "Cloudy",
+          "impacts": [
+            "High winds (17 mph) favor pitchers, reduce home runs",
+            "High altitude at Coors Field - expect more offense, ball carries further"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "d065905c81e4",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Emirates Stadium (Arsenal): Snow likely (73% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777275+00:00",
+        "expires_at": "2025-11-29T01:16:36.777275+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Emirates Stadium",
+          "team": "Arsenal",
+          "sport": "Soccer",
+          "temperature_f": 23.46442585685111,
+          "wind_speed_mph": 24.166543434103843,
+          "wind_direction": "E",
+          "precipitation_chance": 0.7276813556615758,
+          "conditions": "Windy",
+          "impacts": [
+            "Snow likely (73% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "1ddabe5fba31",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.7,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Arrowhead Stadium (Kansas City Chiefs): High winds (15 mph) will affect passing game and field goals. Rain likely (74% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777305+00:00",
+        "expires_at": "2025-11-29T01:16:36.777305+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Arrowhead Stadium",
+          "team": "Kansas City Chiefs",
+          "sport": "NFL",
+          "temperature_f": 64.14452810152656,
+          "wind_speed_mph": 15.039413511278076,
+          "wind_direction": "W",
+          "precipitation_chance": 0.7449010010270788,
+          "conditions": "Clear",
+          "impacts": [
+            "High winds (15 mph) will affect passing game and field goals",
+            "Rain likely (74% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "b0b22b3286e6",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Old Trafford (Manchester United): Rain likely (75% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777305+00:00",
+        "expires_at": "2025-11-29T01:16:36.777305+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Old Trafford",
+          "team": "Manchester United",
+          "sport": "Soccer",
+          "temperature_f": 66.99262187776557,
+          "wind_speed_mph": 13.39471016790058,
+          "wind_direction": "SW",
+          "precipitation_chance": 0.7461769988406273,
+          "conditions": "Cloudy",
+          "impacts": [
+            "Rain likely (75% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "833823da9344",
+        "source": "satellite_proxy",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.8,
+        "severity": "MODERATE",
+        "description": "\ud83c\udf24\ufe0f Fenway Park (Boston Red Sox): High winds (33 mph) favor pitchers, reduce home runs. Rain likely (52% chance) - affects ball handling",
+        "timestamp": "2025-11-28T19:16:36.777305+00:00",
+        "expires_at": "2025-11-29T01:16:36.777305+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "stadium": "Fenway Park",
+          "team": "Boston Red Sox",
+          "sport": "MLB",
+          "temperature_f": 73.17380451489976,
+          "wind_speed_mph": 32.58819784210026,
+          "wind_direction": "E",
+          "precipitation_chance": 0.5163955321298235,
+          "conditions": "Windy",
+          "impacts": [
+            "High winds (33 mph) favor pitchers, reduce home runs",
+            "Rain likely (52% chance) - affects ball handling"
+          ],
+          "source": "weather_api"
+        }
+      },
+      {
+        "id": "ab5dba08ede2",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\u26a0\ufe0f Negative chatter about LeBron James (LA Lakers). Keywords: trade, rumors, moving. Team chemistry or personal issues may affect performance",
+        "timestamp": "2025-11-28T19:16:36.777343+00:00",
+        "expires_at": "2025-11-29T19:16:36.777343+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "LeBron James",
+          "team": "LA Lakers",
+          "sport": "NBA",
+          "sentiment_score": -0.22,
+          "volume_spike": 4.9,
+          "key_topics": [
+            "trade",
+            "rumors",
+            "moving"
+          ],
+          "signal_type": "drama",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "c76e2561f933",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.85,
+        "confidence": 0.6,
+        "severity": "HIGH",
+        "description": "\ud83d\udea8 Injury buzz around Erling Haaland (Manchester City). Keywords: DNP, questionable, hurt. Possible undisclosed injury - check lineup closer to game",
+        "timestamp": "2025-11-28T19:16:36.777374+00:00",
+        "expires_at": "2025-11-29T19:16:36.777374+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Erling Haaland",
+          "team": "Manchester City",
+          "sport": "Soccer",
+          "sentiment_score": -0.63,
+          "volume_spike": 7.8,
+          "key_topics": [
+            "DNP",
+            "questionable",
+            "hurt"
+          ],
+          "signal_type": "injury",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "5f519832f68b",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.5,
+        "confidence": 0.6,
+        "severity": "MODERATE",
+        "description": "\ud83d\udcc8 Positive momentum for Aaron Judge (NY Yankees). Keywords: MVP, beast mode, unstoppable. Player confidence high - could exceed expectations",
+        "timestamp": "2025-11-28T19:16:36.777403+00:00",
+        "expires_at": "2025-11-29T19:16:36.777403+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player": "Aaron Judge",
+          "team": "NY Yankees",
+          "sport": "MLB",
+          "sentiment_score": 0.68,
+          "volume_spike": 3.0,
+          "key_topics": [
+            "MVP",
+            "beast mode",
+            "unstoppable"
+          ],
+          "signal_type": "hype",
+          "source": "simulated_social"
+        }
+      },
+      {
+        "id": "d51246c1b57d",
+        "source": "flight_radar",
+        "region": "washington_dc",
+        "level": 0.6,
+        "confidence": 0.75,
+        "severity": "MODERATE",
+        "description": "\u2708\ufe0f Denver Nuggets hosting sea-level team. Altitude advantage for Denver - visitors tire in 4th quarter",
+        "timestamp": "2025-11-28T19:16:36.777440+00:00",
+        "expires_at": "2025-11-29T07:16:36.777440+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "team": "Denver Nuggets",
+          "situation": "hosting sea-level team",
+          "impact_type": "altitude_advantage",
+          "disadvantage": "Altitude advantage for Denver - visitors tire in 4th quarter",
+          "source": "schedule_analysis"
+        }
+      },
+      {
+        "id": "7434e0a86b8e",
+        "source": "flight_radar",
+        "region": "washington_dc",
+        "level": 0.65,
+        "confidence": 0.75,
+        "severity": "MODERATE",
+        "description": "\u2708\ufe0f San Francisco 49ers playing early East Coast game. Body clock 3 hours behind, expect slow start",
+        "timestamp": "2025-11-28T19:16:36.777455+00:00",
+        "expires_at": "2025-11-29T07:16:36.777455+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "team": "San Francisco 49ers",
+          "situation": "playing early East Coast game",
+          "impact_type": "fatigue",
+          "disadvantage": "Body clock 3 hours behind, expect slow start",
+          "source": "schedule_analysis"
+        }
+      },
+      {
+        "id": "4f3d2dc54ba0",
+        "source": "social_chatter",
+        "region": "washington_dc",
+        "level": 0.9,
+        "confidence": 0.7,
+        "severity": "CRITICAL",
+        "description": "\ud83d\udccb LINEUP INTEL: Kansas City Chiefs - Listed as questionable, seen limping at practice. If out, backup QB significantly worse - line should move",
+        "timestamp": "2025-11-28T19:16:36.777467+00:00",
+        "expires_at": "2025-11-29T01:16:36.777467+00:00",
+        "correlated_signals": [],
+        "raw_data": {
+          "player_role": "Star QB",
+          "team": "Kansas City Chiefs",
+          "sport": "NFL",
+          "change": "Listed as questionable, seen limping at practice",
+          "betting_impact": "If out, backup QB significantly worse - line should move",
+          "source": "simulated_beat_reporter"
+        }
+      }
+    ],
+    "stats": {
+      "total_scans": 5,
+      "signals_by_category": {
+        "war_room": 4,
+        "alpha": 14,
+        "sports": 122,
+        "base": 46
+      },
+      "missions_generated": 250
+    }
+  }
+}

@@ -7,6 +7,7 @@ import sys
 from fastapi import FastAPI, Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm 
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from passlib.context import CryptContext
 from pydantic import BaseModel, ConfigDict
 from typing import Annotated 
@@ -17,6 +18,21 @@ from datetime import datetime, timedelta, timezone
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.core.database import SessionLocal, engine, Base, User as DBUser
+
+# OSINT Registry
+from backend.core.osint_registry import get_osint_registry
+
+# Payments Router
+from backend.payments.routes import router as payments_router
+
+# Situation Room Router
+try:
+    from backend.api.situation_room_routes import router as situation_room_router
+except ImportError:
+    situation_room_router = None
+
+# Initialize
+osint = get_osint_registry()
 
 # --- CONFIGURATION ---
 
@@ -44,6 +60,13 @@ app.add_middleware(
     allow_methods=["*"], 
     allow_headers=["*"], 
 )
+
+# Include routers
+app.include_router(payments_router)
+
+# Include Situation Room router if available
+if situation_room_router:
+    app.include_router(situation_room_router)
 
 # --- DATABASE DEPENDENCY ---
 
@@ -119,6 +142,27 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session 
     return user
 
 # --- API ENDPOINTS ---
+
+# --- HEALTH CHECK ENDPOINT ---
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for container orchestration."""
+    try:
+        # Check database connection
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        db_status = "ok"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "database": db_status,
+        "version": "1.0.0",
+    }
 
 @app.get("/world-state")
 async def get_world_state():
@@ -221,6 +265,411 @@ async def create_fork(source_id: str, fork_name: str, reason: str = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
+
+# =============================================================================
+# MARKETS API - Betting Markets from Event Orchestrator
+# =============================================================================
+
+
+class MarketCreate(BaseModel):
+    title: str
+    description: str
+    domain: str = "finance"
+    duration: str = "narrative"
+    outcomes: list[str] = ["YES", "NO"]
+    source_event_id: str | None = None
+
+
+class MarketResponse(BaseModel):
+    id: str
+    title: str
+    description: str
+    domain: str
+    duration: str
+    status: str
+    created_at: str
+    expires_at: str | None
+    outcomes: list[str]
+    outcome_odds: dict
+    total_volume: float
+    virality_score: float
+
+
+class BetPlacement(BaseModel):
+    outcome: str
+    amount: float
+
+
+class MarketBetResponse(BaseModel):
+    success: bool
+    message: str
+    bet_id: str | None = None
+    new_balance: float | None = None
+    potential_payout: float | None = None
+
+
+_orchestrator = None
+
+
+def get_orchestrator():
+    global _orchestrator
+    if _orchestrator is None:
+        try:
+            from backend.core.event_orchestrator import EventOrchestrator
+            _orchestrator = EventOrchestrator()
+        except ImportError:
+            from core.event_orchestrator import EventOrchestrator
+            _orchestrator = EventOrchestrator()
+    return _orchestrator
+
+
+@app.get("/markets", response_model=dict)
+async def list_markets(
+    status: str = None,
+    domain: str = None,
+    duration: str = None,
+    limit: int = 50
+):
+    try:
+        orchestrator = get_orchestrator()
+        markets = list(orchestrator.markets.values())
+
+        if status:
+            markets = [m for m in markets if m.status.upper() == status.upper()]
+        if domain:
+            markets = [m for m in markets if m.domain.value == domain.lower()]
+        if duration:
+            markets = [m for m in markets if m.duration.value == duration.lower()]
+
+        markets.sort(key=lambda m: m.virality_score, reverse=True)
+        markets = markets[:limit]
+
+        return {
+            "markets": [
+                {
+                    "id": m.id,
+                    "title": m.title,
+                    "description": m.description,
+                    "domain": m.domain.value,
+                    "duration": m.duration.value,
+                    "status": m.status,
+                    "created_at": m.created_at.isoformat(),
+                    "expires_at": m.expires_at.isoformat() if m.expires_at else None,
+                    "outcomes": m.outcomes,
+                    "outcome_odds": m.outcome_odds,
+                    "total_volume": m.total_volume,
+                    "virality_score": m.virality_score,
+                }
+                for m in markets
+            ],
+            "total": len(orchestrator.markets),
+            "filtered": len(markets),
+        }
+    except Exception as e:
+        return {
+            "markets": [],
+            "total": 0,
+            "filtered": 0,
+            "error": str(e)
+        }
+
+
+@app.get("/markets/stats")
+async def get_market_stats():
+    try:
+        orchestrator = get_orchestrator()
+        markets = list(orchestrator.markets.values())
+
+        total_volume = sum(m.total_volume for m in markets)
+        by_domain: Dict[str, int] = {}
+        by_duration: Dict[str, int] = {}
+        by_status: Dict[str, int] = {}
+
+        for m in markets:
+            domain = m.domain.value
+            by_domain[domain] = by_domain.get(domain, 0) + 1
+
+            duration = m.duration.value
+            by_duration[duration] = by_duration.get(duration, 0) + 1
+
+            status = m.status
+            by_status[status] = by_status.get(status, 0) + 1
+
+        return {
+            "total_markets": len(markets),
+            "total_volume": total_volume,
+            "by_domain": by_domain,
+            "by_duration": by_duration,
+            "by_status": by_status,
+            "orchestrator_stats": {
+                "events_processed": getattr(orchestrator, "_events_processed", 0),
+                "markets_auto_created": getattr(orchestrator, "_markets_created", 0),
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/markets/{market_id}")
+async def get_market(market_id: str):
+    try:
+        orchestrator = get_orchestrator()
+
+        if market_id not in orchestrator.markets:
+            raise HTTPException(status_code=404, detail=f"Market {market_id} not found")
+
+        m = orchestrator.markets[market_id]
+        agents = orchestrator.dispatcher.active_agents.get(market_id, [])
+
+        return {
+            "id": m.id,
+            "event_id": m.event_id,
+            "title": m.title,
+            "description": m.description,
+            "domain": m.domain.value,
+            "duration": m.duration.value,
+            "status": m.status,
+            "created_at": m.created_at.isoformat(),
+            "expires_at": m.expires_at.isoformat() if m.expires_at else None,
+            "outcomes": m.outcomes,
+            "outcome_odds": m.outcome_odds,
+            "total_volume": m.total_volume,
+            "virality_score": m.virality_score,
+            "active_agents": len(agents),
+            "source_event": {
+                "id": m.source_event.id,
+                "title": m.source_event.title,
+                "source": m.source_event.source,
+                "sentiment": m.source_event.sentiment,
+            } if m.source_event else None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/markets")
+async def create_market(market: MarketCreate):
+    try:
+        from backend.core.event_orchestrator import RawEvent, EventDomain, BetDuration
+    except ImportError:
+        from core.event_orchestrator import RawEvent, EventDomain, BetDuration
+
+    try:
+        orchestrator = get_orchestrator()
+
+        event = RawEvent(
+            id=f"manual_{datetime.now().strftime('%Y%m%d%H%M%S')}",
+            title=market.title,
+            description=market.description,
+            source="MANUAL",
+            url="",
+            published_at=datetime.now(timezone.utc),
+            domain=EventDomain(market.domain),
+            virality_score=75,
+        )
+
+        betting_market = orchestrator.create_market(event)
+
+        if market.outcomes and market.outcomes != ["YES", "NO"]:
+            betting_market.outcomes = market.outcomes
+            betting_market.outcome_odds = {
+                o: 1.0 / len(market.outcomes) for o in market.outcomes
+            }
+
+        agents = orchestrator.dispatch_agents(betting_market)
+
+        return {
+            "success": True,
+            "market_id": betting_market.id,
+            "message": f"Market created with {len(agents)} agents",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/markets/{market_id}/bet")
+async def place_bet(
+    market_id: str,
+    bet: BetPlacement,
+    current_user: Annotated[DBUser, Depends(get_current_user)],
+    db: Session = Depends(get_db)
+):
+    try:
+        orchestrator = get_orchestrator()
+
+        if market_id not in orchestrator.markets:
+            raise HTTPException(status_code=404, detail=f"Market {market_id} not found")
+
+        market = orchestrator.markets[market_id]
+
+        if market.status != "OPEN":
+            raise HTTPException(status_code=400, detail=f"Market is {market.status}, not accepting bets")
+
+        if bet.outcome not in market.outcomes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid outcome. Choose from: {market.outcomes}"
+            )
+
+        if current_user.play_money_balance < bet.amount:
+            raise HTTPException(status_code=400, detail="Insufficient balance")
+
+        odds = market.outcome_odds.get(bet.outcome, 0.5)
+        potential_payout = bet.amount * (1 / odds) * 0.95
+
+        current_user.play_money_balance -= bet.amount
+        db.commit()
+        db.refresh(current_user)
+
+        market.total_volume += bet.amount
+        bet_id = f"BET_{market_id}_{datetime.now().strftime('%H%M%S')}"
+
+        return MarketBetResponse(
+            success=True,
+            message=f"Bet placed on {bet.outcome}",
+            bet_id=bet_id,
+            new_balance=current_user.play_money_balance,
+            potential_payout=round(potential_payout, 2),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/markets/refresh")
+async def refresh_markets():
+    try:
+        orchestrator = get_orchestrator()
+        summary = orchestrator.process_all()
+        return {
+            "success": True,
+            "events_ingested": summary.get("events_ingested", 0),
+            "high_virality_events": summary.get("high_virality_events", 0),
+            "markets_created": summary.get("markets_created", 0),
+            "total_active_markets": len(orchestrator.get_active_markets()),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# ENHANCED TIMELINES API
+# =============================================================================
+
+
+@app.get("/timelines/{timeline_id}")
+async def get_timeline_detail(timeline_id: str):
+    try:
+        from backend.simulation.timeline_manager import TimelineManager
+    except ImportError:
+        from simulation.timeline_manager import TimelineManager
+
+    try:
+        tm = TimelineManager()
+        timeline = tm.get_timeline(timeline_id)
+
+        if not timeline:
+            raise HTTPException(status_code=404, detail=f"Timeline {timeline_id} not found")
+
+        all_timelines = tm.list_timelines()
+        children = [t for t in all_timelines if t.parent_id == timeline_id]
+
+        snapshot_data = None
+        try:
+            snapshot_data = tm.load_snapshot(timeline_id)
+        except Exception:
+            snapshot_data = None
+
+        return {
+            "id": timeline.id,
+            "label": timeline.label,
+            "status": timeline.status.value,
+            "created_at": timeline.created_at,
+            "parent_id": timeline.parent_id,
+            "fork_reason": timeline.fork_reason,
+            "matchday": timeline.matchday,
+            "tick": timeline.tick,
+            "children": [
+                {
+                    "id": c.id,
+                    "label": c.label,
+                    "status": c.status.value,
+                    "fork_reason": c.fork_reason,
+                }
+                for c in children
+            ],
+            "has_snapshot_data": snapshot_data is not None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/timelines/{timeline_id}/compare/{other_id}")
+async def compare_timelines(timeline_id: str, other_id: str):
+    try:
+        from backend.simulation.timeline_manager import TimelineManager
+    except ImportError:
+        from simulation.timeline_manager import TimelineManager
+
+    try:
+        tm = TimelineManager()
+
+        timeline_a = tm.get_timeline(timeline_id)
+        timeline_b = tm.get_timeline(other_id)
+
+        if not timeline_a:
+            raise HTTPException(status_code=404, detail=f"Timeline {timeline_id} not found")
+        if not timeline_b:
+            raise HTTPException(status_code=404, detail=f"Timeline {other_id} not found")
+
+        data_a = tm.load_snapshot(timeline_id)
+        data_b = tm.load_snapshot(other_id)
+
+        divergence = []
+        if data_a and data_b:
+            if "global_tension" in data_a and "global_tension" in data_b:
+                tension_a = data_a["global_tension"]
+                tension_b = data_b["global_tension"]
+                delta = ((tension_b - tension_a) / max(tension_a, 0.01)) * 100
+                divergence.append({
+                    "metric": "Tension Score",
+                    "timeline_a": f"{tension_a:.2f}",
+                    "timeline_b": f"{tension_b:.2f}",
+                    "delta": f"{delta:+.1f}%"
+                })
+
+            if "tick" in data_a and "tick" in data_b:
+                divergence.append({
+                    "metric": "Simulation Tick",
+                    "timeline_a": str(data_a.get("tick", 0)),
+                    "timeline_b": str(data_b.get("tick", 0)),
+                    "delta": str(data_b.get("tick", 0) - data_a.get("tick", 0))
+                })
+
+        return {
+            "timeline_a": {
+                "id": timeline_a.id,
+                "label": timeline_a.label,
+                "status": timeline_a.status.value,
+            },
+            "timeline_b": {
+                "id": timeline_b.id,
+                "label": timeline_b.label,
+                "status": timeline_b.status.value,
+            },
+            "divergence_metrics": divergence,
+            "common_ancestor": timeline_a.parent_id if timeline_a.parent_id == timeline_b.parent_id else None,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # --- NEW: x402 PREMIUM CONTENT ENDPOINT ---
@@ -426,5 +875,95 @@ async def play_match(
         game_result=game_result
     )
 
+
+# =============================================================================
+# EVOLUTION STATUS API
+# =============================================================================
+
+@app.get("/evolution/status")
+async def get_evolution_status(domain: str = "financial"):
+    """
+    Get current evolution status for a domain.
+    Used by the frontend Evolution Status widget.
+    """
+    import random
+    
+    # Try to load real data
+    try:
+        from backend.core.persistence_manager import get_persistence_manager
+        pm = get_persistence_manager()
+        
+        # Load evolution history if available
+        history = pm.load(f"{domain}_evolution", default=None)
+        
+        if history and len(history) > 0:
+            latest = history[-1]
+            return {
+                "generation": latest.get("generation", 0),
+                "population_size": latest.get("population_size", 100),
+                "average_fitness": latest.get("average_fitness", 50),
+                "fitness_change": latest.get("fitness_change", 0),
+                "dominant_archetype": latest.get("dominant_archetype", "SHARK"),
+                "dominant_percentage": latest.get("dominant_percentage", 25),
+                "archetype_distribution": latest.get("archetype_distribution", {}),
+                "is_learning": latest.get("is_learning", True),
+                "last_evolution": latest.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            }
+    except Exception as e:
+        print(f"⚠️ Could not load evolution data: {e}")
+    
+    # Return mock data for demonstration
+    archetypes = ["SHARK", "WHALE", "DEGEN", "VALUE", "MOMENTUM", "CONTRARIAN"]
+    distribution = {}
+    remaining = 100
+    
+    for i, arch in enumerate(archetypes):
+        if i == len(archetypes) - 1:
+            distribution[arch] = remaining
+        else:
+            val = random.randint(5, min(45, remaining - (len(archetypes) - i - 1) * 5))
+            distribution[arch] = val
+            remaining -= val
+    
+    dominant = max(distribution, key=distribution.get)
+    
+    return {
+        "generation": random.randint(5, 50),
+        "population_size": random.randint(70, 100),
+        "average_fitness": round(50 + random.random() * 50, 1),
+        "fitness_change": round((random.random() - 0.3) * 30, 1),
+        "dominant_archetype": dominant,
+        "dominant_percentage": distribution[dominant],
+        "archetype_distribution": distribution,
+        "is_learning": random.random() > 0.2,
+        "last_evolution": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# =============================================================================
+# OSINT API
+# =============================================================================
+
+@app.get("/osint/status")
+async def osint_status():
+    """Get status of the signal intelligence network."""
+    return osint.get_full_status()
+
+
+@app.get("/osint/scan")
+async def osint_scan():
+    """Force a scan of all intelligence sources."""
+    signals = await osint.scan_all()
+    return {"signals_found": len(signals), "status": osint.get_full_status()}
+
+
+@app.get("/osint/missions/{domain}")
+async def osint_missions(domain: str):
+    """Get active missions for a specific domain."""
+    missions = osint.generate_domain_missions(domain)
+    return {"missions": [m.to_dict() for m in missions]}
+
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    # When running as a module (python -m backend.main), the app string needs the full path
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
