@@ -23,7 +23,7 @@ Major operations require logistics. Before any military action:
 These signals appear 6-48 hours BEFORE official announcements.
 
 Usage:
-    from core.signal_detector import SignalDetector, DEFCONLevel
+    from backend.core.signal_detector import SignalDetector, DEFCONLevel
     
     detector = SignalDetector()
     signals = await detector.scan_all_sources()

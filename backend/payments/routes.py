@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
 import json
-from payments.coinbase_commerce import (
+from .coinbase_commerce import (
     get_commerce_client,
     get_payment_handler,
     ChargeMetadata,

@@ -13,7 +13,7 @@ Features:
 
 Usage:
     # As module
-    from simulation.sim_football_engine import FootballSimulation
+    from backend.simulation.sim_football_engine import FootballSimulation
     
     sim = FootballSimulation(game_hash)
     sim.initialize_from_snapshot("snapshots/PL_snapshot.json")
@@ -38,7 +38,7 @@ import uuid
 # Add parent directory for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.schemas import (
+from backend.agents.schemas import (
     AthleticAgent,
     AthleticArchetype,
     create_random_athletic_agent,
@@ -606,7 +606,7 @@ class FootballSimulation:
         
         This is the "fork" point for counterfactual simulation.
         """
-        from core.football_data_client import Snapshot
+        from backend.core.football_data_client import Snapshot
         
         snapshot = Snapshot.load(snapshot_path)
         

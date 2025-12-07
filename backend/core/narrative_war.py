@@ -30,8 +30,8 @@ try:
     from backend.core.models import AgentRole, Faction, SpecialAbility
     from backend.core.mission_generator import OSINTSignal, SignalCategory
 except ImportError:
-    from core.models import AgentRole, Faction, SpecialAbility
-    from core.mission_generator import OSINTSignal, SignalCategory
+    from backend.core.models import AgentRole, Faction, SpecialAbility
+    from backend.core.mission_generator import OSINTSignal, SignalCategory
 
 
 # =============================================================================

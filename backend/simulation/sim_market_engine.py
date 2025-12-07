@@ -31,7 +31,7 @@ from enum import Enum
 # Add parent directory for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.schemas import (
+from backend.agents.schemas import (
     FinancialAgent,
     FinancialArchetype,
     create_random_financial_agent,
@@ -42,7 +42,7 @@ from agents.schemas import (
 try:
     from backend.agents.multi_brain import AgentBrain, BrainConfig
 except ImportError:
-    from agents.multi_brain import AgentBrain, BrainConfig
+    from backend.agents.multi_brain import AgentBrain, BrainConfig
 
 import asyncio
 

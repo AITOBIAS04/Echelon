@@ -4,7 +4,7 @@ Football Data API Client for Project Seed
 Wrapper for football-data.org API to fetch real-world snapshots.
 
 Usage:
-    from core.football_data_client import FootballDataClient
+    from backend.core.football_data_client import FootballDataClient
 
     client = FootballDataClient()
 

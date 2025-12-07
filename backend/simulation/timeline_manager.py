@@ -10,7 +10,7 @@ Enables "Snapshot & Fork" counterfactual simulation:
 - Track lineage of simulations
 
 Usage:
-    from simulation.timeline_manager import TimelineManager
+    from backend.simulation.timeline_manager import TimelineManager
     
     tm = TimelineManager()
     

@@ -31,7 +31,7 @@ class YieldManager:
                 self.persistence = get_persistence_manager()
             except ImportError:
                 try:
-                    from core.persistence_manager import get_persistence_manager
+                    from backend.core.persistence_manager import get_persistence_manager
                     self.persistence = get_persistence_manager()
                 except ImportError:
                     print("⚠️ Persistence manager not available for YieldManager")

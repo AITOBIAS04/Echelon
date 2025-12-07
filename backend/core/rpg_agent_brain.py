@@ -30,12 +30,12 @@ try:
     from backend.core.mission_generator import OSINTSignal, SignalCategory
     from backend.core.situation_room_engine import SituationRoomEngine
 except ImportError:
-    from core.models import (
+    from backend.core.models import (
         AgentRole, MissionType, Difficulty, Faction,
         SpecialAbility, Mission, ROLE_ABILITIES, ABILITY_CONFIG
     )
-    from core.mission_generator import OSINTSignal, SignalCategory
-    from core.situation_room_engine import SituationRoomEngine
+    from backend.core.mission_generator import OSINTSignal, SignalCategory
+    from backend.core.situation_room_engine import SituationRoomEngine
 
 
 # =============================================================================

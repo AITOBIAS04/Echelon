@@ -37,17 +37,17 @@ try:
     )
     from backend.agents.shark_strategies import SharkBrain, SharkGenome, MarketState
 except ImportError:
-    from core.models import (
+    from backend.core.models import (
         AgentRole, MissionType, MissionStatus, Difficulty, Faction,
         SpecialAbility, Mission, MissionObjective, NarrativeArc,
         TheaterState, ROLE_ABILITIES, ABILITY_CONFIG
     )
-    from core.mission_generator import (
+    from backend.core.mission_generator import (
         OSINTSignal, SignalAnalyzer, MissionGenerator, 
         NarrativeArcGenerator, SignalSource, SignalCategory
     )
     try:
-        from simulation.shark_strategies import SharkBrain, SharkGenome, MarketState
+        from backend.simulation.shark_strategies import SharkBrain, SharkGenome, MarketState
     except ImportError:
         # Shark strategies not available
         SharkBrain = None
@@ -1295,6 +1295,11 @@ class SituationRoomEngine:
     
     def get_state_snapshot(self) -> Dict[str, Any]:
         """Get a snapshot of current game state"""
+        # Get recent signals (convert to dicts for JSON serialization)
+        recent_signals = [
+            s.to_dict() for s in list(self.processed_signals.values())[-10:]
+        ]
+        
         return {
             "tick": self.tick_count,
             "global_tension": self.theater_state.global_tension,
@@ -1306,6 +1311,7 @@ class SituationRoomEngine:
             "active_treaties": len(self.treaty_system.get_active_treaties()),
             "missions_completed_today": self.theater_state.missions_completed_today,
             "total_usdc_distributed": self.theater_state.total_usdc_distributed,
+            "recent_signals": recent_signals,
             "recent_events": self.theater_state.event_log[-10:],
         }
     

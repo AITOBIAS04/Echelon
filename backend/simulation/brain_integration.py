@@ -7,11 +7,11 @@ and the cost-optimized AgentBrain system.
 Usage:
 
     # Option 1: Replace the entire run_tick method
-    from simulation.brain_integration import BrainEnabledSimulation
+    from backend.simulation.brain_integration import BrainEnabledSimulation
     sim = BrainEnabledSimulation(game_hash)
     
     # Option 2: Patch existing simulation
-    from simulation.brain_integration import patch_simulation_with_brain
+    from backend.simulation.brain_integration import patch_simulation_with_brain
     sim = MarketSimulation(game_hash)
     patch_simulation_with_brain(sim)
 """
@@ -26,7 +26,7 @@ try:
     HAS_BRAIN = True
 except ImportError:
     try:
-        from agents.multi_brain import AgentBrain, BrainConfig, Decision
+        from backend.agents.multi_brain import AgentBrain, BrainConfig, Decision
         HAS_BRAIN = True
     except ImportError:
         HAS_BRAIN = False

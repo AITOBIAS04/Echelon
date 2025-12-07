@@ -23,7 +23,7 @@ Categories:
    - Lineup Intelligence
 
 Usage:
-    from core.osint_registry import OSINTRegistry
+    from backend.core.osint_registry import OSINTRegistry
     
     registry = OSINTRegistry()
     signals = await registry.scan_all()
@@ -41,32 +41,21 @@ from dataclasses import dataclass
 from enum import Enum
 
 # Import all source modules
+from backend.core.signal_detector import (
+    SignalDetector, Signal, SignalSource, RegionOfInterest,
+    DEFCONLevel, Mission, get_detector
+)
+from backend.core.osint_sources_situation_room import get_situation_room_sources
+from backend.core.osint_sources_financial import get_financial_sources
+from backend.core.osint_sources_sports import get_sports_sources
 try:
-    from backend.core.signal_detector import (
-        SignalDetector, Signal, SignalSource, RegionOfInterest,
-        DEFCONLevel, Mission, get_detector
-    )
-    from backend.core.osint_sources_situation_room import get_situation_room_sources
-    from backend.core.osint_sources_financial import get_financial_sources
-    from backend.core.osint_sources_sports import get_sports_sources
     from backend.core.osint_sources_extended import get_extended_sources
+except ImportError:
+    get_extended_sources = lambda: []
+try:
     from backend.core.persistence_manager import get_persistence_manager
 except ImportError:
-    from core.signal_detector import (
-        SignalDetector, Signal, SignalSource, RegionOfInterest,
-        DEFCONLevel, Mission, get_detector
-    )
-    from core.osint_sources_situation_room import get_situation_room_sources
-    from core.osint_sources_financial import get_financial_sources
-    from core.osint_sources_sports import get_sports_sources
-    try:
-        from core.osint_sources_extended import get_extended_sources
-    except ImportError:
-        get_extended_sources = lambda: []
-    try:
-        from core.persistence_manager import get_persistence_manager
-    except ImportError:
-        get_persistence_manager = None
+    get_persistence_manager = None
 
 
 class SignalCategory(Enum):

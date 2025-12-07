@@ -17,10 +17,12 @@ from datetime import datetime, timedelta, timezone
 # Import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 
+# --- IMPORTS ---
 from backend.core.database import SessionLocal, engine, Base, User as DBUser
-
-# OSINT Registry
 from backend.core.osint_registry import get_osint_registry
+
+# Auto Uploader Config
+from backend.core.autouploader import AutoUploadConfig
 
 # Payments Router
 from backend.payments.routes import router as payments_router
@@ -62,11 +64,28 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(payments_router)
+try:
+    if payments_router:
+        app.include_router(payments_router)
+        print("✅ Payments router included")
+    else:
+        print("⚠️ Payments router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include payments router: {e}")
+    import traceback
+    traceback.print_exc()
 
 # Include Situation Room router if available
-if situation_room_router:
-    app.include_router(situation_room_router)
+try:
+    if situation_room_router:
+        app.include_router(situation_room_router)
+        print("✅ Situation Room router included")
+    else:
+        print("⚠️ Situation Room router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Situation Room router: {e}")
+    import traceback
+    traceback.print_exc()
 
 # --- DATABASE DEPENDENCY ---
 
@@ -319,7 +338,7 @@ def get_orchestrator():
             from backend.core.event_orchestrator import EventOrchestrator
             _orchestrator = EventOrchestrator()
         except ImportError:
-            from core.event_orchestrator import EventOrchestrator
+            from backend.core.event_orchestrator import EventOrchestrator
             _orchestrator = EventOrchestrator()
     return _orchestrator
 
@@ -455,7 +474,7 @@ async def create_market(market: MarketCreate):
     try:
         from backend.core.event_orchestrator import RawEvent, EventDomain, BetDuration
     except ImportError:
-        from core.event_orchestrator import RawEvent, EventDomain, BetDuration
+        from backend.core.event_orchestrator import RawEvent, EventDomain, BetDuration
 
     try:
         orchestrator = get_orchestrator()
@@ -566,7 +585,7 @@ async def get_timeline_detail(timeline_id: str):
     try:
         from backend.simulation.timeline_manager import TimelineManager
     except ImportError:
-        from simulation.timeline_manager import TimelineManager
+        from backend.simulation.timeline_manager import TimelineManager
 
     try:
         tm = TimelineManager()
@@ -615,7 +634,7 @@ async def compare_timelines(timeline_id: str, other_id: str):
     try:
         from backend.simulation.timeline_manager import TimelineManager
     except ImportError:
-        from simulation.timeline_manager import TimelineManager
+        from backend.simulation.timeline_manager import TimelineManager
 
     try:
         tm = TimelineManager()

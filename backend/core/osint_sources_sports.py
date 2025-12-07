@@ -32,7 +32,7 @@ try:
         BaseSignalSource, Signal, SignalSource, RegionOfInterest
     )
 except ImportError:
-    from core.signal_detector import (
+    from backend.core.signal_detector import (
         BaseSignalSource, Signal, SignalSource, RegionOfInterest
     )
 

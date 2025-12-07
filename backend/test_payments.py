@@ -5,7 +5,7 @@ Run this to verify your payment setup is working.
 """
 import asyncio
 import os
-from payments.coinbase_commerce import (
+from .coinbase_commerce import (
     get_commerce_client,
     get_payment_handler,
     CommerceConfig

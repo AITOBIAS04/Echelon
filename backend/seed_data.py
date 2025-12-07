@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 # Setup imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from core.event_orchestrator import EventOrchestrator, RawEvent, EventDomain
+from backend.core.event_orchestrator import EventOrchestrator, RawEvent, EventDomain
 
 def seed_markets():
     print("🌱 Seeding 'God Mode' Markets...")

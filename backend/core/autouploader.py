@@ -37,15 +37,15 @@ try:
     )
     from backend.core.situation_room_engine import SituationRoomEngine
 except ImportError:
-    from core.models import (
+    from backend.core.models import (
         AgentRole, MissionType, Difficulty, Faction,
         Mission, NarrativeArc, TheaterState
     )
-    from core.mission_generator import (
+    from backend.core.mission_generator import (
         OSINTSignal, SignalCategory, SignalSource,
         SignalAnalyzer, MissionGenerator, NarrativeArcGenerator
     )
-    from core.situation_room_engine import SituationRoomEngine
+    from backend.core.situation_room_engine import SituationRoomEngine
 
 
 # =============================================================================

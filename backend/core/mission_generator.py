@@ -32,7 +32,7 @@ try:
         ROLE_ABILITIES, ABILITY_CONFIG
     )
 except ImportError:
-    from core.models import (
+    from backend.core.models import (
         AgentRole, MissionType, MissionStatus, Difficulty, Faction,
         SpecialAbility, Mission, MissionObjective, NarrativeArc,
         TheaterState, MISSION_TEMPLATES, NARRATIVE_TEMPLATES,

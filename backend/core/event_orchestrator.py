@@ -20,7 +20,7 @@ Integrated APIs:
 - Sports: API-Sports, TheSportsDB, Football-Data
 
 Usage:
-    from core.event_orchestrator import EventOrchestrator
+    from backend.core.event_orchestrator import EventOrchestrator
     
     orchestrator = EventOrchestrator()
     events = orchestrator.ingest_all()
@@ -66,7 +66,7 @@ try:
     )
 except ImportError:
     try:
-        from agents.schemas import (
+        from backend.agents.schemas import (
             AgentDomain,
             FinancialArchetype,
             AthleticArchetype,
@@ -1120,7 +1120,7 @@ class EventOrchestrator:
             self.persistence = get_persistence_manager()
         except ImportError:
             try:
-                from core.persistence_manager import get_persistence_manager
+                from backend.core.persistence_manager import get_persistence_manager
                 self.persistence = get_persistence_manager()
             except ImportError:
                 self.persistence = None

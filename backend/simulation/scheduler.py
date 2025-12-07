@@ -19,23 +19,13 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
 # --- IMPORTS ---
-try:
-    from backend.simulation.world_state import WorldState
-    from backend.agents.autonomous_agent import GeopoliticalAgent
-    from backend.simulation.yield_manager import YieldManager
-    from backend.simulation.genome import AgentGenome
-    from backend.simulation.timeline_manager import TimelineManager
-    from backend.core.event_orchestrator import EventOrchestrator, RawEvent, EventDomain
-    from backend.core.osint_registry import get_osint_registry
-except ImportError:
-    # Fallback for local testing without package structure
-    from simulation.world_state import WorldState
-    from agents.autonomous_agent import GeopoliticalAgent
-    from simulation.yield_manager import YieldManager
-    from simulation.genome import AgentGenome
-    from simulation.timeline_manager import TimelineManager
-    from core.event_orchestrator import EventOrchestrator, RawEvent, EventDomain
-    from core.osint_registry import get_osint_registry
+from backend.simulation.world_state import WorldState
+from backend.agents.autonomous_agent import GeopoliticalAgent
+from backend.simulation.yield_manager import YieldManager
+from backend.simulation.genome import AgentGenome
+from backend.simulation.timeline_manager import TimelineManager
+from backend.core.event_orchestrator import EventOrchestrator, RawEvent, EventDomain
+from backend.core.osint_registry import get_osint_registry
 
 # Fixed file path
 STATE_FILE = os.path.join(os.path.dirname(__file__), "world_state.json")
@@ -48,12 +38,28 @@ class SchedulerConfig:
 
 async def load_state() -> WorldState:
     if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r") as f:
-            data = json.load(f)
-        if "global_tension" not in data: data["global_tension"] = 0.5
-        if "recent_reasoning" not in data: data["recent_reasoning"] = "System initialized."
-        if "event_log" not in data: data["event_log"] = []
-        return WorldState(**data)
+        try:
+            with open(STATE_FILE, "r") as f:
+                data = json.load(f)
+            
+            # SAFETY CLAMP: Fix invalid values before Pydantic validation
+            if "global_tension" in data:
+                val = float(data["global_tension"])
+                data["global_tension"] = min(1.0, max(0.0, val))
+                
+            # Handle legacy migration
+            if "global_tension" not in data:
+                data["global_tension"] = data.get("global_tension_score", 0.5)
+            if "recent_reasoning" not in data:
+                data["recent_reasoning"] = "System initialized."
+            if "event_log" not in data:
+                data["event_log"] = []
+            
+            return WorldState(**data)
+        except Exception as e:
+            print(f"⚠️ State load error: {e}. Resetting to default.")
+            return WorldState(global_tension=0.0)
+            
     return WorldState(global_tension=0.0)
 
 async def save_state(state: WorldState):
@@ -137,13 +143,16 @@ async def game_loop():
             
             # Update state with threat level
             if defcon == "DEFCON_1" or defcon == "DEFCON_2":
+                # STRICT CLAMP: Never exceed 1.0
                 current_state.global_tension = min(1.0, current_state.global_tension + 0.1)
             
             print(f"   🧠 Director analyzing intel (Threat Level: {defcon})...")
             decision = await agent.think(current_state, mode="routine")
             
             # Update & Save
-            current_state.global_tension = decision.get("new_tension", current_state.global_tension)
+            new_tension = decision.get("new_tension", current_state.global_tension)
+            # Ensure we strictly clamp to [0.0, 1.0]
+            current_state.global_tension = min(1.0, max(0.0, float(new_tension)))
             current_state.recent_reasoning = decision.get("reasoning", "Analyzing signals.")
             current_state.last_updated = datetime.now()
             await save_state(current_state)

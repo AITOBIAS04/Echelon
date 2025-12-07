@@ -17,7 +17,7 @@ Features:
 - Persistent lineage tracking
 
 Usage:
-    from simulation.evolution_engine import EvolutionEngine, EvolutionConfig
+    from backend.simulation.evolution_engine import EvolutionEngine, EvolutionConfig
     
     # Create engine for financial agents
     engine = EvolutionEngine(
@@ -49,7 +49,7 @@ from abc import ABC, abstractmethod
 # Add parent directory for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.schemas import (
+from backend.agents.schemas import (
     BaseAgent,
     FinancialAgent,
     AthleticAgent, 

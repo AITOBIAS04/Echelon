@@ -15,7 +15,7 @@ try:
     private_key = os.getenv("AGENT_PRIVATE_KEY")
     if not private_key:
         # Try using the wallet factory pattern
-        from core.wallet_factory import WalletFactory
+        from backend.core.wallet_factory import WalletFactory
         master_seed = os.getenv("MASTER_WALLET_SEED")
         if master_seed:
             factory = WalletFactory(master_seed)

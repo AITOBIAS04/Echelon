@@ -19,11 +19,11 @@ try:
     from backend.core.narrative_war import NarrativeWarEngine
     from backend.core.models import AgentRole, Faction, MissionType, SpecialAbility
 except ImportError:
-    from core.situation_room_engine import SituationRoomEngine
-    from core.autouploader import SituationRoomAutoUploader, AutoUploadConfig, MODERATE_CONFIG
-    from core.synthetic_osint import SyntheticOSINTGenerator, SyntheticOSINTFeed
-    from core.narrative_war import NarrativeWarEngine
-    from core.models import AgentRole, Faction, MissionType, SpecialAbility
+    from backend.core.situation_room_engine import SituationRoomEngine
+    from backend.core.autouploader import SituationRoomAutoUploader, AutoUploadConfig, MODERATE_CONFIG
+    from backend.core.synthetic_osint import SyntheticOSINTGenerator, SyntheticOSINTFeed
+    from backend.core.narrative_war import NarrativeWarEngine
+    from backend.core.models import AgentRole, Faction, MissionType, SpecialAbility
 
 # =============================================================================
 # INITIALIZE ENGINES (Singleton pattern)
@@ -109,6 +109,11 @@ class ReportPublishRequest(BaseModel):
     headline: Optional[str] = None
     summary: Optional[str] = None
     stance: str = "truth"
+
+
+class InjectSignalRequest(BaseModel):
+    category: str = "geopolitical"
+    high_urgency: bool = False
 
 
 # =============================================================================
@@ -500,26 +505,23 @@ async def bet_on_truth_market(market_id: str, request: BetRequest):
 # =============================================================================
 
 @router.post("/test/inject-signal")
-async def inject_test_signal(
-    category: str = "geopolitical",
-    high_urgency: bool = False
-):
+async def inject_test_signal(request: InjectSignalRequest):
     """Inject a synthetic test signal"""
     try:
         from backend.core.mission_generator import SignalCategory
     except ImportError:
-        from core.mission_generator import SignalCategory
+        from backend.core.mission_generator import SignalCategory
     
     engine = get_engine()
     uploader = get_uploader()
     generator = SyntheticOSINTGenerator()
     
     try:
-        cat = SignalCategory(category)
+        cat = SignalCategory(request.category)
     except ValueError:
         cat = SignalCategory.GEOPOLITICAL
     
-    signal = generator.generate_signal(category=cat, force_high_urgency=high_urgency)
+    signal = generator.generate_signal(category=cat, force_high_urgency=request.high_urgency)
     await uploader.process_signal(signal)
     
     return {

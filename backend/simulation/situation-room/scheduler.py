@@ -16,10 +16,19 @@ Based on Gemini's scheduler structure.
 
 import asyncio
 import os
+import sys
 import signal
 import time
 from datetime import datetime
 from typing import Optional
+
+# Add project root to Python path (always, not just when __main__)
+# File is at: backend/simulation/situation-room/scheduler.py
+# Need to go up 4 levels to get to project root
+current_file = os.path.abspath(__file__)
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 # Try production imports first, fall back to local
 try:
@@ -38,25 +47,25 @@ try:
 except ImportError:
     # Fallback for local runs
     try:
-        from core.situation_room_engine import SituationRoomEngine
-        from core.mission_generator import OSINTSignal, SignalCategory, SignalSource
-        from core.osint_registry import get_osint_registry
-        from agents.multi_brain import get_brain
-        from core.autouploader import (
+        from backend.core.situation_room_engine import SituationRoomEngine
+        from backend.core.mission_generator import OSINTSignal, SignalCategory, SignalSource
+        from backend.core.osint_registry import get_osint_registry
+        from backend.agents.multi_brain import get_brain
+        from backend.core.autouploader import (
             SituationRoomAutoUploader,
             AutoUploadConfig,
             MODERATE_CONFIG,
             AGGRESSIVE_CONFIG,
         )
-        from core.synthetic_osint import SyntheticOSINTGenerator, SyntheticOSINTFeed
-        from core.narrative_war import NarrativeWarEngine
+        from backend.core.synthetic_osint import SyntheticOSINTGenerator, SyntheticOSINTFeed
+        from backend.core.narrative_war import NarrativeWarEngine
     except ImportError:
-        # Mock these if not available
-        def get_osint_registry():
-            return None
-        
-        def get_brain():
-            return None
+        # If all imports fail, we can't run - raise error with helpful message
+        raise ImportError(
+            "Failed to import Situation Room modules. "
+            "Make sure you're running from the project root and all dependencies are installed. "
+            "Try: pip install -r requirements.txt"
+        )
 
 
 # =============================================================================
@@ -90,7 +99,8 @@ class SchedulerConfig:
 # SIGNAL CONVERTER
 # =============================================================================
 
-def convert_osint_signal(raw_signal) -> Optional[OSINTSignal]:
+def convert_osint_signal(raw_signal):
+    # Type: Optional[OSINTSignal]
     """
     Convert a signal from the OSINT registry to RPG OSINTSignal.
     Handles different source formats.
@@ -102,7 +112,7 @@ def convert_osint_signal(raw_signal) -> Optional[OSINTSignal]:
     if isinstance(raw_signal, OSINTSignal):
         return raw_signal
     
-    # Convert from core Signal format
+    # Convert from backend.core Signal format
     try:
         # Map source to SignalSource
         source_mapping = {

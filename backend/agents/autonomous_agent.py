@@ -9,11 +9,11 @@ backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from simulation.world_state import WorldState
-from simulation.genome import AgentGenome
+from backend.simulation.world_state import WorldState
+from backend.simulation.genome import AgentGenome
 
 # --- NEW IMPORTS ---
-from core.wallet_factory import WalletFactory
+from backend.core.wallet_factory import WalletFactory
 from virtuals_acp.client import VirtualsACP, BASE_SEPOLIA_CONFIG
 from virtuals_acp.contract_clients.contract_client import ACPContractClient
 from backend.core.x402_client import fetch_paid_content

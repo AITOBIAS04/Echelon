@@ -30,7 +30,7 @@ from enum import Enum
 try:
     from backend.core.mission_generator import OSINTSignal, SignalSource, SignalCategory
 except ImportError:
-    from core.mission_generator import OSINTSignal, SignalSource, SignalCategory
+    from backend.core.mission_generator import OSINTSignal, SignalSource, SignalCategory
 
 
 # =============================================================================

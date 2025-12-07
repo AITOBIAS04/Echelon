@@ -14,13 +14,13 @@ Setup:
    - COINBASE_WEBHOOK_SECRET
 3. Add routes to FastAPI app:
    
-   from payments.routes import router as payments_router
+   from .routes import router as payments_router
    app.include_router(payments_router)
 
 4. Configure webhook URL in Coinbase Commerce dashboard:
    https://your-domain.com/payments/webhook
 """
-from payments.coinbase_commerce import (
+from .coinbase_commerce import (
     CoinbaseCommerceClient,
     PaymentHandler,
     CommerceConfig,
@@ -33,7 +33,7 @@ from payments.coinbase_commerce import (
     get_commerce_client,
     get_payment_handler
 )
-from payments.routes import router
+from .routes import router
 
 __all__ = [
     "CoinbaseCommerceClient",

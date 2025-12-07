@@ -1,5 +1,4 @@
 import httpx
-
 from virtuals_acp.client import VirtualsACP
 from eth_account.messages import encode_defunct
 

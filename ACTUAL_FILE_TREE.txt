@@ -1,0 +1,251 @@
+# Actual File Tree (Updated: December 2024)
+# Project: Prediction Market Monorepo - Codename Seed
+
+## Root Structure
+```
+prediction-market-monorepo/
+├── backend/              # Python FastAPI backend
+├── frontend/             # Next.js React frontend
+├── smart-contracts/      # Solidity contracts (Hardhat)
+├── data/                 # Persistent state files
+└── snapshots/            # Game state snapshots
+```
+
+## Backend Files
+
+### Core Modules (`backend/core/`)
+```
+backend/core/__init__.py
+backend/core/autouploader.py              # Auto mission uploader
+backend/core/blockchain_manager.py        # Ethereum/Base blockchain
+backend/core/database.py                  # SQLAlchemy ORM
+backend/core/event_orchestrator.py        # Event coordination
+backend/core/football_data_client.py      # Football-data.org API
+backend/core/mission_generator.py        # OSINT → Mission conversion
+backend/core/mock_data_generator.py       # Test data generation
+backend/core/models.py                    # Pydantic models (Mission, Agent, etc.)
+backend/core/narrative_war.py            # Narrative warfare system
+backend/core/news_scraper.py             # Web scraping
+backend/core/osint_registry.py            # Central OSINT registry
+backend/core/osint_sources_extended.py    # Extended OSINT sources
+backend/core/osint_sources_financial.py   # Financial market OSINT
+backend/core/osint_sources_situation_room.py  # Situation Room OSINT (renamed from war_room)
+backend/core/osint_sources_sports.py     # Sports betting OSINT
+backend/core/persistence_manager.py      # State persistence layer
+backend/core/rpg_agent_brain.py         # RPG agent decision-making
+backend/core/signal_detector.py         # Market signal detection
+backend/core/situation_room_engine.py  # Situation Room RPG engine
+backend/core/synthetic_osint.py         # Synthetic OSINT generator
+backend/core/wallet_factory.py          # Wallet generation
+backend/core/x402_client.py            # X402 protocol client
+```
+
+### Agent System (`backend/agents/`)
+```
+backend/agents/__init__.py
+backend/agents/autonomous_agent.py       # Autonomous agent behavior
+backend/agents/brain.py                 # Base agent brain
+backend/agents/multi_brain.py           # Multi-agent coordination
+backend/agents/schemas.py               # Agent schemas (BaseAgent, etc.)
+backend/agents/shark_strategies.py      # Shark trading strategies (Tulip Strategy)
+```
+
+### Simulation Engines (`backend/simulation/`)
+```
+backend/simulation/__init__.py
+backend/simulation/brain_integration.py  # Brain-engine integration
+backend/simulation/breeding_lab.py      # Agent breeding experiments
+backend/simulation/digital_twin_engine.py  # Digital twin duels
+backend/simulation/engine.py           # Chess simulation
+backend/simulation/evolution_engine.py  # Evolutionary algorithms
+backend/simulation/genome.py           # Genetic representation
+backend/simulation/scheduler.py        # Main scheduler (3-tier)
+backend/simulation/sim_election_engine.py  # Election simulation
+backend/simulation/sim_football_engine.py   # Football league simulator
+backend/simulation/sim_geopolitics_engine.py  # Geopolitical events
+backend/simulation/sim_market_engine.py      # Financial market simulator
+backend/simulation/situation-room/          # Situation Room scheduler
+  └── scheduler.py                    # Situation Room game loop
+backend/simulation/timeline_manager.py      # Timeline management
+backend/simulation/world_state.py          # Global state management
+backend/simulation/yield_manager.py        # Reward distribution
+```
+
+### API Routes (`backend/api/`)
+```
+backend/api/situation_room_routes.py    # Situation Room API endpoints
+```
+
+### Payments (`backend/payments/`)
+```
+backend/payments/__init__.py
+backend/payments/coinbase_commerce.py   # Coinbase Commerce integration
+backend/payments/routes.py             # Payment API routes
+```
+
+### Main Application
+```
+backend/main.py                        # FastAPI entry point
+backend/requirements.txt               # Python dependencies
+backend/seed_data.py                  # Database seeding
+backend/.env                          # Environment variables
+```
+
+### Scripts & Tests
+```
+backend/scripts/__init__.py
+backend/scripts/evolution_audit.py     # Evolution system audit
+backend/test_payments.py              # Payment testing
+backend/test_signing.py               # Signature testing
+backend/test_situation_room.py       # Situation Room testing
+```
+
+## Frontend Files
+
+### Pages (`frontend/app/`)
+```
+frontend/app/page.js                   # Homepage
+frontend/app/layout.js                 # Root layout
+frontend/app/globals.css               # Global styles (Tailwind v3)
+frontend/app/favicon.ico               # Favicon
+
+# Authentication
+frontend/app/login/page.jsx            # Login page
+frontend/app/signup/page.jsx          # Registration page
+
+# Main Features
+frontend/app/dashboard/page.jsx       # User dashboard
+frontend/app/markets/page.jsx         # Market overview
+frontend/app/betting/page.jsx         # Betting interface
+frontend/app/wallet/page.jsx          # Wallet management
+frontend/app/lobby/page.jsx           # Game lobby
+frontend/app/timelines/page.jsx       # Timeline viewer
+
+# Situation Room (migrated from war-room)
+frontend/app/situation-room/page.jsx  # Situation Room RPG dashboard
+```
+
+### Components (`frontend/components/`)
+```
+frontend/components/Header.jsx         # Navigation (Situation Room link)
+frontend/components/Polyglobe.jsx      # 3D globe visualization (react-globe.gl)
+frontend/components/TensionGauge.jsx   # Tension meter
+frontend/components/EvolutionStatus.jsx # Agent evolution display
+frontend/components/PersonalTimeline.jsx # User timeline
+frontend/components/TimelineFork.jsx   # Timeline branching
+
+# Wallet Components
+frontend/components/wallet/WalletComponents.jsx    # Wallet UI
+frontend/components/wallet/CheckoutComponents.jsx # Payment checkout
+```
+
+### Providers & Utils
+```
+frontend/providers/OnchainProviders.jsx  # Web3 provider wrapper
+frontend/utils/api.js                    # API client
+frontend/utils/auth.js                   # Auth helpers
+```
+
+### Configuration
+```
+frontend/package.json                   # Dependencies (Next.js 14.2.3, Tailwind v3)
+frontend/next.config.mjs               # Next.js config (webpack aliases)
+frontend/postcss.config.js              # PostCSS config (Tailwind v3)
+frontend/tailwind.config.js             # Tailwind config (content paths)
+frontend/jsconfig.json                  # JS path aliases
+frontend/eslint.config.mjs              # ESLint config
+```
+
+### Public Assets
+```
+frontend/public/globe.svg
+frontend/public/next.svg
+frontend/public/vercel.svg
+frontend/public/window.svg
+frontend/public/file.svg
+```
+
+## Smart Contracts (`smart-contracts/`)
+```
+smart-contracts/contracts/              # Solidity contracts
+smart-contracts/hardhat.config.js     # Hardhat configuration
+smart-contracts/package.json           # Node dependencies
+smart-contracts/scripts/               # Deployment scripts
+smart-contracts/test/                  # Contract tests
+```
+
+## Data & State (`data/`)
+```
+data/osint_state.json                  # OSINT registry state
+data/markets.json                      # Market state
+data/economy_state.json                # Economy state
+data/orchestrator_stats.json           # Orchestrator statistics
+data/backups/                          # State backups
+data/snapshots/                        # Game snapshots
+```
+
+## Documentation
+```
+ACTUAL_FILE_TREE.txt                   # This file
+COMPLETE_PROJECT_OVERVIEW.md           # Project overview
+PROJECT_STRUCTURE.md                   # Detailed structure
+IMPORT_GUIDE.md                        # Import troubleshooting
+SECURITY_AUDIT.md                      # Security review
+HOW_TO_ADD_NEW_FILES.md                # File addition guide
+```
+
+## Key Changes (Recent Updates)
+
+### Migration: War Room → Situation Room
+- ✅ Deleted: `frontend/app/war-room/page.jsx`
+- ✅ Created: `frontend/app/situation-room/page.jsx`
+- ✅ Renamed: `osint_sources_warroom.py` → `osint_sources_situation_room.py`
+- ✅ Updated: `frontend/components/Header.jsx` (link to Situation Room)
+
+### New Core Files
+- ✅ `backend/core/situation_room_engine.py` - Main RPG engine
+- ✅ `backend/core/narrative_war.py` - Narrative warfare system
+- ✅ `backend/core/synthetic_osint.py` - Synthetic OSINT generator
+- ✅ `backend/core/autouploader.py` - Auto mission uploader
+- ✅ `backend/core/rpg_agent_brain.py` - RPG agent decision-making
+- ✅ `backend/agents/shark_strategies.py` - Shark trading strategies
+
+### Frontend Updates
+- ✅ `frontend/package.json` - Locked to Next.js 14.2.3, Tailwind v3
+- ✅ `frontend/next.config.mjs` - Webpack aliases for react-native modules
+- ✅ `frontend/postcss.config.js` - Standard Tailwind v3 config
+- ✅ `frontend/tailwind.config.js` - Content paths configured
+- ✅ `frontend/app/globals.css` - Migrated from Tailwind v4 to v3
+
+### Scheduler Updates
+- ✅ `backend/simulation/scheduler.py` - Added tension clamping
+- ✅ `backend/simulation/situation-room/scheduler.py` - Situation Room game loop
+
+### API Updates
+- ✅ `backend/api/situation_room_routes.py` - Situation Room endpoints
+- ✅ `backend/main.py` - Robust imports with try/except blocks
+
+## File Count Summary
+
+### Backend
+- **Core modules:** 23 Python files
+- **Agent system:** 5 files
+- **Simulation engines:** 14 files
+- **API routes:** 1 file
+- **Payments:** 2 files
+- **Scripts:** 1 file
+
+### Frontend
+- **Pages:** 12 JSX files
+- **Components:** 8 JSX files
+- **Utils/Providers:** 3 JS files
+- **Config:** 6 files
+
+### Total
+- **Backend Python files:** ~46
+- **Frontend JS/JSX files:** ~23
+- **Config files:** package.json, requirements.txt, etc.
+
+---
+*Last Updated: December 2024*
+*Total Files: ~70+ source files*

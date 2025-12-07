@@ -15,7 +15,7 @@ def get_world_state():
     # Try multiple possible paths for world_state.json
     possible_paths = [
         "simulation/world_state.json",  # When called from backend root
-        "world_state.json",  # When called from simulation folder
+        "world_state.json",  # When called from backend.simulation folder
         os.path.join(os.path.dirname(__file__), "world_state.json")  # Relative to this file
     ]
     
