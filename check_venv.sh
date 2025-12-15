@@ -1,0 +1,11 @@
+#!/bin/bash
+echo "=== Virtual Environment Check ==="
+echo "Current Python: $(which python)"
+echo "Python version: $(python --version)"
+echo "Python path: $(python -c 'import sys; print(sys.executable)')"
+echo ""
+echo "Checking for slowapi..."
+python -c "import slowapi; print('✅ slowapi found at:', slowapi.__file__)" 2>&1 || echo "❌ slowapi NOT found"
+echo ""
+echo "If slowapi is missing, run:"
+echo "  python -m pip install slowapi starlette eth-utils"

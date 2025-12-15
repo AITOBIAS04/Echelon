@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════════════════
+  FIX FOR: ModuleNotFoundError: No module named 'slowapi'
+═══════════════════════════════════════════════════════════════
+
+Copy and paste these commands into YOUR terminal (the one showing the error):
+
+1. Install slowapi in your active Python environment:
+   python -m pip install slowapi starlette eth-utils
+
+2. Verify it works:
+   PYTHONPATH=/Users/tobyharber/Documents/prediction-market-monorepo python -c "from backend.core.security import Limiter; print('✅ Success!')"
+
+3. Run the backend:
+   PYTHONPATH=/Users/tobyharber/Documents/prediction-market-monorepo python -m backend.main
+
+═══════════════════════════════════════════════════════════════
+Why this happens:
+Your terminal shows "((.venv) )" which means you have a virtual 
+environment activated. The slowapi package needs to be installed 
+in THAT specific environment, not a different one.
+
+The command above will install it in whatever Python environment 
+is currently active in your terminal.
+═══════════════════════════════════════════════════════════════

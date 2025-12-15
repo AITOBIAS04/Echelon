@@ -1,0 +1,42 @@
+# Project: Codename Seed (AI Simulation Engine)
+# Structure: Monorepo (Backend, Frontend, Smart-Contracts)
+
+# --- CRITICAL RULES ---
+
+1. BACKEND (Agents & Logic):
+   - Location: /backend
+   - Stack: Python, FastAPI, Anthropic Agent SDK
+   - Rules:
+     - ALWAYS use 'claude-agent-sdk' for agent logic.
+     - NEVER use OpenAI/LangChain libraries.
+     - ALWAYS implement 'Prompt Caching' headers.
+     - Use 'pydantic' for validation.
+
+2. FRONTEND (UI):
+   - Location: /frontend
+   - Stack: Next.js (App Router), Tailwind CSS
+   - Rules:
+     - Use 'lucide-react' for icons.
+     - Connect to backend via standard REST API endpoints.
+
+3. SMART CONTRACTS:
+   - Location: /smart-contracts
+   - Stack: Solidity, Hardhat/Foundry
+   - Rules:
+     - Prioritize Chainlink VRF for randomness.
+
+4. BEHAVIOR:
+   - When generating Python tools, include docstrings explaining the tool to Claude.
+   - Always assume I am running commands from the ROOT of the repo.
+
+# COST OPTIMIZATION STRATEGY:
+- ROUTINE CHATTER: Use 'claude-3-5-haiku-20241022'
+- CRITICAL LOGIC: Use 'claude-opus-4-5-20251101' (New Flagship)
+
+# SECURITY REVIEW REQUIREMENTS:
+ALWAYS review code for:
+- SQL Injection (ensure parameterized queries)
+- XSS (ensure proper sanitization)
+- IDOR (verify user permissions on data access)
+If you see insecure patterns, flag them immediately.
+

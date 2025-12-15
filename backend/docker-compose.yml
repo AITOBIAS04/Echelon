@@ -1,0 +1,159 @@
+# Project Seed - Docker Compose Configuration
+# ============================================
+# Run: docker-compose up --build
+# Stop: docker-compose down
+# Logs: docker-compose logs -f
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # BACKEND API
+  # ==========================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: project-seed-backend
+    ports:
+      - "8000:8000"
+    
+    # Environment variables
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DATABASE_URL=sqlite:///./database.db
+      # API Keys loaded from .env file
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GNEWS_API_KEY=${GNEWS_API_KEY}
+      - NEWSAPI_API_KEY=${NEWSAPI_API_KEY}
+      - NEWSDATA_API_KEY=${NEWSDATA_API_KEY}
+      - THENEWSAPI_API_KEY=${THENEWSAPI_API_KEY}
+      - MARKETAUX_API_KEY=${MARKETAUX_API_KEY}
+      - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY}
+      - CRYPTOCOMPARE_API_KEY=${CRYPTOCOMPARE_API_KEY}
+      - FOOTBALL_DATA_API_KEY=${FOOTBALL_DATA_API_KEY}
+      - API_SPORTS_API_KEY=${API_SPORTS_API_KEY}
+      - THESPORTSDB_API_KEY=${THESPORTSDB_API_KEY}
+      # Blockchain (optional)
+      - RPC_URL=${RPC_URL}
+      - PRIVATE_KEY=${PRIVATE_KEY}
+      - CONTRACT_ADDRESS=${CONTRACT_ADDRESS}
+    
+    # Volume mounts for persistence
+    volumes:
+      # Persist simulation data (markets, economy, timelines)
+      - ../data:/app/data
+      # Persist SQLite database
+      - ./database.db:/app/database.db
+      # Mount .env file (read-only)
+      - ./.env:/app/.env:ro
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Resource limits (optional, adjust as needed)
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+
+  # ==========================================================================
+  # FRONTEND (Optional - use profile to enable)
+  # ==========================================================================
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    container_name: project-seed-frontend
+    ports:
+      - "3000:3000"
+    
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    
+    depends_on:
+      backend:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    restart: unless-stopped
+    
+    # Use profile to optionally include
+    profiles:
+      - frontend
+      - full
+
+  # ==========================================================================
+  # SCHEDULER (Optional - runs simulation ticks)
+  # ==========================================================================
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: project-seed-scheduler
+    command: python -m backend.simulation.scheduler
+    
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GNEWS_API_KEY=${GNEWS_API_KEY}
+      - NEWSAPI_API_KEY=${NEWSAPI_API_KEY}
+      - NEWSDATA_API_KEY=${NEWSDATA_API_KEY}
+      - THENEWSAPI_API_KEY=${THENEWSAPI_API_KEY}
+      - MARKETAUX_API_KEY=${MARKETAUX_API_KEY}
+      - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY}
+      - CRYPTOCOMPARE_API_KEY=${CRYPTOCOMPARE_API_KEY}
+      - FOOTBALL_DATA_API_KEY=${FOOTBALL_DATA_API_KEY}
+      - API_SPORTS_API_KEY=${API_SPORTS_API_KEY}
+      - THESPORTSDB_API_KEY=${THESPORTSDB_API_KEY}
+    
+    volumes:
+      - ../data:/app/data
+      - ./database.db:/app/database.db
+      - ./.env:/app/.env:ro
+    
+    depends_on:
+      backend:
+        condition: service_healthy
+    
+    restart: unless-stopped
+    
+    # Don't start by default (use --profile scheduler to include)
+    profiles:
+      - scheduler
+      - full
+
+# ==========================================================================
+# NETWORKS
+# ==========================================================================
+networks:
+  default:
+    name: project-seed-network
+
+# ==========================================================================
+# VOLUMES (named volumes for better management)
+# ==========================================================================
+volumes:
+  seed-data:
+    driver: local

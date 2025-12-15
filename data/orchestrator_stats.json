@@ -1,0 +1,12 @@
+{
+  "_meta": {
+    "saved_at": "2025-12-15T19:44:41.298494+00:00",
+    "state_name": "stats",
+    "version": "1.0"
+  },
+  "data": {
+    "events_processed": 0,
+    "markets_created": 225299,
+    "markets_auto_created": 0
+  }
+}

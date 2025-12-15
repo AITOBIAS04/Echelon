@@ -1,0 +1,9 @@
+# Uvicorn watch ignore patterns
+.venv.old
+.venv.old/**
+__pycache__
+*.pyc
+*.pyo
+*.db
+node_modules
+
