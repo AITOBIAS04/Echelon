@@ -1,12 +1,20 @@
 {
   "_meta": {
+<<<<<<< HEAD
     "saved_at": "2025-12-15T19:44:41.298494+00:00",
+=======
+    "saved_at": "2025-12-02T23:31:05.377367+00:00",
+>>>>>>> origin/main
     "state_name": "stats",
     "version": "1.0"
   },
   "data": {
     "events_processed": 0,
+<<<<<<< HEAD
     "markets_created": 225299,
+=======
+    "markets_created": 84359,
+>>>>>>> origin/main
     "markets_auto_created": 0
   }
 }

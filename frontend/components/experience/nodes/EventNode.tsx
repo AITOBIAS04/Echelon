@@ -81,4 +81,7 @@ export default function EventNode({ data, selected }: EventNodeProps) {
 }
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

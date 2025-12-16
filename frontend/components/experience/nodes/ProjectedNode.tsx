@@ -46,4 +46,7 @@ export default function ProjectedNode({ data, selected }: ProjectedNodeProps) {
 }
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main

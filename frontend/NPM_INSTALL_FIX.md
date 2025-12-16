@@ -93,4 +93,7 @@ npm install @xyflow/react
 The NetworkGraph component will work once `@xyflow/react` is installed. Until then, you may see import errors, but the rest of the Situation Room integration should work fine.
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
