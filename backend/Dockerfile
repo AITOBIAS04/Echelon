@@ -52,10 +52,10 @@ ENV PYTHONUNBUFFERED=1 \
 # Expose port
 EXPOSE 8000
 
-# Health check
+# Health check - use the PORT env var
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
+    CMD python -c "import os; import requests; requests.get(f'http://localhost:{os.environ.get(\"PORT\", 8000)}/health')" || exit 1
 
-# Start command
-CMD ["./start.sh"]
+# Start command - shell form to expand $PORT
+CMD python -m uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}
 
