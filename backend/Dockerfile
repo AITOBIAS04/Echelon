@@ -31,6 +31,10 @@ RUN pip install --no-cache /wheels/*
 # Copy application code
 COPY . .
 
+# Create symlink so 'from backend.X' imports work
+# (Railway copies backend/* to /app/*, but code expects backend/ prefix)
+RUN ln -s /app /app/backend
+
 # Create data directories
 RUN mkdir -p data data/backups data/snapshots && \
     chown -R app:app /app
@@ -41,7 +45,7 @@ USER app
 # Environment
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH=/app \
+    PYTHONPATH=/app:/app/backend \
     ENVIRONMENT=production \
     PORT=8000
 

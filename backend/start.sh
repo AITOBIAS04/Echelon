@@ -7,6 +7,9 @@ set -e
 
 echo "🌱 Starting Project Seed Backend..."
 
+# Ensure PYTHONPATH includes current directory for backend imports
+export PYTHONPATH="${PYTHONPATH}:/app"
+
 # Create data directory if it doesn't exist
 mkdir -p data
 mkdir -p data/backups
@@ -28,9 +31,12 @@ fi
 # Initialize database tables
 echo "🗄️  Initializing database..."
 python -c "
-from backend.core.database import engine, Base
-Base.metadata.create_all(bind=engine)
-print('✅ Database tables created')
+try:
+    from backend.core.database import engine, Base
+    Base.metadata.create_all(bind=engine)
+    print('✅ Database tables created')
+except Exception as e:
+    print(f'⚠️  Database init skipped: {e}')
 "
 
 # Start the server
