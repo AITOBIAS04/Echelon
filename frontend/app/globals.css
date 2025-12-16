@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #05050a; /* Deep Space Black */
+  --foreground: #eef2ff; /* Ice White */
+  --synapse-purple: #ac58ff;
+  --synapse-blue: #4f46e5;
+  --synapse-glow: rgba(172, 88, 255, 0.5);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+@layer utilities {
+  /* 1. The Nebula Background Animation */
+  .nebula-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    background: 
+      radial-gradient(circle at 50% 50%, rgba(79, 70, 229, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(172, 88, 255, 0.15) 0%, transparent 30%);
+    filter: blur(60px);
+    animation: pulse-nebula 10s ease-in-out infinite alternate;
+  }
+
+  @keyframes pulse-nebula {
+    0% { opacity: 0.5; transform: scale(1); }
+    100% { opacity: 0.8; transform: scale(1.1); }
+  }
+
+  /* 2. Synapse Glass Card Style */
+  .glass-panel {
+    background: rgba(13, 13, 20, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  }
+  
+  .glass-panel:hover {
+    border-color: rgba(172, 88, 255, 0.3);
+    box-shadow: 0 0 20px rgba(172, 88, 255, 0.15);
+  }
+
+  /* 3. Glowing Text */
+  .glow-text {
+    text-shadow: 0 0 20px rgba(172, 88, 255, 0.6);
+  }
+
+  /* 4. Fade In Animation */
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out forwards;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* 5. Shimmer Animation for DataReveal */
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      opacity: 0.3;
+      transform: translateX(-100%);
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 0.3;
+      transform: translateX(100%);
+    }
+  }
+
+  /* 6. Slide In Animation for LiveFeed */
+  .animate-slideIn {
+    animation: slideIn 0.3s ease-out forwards;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* 7. Fade In for DataCard */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #05050a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
