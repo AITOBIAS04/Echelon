@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
-import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 
-contract PredictionMarket is VRFConsumerBaseV2Plus {
+contract PredictionMarket is VRFConsumerBaseV2 {
     // --- VRF Configuration (Sepolia Testnet) ---
-    // These are the official addresses for Chainlink VRF 2.5 on Sepolia
+    // Using VRF V2 (compatible with Chainlink contracts 0.8.0)
+    VRFCoordinatorV2Interface COORDINATOR;
     uint256 s_subscriptionId;
-    address vrfCoordinator = 0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE;
-    bytes32 s_keyHash = 0x9e1344a1247c8a1785d0a4681a27152bffdb43666ae5bf7d14d24a5efd44bf71;
+    address vrfCoordinator = 0x8103B0A8A00be2DDC778e6e7eaa21791Cd364625; // VRF V2 Coordinator
+    bytes32 s_keyHash = 0x474e34a077df58807dbe9c96d3c009b23b3c6d0cce433e59bbf5b34f823bc56c; // VRF V2 Key Hash
     uint32 callbackGasLimit = 500000;
     uint16 requestConfirmations = 3;
     uint32 numWords = 1;
@@ -40,7 +41,8 @@ contract PredictionMarket is VRFConsumerBaseV2Plus {
     event BetPlaced(uint256 indexed marketId, address user, string outcome, uint256 amount);
     event MarketResolved(uint256 indexed marketId, string outcome);
 
-    constructor(uint256 subscriptionId) VRFConsumerBaseV2Plus(vrfCoordinator) {
+    constructor(uint256 subscriptionId) VRFConsumerBaseV2(vrfCoordinator) {
+        COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
         s_subscriptionId = subscriptionId;
     }
 
@@ -78,30 +80,25 @@ contract PredictionMarket is VRFConsumerBaseV2Plus {
     }
 
     // 3. Resolve Market (Calls Chainlink VRF)
-    function resolveMarket(uint256 _marketId) external onlyOwner {
+    function resolveMarket(uint256 _marketId) external {
         Market storage market = markets[_marketId];
         require(!market.resolved, "Already resolved");
         // In a real app, you'd check (block.timestamp >= market.endTime) here
 
-        // Request Randomness from Chainlink
-        uint256 requestId = s_vrfCoordinator.requestRandomWords(
-            VRFV2PlusClient.RandomWordsRequest({
-                keyHash: s_keyHash,
-                subId: s_subscriptionId,
-                requestConfirmations: requestConfirmations,
-                callbackGasLimit: callbackGasLimit,
-                numWords: numWords,
-                extraArgs: VRFV2PlusClient._argsToBytes(
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
-                )
-            })
+        // Request Randomness from Chainlink VRF V2
+        uint256 requestId = COORDINATOR.requestRandomWords(
+            s_keyHash,
+            uint64(s_subscriptionId),
+            requestConfirmations,
+            callbackGasLimit,
+            numWords
         );
         
         requestIdToMarketId[requestId] = _marketId;
     }
 
     // 4. Chainlink Callback (The "Truth")
-    function fulfillRandomWords(uint256 requestId, uint256[] calldata randomWords) internal override {
+    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
         uint256 marketId = requestIdToMarketId[requestId];
         Market storage market = markets[marketId];
         

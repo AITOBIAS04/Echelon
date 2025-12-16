@@ -1295,10 +1295,24 @@ class SituationRoomEngine:
     
     def get_state_snapshot(self) -> Dict[str, Any]:
         """Get a snapshot of current game state"""
-        # Get recent signals (convert to dicts for JSON serialization)
-        recent_signals = [
-            s.to_dict() for s in list(self.processed_signals.values())[-10:]
-        ]
+        # Get recent signals from OSINT registry (prioritize OSINT over processed_signals)
+        recent_signals = []
+        try:
+            from backend.core.osint_registry import get_osint_registry
+            osint_registry = get_osint_registry()
+            # Get top 20 most recent/important signals from OSINT
+            top_signals = sorted(
+                osint_registry.active_signals,
+                key=lambda s: (s.level * s.confidence, s.timestamp),
+                reverse=True
+            )[:20]
+            recent_signals = [s.to_dict() for s in top_signals]
+        except Exception as e:
+            print(f"⚠️ Error fetching OSINT signals in get_state_snapshot: {e}")
+            # Fallback to processed_signals if OSINT fails
+            recent_signals = [
+                s.to_dict() for s in list(self.processed_signals.values())[-10:]
+            ]
         
         return {
             "tick": self.tick_count,

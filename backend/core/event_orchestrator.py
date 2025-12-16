@@ -240,11 +240,28 @@ class BettingMarket:
     outcomes: List[str] = field(default_factory=list)
     outcome_odds: Dict[str, float] = field(default_factory=dict)
     
+    # CPMM liquidity tracking
+    yes_shares: float = 1000.0  # Initial liquidity for YES
+    no_shares: float = 1000.0   # Initial liquidity for NO
+    
     winning_outcome: Optional[str] = None
     virality_score: float = 0.0
     source_event: Optional[RawEvent] = None
     
+    def recalculate_odds_from_cpmm(self):
+        """Recalculate odds from CPMM liquidity state."""
+        from backend.core.cpmm import CPMMState
+        state = CPMMState(yes_shares=self.yes_shares, no_shares=self.no_shares)
+        self.outcome_odds = state.get_all_prices()
+        # Normalize to ensure YES + NO = 1.0
+        total = sum(self.outcome_odds.values())
+        if total > 0:
+            for outcome in self.outcome_odds:
+                self.outcome_odds[outcome] = self.outcome_odds[outcome] / total
+    
     def to_dict(self) -> Dict:
+        # Ensure odds are up-to-date with liquidity
+        self.recalculate_odds_from_cpmm()
         return {
             "id": self.id,
             "event_id": self.event_id,
@@ -259,6 +276,8 @@ class BettingMarket:
             "outcomes": self.outcomes,
             "outcome_odds": self.outcome_odds,
             "virality_score": self.virality_score,
+            "yes_shares": self.yes_shares,
+            "no_shares": self.no_shares,
         }
 
 
@@ -1201,6 +1220,8 @@ class EventOrchestrator:
         
         market_id = f"MKT_{event.id}_{duration.value}"
         
+        # Initialize with CPMM: equal liquidity for YES and NO
+        initial_liquidity = 1000.0
         market = BettingMarket(
             id=market_id,
             event_id=event.id,
@@ -1210,10 +1231,14 @@ class EventOrchestrator:
             duration=duration,
             expires_at=expires_at,
             outcomes=["YES", "NO"],
-            outcome_odds={"YES": 0.5, "NO": 0.5},
+            outcome_odds={"YES": 0.5, "NO": 0.5},  # Initial 50/50 odds
+            yes_shares=initial_liquidity,
+            no_shares=initial_liquidity,
             virality_score=event.virality_score,
             source_event=event,
         )
+        # Ensure odds match CPMM state
+        market.recalculate_odds_from_cpmm()
         
         self.markets[market_id] = market
         self.stats["markets_created"] += 1
@@ -1284,10 +1309,14 @@ class EventOrchestrator:
                 "outcome_odds": market.outcome_odds,
                 "total_volume": market.total_volume,
                 "virality_score": market.virality_score,
+                # CRITICAL: Save CPMM state
+                "yes_shares": getattr(market, "yes_shares", 1000.0),
+                "no_shares": getattr(market, "no_shares", 1000.0),
             }
         
         self.persistence.save("markets", markets_data)
         self.persistence.save("stats", self.stats)
+        print(f"💾 Saved {len(markets_data)} markets to disk (including CPMM state)")
     
     def _load_markets_state(self):
         """Load markets from disk and restore BettingMarket objects."""
@@ -1318,9 +1347,13 @@ class EventOrchestrator:
                     outcomes=market_dict.get("outcomes", ["YES", "NO"]),
                     outcome_odds=market_dict.get("outcome_odds", {"YES": 0.5, "NO": 0.5}),
                     total_volume=market_dict.get("total_volume", 0.0),
+                    yes_shares=market_dict.get("yes_shares", 1000.0),
+                    no_shares=market_dict.get("no_shares", 1000.0),
                     virality_score=market_dict.get("virality_score", 0.0),
                     source_event=None,  # Source event not saved, can be None
                 )
+                # Recalculate odds from CPMM state
+                market.recalculate_odds_from_cpmm()
                 self.markets[market_id] = market
             except Exception as e:
                 print(f"⚠️ Failed to restore market {market_id}: {e}")

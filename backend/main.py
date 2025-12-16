@@ -4,18 +4,31 @@ import subprocess
 import re 
 import os
 import sys 
-from fastapi import FastAPI, Depends, HTTPException, status, Header
+from fastapi import FastAPI, Depends, HTTPException, status, Header, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm 
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from passlib.context import CryptContext
-from pydantic import BaseModel, ConfigDict
-from typing import Annotated 
+from pydantic import BaseModel, ConfigDict, Field, validator
+from typing import Annotated, Dict, Optional
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 
 # Import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+
+# Import Security utilities
+from backend.core.security import (
+    limiter,
+    RATE_LIMITS,
+    WalletAddressValidator,
+    BetAmountValidator,
+    StringSanitizer,
+    get_client_ip,
+)
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.extension import _rate_limit_exceeded_handler
 
 # --- IMPORTS ---
 from backend.core.database import SessionLocal, engine, Base, User as DBUser
@@ -27,27 +40,88 @@ from backend.core.autouploader import AutoUploadConfig
 # Payments Router
 from backend.payments.routes import router as payments_router
 
-# Situation Room Router
+# Situation Room Router (existing) - DISABLED: Using new API instead
+# try:
+#     from backend.api.situation_room_routes import router as situation_room_router
+# except ImportError:
+#     situation_room_router = None
+situation_room_router = None  # Disabled - using new API
+
+# New Situation Room API (simplified)
 try:
-    from backend.api.situation_room_routes import router as situation_room_router
+    from backend.api.situation_room import router as situation_room_api_router
+except ImportError as e:
+    situation_room_api_router = None
+    print(f"⚠️ Could not import Situation Room API router: {e}")
+
+# Markets API
+try:
+    from backend.api.markets import router as markets_router
 except ImportError:
-    situation_room_router = None
+    markets_router = None
+
+# Operations API (Butler + Situation Room)
+try:
+    from backend.api.operations import router as operations_router
+except ImportError as e:
+    operations_router = None
+    print(f"⚠️ Could not import Operations API router: {e}")
+
+# Butler Webhooks API
+try:
+    from backend.api.butler_webhooks import router as butler_router
+except ImportError as e:
+    butler_router = None
+    print(f"⚠️ Could not import Butler API router: {e}")
+
+# Scheduler API
+try:
+    from backend.api.scheduler_api import router as scheduler_router
+except ImportError as e:
+    scheduler_router = None
+    print(f"⚠️ Could not import Scheduler API router: {e}")
 
 # Initialize
 osint = get_osint_registry()
 
 # --- CONFIGURATION ---
 
+# Ensure database tables are created
 Base.metadata.create_all(bind=engine)
+print("✅ Database tables initialized")
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") 
 
-SECRET_KEY = "a_very_secret_key_for_jwt_replace_this"
+# Security: Load JWT secret from environment variable
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    # In production, this should raise an error
+    SECRET_KEY = os.getenv("SECRET_KEY", "a_very_secret_key_for_jwt_replace_this")
+    if SECRET_KEY == "a_very_secret_key_for_jwt_replace_this":
+        # Only warn in production or if explicitly enabled
+        is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
+        if is_production:
+            raise ValueError(
+                "❌ CRITICAL: JWT_SECRET_KEY must be set in production! "
+                "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+            )
+        # In development, show a one-time warning (less verbose)
+        import sys
+        if not hasattr(sys, '_jwt_warning_shown'):
+            print("⚠️  WARNING: Using default JWT secret key (development only).")
+            print("   Set JWT_SECRET_KEY in .env for production.")
+            sys._jwt_warning_shown = True
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 app = FastAPI()
+
+# --- RATE LIMITING MIDDLEWARE ---
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # --- CORS MIDDLEWARE ---
 origins = [
@@ -75,15 +149,64 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
-# Include Situation Room router if available
+# Include new Situation Room API router (replaces old router)
 try:
-    if situation_room_router:
-        app.include_router(situation_room_router)
-        print("✅ Situation Room router included")
+    if situation_room_api_router:
+        app.include_router(situation_room_api_router)
+        print("✅ Situation Room API router included")
+        # Background tasks will start automatically via @router.on_event("startup")
     else:
-        print("⚠️ Situation Room router is None, skipping")
+        print("⚠️ Situation Room API router is None, skipping")
 except Exception as e:
-    print(f"❌ Failed to include Situation Room router: {e}")
+    print(f"❌ Failed to include Situation Room API router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Markets router
+try:
+    if markets_router:
+        app.include_router(markets_router)
+        print("✅ Markets router included")
+    else:
+        print("⚠️ Markets router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Markets router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Operations router (Butler + Situation Room)
+try:
+    if operations_router:
+        app.include_router(operations_router)
+        print("✅ Operations router included")
+    else:
+        print("⚠️ Operations router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Operations router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Butler Webhooks router
+try:
+    if butler_router:
+        app.include_router(butler_router)
+        print("✅ Butler webhooks router included")
+    else:
+        print("⚠️ Butler router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Butler router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Scheduler router
+try:
+    if scheduler_router:
+        app.include_router(scheduler_router)
+        print("✅ Scheduler router included")
+    else:
+        print("⚠️ Scheduler router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Scheduler router: {e}")
     import traceback
     traceback.print_exc()
 
@@ -112,9 +235,19 @@ class TokenData(BaseModel):
     username: str | None = None
 
 class BetRequest(BaseModel):
-    client_seed: str
-    wager: float
-    engine_name: str
+    client_seed: str = Field(..., min_length=1, max_length=100)
+    wager: float = Field(..., gt=0, le=100000.0)
+    engine_name: str = Field(..., min_length=1, max_length=50)
+    
+    @validator('client_seed')
+    def validate_client_seed(cls, v):
+        """Validate client_seed for subprocess safety."""
+        return StringSanitizer.validate_client_seed(v)
+    
+    @validator('wager')
+    def validate_wager(cls, v):
+        """Validate wager amount."""
+        return BetAmountValidator.validate(v)
 
 class MatchResult(BaseModel):
     message: str
@@ -316,8 +449,21 @@ class MarketResponse(BaseModel):
 
 
 class BetPlacement(BaseModel):
-    outcome: str
-    amount: float
+    outcome: str = Field(..., min_length=1, max_length=10)
+    amount: float = Field(..., gt=0, le=100000.0)
+    
+    @validator('outcome')
+    def validate_outcome(cls, v):
+        """Validate outcome is YES or NO."""
+        v = v.upper().strip()
+        if v not in ['YES', 'NO']:
+            raise ValueError("Outcome must be 'YES' or 'NO'")
+        return v
+    
+    @validator('amount')
+    def validate_amount(cls, v):
+        """Validate bet amount."""
+        return BetAmountValidator.validate(v)
 
 
 class MarketBetResponse(BaseModel):
@@ -344,7 +490,9 @@ def get_orchestrator():
 
 
 @app.get("/markets", response_model=dict)
+@limiter.limit(RATE_LIMITS["general"])
 async def list_markets(
+    request: Request,
     status: str = None,
     domain: str = None,
     duration: str = None,
@@ -364,6 +512,19 @@ async def list_markets(
         markets.sort(key=lambda m: m.virality_score, reverse=True)
         markets = markets[:limit]
 
+        # Recalculate odds from CPMM before returning
+        for m in markets:
+            m.recalculate_odds_from_cpmm()
+        
+        # DEBUG: Log sample market's CPMM state
+        if markets and len(markets) > 0:
+            sample = markets[0]
+            print(f"🔍 [MARKETS DEBUG] Sample market {sample.id}:")
+            print(f"   yes_shares: {sample.yes_shares}")
+            print(f"   no_shares: {sample.no_shares}")
+            print(f"   outcome_odds: {sample.outcome_odds}")
+            print(f"   total_volume: {sample.total_volume}")
+
         return {
             "markets": [
                 {
@@ -376,9 +537,12 @@ async def list_markets(
                     "created_at": m.created_at.isoformat(),
                     "expires_at": m.expires_at.isoformat() if m.expires_at else None,
                     "outcomes": m.outcomes,
-                    "outcome_odds": m.outcome_odds,
+                    "outcome_odds": m.outcome_odds,  # Now recalculated from CPMM
                     "total_volume": m.total_volume,
                     "virality_score": m.virality_score,
+                    # Include CPMM state for debugging
+                    "yes_shares": m.yes_shares,
+                    "no_shares": m.no_shares,
                 }
                 for m in markets
             ],
@@ -390,6 +554,75 @@ async def list_markets(
             "markets": [],
             "total": 0,
             "filtered": 0,
+            "error": str(e)
+        }
+
+
+@app.get("/markets/trending", response_model=dict)
+async def get_trending_markets(limit: int = 3):
+    """
+    Get trending markets sorted by 24h volume.
+    Returns unique markets (no duplicates) sorted by total_volume descending.
+    """
+    try:
+        orchestrator = get_orchestrator()
+        markets = list(orchestrator.markets.values())
+        
+        # Filter only OPEN markets
+        open_markets = [m for m in markets if m.status.upper() == "OPEN"]
+        
+        # Remove duplicates by market title (normalized)
+        seen_titles = set()
+        unique_markets = []
+        for market in open_markets:
+            # Normalize title for comparison (lowercase, remove special chars)
+            normalized_title = market.title.lower().strip()
+            if normalized_title not in seen_titles:
+                seen_titles.add(normalized_title)
+                unique_markets.append(market)
+        
+        # Sort by total_volume (descending), then by virality_score as tiebreaker
+        unique_markets.sort(
+            key=lambda m: (m.total_volume, m.virality_score),
+            reverse=True
+        )
+        
+        # Take top N markets
+        trending = unique_markets[:limit]
+        
+        # Recalculate odds from CPMM before returning
+        for m in trending:
+            m.recalculate_odds_from_cpmm()
+        
+        return {
+            "markets": [
+                {
+                    "id": m.id,
+                    "title": m.title,
+                    "description": m.description,
+                    "domain": m.domain.value,
+                    "duration": m.duration.value,
+                    "status": m.status,
+                    "created_at": m.created_at.isoformat(),
+                    "expires_at": m.expires_at.isoformat() if m.expires_at else None,
+                    "outcomes": m.outcomes,
+                    "outcome_odds": m.outcome_odds,  # Now recalculated from CPMM
+                    "total_volume": m.total_volume,
+                    "virality_score": m.virality_score,
+                    # Include CPMM state for debugging
+                    "yes_shares": m.yes_shares,
+                    "no_shares": m.no_shares,
+                }
+                for m in trending
+            ],
+            "total": len(trending),
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "markets": [],
+            "total": 0,
             "error": str(e)
         }
 
@@ -440,6 +673,9 @@ async def get_market(market_id: str):
 
         m = orchestrator.markets[market_id]
         agents = orchestrator.dispatcher.active_agents.get(market_id, [])
+        
+        # Recalculate odds from CPMM before returning
+        m.recalculate_odds_from_cpmm()
 
         return {
             "id": m.id,
@@ -452,7 +688,9 @@ async def get_market(market_id: str):
             "created_at": m.created_at.isoformat(),
             "expires_at": m.expires_at.isoformat() if m.expires_at else None,
             "outcomes": m.outcomes,
-            "outcome_odds": m.outcome_odds,
+            "outcome_odds": m.outcome_odds,  # Now recalculated from CPMM
+            "yes_shares": m.yes_shares,
+            "no_shares": m.no_shares,
             "total_volume": m.total_volume,
             "virality_score": m.virality_score,
             "active_agents": len(agents),
@@ -509,14 +747,87 @@ async def create_market(market: MarketCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def get_user_or_wallet(
+    token: Optional[str] = Header(None, alias="Authorization"),
+    wallet_address: Optional[str] = Header(None, alias="X-Wallet-Address"),
+    db: Session = Depends(get_db)
+):
+    """Get user from JWT token OR wallet address."""
+    try:
+        print(f"🔍 [AUTH] get_user_or_wallet called - token: {bool(token)}, wallet: {wallet_address}")
+        
+        # Try JWT authentication first
+        if token and token.startswith("Bearer "):
+            try:
+                token_value = token.replace("Bearer ", "")
+                payload = jwt.decode(token_value, SECRET_KEY, algorithms=[ALGORITHM])
+                username: str = payload.get("sub")
+                if username:
+                    user = db.query(DBUser).filter(DBUser.username == username).first()
+                    if user:
+                        print(f"🔍 [AUTH] Found user via JWT: {user.username}")
+                        return user
+            except (JWTError, Exception) as e:
+                print(f"🔍 [AUTH] JWT auth failed: {e}")
+                pass  # Fall through to wallet auth
+        
+        # Try wallet address authentication
+        if wallet_address:
+            wallet_addr_lower = wallet_address.lower()
+            print(f"🔍 [AUTH] Looking up wallet: {wallet_addr_lower}")
+            # Find or create user by wallet address
+            user = db.query(DBUser).filter(DBUser.wallet_address == wallet_addr_lower).first()
+            if not user:
+                print(f"🔍 [AUTH] Creating new user for wallet: {wallet_addr_lower}")
+                # Create a new user for this wallet address
+                user = DBUser(
+                    username=f"wallet_{wallet_addr_lower[:8]}",
+                    email=f"{wallet_addr_lower[:8]}@wallet.local",
+                    hashed_password="",  # No password for wallet users
+                    wallet_address=wallet_addr_lower,
+                    play_money_balance=1000.0  # Starting balance
+                )
+                db.add(user)
+                db.commit()
+                db.refresh(user)
+                print(f"🔍 [AUTH] Created user: {user.username}, balance: {user.play_money_balance}")
+            else:
+                print(f"🔍 [AUTH] Found existing user: {user.username}, balance: {user.play_money_balance}")
+            return user
+        
+        # No authentication provided
+        print(f"🔍 [AUTH] No authentication provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials. Provide either JWT token or wallet address.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"❌ [AUTH ERROR] Exception in get_user_or_wallet:")
+        print(f"   Error: {str(e)}")
+        print(f"   Type: {type(e).__name__}")
+        print(f"   Traceback:\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Authentication error: {str(e)}",
+        )
+
 @app.post("/markets/{market_id}/bet")
 async def place_bet(
     market_id: str,
     bet: BetPlacement,
-    current_user: Annotated[DBUser, Depends(get_current_user)],
+    current_user: Annotated[DBUser, Depends(get_user_or_wallet)],
     db: Session = Depends(get_db)
 ):
     try:
+        import traceback
+        print(f"🔍 [BET] Starting bet placement for market {market_id}")
+        print(f"🔍 [BET] User: {current_user.username}, Balance: {current_user.play_money_balance}")
+        print(f"🔍 [BET] Bet: {bet.outcome} ${bet.amount}")
+        
         orchestrator = get_orchestrator()
 
         if market_id not in orchestrator.markets:
@@ -536,23 +847,156 @@ async def place_bet(
         if current_user.play_money_balance < bet.amount:
             raise HTTPException(status_code=400, detail="Insufficient balance")
 
-        odds = market.outcome_odds.get(bet.outcome, 0.5)
-        potential_payout = bet.amount * (1 / odds) * 0.95
-
+        # Use CPMM for odds calculation
+        from backend.core.cpmm import CPMM
+        
+        # Initialize CPMM with current market liquidity
+        cpmm = CPMM(initial_liquidity=1.0)  # Will be overridden
+        cpmm.state.yes_shares = getattr(market, 'yes_shares', 1000.0)
+        cpmm.state.no_shares = getattr(market, 'no_shares', 1000.0)
+        
+        # DEBUG: Log shares BEFORE bet
+        print(f"🔍 [BET DEBUG] Market {market_id} BEFORE bet:")
+        print(f"   yes_shares: {cpmm.state.yes_shares}")
+        print(f"   no_shares: {cpmm.state.no_shares}")
+        print(f"   bet: {bet.outcome} ${bet.amount}")
+        
+        # Get current odds before trade
+        current_odds = cpmm.get_current_odds()
+        current_price = current_odds.get(bet.outcome, 0.5)
+        
+        # Execute trade through CPMM
+        shares_received, price_impact, new_odds = cpmm.execute_trade(
+            outcome=bet.outcome,
+            amount_in=bet.amount,
+            apply_fee=True
+        )
+        
+        # Calculate potential payout (shares * final price if outcome wins)
+        # For binary markets, if you win, you get: shares * (1 / final_price)
+        # Simplified: payout = bet_amount * (1 / current_price) * (1 - fee)
+        potential_payout = bet.amount * (1 / current_price) * 0.97  # 3% fee
+        
+        # Update user balance
         current_user.play_money_balance -= bet.amount
         db.commit()
         db.refresh(current_user)
 
+        # Update market state
         market.total_volume += bet.amount
+        market.yes_shares = cpmm.state.yes_shares
+        market.no_shares = cpmm.state.no_shares
+        market.outcome_odds = new_odds
+        
+        # DEBUG: Log shares AFTER bet
+        print(f"🔍 [BET DEBUG] Market {market_id} AFTER bet:")
+        print(f"   yes_shares: {market.yes_shares}")
+        print(f"   no_shares: {market.no_shares}")
+        print(f"   new_odds: {new_odds}")
+        
+        # CRITICAL: Save markets state after bet to persist CPMM state
+        orchestrator._save_markets_state()
+        
+        # Verify no-arbitrage (YES + NO should ≈ 1.0)
+        total_odds = sum(new_odds.values())
+        if abs(total_odds - 1.0) > 0.01:
+            # Normalize if slightly off due to floating point
+            for outcome in new_odds:
+                new_odds[outcome] = new_odds[outcome] / total_odds
+            market.outcome_odds = new_odds
+        
         bet_id = f"BET_{market_id}_{datetime.now().strftime('%H%M%S')}"
 
         return MarketBetResponse(
             success=True,
-            message=f"Bet placed on {bet.outcome}",
+            message=f"Bet placed on {bet.outcome}. Price impact: {price_impact:.2%}",
             bet_id=bet_id,
             new_balance=current_user.play_money_balance,
             potential_payout=round(potential_payout, 2),
         )
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"❌ [BET ERROR] Exception in place_bet:")
+        print(f"   Error: {str(e)}")
+        print(f"   Type: {type(e).__name__}")
+        print(f"   Traceback:\n{error_trace}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.get("/markets/{market_id}/quote")
+@limiter.limit(RATE_LIMITS["general"])
+async def get_market_quote(
+    request: Request,
+    market_id: str,
+    outcome: str,
+    amount: float
+):
+    """
+    Get a quote for placing a bet (price impact, shares received, new odds).
+    Useful for showing users what they'll get before placing the bet.
+    """
+    try:
+        orchestrator = get_orchestrator()
+        
+        if market_id not in orchestrator.markets:
+            raise HTTPException(status_code=404, detail=f"Market {market_id} not found")
+        
+        market = orchestrator.markets[market_id]
+        
+        if market.status != "OPEN":
+            raise HTTPException(status_code=400, detail=f"Market is {market.status}")
+        
+        if outcome not in market.outcomes:
+            raise HTTPException(status_code=400, detail=f"Invalid outcome: {outcome}")
+        
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="Amount must be positive")
+        
+        # Use CPMM to calculate quote
+        from backend.core.cpmm import CPMM
+        
+        cpmm = CPMM(initial_liquidity=1.0)
+        cpmm.state.yes_shares = getattr(market, 'yes_shares', 1000.0)
+        cpmm.state.no_shares = getattr(market, 'no_shares', 1000.0)
+        
+        # Get current odds
+        current_odds = cpmm.get_current_odds()
+        current_price = current_odds.get(outcome, 0.5)
+        
+        # Calculate what would happen if bet is placed (without executing)
+        # Create a temporary CPMM to simulate the trade
+        temp_cpmm = CPMM(initial_liquidity=1.0)
+        temp_cpmm.state.yes_shares = cpmm.state.yes_shares
+        temp_cpmm.state.no_shares = cpmm.state.no_shares
+        
+        shares_received, price_impact, new_odds = temp_cpmm.execute_trade(
+            outcome=outcome,
+            amount_in=amount,
+            apply_fee=True
+        )
+        
+        # Calculate potential payout
+        potential_payout = amount * (1 / current_price) * 0.97  # 3% fee
+        
+        return {
+            "market_id": market_id,
+            "outcome": outcome,
+            "amount": amount,
+            "current_price": round(current_price, 4),
+            "current_odds": {k: round(v, 4) for k, v in current_odds.items()},
+            "shares_received": round(shares_received, 2),
+            "price_impact": round(price_impact, 4),
+            "new_odds": {k: round(v, 4) for k, v in new_odds.items()},
+            "potential_payout": round(potential_payout, 2),
+            "fee": round(amount * 0.03, 2),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     except HTTPException:
         raise
     except Exception as e:
@@ -589,25 +1033,74 @@ async def get_timeline_detail(timeline_id: str):
 
     try:
         tm = TimelineManager()
-        timeline = tm.get_timeline(timeline_id)
+        all_timelines = tm.list_timelines()
+        
+        # Handle special case: "REALITY" is the master timeline
+        if timeline_id.upper() == "REALITY":
+            # Find the master timeline (status='master' or no parent_id)
+            master_timeline = None
+            for t in all_timelines:
+                if t.status.value == "master" or (t.parent_id is None and t.id != "REALITY"):
+                    master_timeline = t
+                    break
+            
+            # If no master found, create a mock reality timeline
+            if not master_timeline:
+                children = [t for t in all_timelines if t.parent_id is None]
+                return {
+                    "id": "REALITY",
+                    "label": "Master Reality",
+                    "status": "master",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "parent_id": None,
+                    "fork_reason": None,
+                    "matchday": None,
+                    "tick": 0,
+                    "children": [
+                        {
+                            "id": c.id,
+                            "label": c.label,
+                            "status": c.status.value,
+                            "fork_reason": c.fork_reason,
+                        }
+                        for c in children
+                    ],
+                    "has_snapshot_data": False,
+                }
+            
+            timeline_id = master_timeline.id
+        
+        # Find timeline by ID
+        timeline = None
+        for t in all_timelines:
+            if t.id == timeline_id:
+                timeline = t
+                break
 
         if not timeline:
             raise HTTPException(status_code=404, detail=f"Timeline {timeline_id} not found")
 
-        all_timelines = tm.list_timelines()
         children = [t for t in all_timelines if t.parent_id == timeline_id]
 
         snapshot_data = None
         try:
-            snapshot_data = tm.load_snapshot(timeline_id)
+            snapshot_data = tm.load_state(timeline_id, "world_state.json")
         except Exception:
             snapshot_data = None
 
+        # Safely serialize created_at
+        created_at_str = timeline.created_at
+        if not isinstance(created_at_str, str):
+            if hasattr(timeline.created_at, 'isoformat'):
+                created_at_str = timeline.created_at.isoformat()
+            else:
+                created_at_str = str(timeline.created_at)
+        
         return {
             "id": timeline.id,
             "label": timeline.label,
             "status": timeline.status.value,
-            "created_at": timeline.created_at,
+            "created_at": created_at_str,
             "parent_id": timeline.parent_id,
             "fork_reason": timeline.fork_reason,
             "matchday": timeline.matchday,
@@ -626,6 +1119,8 @@ async def get_timeline_detail(timeline_id: str):
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -745,17 +1240,43 @@ async def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 @app.post("/token")
+@limiter.limit(RATE_LIMITS["auth"])
 async def login_for_access_token(
+    request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Session = Depends(get_db)
 ):
+    print(f"🔍 [AUTH] Login attempt for username: {form_data.username}")
+    
     user = db.query(DBUser).filter(DBUser.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
+    
+    if not user:
+        print(f"❌ [AUTH] User '{form_data.username}' not found")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Check if user has a password (wallet users have empty hashed_password)
+    if not user.hashed_password or user.hashed_password == "":
+        print(f"❌ [AUTH] User '{form_data.username}' is a wallet-only user (no password set)")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This account uses wallet authentication. Please connect your wallet instead.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Verify password
+    if not verify_password(form_data.password, user.hashed_password):
+        print(f"❌ [AUTH] Incorrect password for user '{form_data.username}'")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    print(f"✅ [AUTH] Login successful for user '{form_data.username}'")
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
@@ -765,6 +1286,42 @@ async def login_for_access_token(
 @app.get("/users/me", response_model=User)
 async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
     return current_user
+
+
+@app.get("/users/me/simulations")
+async def get_user_simulations(current_user: Annotated[DBUser, Depends(get_current_user)]):
+    """Get user's active simulations/timeline forks."""
+    try:
+        from backend.simulation.timeline_manager import TimelineManager
+        tm = TimelineManager()
+        
+        # Get all timelines and filter for user's forks
+        # For now, return all active forks (in production, filter by user_id)
+        all_timelines = tm.list_timelines()
+        active_forks = [
+            {
+                "id": t.id,
+                "label": t.label,
+                "status": t.status.value,
+                "created_at": t.created_at.isoformat() if hasattr(t.created_at, 'isoformat') else str(t.created_at),
+                "fork_reason": t.fork_reason,
+                "parent_id": t.parent_id,
+            }
+            for t in all_timelines
+            if t.status.value == "active" and t.parent_id is not None
+        ]
+        
+        return {
+            "simulations": active_forks,
+            "total": len(active_forks),
+        }
+    except Exception as e:
+        # Return empty list on error
+        return {
+            "simulations": [],
+            "total": 0,
+            "error": str(e)
+        }
 
 @app.post("/play-match/", response_model=MatchResult)
 async def play_match(
@@ -865,11 +1422,19 @@ async def play_match(
 
     elif bet.engine_name == "chess":
         if game_result == "1-0":
+            # White wins - user wins
             current_user.play_money_balance += bet.wager
             message = "You bet on White and won!"
-        else:
+        elif game_result == "0-1":
+            # Black wins - user loses
             current_user.play_money_balance -= bet.wager
-            message = f"You bet on White, but the result was {game_result}. You lost."
+            message = "You bet on White, but Black won. You lost."
+        elif game_result == "1/2-1/2":
+            # Draw - return stake (push)
+            message = "The game was a draw. Your stake is returned."
+        else:
+            # Unknown result - return stake to be safe
+            message = f"Unexpected game result: {game_result}. Your stake is returned."
 
     elif bet.engine_name == "football":
         # Football: HOME_WIN, AWAY_WIN, DRAW
@@ -981,6 +1546,137 @@ async def osint_missions(domain: str):
     """Get active missions for a specific domain."""
     missions = osint.generate_domain_missions(domain)
     return {"missions": [m.to_dict() for m in missions]}
+
+
+# =============================================================================
+# HANDLER API (AI-Assisted Trading Guidance)
+# =============================================================================
+
+class HandlerChatRequest(BaseModel):
+    message: str
+    handler_id: str = "control"
+    wallet_address: Optional[str] = None
+
+
+@app.post("/api/handler/chat")
+async def handler_chat(request: HandlerChatRequest):
+    """
+    Chat endpoint for handler AI assistance.
+    
+    Args:
+        request: HandlerChatRequest with message, handler_id, wallet_address
+        
+    Returns:
+        Handler's response
+    """
+    try:
+        from backend.agents.handler_brain import generate_handler_response
+        
+        # Get handler personality (for now, use default)
+        # TODO: Load from database or config
+        default_personality = """You are CONTROL, a senior intelligence analyst at Echelon.
+
+TONE: Professional, measured, occasionally dry wit.
+STYLE: Lead with assessment, then supporting data, then recommendation.
+FORMAT: Keep responses concise (2-4 sentences). Use trading terminology.
+
+NEVER:
+- Use emojis
+- Be overly casual
+- Give financial advice disclaimers
+- Break character
+
+CONTEXT: You have access to the user's positions, recent signals, and market state.
+Provide actionable intelligence based on this context."""
+        
+        # Get user context (mock for now)
+        # TODO: Fetch real context from database based on wallet_address
+        context = {
+            "positions": [],
+            "signals": [],
+            "market_state": None,
+            "operation": None,
+        }
+        
+        # Generate response
+        response = await generate_handler_response(
+            default_personality,
+            request.message,
+            context
+        )
+        
+        return {"response": response}
+        
+    except Exception as e:
+        print(f"Error in handler chat: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Handler service error: {str(e)}"
+        )
+
+
+# =============================================================================
+# OSINT API (with /api prefix for frontend compatibility)
+# =============================================================================
+
+@app.get("/api/osint/signals")
+async def get_osint_signals():
+    """Get all active OSINT signals for the frontend."""
+    try:
+        # Get all active signals from the registry
+        signals = osint.active_signals
+        
+        # Convert to dict format for JSON response
+        signals_data = [s.to_dict() for s in signals]
+        
+        return {
+            "signals": signals_data,
+            "total": len(signals_data),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "defcon_level": osint.base_detector.defcon_level.value,
+            "defcon_name": osint.base_detector.defcon_level.name,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching OSINT signals: {str(e)}")
+
+
+@app.get("/api/osint/tension")
+async def get_osint_tension():
+    """Get global tension index from OSINT signals."""
+    try:
+        detector = osint.base_detector
+        status = detector.get_status()
+        
+        # Get tension from situation room if available, otherwise use OSINT
+        try:
+            from backend.api.situation_room import state as situation_room_state
+            tension_index = situation_room_state.tension_index
+            chaos_index = situation_room_state.chaos_index
+        except:
+            # Fallback to OSINT-based tension
+            # Map DEFCON to tension (inverse: DEFCON 1 = high tension)
+            defcon_to_tension = {
+                1: 90.0,  # DEFCON 1 = Critical
+                2: 75.0,  # DEFCON 2 = High Alert
+                3: 50.0,  # DEFCON 3 = Alert
+                4: 30.0,  # DEFCON 4 = Watch
+                5: 15.0,  # DEFCON 5 = Normal
+            }
+            tension_index = defcon_to_tension.get(status["defcon_level"], 25.0)
+            chaos_index = (100 - tension_index) * 0.3  # Rough estimate
+        
+        return {
+            "tension_index": round(tension_index, 2),
+            "tension_level": status["defcon_name"],
+            "peace_percentage": round(100 - tension_index, 2),
+            "chaos_index": round(chaos_index, 2),
+            "trend": "rising" if status["active_signals"] > 5 else "falling",
+            "defcon_level": status["defcon_level"],
+            "active_signals": status["active_signals"],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching tension data: {str(e)}")
 
 
 if __name__ == "__main__":

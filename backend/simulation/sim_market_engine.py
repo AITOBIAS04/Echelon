@@ -44,6 +44,13 @@ try:
 except ImportError:
     from backend.agents.multi_brain import AgentBrain, BrainConfig
 
+# Skills System (optional - can replace AgentBrain)
+try:
+    from backend.agents.skills_brain import SkillsBrain
+    SKILLS_AVAILABLE = True
+except ImportError:
+    SKILLS_AVAILABLE = False
+
 import asyncio
 
 
@@ -318,7 +325,13 @@ class MarketSimulation:
         self.market_mood = (hash_int % 100) / 100  # 0-1, affects overall sentiment
         
         # Initialize Multi-Brain (10% chance of using LLM/Ollama)
-        self.brain = AgentBrain(BrainConfig(llm_probability=0.1))
+        # Use Skills System if available, otherwise fallback to AgentBrain
+        if SKILLS_AVAILABLE and os.getenv("USE_SKILLS_BRAIN", "false").lower() == "true":
+            self.brain = SkillsBrain()
+            print("🧠 Using Skills System (multi-provider routing)")
+        else:
+            self.brain = AgentBrain(BrainConfig(llm_probability=0.1))
+            print("🧠 Using AgentBrain (legacy)")
 
     def initialize(self, assets: Optional[List[Dict]] = None):
         """Set up initial market state."""
@@ -456,11 +469,12 @@ class MarketSimulation:
                         rule_brain = RuleBasedBrain()
                         # Use sync wrapper - create a new event loop in thread
                         import concurrent.futures
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            future = executor.submit(
-                                asyncio.run,
+                        def run_async_decision():
+                            return asyncio.run(
                                 rule_brain.decide({**market_context, "archetype": agent.archetype.value})
                             )
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(run_async_decision)
                             decision = future.result(timeout=1)
                     else:
                         raise

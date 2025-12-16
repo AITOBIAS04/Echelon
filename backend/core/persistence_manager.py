@@ -301,6 +301,8 @@ class MarketPersistenceMixin:
                 "outcomes": market.outcomes,
                 "outcome_odds": market.outcome_odds,
                 "total_volume": market.total_volume,
+                "yes_shares": getattr(market, "yes_shares", 1000.0),
+                "no_shares": getattr(market, "no_shares", 1000.0),
                 "virality_score": market.virality_score,
             }
         

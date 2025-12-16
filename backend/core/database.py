@@ -16,6 +16,8 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     play_money_balance = Column(Float, default=10000.0)
+    wallet_address = Column(String, nullable=True, index=True)  # For wallet-based auth
+    email = Column(String, nullable=True)  # Optional email field
 
 def create_db_and_tables():
     Base.metadata.create_all(bind=engine)

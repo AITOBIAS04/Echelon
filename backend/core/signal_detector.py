@@ -440,8 +440,12 @@ class FlightRadarSource(BaseSignalSource):
                 
                 if response.status_code == 200:
                     data = response.json()
-                    states = data.get("states", [])
-                    return {"flight_count": len(states), "raw": data}
+                    if data is None:
+                        return None
+                    states = data.get("states")
+                    if states is None:
+                        states = []
+                    return {"flight_count": len(states) if isinstance(states, list) else 0, "raw": data}
         except Exception as e:
             print(f"⚠️ OpenSky API error: {e}")
         

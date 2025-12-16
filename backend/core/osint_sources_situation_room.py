@@ -159,6 +159,8 @@ class VIPAircraftSource(BaseSignalSource):
                 
                 if response.status_code == 200:
                     data = response.json()
+                    if data is None:
+                        return []
                     return self._parse_opensky_response(data)
         except Exception as e:
             print(f"⚠️ OpenSky Aircraft API error: {e}")
@@ -168,7 +170,12 @@ class VIPAircraftSource(BaseSignalSource):
     def _parse_opensky_response(self, data: Dict) -> List[TrackedAircraft]:
         """Parse OpenSky API response into TrackedAircraft objects."""
         aircraft = []
-        states = data.get("states", [])
+        if not data:
+            return aircraft
+        
+        states = data.get("states")
+        if states is None or not isinstance(states, list):
+            return aircraft
         
         for state in states:
             if len(state) < 17:
