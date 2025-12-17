@@ -93,17 +93,32 @@ Write a 2-sentence tweet that makes people question this intel.""",
         print()
         
         try:
-            # Test with temperature 0.9 (high creativity)
-            response_high = await client.chat.complete_async(
-                model="mistral-small-latest",
-                messages=[{"role": "user", "content": test['prompt']}],
-                temperature=0.9,
-                max_tokens=300
-            )
+            # Try mistral-small-creative first (Labs model for creative writing)
+            # Fallback to mistral-small-latest if unavailable
+            model_name = "mistral-small-creative"
+            try:
+                response_high = await client.chat.complete_async(
+                    model=model_name,
+                    messages=[{"role": "user", "content": test['prompt']}],
+                    temperature=0.9,
+                    max_tokens=300
+                )
+            except Exception as e:
+                if "invalid_model" in str(e).lower():
+                    print(f"⚠️  {model_name} not available, using mistral-small-latest")
+                    model_name = "mistral-small-latest"
+                    response_high = await client.chat.complete_async(
+                        model=model_name,
+                        messages=[{"role": "user", "content": test['prompt']}],
+                        temperature=0.9,
+                        max_tokens=300
+                    )
+                else:
+                    raise
             
             # Test with temperature 0.7 (medium)
             response_med = await client.chat.complete_async(
-                model="mistral-small-latest",
+                model=model_name,
                 messages=[{"role": "user", "content": test['prompt']}],
                 temperature=0.7,
                 max_tokens=300
@@ -221,12 +236,27 @@ Write a 60-second early broadcast.
 Cocky, urgent, front-run-or-follow energy.
 Max 2 sentences."""
     
-    response = await client.chat.complete_async(
-        model="mistral-small-latest",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.9,
-        max_tokens=100
-    )
+    # Try mistral-small-creative first, fallback to mistral-small-latest
+    model_name = "mistral-small-creative"
+    try:
+        response = await client.chat.complete_async(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.9,
+            max_tokens=100
+        )
+    except Exception as e:
+        if "invalid_model" in str(e).lower():
+            print(f"⚠️  {model_name} not available, using mistral-small-latest")
+            model_name = "mistral-small-latest"
+            response = await client.chat.complete_async(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.9,
+                max_tokens=100
+            )
+        else:
+            raise
     
     output = response.choices[0].message.content
     
@@ -251,9 +281,23 @@ Write a cocky 1-sentence broadcast. Max 20 words."""
     print("=" * 80)
     print()
     
+    # Try mistral-small-creative first, fallback to mistral-small-latest
+    model_name = "mistral-small-creative"
+    try:
+        # Test if creative model is available
+        test_response = await client.chat.complete_async(
+            model=model_name,
+            messages=[{"role": "user", "content": "test"}],
+            max_tokens=1
+        )
+    except Exception as e:
+        if "invalid_model" in str(e).lower():
+            print(f"⚠️  {model_name} not available, using mistral-small-latest")
+            model_name = "mistral-small-latest"
+    
     for temp in temperatures:
         response = await client.chat.complete_async(
-            model="mistral-small-latest",
+            model=model_name,
             messages=[{"role": "user", "content": prompt}],
             temperature=temp,
             max_tokens=100

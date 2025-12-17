@@ -49,7 +49,10 @@ class BrainRouter:
         self.REASONING_TEMP = 0.3  # Low temp for logic
         
         # Model strings
-        self.MISTRAL_MODEL = "mistral-small-latest"
+        # Try mistral-small-creative first (Labs model, may require special access)
+        # Fallback to mistral-small-latest if creative model unavailable
+        self.MISTRAL_MODEL = "mistral-small-creative"  # Labs v25.12 - creative writing optimized
+        self.MISTRAL_MODEL_FALLBACK = "mistral-small-latest"  # Fallback if creative unavailable
         self.CLAUDE_MODEL = "claude-sonnet-4-20250514"
         
     
@@ -134,16 +137,31 @@ class BrainRouter:
         system_prompt = self._build_personality_prompt(task_type, context)
         user_prompt = self._format_raw_data(task_type, context.raw_data)
         
-        # Call Mistral Small Creative
-        response = await self.mistral_client.chat.complete_async(
-            model=self.MISTRAL_MODEL,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=self.CREATIVE_TEMP,
-            max_tokens=300  # Keep outputs concise
-        )
+        # Call Mistral Small Creative (with fallback)
+        try:
+            response = await self.mistral_client.chat.complete_async(
+                model=self.MISTRAL_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=self.CREATIVE_TEMP,
+                max_tokens=300  # Keep outputs concise
+            )
+        except Exception as e:
+            # Fallback to mistral-small-latest if creative model unavailable
+            if "invalid_model" in str(e).lower() or "mistral-small-creative" in str(e).lower():
+                response = await self.mistral_client.chat.complete_async(
+                    model=self.MISTRAL_MODEL_FALLBACK,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=self.CREATIVE_TEMP,
+                    max_tokens=300
+                )
+            else:
+                raise
         
         content = response.choices[0].message.content
         
