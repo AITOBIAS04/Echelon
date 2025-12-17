@@ -81,6 +81,14 @@ except ImportError as e:
     scheduler_router = None
     print(f"⚠️ Could not import Scheduler API router: {e}")
 
+# Timeline/Divergence Engine API
+try:
+    from backend.api.timeline_api import router as timeline_router, init_timeline_api
+except ImportError as e:
+    timeline_router = None
+    init_timeline_api = None
+    print(f"⚠️ Could not import Timeline API router: {e}")
+
 # Initialize
 osint = get_osint_registry()
 
@@ -207,6 +215,41 @@ try:
         print("⚠️ Scheduler router is None, skipping")
 except Exception as e:
     print(f"❌ Failed to include Scheduler router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Timeline/Divergence Engine router
+try:
+    if timeline_router:
+        app.include_router(timeline_router)
+        print("✅ Timeline API router included")
+        
+        # Initialise divergence engine components
+        from backend.timeline import TimelineForkManager, DivergenceEngine
+        from backend.timeline.fork_manager import DivergenceIntegration
+        
+        _fork_manager = TimelineForkManager()
+        _divergence_engine = DivergenceEngine()
+        _divergence_integration = DivergenceIntegration(_fork_manager, _divergence_engine)
+        
+        # Register default agent archetypes
+        _divergence_engine.agents = {
+            "MEGALODON": {"archetype": "shark", "trend_follower": True},
+            "HAMMERHEAD": {"archetype": "shark", "trend_follower": False},
+            "THRESHER": {"archetype": "shark", "trend_follower": True},
+            "CARDINAL": {"archetype": "spy"},
+            "RAVEN": {"archetype": "spy"},
+            "AMBASSADOR": {"archetype": "diplomat"},
+            "GHOST": {"archetype": "saboteur"},
+        }
+        
+        # Wire up to API
+        init_timeline_api(_fork_manager, _divergence_engine, _divergence_integration)
+        print("✅ Divergence Engine initialised")
+    else:
+        print("⚠️ Timeline router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Timeline router: {e}")
     import traceback
     traceback.print_exc()
 
