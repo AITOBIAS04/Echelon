@@ -9,8 +9,8 @@ import os
 import asyncio
 from mistralai import Mistral
 
-# Set API key
-os.environ["MISTRAL_API_KEY"] = "70ep5s3AEEIVf6r3jPr03VUK4tWpZe7I"
+# API key should be set in environment variable or .env file
+# Do NOT hardcode API keys in production code
 
 
 async def test_mistral_personality():
