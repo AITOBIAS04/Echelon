@@ -21,6 +21,7 @@ pydantic_core==2.41.5
 
 # AI/LLM
 anthropic==0.74.1
+mistralai==1.10.0
 
 # Blockchain & Web3
 eth-account==0.13.7
