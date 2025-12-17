@@ -433,14 +433,22 @@ class AgentBridge:
     Bridges the Agent Skills System to real execution.
     
     Replaces mock _execute_buy/_execute_sell with real market operations.
+    
+    Divergence Engine v2 Integration:
+    - After successful trades, emits AgentAction to DivergenceEngine
+    - Calculates ripple effects across correlated markets
+    - Tracks timeline stability and divergence changes
+    - Can spawn new forks when divergence threshold crossed
     """
     
     def __init__(
         self,
         execution_router: ExecutionRouter,
+        divergence_integration: Optional[Any] = None,  # DivergenceIntegration
         x402_enabled: bool = True
     ):
         self.router = execution_router
+        self.divergence = divergence_integration
         self.x402_enabled = x402_enabled
     
     async def process_agent_decision(
@@ -448,8 +456,12 @@ class AgentBridge:
         agent_id: str,
         decision_type: str,
         market_data: dict,
-        osint_context: Optional[dict] = None
-    ) -> ExecutionResult:
+        osint_context: Optional[dict] = None,
+        agent_archetype: str = "shark",  # NEW: archetype for divergence calc
+        timeline_id: Optional[str] = None,  # NEW: which timeline this trade is in
+        coalition_id: Optional[str] = None,  # NEW: coalition tracking
+        coalition_members: Optional[list[str]] = None,  # NEW: coalition members
+    ) -> "ExecutionResultWithRipple":
         """
         Process a decision from the agent brain and execute if appropriate.
         
@@ -457,7 +469,8 @@ class AgentBridge:
         1. Receive decision from Brain Router
         2. Validate via risk checks
         3. Execute via Execution Router
-        4. Update agent performance metrics
+        4. Emit AgentAction to DivergenceEngine (NEW)
+        5. Return result with ripple effects (NEW)
         """
         # Build decision object
         decision = AgentDecision(
@@ -475,15 +488,19 @@ class AgentBridge:
             market_id=market_data.get("market_id", ""),
             token_id=market_data.get("token_id"),
             ticker=market_data.get("ticker"),
-            current_price=Decimal(str(market_data.get("price", 0.5)))
+            current_price=Decimal(str(market_data.get("price", 0.5))),
+            fork_id=timeline_id,  # Link to timeline
         )
         
         # Risk checks
         if decision.confidence < 0.3:
             logger.info(f"Skipping low-confidence decision ({decision.confidence})")
-            return ExecutionResult(
-                status=ExecutionStatus.SKIPPED,
-                message="Confidence below threshold"
+            return ExecutionResultWithRipple(
+                execution=ExecutionResult(
+                    status=ExecutionStatus.SKIPPED,
+                    message="Confidence below threshold"
+                ),
+                ripple=None
             )
         
         # Check x402 spending limit
@@ -491,9 +508,12 @@ class AgentBridge:
             size = Decimal(str(decision.parameters.get("size", 10)))
             can_spend = await self.router.wallets.check_x402_allowance(agent_id, size)
             if not can_spend:
-                return ExecutionResult(
-                    status=ExecutionStatus.SKIPPED,
-                    message="x402 daily limit reached"
+                return ExecutionResultWithRipple(
+                    execution=ExecutionResult(
+                        status=ExecutionStatus.SKIPPED,
+                        message="x402 daily limit reached"
+                    ),
+                    ripple=None
                 )
         
         # Execute
@@ -508,7 +528,81 @@ class AgentBridge:
                 purpose=f"trade_{decision.action}"
             )
         
-        return result
+        # =================================================================
+        # DIVERGENCE ENGINE v2: Emit AgentAction and calculate ripples
+        # =================================================================
+        ripple_result = None
+        
+        if (self.divergence and 
+            timeline_id and 
+            result.status in (ExecutionStatus.SUBMITTED, ExecutionStatus.CONFIRMED, ExecutionStatus.SIMULATED)):
+            
+            try:
+                size = float(result.executed_size or decision.parameters.get("size", 10))
+                price = float(result.executed_price or market_data.get("price", 0.5))
+                
+                ripple_result = await self.divergence.process_agent_trade(
+                    fork_id=timeline_id,
+                    agent_id=agent_id,
+                    agent_archetype=agent_archetype,
+                    market_id=context.market_id,
+                    direction=decision.action,  # "buy" or "sell"
+                    size=size,
+                    price=price,
+                    confidence=decision.confidence,
+                    coalition_id=coalition_id,
+                    coalition_members=coalition_members,
+                )
+                
+                logger.info(
+                    f"🦋 RIPPLE: {agent_id} {decision.action} ${size:.0f} → "
+                    f"stability Δ{ripple_result['stability_change']:+.4f}, "
+                    f"divergence Δ{ripple_result['divergence_change']:+.4f}, "
+                    f"markets affected: {len(ripple_result['affected_markets'])}"
+                )
+                
+                if ripple_result.get("spawned_fork"):
+                    logger.info(
+                        f"🦋 NEW FORK SPAWNED: {ripple_result['new_fork_id']} "
+                        f"by {agent_id}!"
+                    )
+                    
+            except Exception as e:
+                logger.warning(f"Divergence engine error (non-fatal): {e}")
+                ripple_result = {"error": str(e)}
+        
+        return ExecutionResultWithRipple(
+            execution=result,
+            ripple=ripple_result
+        )
+
+
+class ExecutionResultWithRipple(BaseModel):
+    """Execution result bundled with divergence engine ripple effects."""
+    
+    execution: ExecutionResult
+    ripple: Optional[dict] = None
+    
+    # Convenience properties
+    @property
+    def status(self) -> ExecutionStatus:
+        return self.execution.status
+    
+    @property
+    def spawned_fork(self) -> bool:
+        return self.ripple.get("spawned_fork", False) if self.ripple else False
+    
+    @property
+    def new_fork_id(self) -> Optional[str]:
+        return self.ripple.get("new_fork_id") if self.ripple else None
+    
+    @property
+    def stability_change(self) -> float:
+        return self.ripple.get("stability_change", 0.0) if self.ripple else 0.0
+    
+    @property
+    def affected_markets(self) -> list:
+        return self.ripple.get("affected_markets", []) if self.ripple else []
 
 
 # =============================================================================
@@ -516,45 +610,82 @@ class AgentBridge:
 # =============================================================================
 
 async def example_usage():
-    """Example of wiring everything together."""
+    """Example of wiring everything together with Divergence Engine."""
     from backend.wallets.wallet_factory import MultiChainWalletFactory
+    from backend.timeline import DivergenceEngine, TimelineForkManager
+    from backend.timeline.fork_manager import DivergenceIntegration
     
     # Initialize components
     wallet_factory = MultiChainWalletFactory(use_testnet=True)
     
+    # Create divergence engine and fork manager
+    fork_manager = TimelineForkManager()
+    divergence_engine = DivergenceEngine()
+    divergence_integration = DivergenceIntegration(fork_manager, divergence_engine)
+    
+    # Register agent archetypes with divergence engine
+    divergence_engine.agents = {
+        "SHARK_001": {"archetype": "shark", "trend_follower": True},
+        "SPY_001": {"archetype": "spy"},
+    }
+    
     # Create execution router (dry run for testing)
     router = ExecutionRouter(
         wallet_factory=wallet_factory,
-        polymarket_client=None,  # Add real client when available
-        kalshi_client=None,      # Add real client when available
+        polymarket_client=None,
+        kalshi_client=None,
         dry_run=True
     )
     
-    # Create agent bridge
-    bridge = AgentBridge(execution_router=router)
+    # Create agent bridge WITH divergence integration
+    bridge = AgentBridge(
+        execution_router=router,
+        divergence_integration=divergence_integration,  # NEW!
+    )
+    
+    # Create a test timeline
+    test_fork = await fork_manager.create_global_fork(
+        source_market_id="test_market",
+        source_platform="echelon_internal",
+        premise="What if Fed cuts rates?",
+        duration_hours=48,
+    )
+    divergence_integration.sync_fork_to_divergence(test_fork)
     
     # Create agent wallet
     await wallet_factory.create_agent_wallet_set(agent_id="SHARK_001")
     
-    # Process a decision
+    # Process a decision WITH timeline context
     result = await bridge.process_agent_decision(
         agent_id="SHARK_001",
         decision_type="buy",
         market_data={
-            "platform": "polymarket",
-            "market_id": "0x123abc",
+            "platform": "echelon_internal",
+            "market_id": "FED_RATE",
             "token_id": "token_yes",
             "price": 0.65,
-            "confidence": 0.8,
+            "confidence": 0.85,
             "params": {
                 "limit_price": 0.65,
-                "size": 100
+                "size": 25000
             }
-        }
+        },
+        agent_archetype="shark",  # NEW
+        timeline_id=test_fork.fork_id,  # NEW
     )
     
-    print(f"Execution result: {result.status.value}")
-    print(f"Message: {result.message}")
+    print(f"\n📊 Execution result: {result.status.value}")
+    print(f"Message: {result.execution.message}")
+    
+    if result.ripple:
+        print(f"\n🦋 Ripple Effects:")
+        print(f"   Stability change: {result.stability_change:+.4f}")
+        print(f"   Affected markets: {len(result.affected_markets)}")
+        for market in result.affected_markets[:3]:
+            print(f"      - {market['market_id']}: {market['price_change']:+.2%}")
+        print(f"   Spawned new fork: {result.spawned_fork}")
+        if result.new_fork_id:
+            print(f"   New fork ID: {result.new_fork_id}")
 
 
 if __name__ == "__main__":
