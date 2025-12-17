@@ -95,7 +95,7 @@ Write a 2-sentence tweet that makes people question this intel.""",
         try:
             # Test with temperature 0.9 (high creativity)
             response_high = await client.chat.complete_async(
-                model="mistral-small-creative",
+                model="mistral-small-latest",
                 messages=[{"role": "user", "content": test['prompt']}],
                 temperature=0.9,
                 max_tokens=300
@@ -103,7 +103,7 @@ Write a 2-sentence tweet that makes people question this intel.""",
             
             # Test with temperature 0.7 (medium)
             response_med = await client.chat.complete_async(
-                model="mistral-small-creative",
+                model="mistral-small-latest",
                 messages=[{"role": "user", "content": test['prompt']}],
                 temperature=0.7,
                 max_tokens=300
@@ -222,7 +222,7 @@ Cocky, urgent, front-run-or-follow energy.
 Max 2 sentences."""
     
     response = await client.chat.complete_async(
-        model="mistral-small-creative",
+        model="mistral-small-latest",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.9,
         max_tokens=100
@@ -253,7 +253,7 @@ Write a cocky 1-sentence broadcast. Max 20 words."""
     
     for temp in temperatures:
         response = await client.chat.complete_async(
-            model="mistral-small-creative",
+            model="mistral-small-latest",
             messages=[{"role": "user", "content": prompt}],
             temperature=temp,
             max_tokens=100

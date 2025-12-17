@@ -49,7 +49,7 @@ class BrainRouter:
         self.REASONING_TEMP = 0.3  # Low temp for logic
         
         # Model strings
-        self.MISTRAL_MODEL = "mistral-small-creative"  # or mistral-small-latest
+        self.MISTRAL_MODEL = "mistral-small-latest"
         self.CLAUDE_MODEL = "claude-sonnet-4-20250514"
         
     
