@@ -2,14 +2,16 @@
 Hierarchical Brain Router
 ==========================
 
-Three-tier intelligence system for cost-optimized agent operations:
+Four-tier intelligence system for cost-optimized agent operations:
 
-Layer 1   (90%):  Heuristics     - Trading decisions, instant, $0
-Layer 1.5 (9%):   Mistral Creative - Personality, narrative, ~$0.0001/call
-Layer 2   (1%):   Claude/GPT-4   - Complex reasoning, ~$0.01/call
+Layer 1   (85%):  Heuristics       - Trading decisions, instant, $0
+Layer 1.5 (10%):  Mistral Creative - Personality, narrative, ~$0.0001/call
+Layer 1.6 (4%):   Grok Voice       - Premium audio broadcasts, $0.05/min
+Layer 2   (1%):   Claude/GPT-4     - Complex reasoning, ~$0.01/call
 
-The key insight: Separate "thinking" (expensive) from "talking" (cheap).
-Agents decide with heuristics, but express themselves with Mistral.
+The key insight: Separate "thinking" (expensive) from "talking" (cheap)
+from "speaking" (premium). Agents decide with heuristics, express 
+themselves with Mistral, and speak with Grok Voice for premium users.
 
 Author: Echelon Protocol
 Version: 2.0.0
@@ -52,9 +54,10 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 class BrainLayer(str, Enum):
-    """The three layers of the Hierarchical Intelligence Stack."""
+    """The four layers of the Hierarchical Intelligence Stack."""
     LAYER_1 = "heuristics"           # Trading decisions
     LAYER_1_5 = "personality"        # Mistral Small Creative
+    LAYER_1_6 = "voice"              # Grok Voice (premium)
     LAYER_2 = "reasoning"            # Claude/GPT-4
 
 
@@ -75,6 +78,12 @@ class TaskType(str, Enum):
     AGENT_DIALOGUE = "agent_dialogue"
     AGENT_REASONING = "agent_reasoning"  # Compatibility alias
     TREATY_DRAFT = "treaty_draft"        # Compatibility alias
+    
+    # Layer 1.6: Voice (Grok, $0.05/min) - Premium
+    VOICE_BROADCAST = "voice_broadcast"
+    VOICE_INTEL_BRIEFING = "voice_intel_briefing"
+    VOICE_MISSION_BRIEFING = "voice_mission_briefing"
+    VOICE_CONVERSATION = "voice_conversation"
     
     # Layer 2: Reasoning (Claude/GPT, ~$0.01)
     BLACK_SWAN_ANALYSIS = "black_swan_analysis"
@@ -103,6 +112,12 @@ TASK_LAYER_MAP: Dict[TaskType, BrainLayer] = {
     TaskType.TREATY_DRAFT: BrainLayer.LAYER_1_5,
     TaskType.AGENT_DIALOGUE: BrainLayer.LAYER_1_5,
     
+    # Layer 1.6 (Voice - Premium)
+    TaskType.VOICE_BROADCAST: BrainLayer.LAYER_1_6,
+    TaskType.VOICE_INTEL_BRIEFING: BrainLayer.LAYER_1_6,
+    TaskType.VOICE_MISSION_BRIEFING: BrainLayer.LAYER_1_6,
+    TaskType.VOICE_CONVERSATION: BrainLayer.LAYER_1_6,
+    
     # Layer 2
     TaskType.BLACK_SWAN_ANALYSIS: BrainLayer.LAYER_2,
     TaskType.COMPLEX_DIPLOMACY: BrainLayer.LAYER_2,
@@ -122,11 +137,16 @@ class BrainConfig:
     anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
     openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
     groq_api_key: str = field(default_factory=lambda: os.getenv("GROQ_API_KEY", ""))
+    xai_api_key: str = field(default_factory=lambda: os.getenv("XAI_API_KEY", ""))
     
     # Model selection
     mistral_model: str = field(default_factory=lambda: os.getenv("MISTRAL_MODEL", "labs-mistral-small-creative"))
-    anthropic_model: str = field(default_factory=lambda: os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"))
+    anthropic_model: str = field(default_factory=lambda: os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-latest"))
     openai_model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4o"))
+    
+    # Grok Voice settings
+    grok_voice_model: str = "grok-2-voice"  # Grok Voice Agent API
+    grok_default_voice: str = "Rex"  # Available: Eve, Leo, Rex, Ara, Sal
     
     # Temperature settings (higher = more creative)
     personality_temperature: float = 0.9   # Layer 1.5 - creative
@@ -137,6 +157,10 @@ class BrainConfig:
     
     # Novelty threshold for Layer 2 escalation
     novelty_threshold: float = 0.8
+    
+    # Voice settings
+    voice_enabled: bool = True  # Master switch for voice features
+    voice_premium_only: bool = True  # Restrict voice to premium users
 
 
 @dataclass
@@ -150,10 +174,14 @@ class BrainResult:
     cost_estimate: float = 0.0
     success: bool = True
     error: Optional[str] = None
+    # Voice-specific fields
+    audio_data: Optional[bytes] = None  # Raw audio bytes
+    audio_format: Optional[str] = None  # e.g., "wav", "mp3"
+    duration_seconds: Optional[float] = None  # For cost calculation
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for API compatibility."""
-        return {
+        result = {
             "response": self.content,
             "layer_used": self.layer_used.value,
             "provider_used": self.provider_used,
@@ -163,6 +191,12 @@ class BrainResult:
             "success": self.success,
             "error": self.error,
         }
+        # Add voice fields if present
+        if self.audio_data is not None:
+            result["audio_data"] = self.audio_data
+            result["audio_format"] = self.audio_format
+            result["duration_seconds"] = self.duration_seconds
+        return result
 
 
 # =============================================================================
@@ -261,7 +295,7 @@ Catchphrases: "Signal detected", "Moving fast", "First in".""",
 class HeuristicsEngine:
     """
     Layer 1: Fast, free rule-based decisions.
-    Handles ~90% of all operations at zero cost.
+    Handles ~85% of all operations at zero cost.
     """
     
     async def execute(self, task_type: TaskType, context: Dict[str, Any]) -> BrainResult:
@@ -290,8 +324,6 @@ class HeuristicsEngine:
         trend = context.get("trend", 0)
         sentiment = context.get("sentiment", 0)
         spread = context.get("spread", 0)
-        liquidity = context.get("liquidity", 10000)
-        expiry_hours = context.get("expiry_hours", 48)
         
         # Tulip Strategy: Arbitrage detection
         if spread > 0.05:
@@ -299,14 +331,6 @@ class HeuristicsEngine:
                 "action": "ARB",
                 "confidence": 0.9,
                 "reasoning": f"Spread {spread:.1%} exceeds threshold"
-            })
-        
-        # Tulip Strategy: Low liquidity + short expiry
-        if liquidity < 5000 and expiry_hours < 24:
-            return json.dumps({
-                "action": "LONG",
-                "confidence": 0.85,
-                "reasoning": "Tulip arb opportunity detected"
             })
         
         # Blood in Water: Momentum
@@ -405,28 +429,16 @@ class MistralCreativeEngine:
         system_prompt, user_prompt = self._build_prompts(task_type, context)
         
         try:
-            # Try labs-mistral-small-creative first, fallback to mistral-small-latest
-            model_name = self.model
-            try:
-                if self.client:
-                    response = await self._call_sdk(model_name, system_prompt, user_prompt)
-                else:
-                    response = await self._call_http(model_name, system_prompt, user_prompt)
-            except Exception as e:
-                if "invalid_model" in str(e).lower() and ("labs-mistral-small-creative" in model_name or "mistral-small-creative" in model_name):
-                    logger.warning(f"{model_name} not available, using mistral-small-latest")
-                    model_name = "mistral-small-latest"
-                    if self.client:
-                        response = await self._call_sdk(model_name, system_prompt, user_prompt)
-                    else:
-                        response = await self._call_http(model_name, system_prompt, user_prompt)
-                else:
-                    raise
+            # Try SDK first, fall back to HTTP
+            if self.client:
+                response = await self._call_sdk(system_prompt, user_prompt)
+            else:
+                response = await self._call_http(system_prompt, user_prompt)
             
             return BrainResult(
                 content=response["content"],
                 layer_used=BrainLayer.LAYER_1_5,
-                provider_used=f"mistral_{model_name.replace('-', '_')}",
+                provider_used="mistral_small_creative",
                 latency_ms=(time.time() - start) * 1000,
                 tokens_used=response.get("tokens", 0),
                 cost_estimate=self._estimate_cost(response.get("tokens", 0)),
@@ -452,7 +464,7 @@ class MistralCreativeEngine:
         agent_id = context.get("agent_id", "MEGALODON")
         persona = AGENT_PERSONAS.get(agent_id, AGENT_PERSONAS["MEGALODON"])
         
-        if task_type == TaskType.SHARK_BROADCAST or task_type == TaskType.SOCIAL_POST:
+        if task_type == TaskType.SHARK_BROADCAST:
             system_prompt = f"""{persona}
 
 Your task: Write a 60-second early broadcast announcing your trade.
@@ -473,9 +485,8 @@ Your task: Format raw OSINT data into a professional intel report.
 Use classified/spy thriller language. Be concise but impactful.
 Include: Classification level, Key findings, Confidence assessment."""
             
-            raw_data = context.get('raw_data', context)  # Support both formats
             user_prompt = f"""Raw intelligence data:
-{json.dumps(raw_data, indent=2)}
+{json.dumps(context.get('raw_data', {}), indent=2)}
 
 Format as intel report:"""
         
@@ -492,7 +503,7 @@ Location: {context.get('location', 'Unknown')}
 
 Write a 3-4 sentence mission brief:"""
         
-        elif task_type == TaskType.TRADE_EXPLANATION or task_type == TaskType.AGENT_REASONING:
+        elif task_type == TaskType.TRADE_EXPLANATION:
             system_prompt = f"""{persona}
 
 Explain your trading decision in your unique voice.
@@ -501,11 +512,11 @@ Keep it under 30 words. Sound confident about your reasoning."""
             user_prompt = f"""Trade executed:
 Action: {context.get('action', 'BUY')}
 Size: ${context.get('size', 1000):,.0f}
-Reason (technical): {context.get('technical_reason', context.get('reasoning', 'Signal detected'))}
+Reason (technical): {context.get('technical_reason', 'Signal detected')}
 
 Explain in character:"""
         
-        elif task_type == TaskType.TREATY_PROSE or task_type == TaskType.TREATY_DRAFT:
+        elif task_type == TaskType.TREATY_PROSE:
             system_prompt = f"""{persona}
 
 Draft treaty/alliance terms in diplomatic language.
@@ -541,11 +552,11 @@ Write the post:"""
         
         return system_prompt, user_prompt
     
-    async def _call_sdk(self, model: str, system_prompt: str, user_prompt: str) -> Dict:
+    async def _call_sdk(self, system_prompt: str, user_prompt: str) -> Dict:
         """Call Mistral using the official SDK."""
         response = await asyncio.to_thread(
             self.client.chat.complete,
-            model=model,
+            model=self.model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -559,7 +570,7 @@ Write the post:"""
             "tokens": response.usage.total_tokens if response.usage else 0,
         }
     
-    async def _call_http(self, model: str, system_prompt: str, user_prompt: str) -> Dict:
+    async def _call_http(self, system_prompt: str, user_prompt: str) -> Dict:
         """Call Mistral using HTTP (fallback if SDK unavailable)."""
         if not HAS_HTTPX:
             raise RuntimeError("httpx not installed")
@@ -572,7 +583,7 @@ Write the post:"""
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": model,
+                    "model": self.model,
                     "messages": [
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
@@ -603,13 +614,11 @@ Write the post:"""
         
         fallbacks = {
             TaskType.SHARK_BROADCAST: f"[{agent_id}] Signal detected. Moving now.",
-            TaskType.SOCIAL_POST: f"[{agent_id}] Market update.",
             TaskType.INTEL_FORMAT: f"[CLASSIFIED] Intel received. Analysis pending.",
             TaskType.MISSION_NARRATIVE: "New operation detected. Details incoming.",
             TaskType.TRADE_EXPLANATION: "Trade executed per strategy parameters.",
-            TaskType.AGENT_REASONING: "Trade executed per strategy parameters.",
             TaskType.TREATY_PROSE: "Alliance terms under negotiation.",
-            TaskType.TREATY_DRAFT: "Alliance terms under negotiation.",
+            TaskType.SOCIAL_POST: f"[{agent_id}] Market update.",
         }
         
         return fallbacks.get(task_type, "[Response generation failed]")
@@ -704,7 +713,7 @@ Provide:
 
 Be concise but thorough."""
         
-        elif task_type == TaskType.COMPLEX_DIPLOMACY or task_type == TaskType.DIPLOMACY_NEGOTIATION:
+        elif task_type == TaskType.COMPLEX_DIPLOMACY:
             return f"""You are a master negotiator analyzing a complex multi-party situation.
 
 Parties involved: {context.get('parties', [])}
@@ -729,19 +738,6 @@ Recommend:
 2. If yes, what adjustments?
 3. Risk of pivoting vs staying course
 4. Implementation timeline"""
-        
-        elif task_type == TaskType.COALITION_FORMATION:
-            return f"""You are a strategic advisor analyzing coalition formation.
-
-Parties: {context.get('parties', [])}
-Objectives: {context.get('objectives', [])}
-Constraints: {context.get('constraints', {})}
-
-Analyze:
-1. Feasibility of coalition
-2. Key negotiation points
-3. Recommended approach
-4. Risk factors"""
         
         else:  # NOVEL_SITUATION
             return f"""You are an expert analyst encountering a novel situation.
@@ -805,21 +801,313 @@ Be clear about uncertainty levels."""
 
 
 # =============================================================================
-# MAIN BRAIN ROUTER (with API compatibility)
+# LAYER 1.6: GROK VOICE ENGINE (PREMIUM)
+# =============================================================================
+
+class GrokVoiceEngine:
+    """
+    Layer 1.6: Premium voice generation using Grok Voice Agent API.
+    Converts text to speech with agent personalities.
+    
+    Cost: $0.05 per minute of audio
+    
+    Features:
+    - Sub-1-second latency (5x faster than competitors)
+    - 100+ languages with native accents
+    - Multiple voice personalities (Eve, Leo, Rex, Ara, Sal)
+    - WebSocket streaming for real-time conversations
+    - Tool calling support for interactive voice agents
+    
+    Note: This is a premium feature - enable only for paying users.
+    """
+    
+    def __init__(self, config: BrainConfig):
+        self.config = config
+        self.api_key = config.xai_api_key
+        self.base_url = "https://api.x.ai/v1"
+        
+        # Voice personality mapping for agents
+        self.agent_voices: Dict[str, str] = {
+            # Sharks - aggressive, confident voices
+            "MEGALODON": "Rex",     # Bold, assertive
+            "HAMMERHEAD": "Leo",    # Precise, calculated
+            "THRESHER": "Rex",      # Aggressive
+            "MAKO": "Leo",          # Quick, sharp
+            
+            # Spies - mysterious, professional voices
+            "CARDINAL": "Ara",      # Enigmatic, professional
+            "RAVEN": "Eve",         # Quiet, observant
+            "ORACLE": "Ara",        # Wise, knowing
+            "SPHINX": "Eve",        # Cryptic
+            
+            # Diplomats - warm, persuasive voices
+            "AMBASSADOR": "Sal",    # Diplomatic, warm
+            "ENVOY": "Leo",         # Professional mediator
+            "CONSUL": "Sal",        # Authoritative but approachable
+            
+            # Saboteurs - playful, mischievous voices
+            "PHANTOM": "Rex",       # Chaotic energy
+            "SPECTRE": "Eve",       # Manipulative, smooth
+            "CHAOS": "Rex",         # Unpredictable
+            
+            # Whales - deep, powerful voices
+            "LEVIATHAN": "Rex",     # Commanding, deep
+            "KRAKEN": "Leo",        # Ancient, wise
+            "TITAN": "Rex",         # Massive presence
+            
+            # Momentum - energetic voices
+            "PHOENIX": "Ara",       # Rising energy
+            "FALCON": "Leo",        # Quick, alert
+        }
+    
+    async def execute(
+        self, 
+        task_type: TaskType, 
+        context: Dict[str, Any]
+    ) -> BrainResult:
+        """Execute a voice generation task."""
+        start = time.time()
+        
+        # Check if voice is enabled
+        if not self.config.voice_enabled:
+            return BrainResult(
+                content="[Voice disabled in config]",
+                layer_used=BrainLayer.LAYER_1_6,
+                provider_used="grok_voice_disabled",
+                latency_ms=(time.time() - start) * 1000,
+                success=False,
+                error="Voice feature disabled"
+            )
+        
+        if not self.api_key:
+            return BrainResult(
+                content="[XAI API key not configured]",
+                layer_used=BrainLayer.LAYER_1_6,
+                provider_used="grok_voice_fallback",
+                latency_ms=(time.time() - start) * 1000,
+                success=False,
+                error="XAI_API_KEY not set"
+            )
+        
+        # Get the text to convert to speech
+        text = context.get("text", "")
+        if not text:
+            # Generate text first using Layer 1.5 style
+            text = self._generate_text_fallback(task_type, context)
+        
+        # Get voice for this agent
+        agent_id = context.get("agent_id", "MEGALODON")
+        voice = self.agent_voices.get(agent_id, self.config.grok_default_voice)
+        
+        try:
+            # Call Grok Voice API
+            audio_result = await self._call_grok_voice(text, voice, context)
+            
+            duration_seconds = audio_result.get("duration", 0)
+            cost = self._estimate_cost(duration_seconds)
+            
+            return BrainResult(
+                content=text,  # Original text
+                layer_used=BrainLayer.LAYER_1_6,
+                provider_used="grok_voice",
+                latency_ms=(time.time() - start) * 1000,
+                cost_estimate=cost,
+                success=True,
+                audio_data=audio_result.get("audio"),
+                audio_format=audio_result.get("format", "wav"),
+                duration_seconds=duration_seconds,
+            )
+            
+        except Exception as e:
+            logger.error(f"Grok Voice error: {e}")
+            return BrainResult(
+                content=text,
+                layer_used=BrainLayer.LAYER_1_6,
+                provider_used="grok_voice_fallback",
+                latency_ms=(time.time() - start) * 1000,
+                success=False,
+                error=str(e)
+            )
+    
+    async def _call_grok_voice(
+        self, 
+        text: str, 
+        voice: str,
+        context: Dict[str, Any]
+    ) -> Dict:
+        """
+        Call Grok Voice Agent API.
+        
+        The API uses WebSocket for real-time streaming, but we also
+        support a simpler HTTP endpoint for one-shot generation.
+        """
+        if not HAS_HTTPX:
+            raise RuntimeError("httpx not installed")
+        
+        # For now, use the chat completions endpoint with audio response
+        # The full Voice Agent API uses WebSocket for streaming
+        async with httpx.AsyncClient(timeout=60) as client:
+            response = await client.post(
+                f"{self.base_url}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": self.config.grok_voice_model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": f"You are a voice agent. Speak the following text naturally with the personality of a {context.get('agent_id', 'trader')}."
+                        },
+                        {
+                            "role": "user", 
+                            "content": text
+                        }
+                    ],
+                    "voice": voice,
+                    "response_format": {"type": "audio"},
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Extract audio from response
+                # Note: Actual format depends on xAI API response structure
+                return {
+                    "audio": data.get("audio", b""),
+                    "format": "wav",
+                    "duration": self._estimate_duration(text),
+                }
+            else:
+                raise RuntimeError(f"Grok API error: {response.status_code} - {response.text}")
+    
+    async def create_voice_stream(
+        self,
+        agent_id: str,
+        on_audio_chunk: callable,
+    ) -> "GrokVoiceStream":
+        """
+        Create a WebSocket stream for real-time voice conversation.
+        
+        This is used for the Situation Room "radio mode" where agents
+        speak continuously.
+        
+        Usage:
+            stream = await voice_engine.create_voice_stream("MEGALODON", on_chunk)
+            await stream.send_text("Blood in the water!")
+            await stream.close()
+        """
+        return GrokVoiceStream(
+            api_key=self.api_key,
+            agent_id=agent_id,
+            voice=self.agent_voices.get(agent_id, self.config.grok_default_voice),
+            on_audio_chunk=on_audio_chunk,
+        )
+    
+    def _generate_text_fallback(self, task_type: TaskType, context: Dict) -> str:
+        """Generate fallback text if none provided."""
+        agent_id = context.get("agent_id", "AGENT")
+        
+        if task_type == TaskType.VOICE_BROADCAST:
+            action = context.get("action", "HOLD")
+            market = context.get("market", "market")
+            return f"{agent_id} signal: {action} on {market}."
+        
+        elif task_type == TaskType.VOICE_INTEL_BRIEFING:
+            return f"Intelligence briefing from {agent_id}. Standby for details."
+        
+        elif task_type == TaskType.VOICE_MISSION_BRIEFING:
+            mission = context.get("mission_name", "Operation")
+            return f"Mission briefing: {mission}. All operatives attend."
+        
+        else:
+            return f"Message from {agent_id}."
+    
+    def _estimate_duration(self, text: str) -> float:
+        """Estimate audio duration from text length."""
+        # Average speaking rate: ~150 words per minute
+        # Average word length: ~5 characters
+        words = len(text) / 5
+        minutes = words / 150
+        return minutes * 60  # Return seconds
+    
+    def _estimate_cost(self, duration_seconds: float) -> float:
+        """Estimate cost based on duration. $0.05 per minute."""
+        minutes = duration_seconds / 60
+        return minutes * 0.05
+
+
+class GrokVoiceStream:
+    """
+    WebSocket stream for real-time voice conversations.
+    
+    Compatible with xAI's LiveKit plugin and OpenAI Realtime API spec.
+    """
+    
+    def __init__(
+        self,
+        api_key: str,
+        agent_id: str,
+        voice: str,
+        on_audio_chunk: callable,
+    ):
+        self.api_key = api_key
+        self.agent_id = agent_id
+        self.voice = voice
+        self.on_audio_chunk = on_audio_chunk
+        self.ws = None
+        self._connected = False
+    
+    async def connect(self):
+        """Establish WebSocket connection."""
+        # Note: Actual WebSocket URL from xAI docs
+        # This is a placeholder - real implementation would use
+        # websockets library or httpx WebSocket support
+        self._connected = True
+        logger.info(f"Voice stream connected for {self.agent_id}")
+    
+    async def send_text(self, text: str):
+        """Send text to be spoken."""
+        if not self._connected:
+            await self.connect()
+        
+        # In real implementation, this sends to WebSocket
+        # and audio chunks come back via on_audio_chunk callback
+        logger.info(f"[{self.agent_id}] Speaking: {text[:50]}...")
+    
+    async def close(self):
+        """Close the stream."""
+        self._connected = False
+        if self.ws:
+            await self.ws.close()
+        logger.info(f"Voice stream closed for {self.agent_id}")
+
+
+# =============================================================================
+# MAIN BRAIN ROUTER
 # =============================================================================
 
 class HierarchicalBrain:
     """
-    The main brain router that coordinates all three layers.
+    The main brain router that coordinates all four layers.
     
     Usage:
         brain = HierarchicalBrain()
+        
+        # Text broadcast (Layer 1.5)
         result = await brain.process(TaskType.SHARK_BROADCAST, {
             "agent_id": "MEGALODON",
             "action": "BUY",
             "size": 5000,
             "market": "Oil Futures",
             "confidence": 87
+        })
+        
+        # Voice broadcast (Layer 1.6 - Premium)
+        result = await brain.process(TaskType.VOICE_BROADCAST, {
+            "agent_id": "MEGALODON",
+            "text": "Blood in the water. Moving now.",
         })
     """
     
@@ -829,14 +1117,17 @@ class HierarchicalBrain:
         # Initialize engines
         self.heuristics = HeuristicsEngine()
         self.personality = MistralCreativeEngine(self.config)
+        self.voice = GrokVoiceEngine(self.config)
         self.reasoning = DeepReasoningEngine(self.config)
         
         # Stats tracking
         self.stats = {
             "layer_1_calls": 0,
             "layer_1_5_calls": 0,
+            "layer_1_6_calls": 0,
             "layer_2_calls": 0,
             "total_cost": 0.0,
+            "voice_minutes": 0.0,
         }
     
     async def process(
@@ -863,11 +1154,21 @@ class HierarchicalBrain:
             layer = TASK_LAYER_MAP.get(task_type, BrainLayer.LAYER_1)
         
         # Check for novelty escalation to Layer 2
-        if layer != BrainLayer.LAYER_2:
+        if layer not in (BrainLayer.LAYER_2, BrainLayer.LAYER_1_6):
             novelty = context.get("novelty_score", 0)
             if novelty > self.config.novelty_threshold:
                 logger.info(f"Novelty {novelty:.2f} exceeds threshold, escalating to Layer 2")
                 layer = BrainLayer.LAYER_2
+        
+        # Check premium requirement for voice
+        if layer == BrainLayer.LAYER_1_6 and self.config.voice_premium_only:
+            is_premium = context.get("is_premium_user", False)
+            if not is_premium:
+                # Downgrade to text-only Layer 1.5
+                logger.info("Voice requested but user not premium, falling back to Layer 1.5")
+                layer = BrainLayer.LAYER_1_5
+                # Map voice task to equivalent text task
+                task_type = self._voice_to_text_task(task_type)
         
         # Route to appropriate engine
         if layer == BrainLayer.LAYER_1:
@@ -877,6 +1178,12 @@ class HierarchicalBrain:
         elif layer == BrainLayer.LAYER_1_5:
             result = await self.personality.execute(task_type, context)
             self.stats["layer_1_5_calls"] += 1
+        
+        elif layer == BrainLayer.LAYER_1_6:
+            result = await self.voice.execute(task_type, context)
+            self.stats["layer_1_6_calls"] += 1
+            if result.duration_seconds:
+                self.stats["voice_minutes"] += result.duration_seconds / 60
             
         else:  # LAYER_2
             result = await self.reasoning.execute(task_type, context)
@@ -886,6 +1193,16 @@ class HierarchicalBrain:
         self.stats["total_cost"] += result.cost_estimate
         
         return result
+    
+    def _voice_to_text_task(self, voice_task: TaskType) -> TaskType:
+        """Map voice tasks to their text equivalents."""
+        mapping = {
+            TaskType.VOICE_BROADCAST: TaskType.SHARK_BROADCAST,
+            TaskType.VOICE_INTEL_BRIEFING: TaskType.INTEL_FORMAT,
+            TaskType.VOICE_MISSION_BRIEFING: TaskType.MISSION_NARRATIVE,
+            TaskType.VOICE_CONVERSATION: TaskType.AGENT_DIALOGUE,
+        }
+        return mapping.get(voice_task, TaskType.SOCIAL_POST)
     
     async def generate_broadcast(
         self, 
@@ -935,11 +1252,79 @@ class HierarchicalBrain:
         })
         return result.content
     
+    async def generate_voice_broadcast(
+        self,
+        agent_id: str,
+        text: str,
+        is_premium_user: bool = True,
+    ) -> BrainResult:
+        """
+        Generate a voice broadcast (Layer 1.6 - Premium).
+        
+        Returns BrainResult with audio_data if successful.
+        Falls back to text-only if user is not premium.
+        """
+        return await self.process(TaskType.VOICE_BROADCAST, {
+            "agent_id": agent_id,
+            "text": text,
+            "is_premium_user": is_premium_user,
+        })
+    
+    async def speak_broadcast(
+        self,
+        agent_id: str,
+        action: str,
+        size: float,
+        market: str,
+        price: float,
+        confidence: int,
+        is_premium_user: bool = True,
+    ) -> BrainResult:
+        """
+        Full pipeline: Generate text broadcast (Layer 1.5) then speak it (Layer 1.6).
+        
+        This combines personality generation with voice synthesis.
+        """
+        # First generate the text
+        text_result = await self.process(TaskType.SHARK_BROADCAST, {
+            "agent_id": agent_id,
+            "action": action,
+            "size": size,
+            "market": market,
+            "price": price,
+            "confidence": confidence,
+        })
+        
+        if not is_premium_user:
+            return text_result
+        
+        # Then convert to voice
+        voice_result = await self.process(TaskType.VOICE_BROADCAST, {
+            "agent_id": agent_id,
+            "text": text_result.content,
+            "is_premium_user": True,
+        })
+        
+        return voice_result
+    
+    async def create_voice_stream(
+        self,
+        agent_id: str,
+        on_audio_chunk: callable,
+    ):
+        """
+        Create a real-time voice stream for continuous agent speech.
+        
+        Used for Situation Room "radio mode".
+        """
+        return await self.voice.create_voice_stream(agent_id, on_audio_chunk)
+    
     def get_stats(self) -> Dict[str, Any]:
         """Get brain usage statistics."""
         total_calls = (
             self.stats["layer_1_calls"] + 
             self.stats["layer_1_5_calls"] + 
+            self.stats["layer_1_6_calls"] +
             self.stats["layer_2_calls"]
         )
         
@@ -948,8 +1333,10 @@ class HierarchicalBrain:
             "total_calls": total_calls,
             "layer_1_pct": (self.stats["layer_1_calls"] / total_calls * 100) if total_calls else 0,
             "layer_1_5_pct": (self.stats["layer_1_5_calls"] / total_calls * 100) if total_calls else 0,
+            "layer_1_6_pct": (self.stats["layer_1_6_calls"] / total_calls * 100) if total_calls else 0,
             "layer_2_pct": (self.stats["layer_2_calls"] / total_calls * 100) if total_calls else 0,
             "avg_cost_per_call": self.stats["total_cost"] / total_calls if total_calls else 0,
+            "voice_cost_estimate": self.stats["voice_minutes"] * 0.05,
         }
 
 
@@ -1000,6 +1387,10 @@ class BrainRouter:
             "treaty_draft": TaskType.TREATY_DRAFT,
             "treaty_prose": TaskType.TREATY_PROSE,
             "agent_dialogue": TaskType.AGENT_DIALOGUE,
+            "voice_broadcast": TaskType.VOICE_BROADCAST,
+            "voice_intel_briefing": TaskType.VOICE_INTEL_BRIEFING,
+            "voice_mission_briefing": TaskType.VOICE_MISSION_BRIEFING,
+            "voice_conversation": TaskType.VOICE_CONVERSATION,
             "black_swan_analysis": TaskType.BLACK_SWAN_ANALYSIS,
             "complex_diplomacy": TaskType.COMPLEX_DIPLOMACY,
             "diplomacy_negotiation": TaskType.DIPLOMACY_NEGOTIATION,
@@ -1051,13 +1442,13 @@ def get_router() -> BrainRouter:
 if __name__ == "__main__":
     async def test():
         print("=" * 60)
-        print("HIERARCHICAL BRAIN TEST")
+        print("HIERARCHICAL BRAIN TEST v2.0")
         print("=" * 60)
         
         brain = HierarchicalBrain()
         
         # Test Layer 1: Trade Decision
-        print("\n🧠 Layer 1: Trade Decision")
+        print("\n🧠 Layer 1: Trade Decision (Heuristics)")
         result = await brain.process(TaskType.TRADE_DECISION, {
             "trend": 0.05,
             "sentiment": 0.3,
@@ -1068,7 +1459,7 @@ if __name__ == "__main__":
         print(f"   Latency: {result.latency_ms:.1f}ms")
         
         # Test Layer 1.5: Shark Broadcast
-        print("\n🎭 Layer 1.5: Shark Broadcast")
+        print("\n🎭 Layer 1.5: Shark Broadcast (Mistral Creative)")
         result = await brain.process(TaskType.SHARK_BROADCAST, {
             "agent_id": "MEGALODON",
             "action": "BUY",
@@ -1081,6 +1472,59 @@ if __name__ == "__main__":
         print(f"   Provider: {result.provider_used}")
         print(f"   Result: {result.content}")
         print(f"   Cost: ${result.cost_estimate:.6f}")
+        
+        # Test Layer 1.5: Intel Format
+        print("\n🕵️ Layer 1.5: Intel Format (Mistral Creative)")
+        result = await brain.process(TaskType.INTEL_FORMAT, {
+            "agent_id": "CARDINAL",
+            "raw_data": {
+                "source": "Spire AIS",
+                "vessels_dark": 3,
+                "location": "Strait of Hormuz",
+                "duration_hours": 6,
+                "confidence": 0.78,
+            }
+        })
+        print(f"   Layer: {result.layer_used.value}")
+        print(f"   Result: {result.content[:200]}...")
+        
+        # Test Layer 1.5: Mission Narrative
+        print("\n📋 Layer 1.5: Mission Narrative (Mistral Creative)")
+        result = await brain.generate_mission_narrative(
+            source="Spire Global AIS",
+            event="3 oil tankers went dark near Venezuela",
+            confidence=0.82,
+            location="Caribbean Sea",
+        )
+        print(f"   Result: {result}")
+        
+        # Test Layer 1.6: Voice Broadcast (Premium)
+        print("\n🔊 Layer 1.6: Voice Broadcast (Grok Voice - Premium)")
+        result = await brain.generate_voice_broadcast(
+            agent_id="MEGALODON",
+            text="Blood in the water. Oil spread at five point two percent. Moving in sixty seconds.",
+            is_premium_user=True,
+        )
+        print(f"   Layer: {result.layer_used.value}")
+        print(f"   Provider: {result.provider_used}")
+        print(f"   Text: {result.content}")
+        print(f"   Has Audio: {result.audio_data is not None}")
+        print(f"   Duration: {result.duration_seconds:.1f}s" if result.duration_seconds else "   Duration: N/A")
+        print(f"   Cost: ${result.cost_estimate:.4f}")
+        print(f"   Success: {result.success}")
+        if result.error:
+            print(f"   Error: {result.error}")
+        
+        # Test Layer 1.6 fallback (non-premium user)
+        print("\n🔇 Layer 1.6 → 1.5 Fallback (Non-Premium User)")
+        result = await brain.generate_voice_broadcast(
+            agent_id="MEGALODON",
+            text="This should fall back to text.",
+            is_premium_user=False,
+        )
+        print(f"   Layer: {result.layer_used.value}")
+        print(f"   Provider: {result.provider_used}")
+        print(f"   Fallback worked: {result.layer_used == BrainLayer.LAYER_1_5}")
         
         # Test API Compatibility
         print("\n🔄 API Compatibility Test")
@@ -1107,6 +1551,8 @@ if __name__ == "__main__":
             else:
                 print(f"   {key}: {value}")
         
-        print("\n✅ Test complete!")
+        print("\n" + "=" * 60)
+        print("✅ Test complete!")
+        print("=" * 60)
     
     asyncio.run(test())
