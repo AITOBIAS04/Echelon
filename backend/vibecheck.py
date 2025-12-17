@@ -93,9 +93,9 @@ Write a 2-sentence tweet that makes people question this intel.""",
         print()
         
         try:
-            # Try mistral-small-creative first (Labs model for creative writing)
+            # Try labs-mistral-small-creative first (Labs model for creative writing)
             # Fallback to mistral-small-latest if unavailable
-            model_name = "mistral-small-creative"
+            model_name = "labs-mistral-small-creative"
             try:
                 response_high = await client.chat.complete_async(
                     model=model_name,
@@ -236,8 +236,8 @@ Write a 60-second early broadcast.
 Cocky, urgent, front-run-or-follow energy.
 Max 2 sentences."""
     
-    # Try mistral-small-creative first, fallback to mistral-small-latest
-    model_name = "mistral-small-creative"
+    # Try labs-mistral-small-creative first, fallback to mistral-small-latest
+    model_name = "labs-mistral-small-creative"
     try:
         response = await client.chat.complete_async(
             model=model_name,
@@ -281,8 +281,8 @@ Write a cocky 1-sentence broadcast. Max 20 words."""
     print("=" * 80)
     print()
     
-    # Try mistral-small-creative first, fallback to mistral-small-latest
-    model_name = "mistral-small-creative"
+    # Try labs-mistral-small-creative first, fallback to mistral-small-latest
+    model_name = "labs-mistral-small-creative"
     try:
         # Test if creative model is available
         test_response = await client.chat.complete_async(

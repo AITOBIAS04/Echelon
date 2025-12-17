@@ -124,7 +124,7 @@ class BrainConfig:
     groq_api_key: str = field(default_factory=lambda: os.getenv("GROQ_API_KEY", ""))
     
     # Model selection
-    mistral_model: str = field(default_factory=lambda: os.getenv("MISTRAL_MODEL", "mistral-small-creative"))
+    mistral_model: str = field(default_factory=lambda: os.getenv("MISTRAL_MODEL", "labs-mistral-small-creative"))
     anthropic_model: str = field(default_factory=lambda: os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514"))
     openai_model: str = field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4o"))
     
@@ -405,7 +405,7 @@ class MistralCreativeEngine:
         system_prompt, user_prompt = self._build_prompts(task_type, context)
         
         try:
-            # Try mistral-small-creative first, fallback to mistral-small-latest
+            # Try labs-mistral-small-creative first, fallback to mistral-small-latest
             model_name = self.model
             try:
                 if self.client:
@@ -413,7 +413,7 @@ class MistralCreativeEngine:
                 else:
                     response = await self._call_http(model_name, system_prompt, user_prompt)
             except Exception as e:
-                if "invalid_model" in str(e).lower() and "mistral-small-creative" in model_name:
+                if "invalid_model" in str(e).lower() and ("labs-mistral-small-creative" in model_name or "mistral-small-creative" in model_name):
                     logger.warning(f"{model_name} not available, using mistral-small-latest")
                     model_name = "mistral-small-latest"
                     if self.client:
