@@ -12,8 +12,15 @@ User-specific forks allow:
 - Custom scenario creation for educational purposes
 - Private agent training environments
 
+Divergence Engine v2 Integration:
+- VRF provides INITIAL fork entropy (genesis conditions)
+- Agents CREATE ongoing divergence through trading
+- Timeline health is DYNAMIC (stability score)
+- OSINT provides continuous pressure (contradiction score)
+- High divergence can spawn NEW forks (Founder's Yield)
+
 Author: Echelon Protocol
-Version: 1.0.0
+Version: 2.0.0
 """
 
 import asyncio
@@ -48,6 +55,13 @@ class ForkStatus(str, Enum):
     RESOLVED = "resolved"       # Outcome determined
     REAPED = "reaped"           # Killed by Reality Reaper
     EXPIRED = "expired"         # Time limit reached
+    
+    # New states from Divergence Engine v2
+    VOLATILE = "volatile"       # Stability < 30%, at risk
+    COLLAPSING = "collapsing"   # Stability < 10%, dying
+    COLLAPSED = "collapsed"     # Dead, settled at 0
+    SOLIDIFYING = "solidifying" # Stability > 90%, locking in
+    SOLIDIFIED = "solidified"   # Locked as tradeable reality
 
 
 class ForkVisibility(str, Enum):
@@ -144,6 +158,79 @@ class TimelineFork(BaseModel):
     # Resolution
     resolution_outcome: Optional[str] = Field(None)
     resolution_source: Optional[str] = Field(None)
+    
+    # =========================================================================
+    # DIVERGENCE ENGINE v2 FIELDS
+    # These enable the Agent-Powered Butterfly Effect
+    # =========================================================================
+    
+    # Timeline Health (calculated by StabilityCalculator)
+    stability_score: float = Field(
+        0.5, 
+        ge=0.0, 
+        le=1.0,
+        description="Timeline health: 0=dead, 1=solid. Formula: (Liquidity×Confidence)/(1+Contradiction)"
+    )
+    
+    # Divergence from reality (increases with agent activity)
+    divergence_score: float = Field(
+        0.0,
+        ge=0.0,
+        le=1.0,
+        description="How far from canonical reality. High divergence = new forks possible"
+    )
+    
+    # OSINT contradiction (reality pushing back)
+    osint_contradiction_score: float = Field(
+        0.0,
+        ge=0.0,
+        le=1.0,
+        description="How much real-world data contradicts this timeline"
+    )
+    
+    # Narrative gravity (agent attention creating OSINT sensitivity)
+    narrative_gravity: float = Field(
+        0.0,
+        ge=0.0,
+        le=1.0,
+        description="Agent betting heat on topics. High gravity = OSINT more sensitive"
+    )
+    
+    # Agent confidence (weighted belief in this timeline)
+    agent_confidence: float = Field(
+        0.5,
+        ge=0.0,
+        le=1.0,
+        description="Weighted average of agent confidence trading in this timeline"
+    )
+    
+    # Founder tracking (for Founder's Yield royalties)
+    founder_agent_id: Optional[str] = Field(
+        None,
+        description="Agent that created this fork via divergence threshold"
+    )
+    founder_trade_id: Optional[str] = Field(
+        None,
+        description="The specific trade that spawned this fork"
+    )
+    
+    # Active agents in this timeline
+    active_agent_ids: list[str] = Field(
+        default_factory=list,
+        description="Agents currently trading in this timeline"
+    )
+    
+    # Child forks (spawned by agent activity)
+    child_fork_ids: list[str] = Field(
+        default_factory=list,
+        description="Forks spawned from this timeline by agent divergence"
+    )
+    
+    # Last activity timestamp (for decay calculations)
+    last_activity_at: Optional[datetime] = Field(
+        None,
+        description="Last trade or agent action in this timeline"
+    )
 
 
 class UserForkPosition(BaseModel):
@@ -203,17 +290,25 @@ class TimelineForkManager:
     - Global forks: Shared counterfactual markets with real capital
     - User forks: Personal "what if" scenarios
     - Agent sandboxes: Training environments for AI agents
+    
+    Divergence Engine v2:
+    - VRF creates initial fork conditions
+    - Agent actions drive ongoing divergence
+    - Timeline health is dynamic (stability score)
+    - High divergence spawns new forks (Founder's Yield)
     """
     
     def __init__(
         self,
         vrf_consumer: Optional[Any] = None,
         timeline_shard_contract: Optional[Any] = None,
-        storage_backend: Optional[Any] = None
+        storage_backend: Optional[Any] = None,
+        divergence_engine: Optional[Any] = None,  # DivergenceEngine instance
     ):
         self.vrf_consumer = vrf_consumer
         self.timeline_shard = timeline_shard_contract
         self.storage = storage_backend
+        self.divergence_engine = divergence_engine
         
         # In-memory storage (replace with DB in production)
         self._forks: dict[str, TimelineFork] = {}
@@ -805,6 +900,258 @@ Bridge:
 - User positions can migrate to on-chain when ready
 - Leaderboards can influence global fork creation
 """
+
+
+# =============================================================================
+# DIVERGENCE ENGINE INTEGRATION
+# =============================================================================
+
+class DivergenceIntegration:
+    """
+    Integration layer between TimelineForkManager and DivergenceEngine.
+    
+    This bridges the VRF-based fork creation (genesis) with the
+    agent-powered divergence mechanics (ongoing butterfly effects).
+    """
+    
+    def __init__(self, fork_manager: TimelineForkManager, divergence_engine: Any):
+        self.fork_manager = fork_manager
+        self.divergence_engine = divergence_engine
+    
+    def sync_fork_to_divergence(self, fork: TimelineFork) -> None:
+        """
+        Sync a TimelineFork to the DivergenceEngine's Timeline model.
+        
+        Call this after creating a fork to register it with the divergence engine.
+        """
+        from .divergence_engine import Timeline, TimelineState
+        
+        # Map ForkStatus to TimelineState
+        state_map = {
+            ForkStatus.PENDING: TimelineState.NASCENT,
+            ForkStatus.ACTIVE: TimelineState.ACTIVE,
+            ForkStatus.VOLATILE: TimelineState.VOLATILE,
+            ForkStatus.COLLAPSING: TimelineState.COLLAPSING,
+            ForkStatus.COLLAPSED: TimelineState.COLLAPSED,
+            ForkStatus.SOLIDIFYING: TimelineState.SOLIDIFYING,
+            ForkStatus.SOLIDIFIED: TimelineState.SOLIDIFIED,
+            ForkStatus.RESOLVED: TimelineState.SOLIDIFIED,
+            ForkStatus.REAPED: TimelineState.COLLAPSED,
+            ForkStatus.EXPIRED: TimelineState.COLLAPSED,
+            ForkStatus.PAUSED: TimelineState.ACTIVE,
+        }
+        
+        # Make datetime timezone-aware if needed
+        from datetime import timezone
+        created_at = fork.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        
+        last_activity = fork.last_activity_at or fork.created_at
+        if last_activity.tzinfo is None:
+            last_activity = last_activity.replace(tzinfo=timezone.utc)
+        
+        fork_point_ts = fork.fork_point.timestamp
+        if fork_point_ts.tzinfo is None:
+            fork_point_ts = fork_point_ts.replace(tzinfo=timezone.utc)
+        
+        timeline = Timeline(
+            id=fork.fork_id,
+            parent_id=fork.parent_fork_id,
+            fork_point=fork_point_ts,
+            fork_reason=fork.fork_point.premise,
+            stability_score=fork.stability_score,
+            divergence_score=fork.divergence_score,
+            total_liquidity=float(fork.total_volume),
+            agent_confidence=fork.agent_confidence,
+            active_agents=set(fork.active_agent_ids),
+            osint_contradiction_score=fork.osint_contradiction_score,
+            narrative_gravity=fork.narrative_gravity,
+            founder_agent_id=fork.founder_agent_id,
+            state=state_map.get(fork.status, TimelineState.ACTIVE),
+            created_at=created_at,
+            last_activity=last_activity,
+            child_timeline_ids=fork.child_fork_ids,
+        )
+        
+        self.divergence_engine.timelines[fork.fork_id] = timeline
+    
+    def sync_divergence_to_fork(self, fork_id: str) -> None:
+        """
+        Sync DivergenceEngine state back to TimelineFork.
+        
+        Call this after processing agent actions to update the fork.
+        """
+        from .divergence_engine import TimelineState
+        
+        if fork_id not in self.divergence_engine.timelines:
+            return
+        
+        timeline = self.divergence_engine.timelines[fork_id]
+        fork = self.fork_manager._forks.get(fork_id)
+        
+        if not fork:
+            return
+        
+        # Map TimelineState back to ForkStatus
+        state_map = {
+            TimelineState.NASCENT: ForkStatus.PENDING,
+            TimelineState.ACTIVE: ForkStatus.ACTIVE,
+            TimelineState.VOLATILE: ForkStatus.VOLATILE,
+            TimelineState.COLLAPSING: ForkStatus.COLLAPSING,
+            TimelineState.COLLAPSED: ForkStatus.COLLAPSED,
+            TimelineState.SOLIDIFYING: ForkStatus.SOLIDIFYING,
+            TimelineState.SOLIDIFIED: ForkStatus.SOLIDIFIED,
+        }
+        
+        # Update fork fields
+        fork.stability_score = timeline.stability_score
+        fork.divergence_score = timeline.divergence_score
+        fork.osint_contradiction_score = timeline.osint_contradiction_score
+        fork.narrative_gravity = timeline.narrative_gravity
+        fork.agent_confidence = timeline.agent_confidence
+        fork.active_agent_ids = list(timeline.active_agents)
+        fork.child_fork_ids = timeline.child_timeline_ids
+        fork.founder_agent_id = timeline.founder_agent_id
+        fork.status = state_map.get(timeline.state, fork.status)
+        fork.last_activity_at = timeline.last_activity
+    
+    async def process_agent_trade(
+        self,
+        fork_id: str,
+        agent_id: str,
+        agent_archetype: str,
+        market_id: str,
+        direction: str,
+        size: float,
+        price: float,
+        confidence: float,
+        coalition_id: Optional[str] = None,
+        coalition_members: Optional[list[str]] = None,
+    ) -> dict:
+        """
+        Process an agent trade through the divergence engine.
+        
+        Returns the ripple effect results.
+        """
+        from .divergence_engine import AgentAction
+        
+        # Create action
+        action = AgentAction(
+            agent_id=agent_id,
+            agent_archetype=agent_archetype,
+            action_type="trade",
+            timeline_id=fork_id,
+            market_id=market_id,
+            direction=direction,
+            size=size,
+            price=price,
+            confidence=confidence,
+            coalition_id=coalition_id,
+            coalition_members=coalition_members or [],
+        )
+        
+        # Process through divergence engine
+        ripple = await self.divergence_engine.process_action(action)
+        
+        # Sync state back to fork
+        self.sync_divergence_to_fork(fork_id)
+        
+        # Check for new fork spawned
+        if ripple.spawned_fork and ripple.new_timeline_id:
+            # The divergence engine created a new timeline
+            # We need to create a corresponding TimelineFork
+            await self._create_spawned_fork(
+                parent_fork_id=fork_id,
+                new_fork_id=ripple.new_timeline_id,
+                founder_agent_id=agent_id,
+                founder_trade_id=f"{agent_id}_{action.timestamp.timestamp()}",
+            )
+        
+        return {
+            "affected_markets": ripple.affected_markets,
+            "affected_agents": ripple.affected_agents,
+            "stability_change": ripple.stability_change,
+            "divergence_change": ripple.divergence_change,
+            "spawned_fork": ripple.spawned_fork,
+            "new_fork_id": ripple.new_timeline_id,
+            "gravity_topics": ripple.gravity_topics,
+        }
+    
+    async def _create_spawned_fork(
+        self,
+        parent_fork_id: str,
+        new_fork_id: str,
+        founder_agent_id: str,
+        founder_trade_id: str,
+    ) -> TimelineFork:
+        """Create a TimelineFork for an agent-spawned divergence."""
+        parent = self.fork_manager._forks.get(parent_fork_id)
+        if not parent:
+            raise ValueError(f"Parent fork {parent_fork_id} not found")
+        
+        # Create fork point (inherits from parent with modifications)
+        fork_point = ForkPoint(
+            timestamp=datetime.utcnow(),
+            source_market_id=parent.fork_point.source_market_id,
+            source_platform=parent.fork_point.source_platform,
+            source_price=parent.fork_point.source_price,
+            source_volume=parent.total_volume,
+            state_hash=hashlib.sha256(f"{parent_fork_id}_{new_fork_id}".encode()).hexdigest(),
+            premise=f"Agent divergence from {parent.fork_point.premise}",
+            vrf_seed=None,  # No VRF for agent-spawned forks
+        )
+        
+        new_fork = TimelineFork(
+            fork_id=new_fork_id,
+            fork_type=parent.fork_type,
+            status=ForkStatus.ACTIVE,
+            fork_point=fork_point,
+            parent_fork_id=parent_fork_id,
+            user_config=None,
+            stability_score=0.5,
+            divergence_score=parent.divergence_score + 0.1,
+            founder_agent_id=founder_agent_id,
+            founder_trade_id=founder_trade_id,
+        )
+        
+        self.fork_manager._forks[new_fork_id] = new_fork
+        
+        # Update parent's child list
+        if new_fork_id not in parent.child_fork_ids:
+            parent.child_fork_ids.append(new_fork_id)
+        
+        return new_fork
+    
+    def apply_osint_contradiction(
+        self,
+        fork_id: str,
+        contradiction_score: float,
+        reason: str,
+    ) -> None:
+        """Apply OSINT contradiction to a fork via divergence engine."""
+        self.divergence_engine.apply_osint_contradiction(
+            timeline_id=fork_id,
+            contradiction_score=contradiction_score,
+            reason=reason,
+        )
+        self.sync_divergence_to_fork(fork_id)
+    
+    def tick(self) -> None:
+        """
+        Periodic tick to update all forks via divergence engine.
+        
+        Should be called regularly (e.g., every minute).
+        """
+        self.divergence_engine.tick()
+        
+        # Sync all forks
+        for fork_id in self.fork_manager._forks:
+            self.sync_divergence_to_fork(fork_id)
+    
+    def get_timeline_health(self, fork_id: str) -> dict:
+        """Get timeline health metrics for a fork."""
+        return self.divergence_engine.get_timeline_status(fork_id)
 
 
 # =============================================================================

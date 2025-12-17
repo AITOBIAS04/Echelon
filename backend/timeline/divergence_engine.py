@@ -220,16 +220,30 @@ class StabilityCalculator:
         
         raw_stability = numerator / denominator
         
+        # NEW: Base stability for new timelines (grace period)
+        # New timelines get a 0.3 base that decays over 24 hours
+        age_hours = (datetime.now(tz=timezone.utc) - timeline.created_at).total_seconds() / 3600
+        grace_period_hours = 24.0
+        if age_hours < grace_period_hours:
+            # Linear decay from 0.3 to 0 over grace period
+            base_stability = 0.3 * (1 - age_hours / grace_period_hours)
+        else:
+            base_stability = 0.0
+        
         # Add narrative gravity bonus
         # High gravity = system is "paying attention", stabilising effect
         gravity_bonus = timeline.narrative_gravity * 0.1
         
-        # Apply time decay
+        # Apply time decay (only after initial activity)
         hours_inactive = (datetime.now(tz=timezone.utc) - timeline.last_activity).total_seconds() / 3600
-        decay_penalty = hours_inactive * self.config.stability_decay_rate
+        # Don't decay for first hour
+        if hours_inactive > 1.0:
+            decay_penalty = (hours_inactive - 1.0) * self.config.stability_decay_rate
+        else:
+            decay_penalty = 0.0
         
         # Final score with bounds
-        stability = raw_stability + gravity_bonus - decay_penalty
+        stability = raw_stability + base_stability + gravity_bonus - decay_penalty
         stability = max(0.0, min(1.0, stability))
         
         return stability
@@ -1003,4 +1017,3 @@ if __name__ == "__main__":
         print("\n✅ Test complete!")
     
     asyncio.run(test())
-
