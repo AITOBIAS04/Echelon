@@ -164,16 +164,55 @@ def init_user_service(service: Any):
 # AUTHENTICATION
 # =============================================================================
 
-def get_current_user(db: AsyncSession = Depends(get_db_session)):
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from backend.auth.jwt import decode_token, TokenData
+
+security = HTTPBearer(auto_error=False)
+
+
+async def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> TokenData:
     """
-    Get current authenticated user.
+    Get current authenticated user from JWT token.
     
-    This is a placeholder - in production, this should extract
-    the user from JWT token or session.
+    Requires:
+        Bearer token in Authorization header
+        
+    Returns:
+        TokenData with user information
+        
+    Raises:
+        HTTPException 401 if not authenticated or token invalid
     """
-    # TODO: Implement proper authentication
-    # For now, return a mock user or raise 401
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Authentication required"
-    )
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+    
+    token_data = decode_token(credentials.credentials)
+    if not token_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+    
+    return token_data
+
+
+async def get_current_user_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> Optional[TokenData]:
+    """
+    Get current authenticated user from JWT token (optional).
+    
+    This version doesn't raise an error if no token is provided.
+    Useful for endpoints that work with or without authentication.
+    
+    Returns:
+        TokenData if authenticated, None otherwise
+    """
+    if not credentials:
+        return None
+    return decode_token(credentials.credentials)
