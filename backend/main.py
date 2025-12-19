@@ -89,6 +89,34 @@ except ImportError as e:
     init_timeline_api = None
     print(f"⚠️ Could not import Timeline API router: {e}")
 
+# Butterfly Engine API
+try:
+    from backend.api.butterfly_routes import router as butterfly_router
+except ImportError as e:
+    butterfly_router = None
+    print(f"⚠️ Could not import Butterfly API router: {e}")
+
+# Paradox System API
+try:
+    from backend.api.paradox_routes import router as paradox_router
+except ImportError as e:
+    paradox_router = None
+    print(f"⚠️ Could not import Paradox API router: {e}")
+
+# User Data API (Field Kit)
+try:
+    from backend.api.user_routes import router as user_router
+except ImportError as e:
+    user_router = None
+    print(f"⚠️ Could not import User API router: {e}")
+
+# WebSocket Real-time Manager
+try:
+    from backend.websockets.realtime_manager import ws_router
+except ImportError as e:
+    ws_router = None
+    print(f"⚠️ Could not import WebSocket router: {e}")
+
 # Initialize
 osint = get_osint_registry()
 
@@ -250,6 +278,54 @@ try:
         print("⚠️ Timeline router is None, skipping")
 except Exception as e:
     print(f"❌ Failed to include Timeline router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Butterfly Engine router
+try:
+    if butterfly_router:
+        app.include_router(butterfly_router)
+        print("✅ Butterfly Engine API router included")
+    else:
+        print("⚠️ Butterfly router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Butterfly router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Paradox System router
+try:
+    if paradox_router:
+        app.include_router(paradox_router)
+        print("✅ Paradox System API router included")
+    else:
+        print("⚠️ Paradox router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Paradox router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include User Data router (Field Kit)
+try:
+    if user_router:
+        app.include_router(user_router)
+        print("✅ User Data API router included")
+    else:
+        print("⚠️ User router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include User router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include WebSocket router
+try:
+    if ws_router:
+        app.include_router(ws_router)
+        print("✅ WebSocket router included")
+    else:
+        print("⚠️ WebSocket router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include WebSocket router: {e}")
     import traceback
     traceback.print_exc()
 
