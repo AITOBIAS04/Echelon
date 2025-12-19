@@ -15,6 +15,20 @@ from .connection import (
     init_db,
     close_db,
 )
+from .models import (
+    User,
+    Timeline,
+    Agent,
+    WingFlap,
+    Paradox,
+    UserPosition,
+    WatchlistItem,
+    PrivateFork,
+    AgentArchetype,
+    WingFlapType,
+    ParadoxStatus,
+    SeverityClass,
+)
 
 __all__ = [
     "DatabaseConfig",
@@ -26,5 +40,19 @@ __all__ = [
     "get_db",
     "init_db",
     "close_db",
+    # Models
+    "User",
+    "Timeline",
+    "Agent",
+    "WingFlap",
+    "Paradox",
+    "UserPosition",
+    "WatchlistItem",
+    "PrivateFork",
+    # Enums
+    "AgentArchetype",
+    "WingFlapType",
+    "ParadoxStatus",
+    "SeverityClass",
 ]
 
