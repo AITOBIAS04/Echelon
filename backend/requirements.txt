@@ -10,6 +10,7 @@ SQLAlchemy==2.0.44
 SQLAlchemy[asyncio]>=2.0.44  # Async support
 alembic==1.12.0
 asyncpg>=0.31.0  # PostgreSQL async driver
+psycopg2-binary>=2.9.0  # PostgreSQL sync driver (for migrations)
 
 # Authentication & Security
 passlib==1.7.4
