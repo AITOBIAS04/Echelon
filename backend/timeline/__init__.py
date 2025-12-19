@@ -14,6 +14,14 @@ from .fork_manager import (
     TimelineFork,
 )
 
+from .divergence_engine import (
+    DivergenceEngine,
+    Timeline,
+    TimelineState,
+    AgentAction,
+    RippleEffect,
+)
+
 __all__ = [
     "TimelineForkManager",
     "ForkType",
@@ -21,6 +29,11 @@ __all__ = [
     "ForkVisibility",
     "UserForkConfig",
     "TimelineFork",
+    "DivergenceEngine",
+    "Timeline",
+    "TimelineState",
+    "AgentAction",
+    "RippleEffect",
 ]
 
 
