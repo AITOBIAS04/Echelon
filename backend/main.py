@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from passlib.context import CryptContext
 from pydantic import BaseModel, ConfigDict, Field, validator
-from typing import Annotated, Dict, Optional
+from typing import Annotated, Dict, Optional, List
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 
@@ -436,6 +436,163 @@ try:
     if user_router:
         app.include_router(user_router)
         print("✅ User Data API router included")
+        
+        # Initialize User Service with stub implementation
+        from backend.dependencies import init_user_service
+        
+        class StubUserService:
+            """Stub User Service for development."""
+            def __init__(self):
+                self.positions = {}
+                self.private_forks = {}
+                self.watchlists = {}
+                self.alerts = {}
+            
+            def get_positions(self, user_id: str):
+                """Get user positions."""
+                return self.positions.get(user_id, [])
+            
+            def get_position(self, user_id: str, timeline_id: str):
+                """Get position in specific timeline."""
+                positions = self.get_positions(user_id)
+                for pos in positions:
+                    if pos.timeline_id == timeline_id:
+                        return pos
+                return None
+            
+            def get_private_forks(self, user_id: str):
+                """Get user's private forks."""
+                return self.private_forks.get(user_id, [])
+            
+            def get_max_private_forks(self, tier: str):
+                """Get max private forks for user tier."""
+                limits = {"free": 3, "premium": 10, "pro": 50}
+                return limits.get(tier, 3)
+            
+            def create_private_fork(self, user_id: str, request):
+                """Create a private fork."""
+                from ..schemas.user_schemas import PrivateFork
+                import uuid
+                fork_id = f"private_{uuid.uuid4().hex[:8]}"
+                fork = PrivateFork(
+                    fork_id=fork_id,
+                    timeline_id=request.source_timeline_id,
+                    name=request.name,
+                    premise=request.premise,
+                    created_at=datetime.now(),
+                    status="active",
+                    simulated_capital=request.simulated_capital
+                )
+                if user_id not in self.private_forks:
+                    self.private_forks[user_id] = []
+                self.private_forks[user_id].append(fork)
+                return fork
+            
+            def get_private_fork(self, user_id: str, fork_id: str):
+                """Get a specific private fork."""
+                forks = self.get_private_forks(user_id)
+                for fork in forks:
+                    if fork.fork_id == fork_id:
+                        return fork
+                return None
+            
+            def delete_private_fork(self, user_id: str, fork_id: str):
+                """Delete a private fork."""
+                if user_id in self.private_forks:
+                    self.private_forks[user_id] = [
+                        f for f in self.private_forks[user_id]
+                        if f.fork_id != fork_id
+                    ]
+                    return True
+                return False
+            
+            def get_watchlist(self, user_id: str):
+                """Get user watchlist."""
+                return self.watchlists.get(user_id, [])
+            
+            def get_max_watchlist_items(self, tier: str):
+                """Get max watchlist items for user tier."""
+                limits = {"free": 10, "premium": 50, "pro": 200}
+                return limits.get(tier, 10)
+            
+            def add_to_watchlist(self, user_id: str, request):
+                """Add item to watchlist."""
+                from ..schemas.user_schemas import WatchlistItem
+                import uuid
+                item = WatchlistItem(
+                    id=f"watch_{uuid.uuid4().hex[:8]}",
+                    item_type=request.item_type,
+                    item_id=request.item_id,
+                    added_at=datetime.now(),
+                    notes=request.notes
+                )
+                if user_id not in self.watchlists:
+                    self.watchlists[user_id] = []
+                self.watchlists[user_id].append(item)
+                return item
+            
+            def remove_from_watchlist(self, user_id: str, item_id: str):
+                """Remove item from watchlist."""
+                if user_id in self.watchlists:
+                    self.watchlists[user_id] = [
+                        item for item in self.watchlists[user_id]
+                        if item.id != item_id
+                    ]
+                    return True
+                return False
+            
+            def get_portfolio_summary(self, user_id: str):
+                """Get portfolio summary."""
+                from ..schemas.user_schemas import PortfolioSummary
+                positions = self.get_positions(user_id)
+                total_value = sum(p.shards_held * p.current_price for p in positions) if positions else 0
+                total_pnl = sum(p.unrealised_pnl_usd for p in positions) if positions else 0
+                return PortfolioSummary(
+                    total_positions=len(positions),
+                    total_value_usd=total_value,
+                    total_unrealised_pnl_usd=total_pnl,
+                    active_timelines=len(set(p.timeline_id for p in positions)),
+                    at_risk_count=len([p for p in positions if p.timeline_stability < 30]),
+                    founder_yield_total=sum(p.founder_yield_earned_usd for p in positions) if positions else 0
+                )
+            
+            def get_alerts(
+                self,
+                user_id: str,
+                unread_only: bool = False,
+                alert_types: Optional[List[str]] = None,
+                limit: int = 50
+            ):
+                """Get user alerts."""
+                alerts = self.alerts.get(user_id, [])
+                if unread_only:
+                    alerts = [a for a in alerts if not getattr(a, 'read', False)]
+                if alert_types:
+                    alerts = [a for a in alerts if getattr(a, 'alert_type', None) in alert_types]
+                return alerts[:limit]
+            
+            def mark_alert_read(self, user_id: str, alert_id: str):
+                """Mark an alert as read."""
+                if user_id in self.alerts:
+                    for alert in self.alerts[user_id]:
+                        if getattr(alert, 'id', None) == alert_id:
+                            alert.read = True
+                            return True
+                return False
+            
+            def mark_all_alerts_read(self, user_id: str):
+                """Mark all alerts as read."""
+                count = 0
+                if user_id in self.alerts:
+                    for alert in self.alerts[user_id]:
+                        if not getattr(alert, 'read', False):
+                            alert.read = True
+                            count += 1
+                return count
+        
+        _user_service = StubUserService()
+        init_user_service(_user_service)
+        print("✅ User Service initialized with stub implementation")
     else:
         print("⚠️ User router is None, skipping")
 except Exception as e:
