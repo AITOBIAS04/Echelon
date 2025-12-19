@@ -1,12 +1,14 @@
 """
 Echelon Database Seeder
 Run with: python -m backend.scripts.seed_database
+Or with auto-reseed: python -m backend.scripts.seed_database --force
 """
 
 import asyncio
 from datetime import datetime, timedelta
 import random
 import uuid
+import sys
 
 # Add parent to path for imports
 import sys
@@ -395,10 +397,23 @@ async def main():
             
             if user_count > 0:
                 print(f"⚠️  Database already has {user_count} users.")
-                response = input("Clear and reseed? (y/N): ")
-                if response.lower() != 'y':
-                    print("Aborted.")
-                    return
+                
+                # Check for --force flag
+                force_reseed = "--force" in sys.argv or "-f" in sys.argv
+                
+                if not force_reseed:
+                    try:
+                        response = input("Clear and reseed? (y/N): ")
+                        if response.lower() != 'y':
+                            print("Aborted.")
+                            return
+                    except EOFError:
+                        # Non-interactive mode (e.g., piped input)
+                        print("⚠️  Non-interactive mode detected. Use --force to auto-reseed.")
+                        print("Aborted.")
+                        return
+                else:
+                    print("🔄 Force reseed enabled, clearing existing data...")
                 
                 # Clear existing data
                 print("🗑️  Clearing existing data...")
