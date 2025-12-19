@@ -40,6 +40,13 @@ from backend.core.autouploader import AutoUploadConfig
 # Payments Router
 from backend.payments.routes import router as payments_router
 
+# Auth Router
+try:
+    from backend.api.auth_routes import router as auth_router
+except ImportError as e:
+    auth_router = None
+    print(f"⚠️ Could not import Auth API router: {e}")
+
 # Situation Room Router (existing) - DISABLED: Using new API instead
 # try:
 #     from backend.api.situation_room_routes import router as situation_room_router
