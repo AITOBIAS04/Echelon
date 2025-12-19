@@ -5,14 +5,13 @@ Authentication API Routes
 Endpoints for user registration, login, and token management.
 """
 from fastapi import APIRouter, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 
-from backend.auth.jwt import create_access_token, create_refresh_token, decode_token
+from backend.auth.jwt import create_access_token, create_refresh_token, TokenData
 from backend.auth.password import hash_password, verify_password
+from backend.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
-security = HTTPBearer()
 
 # Mock user store (replace with database)
 USERS = {}
@@ -93,7 +92,7 @@ async def login(req: LoginRequest):
 
 
 @router.get("/me")
-async def get_me(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_me(user: TokenData = Depends(get_current_user)):
     """
     Get current user info from JWT token.
     
@@ -101,18 +100,12 @@ async def get_me(credentials: HTTPAuthorizationCredentials = Depends(security)):
         Bearer token in Authorization header
         
     Returns:
-        User ID, username, and email
+        User ID, username, email, and tier
     """
-    token_data = decode_token(credentials.credentials)
-    if not token_data:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
     return {
-        "user_id": token_data.user_id,
-        "username": token_data.username,
-        "email": token_data.email,
-        "tier": token_data.tier
+        "user_id": user.user_id,
+        "username": user.username,
+        "email": user.email,
+        "tier": user.tier
     }
 
