@@ -13,10 +13,12 @@ asyncpg>=0.31.0  # PostgreSQL async driver
 psycopg2-binary>=2.9.0  # PostgreSQL sync driver (for migrations)
 
 # Authentication & Security
-passlib==1.7.4
-python-jose==3.5.0
+passlib[bcrypt]==1.7.4  # Password hashing with bcrypt support
+python-jose[cryptography]==3.5.0  # JWT tokens with cryptography support
 argon2-cffi==25.1.0
 argon2-cffi-bindings==25.1.0
+bcrypt>=5.0.0  # Password hashing backend
+cryptography>=46.0.0  # Cryptographic primitives for JWT
 
 # Data Validation
 pydantic==2.12.4
