@@ -19,8 +19,9 @@ class DatabaseConfig:
     DB_HOST = os.getenv("DB_HOST", "localhost")
     DB_PORT = os.getenv("DB_PORT", "5432")
     DB_NAME = os.getenv("DB_NAME", "echelon")
-    DB_USER = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "password")
+    # Default to current user for macOS Homebrew PostgreSQL
+    DB_USER = os.getenv("DB_USER", os.getenv("USER", "postgres"))
+    DB_PASSWORD = os.getenv("DB_PASSWORD", "")
     
     # Connection URL
     DATABASE_URL = os.getenv(
