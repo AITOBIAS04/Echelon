@@ -286,6 +286,117 @@ try:
     if butterfly_router:
         app.include_router(butterfly_router)
         print("✅ Butterfly Engine API router included")
+        
+        # Initialize Butterfly Engine with stub repositories
+        from backend.mechanics.butterfly_engine import ButterflyEngine
+        from backend.dependencies import init_butterfly_engine
+        
+        # Create stub repositories for development
+        class StubTimelineRepo:
+            """Stub timeline repository for development."""
+            def __init__(self):
+                self.timelines = {}
+                self.flaps = []
+            
+            def get(self, timeline_id: str):
+                """Get a timeline (returns mock if not found)."""
+                if timeline_id not in self.timelines:
+                    # Return mock timeline
+                    from types import SimpleNamespace
+                    return SimpleNamespace(
+                        id=timeline_id,
+                        timeline_id=timeline_id,
+                        name=f"Timeline {timeline_id[:8]}",
+                        stability=75.0,
+                        price_yes=0.65,
+                        total_volume_usd=50000.0,
+                        founder_id=None,
+                        active_agent_count=5,
+                        keywords=["market", "trading"],
+                        narrative="Active trading timeline",
+                        connected_timeline_ids=[],
+                        total_volume=50000.0
+                    )
+                return self.timelines[timeline_id]
+            
+            def update_stability(self, timeline_id: str, stability: float):
+                """Update timeline stability."""
+                timeline = self.get(timeline_id)
+                timeline.stability = stability
+            
+            def set_decay_multiplier(self, timeline_id: str, multiplier: float):
+                """Set decay multiplier."""
+                timeline = self.get(timeline_id)
+                timeline.decay_multiplier = multiplier
+            
+            def get_flaps_since(self, timeline_id: str, cutoff):
+                """Get flaps since cutoff time."""
+                return [f for f in self.flaps if f.timeline_id == timeline_id and f.timestamp >= cutoff]
+            
+            def update_logic_gap(self, timeline_id: str, gap: float):
+                """Update logic gap."""
+                timeline = self.get(timeline_id)
+                timeline.logic_gap = gap
+            
+            def create_fork(self, parent_id: str, narrative: str, initial_stability: float, founder_id: str):
+                """Create a new fork timeline."""
+                from types import SimpleNamespace
+                import uuid
+                fork_id = f"fork_{uuid.uuid4().hex[:8]}"
+                fork = SimpleNamespace(
+                    id=fork_id,
+                    timeline_id=fork_id,
+                    name=f"Fork from {parent_id[:8]}",
+                    stability=initial_stability,
+                    price_yes=0.5,
+                    total_volume_usd=0.0,
+                    founder_id=founder_id,
+                    active_agent_count=0,
+                    keywords=["fork", "divergence"],
+                    narrative=narrative,
+                    connected_timeline_ids=[parent_id],
+                    total_volume=0.0
+                )
+                self.timelines[fork_id] = fork
+                return fork
+        
+        class StubAgentRepo:
+            """Stub agent repository for development."""
+            def __init__(self):
+                self.agents = {}
+            
+            def get(self, agent_id: str):
+                """Get an agent (returns mock if not found)."""
+                if agent_id not in self.agents:
+                    from types import SimpleNamespace
+                    return SimpleNamespace(
+                        agent_id=agent_id,
+                        name=agent_id,
+                        archetype="shark"
+                    )
+                return self.agents[agent_id]
+        
+        class StubOSINTService:
+            """Stub OSINT service for development."""
+            def count_mentions(self, keywords: list, hours: int) -> int:
+                """Count OSINT mentions."""
+                return len(keywords) * 10  # Mock count
+            
+            def get_sources(self, keywords: list) -> list:
+                """Get OSINT sources."""
+                return ["Spire AIS", "MarineTraffic", "Reuters"]
+            
+            def get_reality_score(self, keywords: list, narrative: str) -> float:
+                """Get reality score from OSINT."""
+                return 65.0  # Mock score
+        
+        # Initialize Butterfly Engine
+        _timeline_repo = StubTimelineRepo()
+        _agent_repo = StubAgentRepo()
+        _osint_service = StubOSINTService()
+        _butterfly_engine = ButterflyEngine(_timeline_repo, _agent_repo, _osint_service)
+        init_butterfly_engine(_butterfly_engine)
+        print("✅ Butterfly Engine initialized with stub repositories")
     else:
         print("⚠️ Butterfly router is None, skipping")
 except Exception as e:
@@ -298,6 +409,21 @@ try:
     if paradox_router:
         app.include_router(paradox_router)
         print("✅ Paradox System API router included")
+        
+        # Initialize Paradox Engine (depends on Butterfly Engine)
+        from backend.mechanics.paradox_engine import ParadoxEngine
+        from backend.dependencies import init_paradox_engine, get_butterfly_engine
+        
+        try:
+            # Get the Butterfly Engine we just initialized
+            _butterfly_engine = get_butterfly_engine()
+            
+            # Reuse the same stub repositories
+            _paradox_engine = ParadoxEngine(_timeline_repo, _agent_repo, _butterfly_engine)
+            init_paradox_engine(_paradox_engine)
+            print("✅ Paradox Engine initialized with stub repositories")
+        except Exception as e:
+            print(f"⚠️ Paradox Engine initialization skipped (Butterfly Engine not ready): {e}")
     else:
         print("⚠️ Paradox router is None, skipping")
 except Exception as e:

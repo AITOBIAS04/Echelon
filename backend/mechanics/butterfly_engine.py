@@ -316,11 +316,138 @@ class ButterflyEngine:
     
     def _persist_flap(self, flap: WingFlap):
         """Save flap to database."""
-        # Implementation depends on your database
-        pass
+        # Store in memory for now (replace with DB in production)
+        if not hasattr(self, '_stored_flaps'):
+            self._stored_flaps = []
+        self._stored_flaps.append(flap)
     
     def _broadcast_flap(self, flap: WingFlap):
         """Broadcast flap via WebSocket to connected clients."""
         # Implementation in websockets/realtime_manager.py
         pass
+    
+    # =========================================
+    # API METHODS (Query Interface)
+    # =========================================
+    
+    def get_flaps(
+        self,
+        timeline_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        min_delta: float = 0,
+        min_volume: float = 0,
+        flap_types: Optional[List[str]] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> List[WingFlap]:
+        """Get filtered wing flaps."""
+        flaps = getattr(self, '_stored_flaps', [])
+        
+        # Filter
+        if timeline_id:
+            flaps = [f for f in flaps if f.timeline_id == timeline_id]
+        if agent_id:
+            flaps = [f for f in flaps if f.agent_id == agent_id]
+        if min_delta > 0:
+            flaps = [f for f in flaps if abs(f.stability_delta) >= min_delta]
+        if min_volume > 0:
+            flaps = [f for f in flaps if f.volume_usd >= min_volume]
+        if flap_types:
+            flaps = [f for f in flaps if f.flap_type.value in flap_types]
+        
+        # Sort by timestamp descending
+        flaps.sort(key=lambda f: f.timestamp, reverse=True)
+        
+        # Paginate
+        return flaps[offset:offset + limit]
+    
+    def count_flaps(
+        self,
+        timeline_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        min_delta: float = 0,
+        min_volume: float = 0,
+        flap_types: Optional[List[str]] = None
+    ) -> int:
+        """Count filtered wing flaps."""
+        flaps = getattr(self, '_stored_flaps', [])
+        
+        # Apply same filters as get_flaps
+        if timeline_id:
+            flaps = [f for f in flaps if f.timeline_id == timeline_id]
+        if agent_id:
+            flaps = [f for f in flaps if f.agent_id == agent_id]
+        if min_delta > 0:
+            flaps = [f for f in flaps if abs(f.stability_delta) >= min_delta]
+        if min_volume > 0:
+            flaps = [f for f in flaps if f.volume_usd >= min_volume]
+        if flap_types:
+            flaps = [f for f in flaps if f.flap_type.value in flap_types]
+        
+        return len(flaps)
+    
+    def get_recent_high_impact_flaps(self, since: datetime, limit: int = 20) -> List[WingFlap]:
+        """Get recent high-impact flaps."""
+        flaps = getattr(self, '_stored_flaps', [])
+        flaps = [f for f in flaps if f.timestamp >= since]
+        flaps.sort(key=lambda f: abs(f.stability_delta), reverse=True)
+        return flaps[:limit]
+    
+    def get_timeline_health(
+        self,
+        sort_by: str = "gravity_score",
+        sort_order: str = "desc",
+        min_gravity: float = 0,
+        paradox_only: bool = False,
+        limit: int = 20
+    ) -> List[TimelineHealth]:
+        """Get timeline health metrics."""
+        # Stub: return empty list for now
+        # In production, query all timelines and calculate health
+        return []
+    
+    def count_timelines(self, min_gravity: float = 0, paradox_only: bool = False) -> int:
+        """Count timelines matching criteria."""
+        return 0
+    
+    def get_timeline_health_by_id(self, timeline_id: str) -> Optional[TimelineHealth]:
+        """Get health for a single timeline."""
+        timeline = self.timeline_repo.get(timeline_id)
+        gravity = self.calculate_gravity(timeline_id)
+        
+        return TimelineHealth(
+            timeline_id=timeline_id,
+            timeline_name=timeline.name,
+            stability_score=timeline.stability,
+            gravity_score=gravity.total_gravity,
+            decay_rate_per_hour=self.BASE_DECAY_PER_HOUR,
+            has_active_paradox=False,
+            hours_until_reaper=None
+        )
+    
+    def get_trending_timelines(self, limit: int = 10) -> List[GravityBreakdown]:
+        """Get timelines with highest gravity."""
+        return []
+    
+    def get_ripples(
+        self,
+        parent_id: Optional[str] = None,
+        since: datetime = None,
+        limit: int = 20
+    ) -> List[Ripple]:
+        """Get ripple events (forks spawned)."""
+        # Stub: return empty list
+        return []
+    
+    def count_ripples_since(self, since: datetime) -> int:
+        """Count ripples since timestamp."""
+        return 0
+    
+    def count_all_ripples(self) -> int:
+        """Count all ripples ever."""
+        return 0
+    
+    def get_fork_tree(self, timeline_id: str, depth: int = 3) -> dict:
+        """Get fork tree structure."""
+        return {"timeline_id": timeline_id, "children": [], "depth": depth}
 
