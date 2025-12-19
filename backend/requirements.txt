@@ -23,6 +23,7 @@ cryptography>=46.0.0  # Cryptographic primitives for JWT
 # Data Validation
 pydantic==2.12.4
 pydantic_core==2.41.5
+email-validator>=2.0.0  # Required for EmailStr validation
 
 # AI/LLM
 anthropic==0.74.1

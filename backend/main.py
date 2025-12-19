@@ -181,6 +181,18 @@ app.add_middleware(
 )
 
 # Include routers
+# Auth router (first, as other routes may depend on it)
+try:
+    if auth_router:
+        app.include_router(auth_router)
+        print("✅ Auth API router included")
+    else:
+        print("⚠️ Auth router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Auth router: {e}")
+    import traceback
+    traceback.print_exc()
+
 try:
     if payments_router:
         app.include_router(payments_router)
