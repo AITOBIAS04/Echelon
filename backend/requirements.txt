@@ -1,7 +1,7 @@
 # Core Web Framework
 fastapi==0.121.3
-websockets==11.0.3  # MUST be before uvicorn to prevent upgrade
-uvicorn==0.38.0  # Install without [standard] extra to avoid websockets dependency conflict
+uvicorn==0.38.0
+wsproto==1.2.0  # WebSocket implementation (alternative to websockets, avoids version conflicts)
 gunicorn==21.2.0
 python-multipart==0.0.20
 starlette==0.50.0

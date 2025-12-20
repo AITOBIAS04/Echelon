@@ -14,5 +14,6 @@ if __name__ == "__main__":
         "backend.main:app",
         host="0.0.0.0",
         port=port,
-        log_level="info"
+        log_level="info",
+        ws="wsproto"  # Use wsproto instead of websockets to avoid version conflicts
     )

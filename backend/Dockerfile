@@ -26,12 +26,8 @@ RUN addgroup --system app && adduser --system --group app
 
 # Copy wheels from builder
 COPY --from=builder /app/wheels /wheels
-# Install websockets first, then all other wheels
-# Pip should respect the already-installed websockets version
-RUN pip install --no-cache websockets==11.0.3 && \
-    pip install --no-cache /wheels/* && \
-    pip install --no-cache --force-reinstall --no-deps websockets==11.0.3 && \
-    python -c "import websockets; v=websockets.__version__; assert v.startswith('11.'), f'Wrong version: {v}'; import websockets.legacy.handshake; print(f'✅ websockets {v} with legacy module verified')"
+# Install all wheels
+RUN pip install --no-cache /wheels/*
 
 # Copy application code
 COPY . .
