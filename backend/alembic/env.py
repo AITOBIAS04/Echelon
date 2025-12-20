@@ -19,8 +19,33 @@ from database import models  # This imports all models
 # Alembic Config object
 config = context.config
 
-# Set the database URL from your config (use sync URL for migrations)
-config.set_main_option("sqlalchemy.url", DatabaseConfig.SYNC_DATABASE_URL)
+# Get database URL from environment - MUST read directly, not from DatabaseConfig
+# Railway sets DATABASE_URL, so read it directly from environment
+database_url = os.getenv("DATABASE_URL")
+
+# Debug: Log what we found (but mask password)
+if database_url:
+    masked_url = database_url.split("@")[-1] if "@" in database_url else database_url
+    print(f"🔍 [Alembic] Found DATABASE_URL: postgresql://***@{masked_url}")
+else:
+    print("⚠️  [Alembic] DATABASE_URL not found in environment, using DatabaseConfig fallback")
+    database_url = DatabaseConfig.SYNC_DATABASE_URL
+    masked_url = database_url.split("@")[-1] if "@" in database_url else database_url
+    print(f"🔍 [Alembic] Using DatabaseConfig: postgresql://***@{masked_url}")
+
+# Convert to sync URL format (psycopg2) for migrations
+if database_url.startswith("postgresql://") and "+psycopg2" not in database_url and "+asyncpg" not in database_url:
+    # Railway format: postgresql://... -> postgresql+psycopg2://...
+    database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    print(f"✅ [Alembic] Converted to psycopg2 format")
+elif database_url.startswith("postgresql+asyncpg://"):
+    # Already has asyncpg, convert to psycopg2 for sync migrations
+    database_url = database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+    print(f"✅ [Alembic] Converted asyncpg to psycopg2 format")
+
+# Set the URL for Alembic
+config.set_main_option("sqlalchemy.url", database_url)
+print(f"✅ [Alembic] Database URL configured for migrations")
 
 # Logging
 if config.config_file_name is not None:

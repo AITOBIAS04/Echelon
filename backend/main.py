@@ -213,6 +213,7 @@ except Exception as e:
 
 # Initialize Butterfly and Paradox Engines (for USE_MOCKS mode)
 USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+print(f"🔍 [Main] USE_MOCKS={USE_MOCKS} (from env: {os.getenv('USE_MOCKS', 'not set')})")
 if USE_MOCKS and (butterfly_router or paradox_router):
     try:
         from backend.dependencies import init_butterfly_engine, init_paradox_engine
