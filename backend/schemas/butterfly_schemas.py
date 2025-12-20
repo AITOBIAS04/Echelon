@@ -193,3 +193,4 @@ class RippleListResponse(BaseModel):
     total_today: int
     total_all_time: int
 
+

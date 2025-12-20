@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from passlib.context import CryptContext
 from pydantic import BaseModel, ConfigDict, Field, validator
-from typing import Annotated, Dict, Optional, List
+from typing import Annotated, Dict, Optional
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
 
@@ -40,13 +40,6 @@ from backend.core.autouploader import AutoUploadConfig
 # Payments Router
 from backend.payments.routes import router as payments_router
 
-# Auth Router
-try:
-    from backend.api.auth_routes import router as auth_router
-except ImportError as e:
-    auth_router = None
-    print(f"⚠️ Could not import Auth API router: {e}")
-
 # Situation Room Router (existing) - DISABLED: Using new API instead
 # try:
 #     from backend.api.situation_room_routes import router as situation_room_router
@@ -74,28 +67,6 @@ except ImportError as e:
     operations_router = None
     print(f"⚠️ Could not import Operations API router: {e}")
 
-# Butler Webhooks API
-try:
-    from backend.api.butler_webhooks import router as butler_router
-except ImportError as e:
-    butler_router = None
-    print(f"⚠️ Could not import Butler API router: {e}")
-
-# Scheduler API
-try:
-    from backend.api.scheduler_api import router as scheduler_router
-except ImportError as e:
-    scheduler_router = None
-    print(f"⚠️ Could not import Scheduler API router: {e}")
-
-# Timeline/Divergence Engine API
-try:
-    from backend.api.timeline_api import router as timeline_router, init_timeline_api
-except ImportError as e:
-    timeline_router = None
-    init_timeline_api = None
-    print(f"⚠️ Could not import Timeline API router: {e}")
-
 # Butterfly Engine API
 try:
     from backend.api.butterfly_routes import router as butterfly_router
@@ -103,26 +74,12 @@ except ImportError as e:
     butterfly_router = None
     print(f"⚠️ Could not import Butterfly API router: {e}")
 
-# Paradox System API
+# Paradox Engine API
 try:
     from backend.api.paradox_routes import router as paradox_router
 except ImportError as e:
     paradox_router = None
     print(f"⚠️ Could not import Paradox API router: {e}")
-
-# User Data API (Field Kit)
-try:
-    from backend.api.user_routes import router as user_router
-except ImportError as e:
-    user_router = None
-    print(f"⚠️ Could not import User API router: {e}")
-
-# WebSocket Real-time Manager
-try:
-    from backend.websockets.realtime_manager import ws_router
-except ImportError as e:
-    ws_router = None
-    print(f"⚠️ Could not import WebSocket router: {e}")
 
 # Initialize
 osint = get_osint_registry()
@@ -170,6 +127,7 @@ app.add_middleware(SlowAPIMiddleware)
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",
+    "http://localhost:5173",  # Vite dev server
 ]
 
 app.add_middleware(
@@ -181,18 +139,6 @@ app.add_middleware(
 )
 
 # Include routers
-# Auth router (first, as other routes may depend on it)
-try:
-    if auth_router:
-        app.include_router(auth_router)
-        print("✅ Auth API router included")
-    else:
-        print("⚠️ Auth router is None, skipping")
-except Exception as e:
-    print(f"❌ Failed to include Auth router: {e}")
-    import traceback
-    traceback.print_exc()
-
 try:
     if payments_router:
         app.include_router(payments_router)
@@ -241,395 +187,61 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
-# Include Butler Webhooks router
-try:
-    if butler_router:
-        app.include_router(butler_router)
-        print("✅ Butler webhooks router included")
-    else:
-        print("⚠️ Butler router is None, skipping")
-except Exception as e:
-    print(f"❌ Failed to include Butler router: {e}")
-    import traceback
-    traceback.print_exc()
-
-# Include Scheduler router
-try:
-    if scheduler_router:
-        app.include_router(scheduler_router)
-        print("✅ Scheduler router included")
-    else:
-        print("⚠️ Scheduler router is None, skipping")
-except Exception as e:
-    print(f"❌ Failed to include Scheduler router: {e}")
-    import traceback
-    traceback.print_exc()
-
-# Include Timeline/Divergence Engine router
-try:
-    if timeline_router:
-        app.include_router(timeline_router)
-        print("✅ Timeline API router included")
-        
-        # Initialise divergence engine components
-        from backend.timeline import TimelineForkManager, DivergenceEngine
-        from backend.timeline.fork_manager import DivergenceIntegration
-        
-        _fork_manager = TimelineForkManager()
-        _divergence_engine = DivergenceEngine()
-        _divergence_integration = DivergenceIntegration(_fork_manager, _divergence_engine)
-        
-        # Register default agent archetypes
-        _divergence_engine.agents = {
-            "MEGALODON": {"archetype": "shark", "trend_follower": True},
-            "HAMMERHEAD": {"archetype": "shark", "trend_follower": False},
-            "THRESHER": {"archetype": "shark", "trend_follower": True},
-            "CARDINAL": {"archetype": "spy"},
-            "RAVEN": {"archetype": "spy"},
-            "AMBASSADOR": {"archetype": "diplomat"},
-            "GHOST": {"archetype": "saboteur"},
-        }
-        
-        # Wire up to API
-        init_timeline_api(_fork_manager, _divergence_engine, _divergence_integration)
-        print("✅ Divergence Engine initialised")
-    else:
-        print("⚠️ Timeline router is None, skipping")
-except Exception as e:
-    print(f"❌ Failed to include Timeline router: {e}")
-    import traceback
-    traceback.print_exc()
-
 # Include Butterfly Engine router
 try:
     if butterfly_router:
         app.include_router(butterfly_router)
-        print("✅ Butterfly Engine API router included")
-        
-        # Initialize Butterfly Engine with stub repositories
-        from backend.mechanics.butterfly_engine import ButterflyEngine
-        from backend.dependencies import init_butterfly_engine
-        
-        # Create stub repositories for development
-        class StubTimelineRepo:
-            """Stub timeline repository for development."""
-            def __init__(self):
-                self.timelines = {}
-                self.flaps = []
-            
-            def get(self, timeline_id: str):
-                """Get a timeline (returns mock if not found)."""
-                if timeline_id not in self.timelines:
-                    # Return mock timeline
-                    from types import SimpleNamespace
-                    return SimpleNamespace(
-                        id=timeline_id,
-                        timeline_id=timeline_id,
-                        name=f"Timeline {timeline_id[:8]}",
-                        stability=75.0,
-                        price_yes=0.65,
-                        total_volume_usd=50000.0,
-                        founder_id=None,
-                        active_agent_count=5,
-                        keywords=["market", "trading"],
-                        narrative="Active trading timeline",
-                        connected_timeline_ids=[],
-                        total_volume=50000.0
-                    )
-                return self.timelines[timeline_id]
-            
-            def update_stability(self, timeline_id: str, stability: float):
-                """Update timeline stability."""
-                timeline = self.get(timeline_id)
-                timeline.stability = stability
-            
-            def set_decay_multiplier(self, timeline_id: str, multiplier: float):
-                """Set decay multiplier."""
-                timeline = self.get(timeline_id)
-                timeline.decay_multiplier = multiplier
-            
-            def get_flaps_since(self, timeline_id: str, cutoff):
-                """Get flaps since cutoff time."""
-                return [f for f in self.flaps if f.timeline_id == timeline_id and f.timestamp >= cutoff]
-            
-            def update_logic_gap(self, timeline_id: str, gap: float):
-                """Update logic gap."""
-                timeline = self.get(timeline_id)
-                timeline.logic_gap = gap
-            
-            def create_fork(self, parent_id: str, narrative: str, initial_stability: float, founder_id: str):
-                """Create a new fork timeline."""
-                from types import SimpleNamespace
-                import uuid
-                fork_id = f"fork_{uuid.uuid4().hex[:8]}"
-                fork = SimpleNamespace(
-                    id=fork_id,
-                    timeline_id=fork_id,
-                    name=f"Fork from {parent_id[:8]}",
-                    stability=initial_stability,
-                    price_yes=0.5,
-                    total_volume_usd=0.0,
-                    founder_id=founder_id,
-                    active_agent_count=0,
-                    keywords=["fork", "divergence"],
-                    narrative=narrative,
-                    connected_timeline_ids=[parent_id],
-                    total_volume=0.0
-                )
-                self.timelines[fork_id] = fork
-                return fork
-        
-        class StubAgentRepo:
-            """Stub agent repository for development."""
-            def __init__(self):
-                self.agents = {}
-            
-            def get(self, agent_id: str):
-                """Get an agent (returns mock if not found)."""
-                if agent_id not in self.agents:
-                    from types import SimpleNamespace
-                    return SimpleNamespace(
-                        agent_id=agent_id,
-                        name=agent_id,
-                        archetype="shark"
-                    )
-                return self.agents[agent_id]
-        
-        class StubOSINTService:
-            """Stub OSINT service for development."""
-            def count_mentions(self, keywords: list, hours: int) -> int:
-                """Count OSINT mentions."""
-                return len(keywords) * 10  # Mock count
-            
-            def get_sources(self, keywords: list) -> list:
-                """Get OSINT sources."""
-                return ["Spire AIS", "MarineTraffic", "Reuters"]
-            
-            def get_reality_score(self, keywords: list, narrative: str) -> float:
-                """Get reality score from OSINT."""
-                return 65.0  # Mock score
-        
-        # Initialize Butterfly Engine
-        _timeline_repo = StubTimelineRepo()
-        _agent_repo = StubAgentRepo()
-        _osint_service = StubOSINTService()
-        _butterfly_engine = ButterflyEngine(_timeline_repo, _agent_repo, _osint_service)
-        init_butterfly_engine(_butterfly_engine)
-        print("✅ Butterfly Engine initialized with stub repositories")
+        print("✅ Butterfly Engine router included")
     else:
-        print("⚠️ Butterfly router is None, skipping")
+        print("⚠️ Butterfly Engine router is None, skipping")
 except Exception as e:
-    print(f"❌ Failed to include Butterfly router: {e}")
+    print(f"❌ Failed to include Butterfly Engine router: {e}")
     import traceback
     traceback.print_exc()
 
-# Include Paradox System router
+# Include Paradox Engine router
 try:
     if paradox_router:
         app.include_router(paradox_router)
-        print("✅ Paradox System API router included")
-        
-        # Initialize Paradox Engine (depends on Butterfly Engine)
+        print("✅ Paradox Engine router included")
+    else:
+        print("⚠️ Paradox Engine router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Paradox Engine router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Initialize Butterfly and Paradox Engines (for USE_MOCKS mode)
+USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+if USE_MOCKS and (butterfly_router or paradox_router):
+    try:
+        from backend.dependencies import init_butterfly_engine, init_paradox_engine
+        from backend.mechanics.butterfly_engine import ButterflyEngine
         from backend.mechanics.paradox_engine import ParadoxEngine
-        from backend.dependencies import init_paradox_engine, get_butterfly_engine
+        from backend.mocks.mock_data import (
+            MockTimelineRepository,
+            MockAgentRepository
+        )
+        from backend.core.osint_registry import get_osint_registry
         
-        try:
-            # Get the Butterfly Engine we just initialized
-            _butterfly_engine = get_butterfly_engine()
-            
-            # Reuse the same stub repositories
-            _paradox_engine = ParadoxEngine(_timeline_repo, _agent_repo, _butterfly_engine)
-            init_paradox_engine(_paradox_engine)
-            print("✅ Paradox Engine initialized with stub repositories")
-        except Exception as e:
-            print(f"⚠️ Paradox Engine initialization skipped (Butterfly Engine not ready): {e}")
-    else:
-        print("⚠️ Paradox router is None, skipping")
-except Exception as e:
-    print(f"❌ Failed to include Paradox router: {e}")
-    import traceback
-    traceback.print_exc()
-
-# Include User Data router (Field Kit)
-try:
-    if user_router:
-        app.include_router(user_router)
-        print("✅ User Data API router included")
+        # Initialize with mock repositories
+        timeline_repo = MockTimelineRepository()
+        agent_repo = MockAgentRepository()
+        osint_service = get_osint_registry()
         
-        # Initialize User Service with stub implementation
-        from backend.dependencies import init_user_service
+        # Create Butterfly Engine
+        butterfly_engine = ButterflyEngine(timeline_repo, agent_repo, osint_service)
+        init_butterfly_engine(butterfly_engine)
+        print("✅ Butterfly Engine initialized (mock mode)")
         
-        class StubUserService:
-            """Stub User Service for development."""
-            def __init__(self):
-                self.positions = {}
-                self.private_forks = {}
-                self.watchlists = {}
-                self.alerts = {}
-            
-            def get_positions(self, user_id: str):
-                """Get user positions."""
-                return self.positions.get(user_id, [])
-            
-            def get_position(self, user_id: str, timeline_id: str):
-                """Get position in specific timeline."""
-                positions = self.get_positions(user_id)
-                for pos in positions:
-                    if pos.timeline_id == timeline_id:
-                        return pos
-                return None
-            
-            def get_private_forks(self, user_id: str):
-                """Get user's private forks."""
-                return self.private_forks.get(user_id, [])
-            
-            def get_max_private_forks(self, tier: str):
-                """Get max private forks for user tier."""
-                limits = {"free": 3, "premium": 10, "pro": 50}
-                return limits.get(tier, 3)
-            
-            def create_private_fork(self, user_id: str, request):
-                """Create a private fork."""
-                from ..schemas.user_schemas import PrivateFork
-                import uuid
-                fork_id = f"private_{uuid.uuid4().hex[:8]}"
-                fork = PrivateFork(
-                    fork_id=fork_id,
-                    timeline_id=request.source_timeline_id,
-                    name=request.name,
-                    premise=request.premise,
-                    created_at=datetime.now(),
-                    status="active",
-                    simulated_capital=request.simulated_capital
-                )
-                if user_id not in self.private_forks:
-                    self.private_forks[user_id] = []
-                self.private_forks[user_id].append(fork)
-                return fork
-            
-            def get_private_fork(self, user_id: str, fork_id: str):
-                """Get a specific private fork."""
-                forks = self.get_private_forks(user_id)
-                for fork in forks:
-                    if fork.fork_id == fork_id:
-                        return fork
-                return None
-            
-            def delete_private_fork(self, user_id: str, fork_id: str):
-                """Delete a private fork."""
-                if user_id in self.private_forks:
-                    self.private_forks[user_id] = [
-                        f for f in self.private_forks[user_id]
-                        if f.fork_id != fork_id
-                    ]
-                    return True
-                return False
-            
-            def get_watchlist(self, user_id: str):
-                """Get user watchlist."""
-                return self.watchlists.get(user_id, [])
-            
-            def get_max_watchlist_items(self, tier: str):
-                """Get max watchlist items for user tier."""
-                limits = {"free": 10, "premium": 50, "pro": 200}
-                return limits.get(tier, 10)
-            
-            def add_to_watchlist(self, user_id: str, request):
-                """Add item to watchlist."""
-                from ..schemas.user_schemas import WatchlistItem
-                import uuid
-                item = WatchlistItem(
-                    id=f"watch_{uuid.uuid4().hex[:8]}",
-                    item_type=request.item_type,
-                    item_id=request.item_id,
-                    added_at=datetime.now(),
-                    notes=request.notes
-                )
-                if user_id not in self.watchlists:
-                    self.watchlists[user_id] = []
-                self.watchlists[user_id].append(item)
-                return item
-            
-            def remove_from_watchlist(self, user_id: str, item_id: str):
-                """Remove item from watchlist."""
-                if user_id in self.watchlists:
-                    self.watchlists[user_id] = [
-                        item for item in self.watchlists[user_id]
-                        if item.id != item_id
-                    ]
-                    return True
-                return False
-            
-            def get_portfolio_summary(self, user_id: str):
-                """Get portfolio summary."""
-                from ..schemas.user_schemas import PortfolioSummary
-                positions = self.get_positions(user_id)
-                total_value = sum(p.shards_held * p.current_price for p in positions) if positions else 0
-                total_pnl = sum(p.unrealised_pnl_usd for p in positions) if positions else 0
-                return PortfolioSummary(
-                    total_positions=len(positions),
-                    total_value_usd=total_value,
-                    total_unrealised_pnl_usd=total_pnl,
-                    active_timelines=len(set(p.timeline_id for p in positions)),
-                    at_risk_count=len([p for p in positions if p.timeline_stability < 30]),
-                    founder_yield_total=sum(p.founder_yield_earned_usd for p in positions) if positions else 0
-                )
-            
-            def get_alerts(
-                self,
-                user_id: str,
-                unread_only: bool = False,
-                alert_types: Optional[List[str]] = None,
-                limit: int = 50
-            ):
-                """Get user alerts."""
-                alerts = self.alerts.get(user_id, [])
-                if unread_only:
-                    alerts = [a for a in alerts if not getattr(a, 'read', False)]
-                if alert_types:
-                    alerts = [a for a in alerts if getattr(a, 'alert_type', None) in alert_types]
-                return alerts[:limit]
-            
-            def mark_alert_read(self, user_id: str, alert_id: str):
-                """Mark an alert as read."""
-                if user_id in self.alerts:
-                    for alert in self.alerts[user_id]:
-                        if getattr(alert, 'id', None) == alert_id:
-                            alert.read = True
-                            return True
-                return False
-            
-            def mark_all_alerts_read(self, user_id: str):
-                """Mark all alerts as read."""
-                count = 0
-                if user_id in self.alerts:
-                    for alert in self.alerts[user_id]:
-                        if not getattr(alert, 'read', False):
-                            alert.read = True
-                            count += 1
-                return count
-        
-        _user_service = StubUserService()
-        init_user_service(_user_service)
-        print("✅ User Service initialized with stub implementation")
-    else:
-        print("⚠️ User router is None, skipping")
-except Exception as e:
-    print(f"❌ Failed to include User router: {e}")
-    import traceback
-    traceback.print_exc()
-
-# Include WebSocket router
-try:
-    if ws_router:
-        app.include_router(ws_router)
-        print("✅ WebSocket router included")
-    else:
-        print("⚠️ WebSocket router is None, skipping")
-except Exception as e:
-    print(f"❌ Failed to include WebSocket router: {e}")
-    import traceback
-    traceback.print_exc()
+        # Create Paradox Engine (depends on Butterfly Engine)
+        paradox_engine = ParadoxEngine(timeline_repo, agent_repo, butterfly_engine)
+        init_paradox_engine(paradox_engine)
+        print("✅ Paradox Engine initialized (mock mode)")
+    except Exception as e:
+        print(f"⚠️ Failed to initialize engines (mock mode): {e}")
+        import traceback
+        traceback.print_exc()
 
 # --- DATABASE DEPENDENCY ---
 

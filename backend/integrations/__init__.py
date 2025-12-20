@@ -12,17 +12,12 @@ Modules:
 """
 
 from .polymarket_client import (
-    PolymarketCLOBClient,
-    PolymarketMarket,
-    PolymarketOrder,
+    PolymarketClient,
     PolymarketConfig,
-    PolymarketAPIError,
-    PolymarketWebSocket,
-    OrderBook,
-    OrderSide as PolymarketOrderSide,
-    OrderType as PolymarketOrderType,
-    OrderStatus as PolymarketOrderStatus,
+    get_polymarket_client,
 )
+# Alias for backward compatibility
+PolymarketCLOBClient = PolymarketClient
 
 from .kalshi_client import (
     KalshiClient,
@@ -51,16 +46,10 @@ from .builder_attribution import (
 
 __all__ = [
     # Polymarket
-    "PolymarketCLOBClient",
-    "PolymarketMarket",
-    "PolymarketOrder",
+    "PolymarketClient",
+    "PolymarketCLOBClient",  # Alias
     "PolymarketConfig",
-    "PolymarketAPIError",
-    "PolymarketWebSocket",
-    "PolymarketOrderSide",
-    "PolymarketOrderType",
-    "PolymarketOrderStatus",
-    "OrderBook",
+    "get_polymarket_client",
     
     # Kalshi
     "KalshiClient",

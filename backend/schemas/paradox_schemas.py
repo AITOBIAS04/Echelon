@@ -111,3 +111,4 @@ class DetonationEvent(BaseModel):
     # Winners
     saboteur_payouts: dict  # { agent_id: amount }
 
+

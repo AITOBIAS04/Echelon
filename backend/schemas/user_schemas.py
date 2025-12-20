@@ -128,3 +128,4 @@ class PortfolioSummary(BaseModel):
     highest_risk_timeline_name: Optional[str] = None
     highest_risk_stability: Optional[float] = None
 
+

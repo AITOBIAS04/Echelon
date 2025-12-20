@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import List, Optional
 from sqlalchemy import select, update, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload, joinedload
 
 from ..models import Timeline, WingFlap
 
@@ -165,4 +166,73 @@ class TimelineRepository:
         self.session.add(fork)
         await self.session.flush()
         return fork
+    
+    # =========================================
+    # WING FLAP QUERIES
+    # =========================================
+    
+    async def get_flaps(
+        self,
+        timeline_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        min_delta: float = 0,
+        min_volume: float = 0,
+        flap_types: Optional[List[str]] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> List[WingFlap]:
+        """Get filtered wing flaps with relationships eagerly loaded."""
+        # Eagerly load timeline and agent relationships
+        query = select(WingFlap).options(
+            joinedload(WingFlap.timeline),
+            joinedload(WingFlap.agent)
+        )
+        
+        if timeline_id:
+            query = query.where(WingFlap.timeline_id == timeline_id)
+        if agent_id:
+            query = query.where(WingFlap.agent_id == agent_id)
+        if min_delta > 0:
+            query = query.where(func.abs(WingFlap.stability_delta) >= min_delta)
+        if min_volume > 0:
+            query = query.where(WingFlap.volume_usd >= min_volume)
+        if flap_types:
+            from ..models import WingFlapType
+            type_enums = [WingFlapType[t] for t in flap_types if t in WingFlapType.__members__]
+            if type_enums:
+                query = query.where(WingFlap.flap_type.in_(type_enums))
+        
+        query = query.order_by(WingFlap.timestamp.desc()).limit(limit).offset(offset)
+        
+        result = await self.session.execute(query)
+        # Use unique() to handle joinedload duplicates
+        return list(result.unique().scalars().all())
+    
+    async def count_flaps(
+        self,
+        timeline_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        min_delta: float = 0,
+        min_volume: float = 0,
+        flap_types: Optional[List[str]] = None
+    ) -> int:
+        """Count filtered wing flaps."""
+        query = select(func.count(WingFlap.id))
+        
+        if timeline_id:
+            query = query.where(WingFlap.timeline_id == timeline_id)
+        if agent_id:
+            query = query.where(WingFlap.agent_id == agent_id)
+        if min_delta > 0:
+            query = query.where(func.abs(WingFlap.stability_delta) >= min_delta)
+        if min_volume > 0:
+            query = query.where(WingFlap.volume_usd >= min_volume)
+        if flap_types:
+            from ..models import WingFlapType
+            type_enums = [WingFlapType[t] for t in flap_types if t in WingFlapType.__members__]
+            if type_enums:
+                query = query.where(WingFlap.flap_type.in_(type_enums))
+        
+        result = await self.session.execute(query)
+        return result.scalar() or 0
 

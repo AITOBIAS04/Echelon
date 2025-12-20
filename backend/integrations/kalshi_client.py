@@ -39,9 +39,13 @@ from pydantic import BaseModel, Field
 class KalshiConfig:
     """Kalshi API configuration."""
     
-    # API Endpoints
+    # Authenticated API Endpoints (requires login)
     API_BASE_URL = "https://trading-api.kalshi.com/trade-api/v2"
     DEMO_API_URL = "https://demo-api.kalshi.co/trade-api/v2"
+    
+    # Public API Endpoints (no auth required)
+    PUBLIC_API_BASE_URL = "https://trading-api.kalshi.com/v2"
+    PUBLIC_DEMO_API_URL = "https://demo-api.kalshi.co/v2"
     
     # WebSocket
     WS_URL = "wss://trading-api.kalshi.com/trade-api/ws/v2"
@@ -251,8 +255,9 @@ class KalshiClient:
         self.use_demo = use_demo
         self.builder_code = builder_code
         
-        # Set base URL
+        # Set base URLs
         self.base_url = KalshiConfig.DEMO_API_URL if use_demo else KalshiConfig.API_BASE_URL
+        self.public_base_url = KalshiConfig.PUBLIC_DEMO_API_URL if use_demo else KalshiConfig.PUBLIC_API_BASE_URL
         
         # Auth token (obtained via login)
         self._token: Optional[str] = None
@@ -315,17 +320,27 @@ class KalshiClient:
         method: str,
         path: str,
         params: Optional[dict] = None,
-        data: Optional[dict] = None
+        data: Optional[dict] = None,
+        use_public_api: bool = False
     ) -> dict:
         """Make API request with rate limiting and error handling."""
         await self._ensure_session()
         await self._rate_limiter.acquire()
         
-        url = f"{self.base_url}{path}"
+        # Use public API base URL if specified (no auth required)
+        base_url = self.public_base_url if use_public_api else self.base_url
+        url = f"{base_url}{path}"
         if params:
             url = f"{url}?{urlencode(params)}"
         
-        headers = self._get_headers()
+        # Public API doesn't need auth headers, just basic headers
+        if use_public_api:
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            }
+        else:
+            headers = self._get_headers()
         
         try:
             async with self._session.request(
@@ -445,7 +460,7 @@ class KalshiClient:
         return KalshiMarket(**response.get("market", {}))
     
     async def get_market_orderbook(self, ticker: str, depth: int = 10) -> dict:
-        """Fetch order book for a market."""
+        """Fetch order book for a market (authenticated endpoint)."""
         response = await self._request(
             "GET",
             f"/markets/{ticker}/orderbook",
@@ -453,10 +468,160 @@ class KalshiClient:
         )
         return response.get("orderbook", {})
     
+    async def get_market_trades(
+        self,
+        ticker: str,
+        limit: int = 100,
+        cursor: Optional[str] = None
+    ) -> tuple[list[dict], Optional[str]]:
+        """
+        Fetch recent trades for a market (authenticated endpoint).
+        
+        Returns:
+            Tuple of (trades list, next cursor for pagination)
+        """
+        params = {"limit": limit}
+        if cursor:
+            params["cursor"] = cursor
+        
+        response = await self._request(
+            "GET",
+            f"/markets/{ticker}/trades",
+            params=params
+        )
+        
+        trades = response.get("trades", [])
+        next_cursor = response.get("cursor")
+        
+        return trades, next_cursor
+    
     async def get_series(self, series_ticker: str) -> dict:
         """Fetch series metadata."""
         response = await self._request("GET", f"/series/{series_ticker}")
         return response.get("series", {})
+    
+    # =========================================================================
+    # PUBLIC API METHODS (No Authentication Required)
+    # =========================================================================
+    
+    async def get_events_public(
+        self,
+        limit: int = 100,
+        cursor: Optional[str] = None
+    ) -> tuple[list[dict], Optional[str]]:
+        """
+        Get all events (public API, no auth required).
+        
+        GET /events
+        
+        Returns:
+            Tuple of (events list, next cursor for pagination)
+        """
+        params = {"limit": limit}
+        if cursor:
+            params["cursor"] = cursor
+        
+        response = await self._request(
+            "GET",
+            "/events",
+            params=params,
+            use_public_api=True
+        )
+        
+        events = response.get("events", [])
+        next_cursor = response.get("cursor")
+        
+        return events, next_cursor
+    
+    async def get_event_markets_public(
+        self,
+        event_ticker: str,
+        limit: int = 100,
+        cursor: Optional[str] = None
+    ) -> tuple[list[dict], Optional[str]]:
+        """
+        Get markets for an event (public API, no auth required).
+        
+        GET /events/{event_ticker}/markets
+        
+        Returns:
+            Tuple of (markets list, next cursor for pagination)
+        """
+        params = {"limit": limit}
+        if cursor:
+            params["cursor"] = cursor
+        
+        response = await self._request(
+            "GET",
+            f"/events/{event_ticker}/markets",
+            params=params,
+            use_public_api=True
+        )
+        
+        markets = response.get("markets", [])
+        next_cursor = response.get("cursor")
+        
+        return markets, next_cursor
+    
+    async def get_orderbook_public(
+        self,
+        ticker: str,
+        depth: Optional[int] = None
+    ) -> dict:
+        """
+        Get orderbook for a market (public API, no auth required).
+        
+        GET /markets/{ticker}/orderbook
+        
+        Args:
+            ticker: Market ticker symbol
+            depth: Optional depth limit
+            
+        Returns:
+            Orderbook dictionary with bids/asks
+        """
+        params = {}
+        if depth:
+            params["depth"] = depth
+        
+        response = await self._request(
+            "GET",
+            f"/markets/{ticker}/orderbook",
+            params=params if params else None,
+            use_public_api=True
+        )
+        
+        return response.get("orderbook", {})
+    
+    async def get_trades_public(
+        self,
+        ticker: str,
+        limit: int = 100,
+        cursor: Optional[str] = None
+    ) -> tuple[list[dict], Optional[str]]:
+        """
+        Get trades for a market (public API, no auth required).
+        
+        GET /markets/{ticker}/trades
+        
+        Returns:
+            Tuple of (trades list, next cursor for pagination)
+        """
+        params = {"limit": limit}
+        if cursor:
+            params["cursor"] = cursor
+        
+        response = await self._request(
+            "GET",
+            f"/markets/{ticker}/trades",
+            params=params,
+            use_public_api=True
+        )
+        
+        trades = response.get("trades", [])
+        next_cursor = response.get("cursor")
+        
+        return trades, next_cursor
     
     # =========================================================================
     # ORDER MANAGEMENT

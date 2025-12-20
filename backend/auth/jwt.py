@@ -83,3 +83,4 @@ def decode_token(token: str) -> Optional[TokenData]:
     except JWTError:
         return None
 
+

@@ -320,8 +320,65 @@ class ParadoxEngine:
     # QUERIES
     # =========================================
     
+    async def get_active_paradoxes_async(self) -> List[Paradox]:
+        """Get all active paradoxes from database (async version)."""
+        # Check if repository has async methods (real database)
+        if hasattr(self.timeline_repo, 'session') and hasattr(self.timeline_repo.session, 'execute'):
+            try:
+                from ..database.models import Paradox as DBParadox, ParadoxStatus
+                from sqlalchemy import select
+                
+                # Query active paradoxes from database
+                query = select(DBParadox).where(DBParadox.status == ParadoxStatus.ACTIVE)
+                result = await self.timeline_repo.session.execute(query)
+                db_paradoxes = list(result.scalars().all())
+                
+                # Convert to Pydantic schemas
+                paradox_list = []
+                for db_paradox in db_paradoxes:
+                    # Get timeline name
+                    timeline = await self.timeline_repo.get(db_paradox.timeline_id)
+                    timeline_name = timeline.name if timeline else f"Timeline {db_paradox.timeline_id[:8]}"
+                    
+                    # Calculate time remaining
+                    now = datetime.now()
+                    if db_paradox.detonation_time:
+                        time_remaining = int((db_paradox.detonation_time - now).total_seconds())
+                    else:
+                        time_remaining = 0
+                    
+                    paradox = Paradox(
+                        id=db_paradox.id,
+                        timeline_id=db_paradox.timeline_id,
+                        timeline_name=timeline_name,
+                        status=db_paradox.status,
+                        severity_class=db_paradox.severity_class,
+                        logic_gap=db_paradox.logic_gap,
+                        spawned_at=db_paradox.spawned_at,
+                        detonation_time=db_paradox.detonation_time,
+                        time_remaining_seconds=time_remaining,
+                        decay_multiplier=db_paradox.decay_multiplier,
+                        extraction_cost_usdc=db_paradox.extraction_cost_usdc,
+                        extraction_cost_echelon=db_paradox.extraction_cost_echelon,
+                        carrier_sanity_cost=db_paradox.carrier_sanity_cost,
+                        carrier_agent_id=db_paradox.carrier_agent_id,
+                        carrier_agent_name=None,  # TODO: Load agent name if carrier exists
+                        carrier_agent_sanity=None,
+                        connected_timelines=[]  # TODO: Load from timeline
+                    )
+                    paradox_list.append(paradox)
+                
+                return paradox_list
+            except Exception as e:
+                print(f"⚠️ Failed to query active paradoxes: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Fallback: return in-memory paradoxes
+        return list(self.active_paradoxes.values())
+    
     def get_active_paradoxes(self) -> List[Paradox]:
-        """Get all active paradoxes."""
+        """Get all active paradoxes (sync version, in-memory)."""
         return list(self.active_paradoxes.values())
     
     def get_paradox(self, paradox_id: str) -> Optional[Paradox]:

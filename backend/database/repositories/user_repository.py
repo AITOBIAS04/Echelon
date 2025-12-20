@@ -53,3 +53,4 @@ class UserRepository:
         )
         return list(result.scalars().all())
 
+

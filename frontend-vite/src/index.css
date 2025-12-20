@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-terminal-bg text-terminal-text font-mono antialiased;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-terminal-bg;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-terminal-border rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-terminal-muted;
+  }
+}
+
+@layer components {
+  .terminal-panel {
+    @apply bg-terminal-panel border border-terminal-border rounded-lg;
+  }
+  
+  .terminal-header {
+    @apply font-display text-xs uppercase tracking-widest text-terminal-muted;
+  }
+  
+  .glow-green {
+    text-shadow: 0 0 10px theme('colors.echelon.green');
+  }
+  
+  .glow-red {
+    text-shadow: 0 0 10px theme('colors.echelon.red');
+  }
+  
+  .glow-amber {
+    text-shadow: 0 0 10px theme('colors.echelon.amber');
+  }
+  
+  .glow-purple {
+    text-shadow: 0 0 10px theme('colors.echelon.purple');
+  }
+}

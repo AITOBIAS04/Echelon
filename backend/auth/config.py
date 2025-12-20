@@ -31,3 +31,4 @@ class AuthConfig:
     REQUIRE_NUMBERS = True
     REQUIRE_SPECIAL_CHARS = False
 
+

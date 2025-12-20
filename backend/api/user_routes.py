@@ -274,3 +274,4 @@ async def mark_all_alerts_read(
     count = service.mark_all_alerts_read(user.id)
     return {"message": f"Marked {count} alerts as read"}
 
+

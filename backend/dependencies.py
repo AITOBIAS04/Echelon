@@ -31,9 +31,10 @@ _user_service: Optional[Any] = None
 # DATABASE SESSION
 # =============================================================================
 
-def get_db():
+async def get_db():
     """Database session dependency (async)."""
-    return get_db_session()
+    async for session in get_db_session():
+        yield session
 
 
 # =============================================================================
@@ -88,14 +89,19 @@ else:
 # ENGINE DEPENDENCIES
 # =============================================================================
 
-def get_butterfly_engine() -> ButterflyEngine:
+def get_butterfly_engine() -> Optional[ButterflyEngine]:
     """
     Get or create the Butterfly Engine singleton.
     
-    Note: In production, this should be initialized with proper
-    timeline_repo, agent_repo, and osint_service dependencies.
+    Returns None if USE_MOCKS=false (routes will create their own engines).
     """
     global _butterfly_engine
+    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+    
+    if not USE_MOCKS:
+        # When using real database, routes create their own engines
+        return None
+    
     if _butterfly_engine is None:
         # TODO: Initialize with actual repositories
         # For now, this will need to be set up in main.py
@@ -106,14 +112,19 @@ def get_butterfly_engine() -> ButterflyEngine:
     return _butterfly_engine
 
 
-def get_paradox_engine() -> ParadoxEngine:
+def get_paradox_engine() -> Optional[ParadoxEngine]:
     """
     Get or create the Paradox Engine singleton.
     
-    Note: In production, this should be initialized with proper
-    timeline_repo, agent_repo, and butterfly_engine dependencies.
+    Returns None if USE_MOCKS=false (routes will create their own engines).
     """
     global _paradox_engine
+    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+    
+    if not USE_MOCKS:
+        # When using real database, routes create their own engines
+        return None
+    
     if _paradox_engine is None:
         # TODO: Initialize with actual repositories
         # For now, this will need to be set up in main.py

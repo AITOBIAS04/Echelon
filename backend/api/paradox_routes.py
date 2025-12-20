@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
+from typing import Optional, List
+from sqlalchemy.ext.asyncio import AsyncSession
+import os
 
 from ..schemas.paradox_schemas import (
     Paradox, ParadoxListResponse,
@@ -7,7 +9,11 @@ from ..schemas.paradox_schemas import (
     AbandonmentRequest, AbandonmentResult
 )
 from ..mechanics.paradox_engine import ParadoxEngine
-from ..dependencies import get_paradox_engine, get_current_user
+from ..dependencies import get_paradox_engine, get_current_user, get_db
+from ..database.repositories.timeline_repository import TimelineRepository
+from ..database.repositories.agent_repository import AgentRepository
+from ..mechanics.butterfly_engine import ButterflyEngine
+from ..core.osint_registry import get_osint_registry
 
 router = APIRouter(prefix="/api/v1/paradox", tags=["Paradox System"])
 
@@ -17,14 +23,33 @@ router = APIRouter(prefix="/api/v1/paradox", tags=["Paradox System"])
 
 @router.get("/active", response_model=ParadoxListResponse)
 async def get_active_paradoxes(
-    engine: ParadoxEngine = Depends(get_paradox_engine)
+    db_session: AsyncSession = Depends(get_db),
+    engine: Optional[ParadoxEngine] = Depends(get_paradox_engine)
 ):
     """
     Get all active Paradoxes (Containment Breaches).
     
     These should always be shown prominently in the UI.
     """
-    paradoxes = engine.get_active_paradoxes()
+    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+    
+    if not USE_MOCKS:
+        # Use real database repositories with this request's session
+        timeline_repo = TimelineRepository(db_session)
+        agent_repo = AgentRepository(db_session)
+        osint_service = get_osint_registry()
+        
+        # Create butterfly engine for paradox engine
+        butterfly_engine = ButterflyEngine(timeline_repo, agent_repo, osint_service)
+        
+        # Create a temporary paradox engine instance for this request
+        request_engine = ParadoxEngine(timeline_repo, agent_repo, butterfly_engine)
+        
+        paradoxes = await request_engine.get_active_paradoxes_async()
+    else:
+        # Use the singleton engine (mocks)
+        paradoxes = engine.get_active_paradoxes()
+    
     return ParadoxListResponse(
         paradoxes=paradoxes,
         total_active=len(paradoxes)
@@ -33,9 +58,19 @@ async def get_active_paradoxes(
 @router.get("/{paradox_id}", response_model=Paradox)
 async def get_paradox(
     paradox_id: str,
-    engine: ParadoxEngine = Depends(get_paradox_engine)
+    db_session: AsyncSession = Depends(get_db),
+    engine: Optional[ParadoxEngine] = Depends(get_paradox_engine)
 ):
     """Get details of a specific Paradox."""
+    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+    
+    if not USE_MOCKS:
+        # TODO: Implement with database
+        raise HTTPException(status_code=404, detail="Paradox not found or already resolved")
+    
+    if engine is None:
+        raise HTTPException(status_code=503, detail="Engine not available")
+    
     paradox = engine.get_paradox(paradox_id)
     if not paradox:
         raise HTTPException(status_code=404, detail="Paradox not found or already resolved")
@@ -44,9 +79,19 @@ async def get_paradox(
 @router.get("/timeline/{timeline_id}", response_model=Paradox)
 async def get_paradox_for_timeline(
     timeline_id: str,
-    engine: ParadoxEngine = Depends(get_paradox_engine)
+    db_session: AsyncSession = Depends(get_db),
+    engine: Optional[ParadoxEngine] = Depends(get_paradox_engine)
 ):
     """Get Paradox affecting a specific timeline (if any)."""
+    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+    
+    if not USE_MOCKS:
+        # TODO: Implement with database
+        raise HTTPException(status_code=404, detail="No active Paradox in this timeline")
+    
+    if engine is None:
+        raise HTTPException(status_code=503, detail="Engine not available")
+    
     paradox = engine.get_paradox_for_timeline(timeline_id)
     if not paradox:
         raise HTTPException(status_code=404, detail="No active Paradox in this timeline")
@@ -60,7 +105,8 @@ async def get_paradox_for_timeline(
 async def attempt_extraction(
     paradox_id: str,
     request: ExtractionRequest,
-    engine: ParadoxEngine = Depends(get_paradox_engine),
+    db_session: AsyncSession = Depends(get_db),
+    engine: Optional[ParadoxEngine] = Depends(get_paradox_engine),
     user = Depends(get_current_user)
 ):
     """
@@ -81,6 +127,15 @@ async def attempt_extraction(
     - $ECHELON: Varies by severity
     - Agent Sanity: Varies by severity
     """
+    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+    
+    if not USE_MOCKS:
+        # TODO: Implement with database
+        raise HTTPException(status_code=501, detail="Extraction not yet implemented for database mode")
+    
+    if engine is None:
+        raise HTTPException(status_code=503, detail="Engine not available")
+    
     # Verify user owns the agent
     # (Implementation depends on your auth system)
     
@@ -97,7 +152,8 @@ async def attempt_extraction(
 async def preview_extraction(
     paradox_id: str,
     agent_id: str,
-    engine: ParadoxEngine = Depends(get_paradox_engine),
+    db_session: AsyncSession = Depends(get_db),
+    engine: Optional[ParadoxEngine] = Depends(get_paradox_engine),
     user = Depends(get_current_user)
 ):
     """
@@ -105,6 +161,15 @@ async def preview_extraction(
     
     Shows costs and death risk for the selected agent.
     """
+    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+    
+    if not USE_MOCKS:
+        # TODO: Implement with database
+        raise HTTPException(status_code=501, detail="Extraction preview not yet implemented for database mode")
+    
+    if engine is None:
+        raise HTTPException(status_code=503, detail="Engine not available")
+    
     paradox = engine.get_paradox(paradox_id)
     if not paradox:
         raise HTTPException(status_code=404, detail="Paradox not found")
@@ -137,7 +202,8 @@ async def preview_extraction(
 @router.post("/{paradox_id}/abandon", response_model=AbandonmentResult)
 async def abandon_timeline(
     paradox_id: str,
-    engine: ParadoxEngine = Depends(get_paradox_engine),
+    db_session: AsyncSession = Depends(get_db),
+    engine: Optional[ParadoxEngine] = Depends(get_paradox_engine),
     user = Depends(get_current_user)
 ):
     """
@@ -148,6 +214,15 @@ async def abandon_timeline(
     
     Use this to cut losses before detonation.
     """
+    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+    
+    if not USE_MOCKS:
+        # TODO: Implement with database
+        raise HTTPException(status_code=501, detail="Abandon timeline not yet implemented for database mode")
+    
+    if engine is None:
+        raise HTTPException(status_code=503, detail="Engine not available")
+    
     paradox = engine.get_paradox(paradox_id)
     if not paradox:
         raise HTTPException(status_code=404, detail="Paradox not found")
@@ -189,9 +264,19 @@ async def abandon_timeline(
 async def debug_spawn_paradox(
     timeline_id: str,
     logic_gap: float = 0.5,
-    engine: ParadoxEngine = Depends(get_paradox_engine)
+    db_session: AsyncSession = Depends(get_db),
+    engine: Optional[ParadoxEngine] = Depends(get_paradox_engine)
 ):
     """DEBUG: Manually spawn a paradox for testing."""
+    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+    
+    if not USE_MOCKS:
+        # TODO: Implement with database
+        raise HTTPException(status_code=501, detail="Debug spawn not yet implemented for database mode")
+    
+    if engine is None:
+        raise HTTPException(status_code=503, detail="Engine not available")
+    
     paradox = engine._spawn_paradox(timeline_id, logic_gap)
     return paradox
 

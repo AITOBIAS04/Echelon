@@ -234,6 +234,41 @@ class ButterflyEngine:
     # GRAVITY CALCULATION
     # =========================================
     
+    def _calculate_gravity_from_timeline(self, timeline) -> GravityBreakdown:
+        """
+        Calculate gravity from a timeline object (synchronous, no DB call).
+        
+        Used when we already have the timeline object from a query.
+        """
+        # Component 1: Volume (0-25)
+        volume_score = min(25, (timeline.total_volume_usd / 100000) * 25)
+        
+        # Component 2: Agent Activity (0-25)
+        agent_count = timeline.active_agent_count
+        agent_score = min(25, (agent_count / 20) * 25)
+        
+        # Component 3: Volatility (0-25)
+        # Use logic_gap as a proxy for volatility (high gap = volatile)
+        volatility_score = min(25, timeline.logic_gap * 83.33)  # 0.3 gap = 25 points
+        
+        # Component 4: Narrative Relevance (0-25)
+        # Use OSINT alignment as proxy
+        narrative_score = min(25, (timeline.osint_alignment / 100) * 25)
+        
+        total_gravity = volume_score + agent_score + volatility_score + narrative_score
+        
+        return GravityBreakdown(
+            timeline_id=timeline.id,
+            total_gravity=total_gravity,
+            volume_score=volume_score,
+            agent_activity_score=agent_score,
+            volatility_score=volatility_score,
+            narrative_relevance_score=narrative_score,
+            related_keywords=timeline.keywords or [],
+            osint_sources=[str(s) if not isinstance(s, str) else s for s in (getattr(self.osint_service, 'all_sources', [])[:5] if hasattr(self.osint_service, 'all_sources') else [])],
+            trending_rank=None
+        )
+    
     def calculate_gravity(self, timeline_id: str) -> GravityBreakdown:
         """
         Calculate the "Gravity" score for a timeline.
@@ -243,35 +278,40 @@ class ButterflyEngine:
         """
         timeline = self.timeline_repo.get(timeline_id)
         
-        # Component 1: Volume (0-25)
-        volume_score = min(25, (timeline.total_volume_usd / 100000) * 25)
+        # For sync version, try to get timeline (may fail if repo is async)
+        if hasattr(self.timeline_repo, 'get'):
+            try:
+                # If it's async, this will fail - use the _calculate_gravity_from_timeline instead
+                timeline = self.timeline_repo.get(timeline_id)
+                if hasattr(timeline, '__await__'):
+                    # It's a coroutine, can't use sync method
+                    raise RuntimeError("Cannot use sync calculate_gravity with async repository")
+                return self._calculate_gravity_from_timeline(timeline)
+            except (AttributeError, RuntimeError):
+                # Fallback: return basic gravity from stored score
+                return GravityBreakdown(
+                    timeline_id=timeline_id,
+                    total_gravity=0.0,
+                    volume_score=0.0,
+                    agent_activity_score=0.0,
+                    volatility_score=0.0,
+                    narrative_relevance_score=0.0,
+                    related_keywords=[],
+                    osint_sources=[],
+                    trending_rank=None
+                )
         
-        # Component 2: Agent Activity (0-25)
-        agent_count = timeline.active_agent_count
-        agent_score = min(25, (agent_count / 20) * 25)
-        
-        # Component 3: Volatility (0-25)
-        # Recent stability changes indicate action
-        recent_delta = self._get_recent_stability_delta(timeline_id, hours=1)
-        volatility_score = min(25, abs(recent_delta) * 2.5)
-        
-        # Component 4: Narrative Relevance (0-25)
-        # How much OSINT mentions this topic
-        osint_hits = self.osint_service.count_mentions(timeline.keywords, hours=24)
-        narrative_score = min(25, (osint_hits / 100) * 25)
-        
-        total_gravity = volume_score + agent_score + volatility_score + narrative_score
-        
+        # Fallback
         return GravityBreakdown(
             timeline_id=timeline_id,
-            total_gravity=total_gravity,
-            volume_score=volume_score,
-            agent_activity_score=agent_score,
-            volatility_score=volatility_score,
-            narrative_relevance_score=narrative_score,
-            related_keywords=timeline.keywords,
-            osint_sources=self.osint_service.get_sources(timeline.keywords),
-            trending_rank=None  # Calculated separately
+            total_gravity=0.0,
+            volume_score=0.0,
+            agent_activity_score=0.0,
+            volatility_score=0.0,
+            narrative_relevance_score=0.0,
+            related_keywords=[],
+            osint_sources=[],
+            trending_rank=None
         )
     
     def _get_recent_stability_delta(self, timeline_id: str, hours: int) -> float:
@@ -330,7 +370,7 @@ class ButterflyEngine:
     # API METHODS (Query Interface)
     # =========================================
     
-    def get_flaps(
+    async def get_flaps_async(
         self,
         timeline_id: Optional[str] = None,
         agent_id: Optional[str] = None,
@@ -340,7 +380,28 @@ class ButterflyEngine:
         limit: int = 50,
         offset: int = 0
     ) -> List[WingFlap]:
-        """Get filtered wing flaps."""
+        """Get filtered wing flaps (async version for database queries)."""
+        # Check if repository has async get_flaps method (real database)
+        if hasattr(self.timeline_repo, 'get_flaps'):
+            try:
+                db_flaps = await self.timeline_repo.get_flaps(
+                    timeline_id=timeline_id,
+                    agent_id=agent_id,
+                    min_delta=min_delta,
+                    min_volume=min_volume,
+                    flap_types=flap_types,
+                    limit=limit,
+                    offset=offset
+                )
+                # Convert database models to Pydantic schemas
+                return [self._db_flap_to_schema(f) for f in db_flaps]
+            except Exception as e:
+                # Fall back to in-memory if async call fails
+                print(f"⚠️ Failed to query database flaps: {e}, using in-memory")
+                import traceback
+                traceback.print_exc()
+        
+        # Fallback: use in-memory storage
         flaps = getattr(self, '_stored_flaps', [])
         
         # Filter
@@ -361,6 +422,133 @@ class ButterflyEngine:
         # Paginate
         return flaps[offset:offset + limit]
     
+    async def count_flaps_async(
+        self,
+        timeline_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        min_delta: float = 0,
+        min_volume: float = 0,
+        flap_types: Optional[List[str]] = None
+    ) -> int:
+        """Count filtered wing flaps (async version for database queries)."""
+        # Check if repository has async count_flaps method (real database)
+        if hasattr(self.timeline_repo, 'count_flaps'):
+            try:
+                return await self.timeline_repo.count_flaps(
+                    timeline_id=timeline_id,
+                    agent_id=agent_id,
+                    min_delta=min_delta,
+                    min_volume=min_volume,
+                    flap_types=flap_types
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to count database flaps: {e}, using in-memory")
+                import traceback
+                traceback.print_exc()
+        
+        # Fallback: use in-memory storage
+        flaps = getattr(self, '_stored_flaps', [])
+        
+        # Apply same filters as get_flaps
+        if timeline_id:
+            flaps = [f for f in flaps if f.timeline_id == timeline_id]
+        if agent_id:
+            flaps = [f for f in flaps if f.agent_id == agent_id]
+        if min_delta > 0:
+            flaps = [f for f in flaps if abs(f.stability_delta) >= min_delta]
+        if min_volume > 0:
+            flaps = [f for f in flaps if f.volume_usd >= min_volume]
+        if flap_types:
+            flaps = [f for f in flaps if f.flap_type.value in flap_types]
+        
+        return len(flaps)
+    
+    def get_flaps(
+        self,
+        timeline_id: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        min_delta: float = 0,
+        min_volume: float = 0,
+        flap_types: Optional[List[str]] = None,
+        limit: int = 50,
+        offset: int = 0
+    ) -> List[WingFlap]:
+        """Get filtered wing flaps (sync version, falls back to in-memory)."""
+        # Fallback: use in-memory storage
+        flaps = getattr(self, '_stored_flaps', [])
+        
+        # Filter
+        if timeline_id:
+            flaps = [f for f in flaps if f.timeline_id == timeline_id]
+        if agent_id:
+            flaps = [f for f in flaps if f.agent_id == agent_id]
+        if min_delta > 0:
+            flaps = [f for f in flaps if abs(f.stability_delta) >= min_delta]
+        if min_volume > 0:
+            flaps = [f for f in flaps if f.volume_usd >= min_volume]
+        if flap_types:
+            flaps = [f for f in flaps if f.flap_type.value in flap_types]
+        
+        # Sort by timestamp descending
+        flaps.sort(key=lambda f: f.timestamp, reverse=True)
+        
+        # Paginate
+        return flaps[offset:offset + limit]
+    
+    def _db_flap_to_schema(self, db_flap) -> WingFlap:
+        """Convert database WingFlap model to Pydantic schema."""
+        from ..database.models import WingFlap as DBWingFlap
+        from ..schemas.butterfly_schemas import AgentArchetype
+        
+        # Get timeline and agent names
+        timeline_name = db_flap.timeline.name if db_flap.timeline else f"Timeline {db_flap.timeline_id[:8]}"
+        agent_name = db_flap.agent.name if db_flap.agent else db_flap.agent_id
+        
+        # Convert agent archetype
+        agent_archetype = AgentArchetype.SHARK  # Default
+        if db_flap.agent and hasattr(db_flap.agent, 'archetype'):
+            try:
+                # Handle both enum and string values
+                archetype_value = db_flap.agent.archetype
+                if hasattr(archetype_value, 'value'):
+                    archetype_value = archetype_value.value
+                agent_archetype = AgentArchetype[archetype_value]
+            except (KeyError, AttributeError):
+                pass
+        
+        # Convert direction enum
+        from ..schemas.butterfly_schemas import StabilityDirection
+        direction_enum = StabilityDirection.ANCHOR  # Default
+        if hasattr(db_flap, 'direction'):
+            try:
+                direction_value = db_flap.direction
+                if hasattr(direction_value, 'value'):
+                    direction_value = direction_value.value
+                direction_enum = StabilityDirection[direction_value] if direction_value in StabilityDirection.__members__ else StabilityDirection.ANCHOR
+            except (KeyError, AttributeError):
+                pass
+        
+        return WingFlap(
+            id=db_flap.id,
+            timestamp=db_flap.timestamp,
+            timeline_id=db_flap.timeline_id,
+            timeline_name=timeline_name,
+            agent_id=db_flap.agent_id,
+            agent_name=agent_name,
+            agent_archetype=agent_archetype,
+            flap_type=db_flap.flap_type,
+            action=db_flap.action,
+            stability_delta=db_flap.stability_delta,
+            direction=direction_enum,
+            volume_usd=db_flap.volume_usd,
+            timeline_stability=db_flap.timeline_stability,
+            timeline_price=db_flap.timeline_price,
+            spawned_ripple=db_flap.spawned_ripple,
+            ripple_timeline_id=db_flap.ripple_timeline_id,
+            founder_id=None,  # Will be populated from timeline if needed
+            founder_yield_earned=db_flap.founder_yield_earned
+        )
+    
     def count_flaps(
         self,
         timeline_id: Optional[str] = None,
@@ -370,6 +558,27 @@ class ButterflyEngine:
         flap_types: Optional[List[str]] = None
     ) -> int:
         """Count filtered wing flaps."""
+        # Check if repository has async count_flaps method (real database)
+        if hasattr(self.timeline_repo, 'count_flaps'):
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import nest_asyncio
+                    nest_asyncio.apply()
+                return asyncio.run(
+                    self.timeline_repo.count_flaps(
+                        timeline_id=timeline_id,
+                        agent_id=agent_id,
+                        min_delta=min_delta,
+                        min_volume=min_volume,
+                        flap_types=flap_types
+                    )
+                )
+            except Exception as e:
+                print(f"⚠️ Failed to count database flaps: {e}, using in-memory")
+        
+        # Fallback: use in-memory storage
         flaps = getattr(self, '_stored_flaps', [])
         
         # Apply same filters as get_flaps
@@ -393,6 +602,83 @@ class ButterflyEngine:
         flaps.sort(key=lambda f: abs(f.stability_delta), reverse=True)
         return flaps[:limit]
     
+    async def get_timeline_health_async(
+        self,
+        sort_by: str = "gravity_score",
+        sort_order: str = "desc",
+        min_gravity: float = 0,
+        paradox_only: bool = False,
+        limit: int = 20
+    ) -> List[TimelineHealth]:
+        """Get timeline health metrics (async version for database queries)."""
+        # Check if repository has async methods (real database)
+        if hasattr(self.timeline_repo, 'get_all_active') or hasattr(self.timeline_repo, 'get_by_gravity'):
+            try:
+                # Query timelines from database
+                if paradox_only:
+                    db_timelines = await self.timeline_repo.get_with_paradox()
+                elif min_gravity > 0:
+                    db_timelines = await self.timeline_repo.get_by_gravity(min_gravity=min_gravity, limit=limit)
+                else:
+                    db_timelines = await self.timeline_repo.get_all_active()
+                
+                # Convert to TimelineHealth schemas
+                health_list = []
+                for timeline in db_timelines[:limit]:
+                    try:
+                        # Calculate gravity using the timeline object directly (avoid async get call)
+                        gravity = self._calculate_gravity_from_timeline(timeline)
+                        gravity_score = gravity.total_gravity if hasattr(gravity, 'total_gravity') else (timeline.gravity_score or 0)
+                        
+                        health = TimelineHealth(
+                            id=timeline.id,
+                            name=timeline.name,
+                            stability=timeline.stability,
+                            surface_tension=timeline.surface_tension or 50.0,
+                            price_yes=timeline.price_yes,
+                            price_no=timeline.price_no,
+                            osint_alignment=timeline.osint_alignment or 50.0,
+                            logic_gap=timeline.logic_gap or 0.0,
+                            gravity_score=gravity_score,
+                            gravity_factors=getattr(gravity, 'gravity_factors', {}) if hasattr(gravity, 'gravity_factors') else {},
+                            total_volume_usd=timeline.total_volume_usd or 0.0,
+                            liquidity_depth_usd=timeline.liquidity_depth_usd or 0.0,
+                            active_agent_count=timeline.active_agent_count or 0,
+                            dominant_agent_id=None,  # TODO: Calculate from flaps
+                            dominant_agent_name=None,
+                            founder_id=timeline.founder_id,
+                            founder_name=None,  # TODO: Load from user
+                            founder_yield_rate=timeline.founder_yield_rate or 0.0,
+                            decay_rate_per_hour=timeline.decay_rate_per_hour or self.BASE_DECAY_PER_HOUR,
+                            hours_until_reaper=None,  # TODO: Calculate from stability/decay
+                            has_active_paradox=timeline.has_active_paradox or False,
+                            paradox_id=None,  # TODO: Load from paradox table
+                            paradox_detonation_time=None,
+                            connected_timeline_ids=timeline.connected_timeline_ids or []
+                        )
+                        health_list.append(health)
+                    except Exception as e:
+                        print(f"⚠️ Failed to convert timeline {timeline.id} to health: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        continue
+                
+                # Sort
+                reverse = (sort_order == "desc")
+                if sort_by == "gravity_score":
+                    health_list.sort(key=lambda h: h.gravity_score, reverse=reverse)
+                elif sort_by == "stability":
+                    health_list.sort(key=lambda h: h.stability_score, reverse=reverse)
+                
+                return health_list[:limit]
+            except Exception as e:
+                print(f"⚠️ Failed to query timeline health: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # Fallback: return empty list
+        return []
+    
     def get_timeline_health(
         self,
         sort_by: str = "gravity_score",
@@ -401,13 +687,28 @@ class ButterflyEngine:
         paradox_only: bool = False,
         limit: int = 20
     ) -> List[TimelineHealth]:
-        """Get timeline health metrics."""
-        # Stub: return empty list for now
-        # In production, query all timelines and calculate health
+        """Get timeline health metrics (sync version, stub)."""
         return []
     
+    async def count_timelines_async(
+        self,
+        min_gravity: float = 0,
+        paradox_only: bool = False
+    ) -> int:
+        """Count timelines matching criteria (async version)."""
+        if hasattr(self.timeline_repo, 'count'):
+            try:
+                if paradox_only:
+                    timelines = await self.timeline_repo.get_with_paradox()
+                    return len(timelines)
+                else:
+                    return await self.timeline_repo.count(min_gravity=min_gravity)
+            except Exception as e:
+                print(f"⚠️ Failed to count timelines: {e}")
+        return 0
+    
     def count_timelines(self, min_gravity: float = 0, paradox_only: bool = False) -> int:
-        """Count timelines matching criteria."""
+        """Count timelines matching criteria (sync version, stub)."""
         return 0
     
     def get_timeline_health_by_id(self, timeline_id: str) -> Optional[TimelineHealth]:

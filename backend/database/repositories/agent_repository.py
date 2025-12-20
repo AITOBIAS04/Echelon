@@ -39,3 +39,4 @@ class AgentRepository:
         )
         return list(result.scalars().all())
 
+

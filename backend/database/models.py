@@ -37,6 +37,7 @@ class WingFlapType(str, enum.Enum):
     RIPPLE = "RIPPLE"
     PARADOX = "PARADOX"
     FOUNDER_YIELD = "FOUNDER_YIELD"
+    ENTROPY = "ENTROPY"  # System-generated stability decay
 
 class ParadoxStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
@@ -189,11 +190,17 @@ class Agent(Base):
 # WING FLAP (Causality Event)
 # ============================================
 
+# Helper function for WingFlap default timestamp (must be defined outside class)
+def _wingflap_default_timestamp() -> datetime:
+    """Return a naive UTC datetime for database compatibility."""
+    return datetime.utcnow().replace(tzinfo=None)
+
 class WingFlap(Base):
     __tablename__ = "wing_flaps"
     
     id: Mapped[str] = mapped_column(String(50), primary_key=True)
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    # Default timestamp (naive datetime for TIMESTAMP WITHOUT TIME ZONE)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=_wingflap_default_timestamp, index=True)
     
     # Timeline
     timeline_id: Mapped[str] = mapped_column(String(50), ForeignKey("timelines.id"), index=True)
