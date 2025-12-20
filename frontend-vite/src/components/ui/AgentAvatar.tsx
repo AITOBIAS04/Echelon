@@ -1,5 +1,5 @@
 import { clsx } from 'clsx';
-import { AgentArchetype } from '../../types';
+import type { AgentArchetype } from '../../types';
 
 interface AgentAvatarProps {
   archetype: AgentArchetype;
