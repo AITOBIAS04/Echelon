@@ -1,5 +1,6 @@
 # Core Web Framework
 fastapi==0.121.3
+websockets==11.0.3  # MUST be before uvicorn to prevent upgrade
 uvicorn[standard]==0.38.0
 gunicorn==21.2.0
 python-multipart==0.0.20
@@ -45,7 +46,6 @@ virtuals-acp==0.3.14
 aiohttp==3.13.2
 httpx==0.28.1
 requests==2.32.5
-websockets==11.0.3  # Pin to version compatible with uvicorn[standard] (legacy module required)
 
 # Utilities
 python-dotenv==1.2.1
