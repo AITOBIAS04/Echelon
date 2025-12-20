@@ -24,10 +24,17 @@ class DatabaseConfig:
     DB_PASSWORD = os.getenv("DB_PASSWORD", "")
     
     # Connection URL
-    DATABASE_URL = os.getenv(
+    # Railway provides postgresql://, but we need postgresql+asyncpg:// for async operations
+    _raw_database_url = os.getenv(
         "DATABASE_URL",
         f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
+    
+    # Convert Railway's postgresql:// to postgresql+asyncpg:// if needed
+    if _raw_database_url.startswith("postgresql://") and "+asyncpg" not in _raw_database_url:
+        DATABASE_URL = _raw_database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    else:
+        DATABASE_URL = _raw_database_url
     
     # Pool settings
     POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
