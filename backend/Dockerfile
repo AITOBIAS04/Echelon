@@ -26,7 +26,9 @@ RUN addgroup --system app && adduser --system --group app
 
 # Copy wheels from builder
 COPY --from=builder /app/wheels /wheels
-RUN pip install --no-cache /wheels/*
+# Install all wheels, then force reinstall websockets from wheel to ensure correct version
+RUN pip install --no-cache /wheels/* && \
+    pip install --no-cache --force-reinstall --no-deps /wheels/websockets-*.whl
 
 # Copy application code
 COPY . .
