@@ -26,9 +26,11 @@ RUN addgroup --system app && adduser --system --group app
 
 # Copy wheels from builder
 COPY --from=builder /app/wheels /wheels
-# Install all wheels, then force reinstall websockets from wheel to ensure correct version
-RUN pip install --no-cache /wheels/* && \
-    pip install --no-cache --force-reinstall --no-deps /wheels/websockets-*.whl
+# Install websockets FIRST from PyPI (pinned version) to prevent uvicorn from upgrading it
+# Then install all other wheels
+RUN pip install --no-cache websockets==11.0.3 && \
+    pip install --no-cache /wheels/* && \
+    python -c "import websockets; print(f'✅ websockets version: {websockets.__version__}'); import websockets.legacy; print('✅ websockets.legacy module verified')"
 
 # Copy application code
 COPY . .
