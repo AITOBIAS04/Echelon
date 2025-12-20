@@ -40,7 +40,7 @@ eth-rlp==2.2.0
 eth-typing==5.2.1
 eth_abi==5.2.0
 web3==7.14.0
-virtuals-acp==0.3.14
+# virtuals-acp==0.3.14  # Commented out: requires Python <3.13 (not needed for seeding)
 
 # HTTP & Async
 aiohttp==3.13.2
