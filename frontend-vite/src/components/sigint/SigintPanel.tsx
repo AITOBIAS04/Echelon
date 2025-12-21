@@ -13,7 +13,10 @@ export function SigintPanel() {
 
   const timelines = timelinesData?.timelines || [];
   const flaps = flapsData?.flaps || [];
-  const paradoxes = paradoxData?.paradoxes || [];
+  // Sort paradoxes by urgency (most urgent first - lowest time remaining)
+  const paradoxes = (paradoxData?.paradoxes || []).sort((a, b) => 
+    (a.time_remaining_seconds || 0) - (b.time_remaining_seconds || 0)
+  );
   
   // Log errors for debugging
   if (timelinesError) console.error('Timelines error:', timelinesError);
@@ -22,17 +25,23 @@ export function SigintPanel() {
 
   return (
     <div className="h-full flex flex-col gap-4 p-4">
-      {/* Active Paradox Alerts */}
-      {paradoxes.length > 0 && (
-        <div className="space-y-3">
-          {paradoxes.map((paradox) => (
-            <ParadoxAlert
-              key={paradox.id}
-              paradox={paradox}
-              onExtract={() => console.log('Extract', paradox.id)}
-              onAbandon={() => console.log('Abandon', paradox.id)}
-            />
-          ))}
+      {/* Paradox Alerts - Show max 1, with overflow indicator */}
+      {paradoxes && paradoxes.length > 0 && (
+        <div className="space-y-2 mb-4">
+          {/* Show only the most urgent paradox */}
+          <ParadoxAlert
+            key={paradoxes[0].id}
+            paradox={paradoxes[0]}
+            onExtract={() => console.log('Extract', paradoxes[0].id)}
+            onAbandon={() => console.log('Abandon', paradoxes[0].id)}
+          />
+          
+          {/* If more paradoxes, show count */}
+          {paradoxes.length > 1 && (
+            <div className="text-center py-2 text-echelon-amber text-sm">
+              +{paradoxes.length - 1} more active breach{paradoxes.length > 2 ? 'es' : ''}
+            </div>
+          )}
         </div>
       )}
 
