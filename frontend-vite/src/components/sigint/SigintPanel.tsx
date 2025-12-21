@@ -67,7 +67,7 @@ export function SigintPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden" data-panel="sigint" data-testid="sigint-panel">
       {/* Paradox Section - ONLY show first (most urgent) paradox */}
       {/* All other paradoxes accessible via header badge modal */}
       {/* CRITICAL: This should render ONLY ONE ParadoxAlert component */}
