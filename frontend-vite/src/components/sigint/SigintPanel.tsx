@@ -42,10 +42,23 @@ export function SigintPanel() {
   // Debug: Count actual ParadoxAlert components in DOM after render
   if (typeof window !== 'undefined') {
     setTimeout(() => {
-      const alerts = document.querySelectorAll('[class*="terminal-panel"][class*="border-echelon"]');
-      console.log('[SigintPanel] Found', alerts.length, 'paradox alert elements in DOM');
-      if (alerts.length > 1) {
-        console.error('[SigintPanel] ERROR: Multiple paradox alerts detected!', alerts.length);
+      // Count all terminal-panel elements
+      const allPanels = document.querySelectorAll('.terminal-panel');
+      console.log('[SigintPanel] Total .terminal-panel elements in DOM:', allPanels.length);
+      
+      // Count specifically paradox alerts (those with "Containment Breach" text)
+      const paradoxAlerts = Array.from(allPanels).filter(panel => 
+        panel.textContent?.includes('Containment Breach')
+      );
+      console.log('[SigintPanel] Paradox alert panels found:', paradoxAlerts.length);
+      
+      // Check if modal is open
+      const modal = document.querySelector('[class*="fixed"][class*="inset-0"][class*="z-50"]');
+      console.log('[SigintPanel] Modal overlay present?', !!modal);
+      
+      if (paradoxAlerts.length > 1) {
+        console.error('[SigintPanel] ERROR: Multiple paradox alerts detected!', paradoxAlerts.length);
+        console.error('[SigintPanel] This should only happen in ParadoxPanel, not SigintPanel!');
       }
     }, 100);
   }

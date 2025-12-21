@@ -1,4 +1,5 @@
 import { X, AlertTriangle } from 'lucide-react';
+import { useEffect } from 'react';
 import type { Paradox } from '../../types';
 import { ParadoxAlert } from './ParadoxAlert';
 
@@ -13,10 +14,26 @@ export function BreachesModal({ paradoxes, onClose }: BreachesModalProps) {
     (a.time_remaining_seconds || 0) - (b.time_remaining_seconds || 0)
   );
 
+  // Debug: Log modal rendering
+  console.log('[BreachesModal] Rendering modal with', paradoxes.length, 'paradoxes');
+
+  // Add escape key handler to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        console.log('[BreachesModal] Escape key pressed, closing modal');
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onClose}
+      style={{ pointerEvents: 'auto' }}
     >
       <div 
         className="w-full max-w-4xl max-h-[90vh] bg-terminal-panel border border-terminal-border rounded-lg shadow-2xl flex flex-col overflow-hidden"

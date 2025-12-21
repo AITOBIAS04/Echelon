@@ -28,6 +28,8 @@ function AppContent() {
 
   // Debug: Log which panel is active
   console.log('[App] Active panel:', activePanel);
+  console.log('[App] Modal open?', showBreachesModal);
+  console.log('[App] Total paradoxes:', paradoxes.length);
 
   const renderPanel = () => {
     console.log('[App] Rendering panel:', activePanel);
