@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useTimelines } from '../../hooks/useWingFlaps';
 import { useWingFlaps } from '../../hooks/useWingFlaps';
 import { useParadoxes } from '../../hooks/useParadoxes';
@@ -14,75 +13,32 @@ export function SigintPanel() {
 
   const timelines = timelinesData?.timelines || [];
   const flaps = flapsData?.flaps || [];
-  
-  // Sort by detonation time (most urgent first) - ONLY show first one
-  // Use useMemo to prevent unnecessary recalculations
-  const mostUrgentParadox = useMemo(() => {
-    if (!paradoxData?.paradoxes || paradoxData.paradoxes.length === 0) {
-      console.log('[SigintPanel] No paradoxes available');
-      return null;
-    }
-    const sorted = [...paradoxData.paradoxes].sort((a, b) => 
-      new Date(a.detonation_time).getTime() - new Date(b.detonation_time).getTime()
-    );
-    // CRITICAL: Only return the FIRST paradox, never more
-    // Force return only the first element - never an array
-    const first = sorted.length > 0 ? sorted[0] : null;
-    console.log('[SigintPanel] useMemo returning ONLY first paradox:', first?.id, 'Total available:', sorted.length);
-    console.log('[SigintPanel] Type check - is array?', Array.isArray(first), 'is object?', typeof first === 'object');
-    return first;
-  }, [paradoxData?.paradoxes]);
+  const paradoxes = paradoxData?.paradoxes || [];
   
   // Log errors for debugging
   if (timelinesError) console.error('Timelines error:', timelinesError);
   if (flapsError) console.error('Wing flaps error:', flapsError);
   if (paradoxError) console.error('Paradoxes error:', paradoxError);
 
-  // Debug: Log what we're about to render
-  console.log('[SigintPanel] Component rendering. Most urgent paradox:', mostUrgentParadox?.id || 'NONE');
-  console.log('[SigintPanel] Total paradoxes available:', paradoxData?.paradoxes?.length || 0);
-  
-  // Debug: Count actual ParadoxAlert components in DOM after render
-  if (typeof window !== 'undefined') {
-    setTimeout(() => {
-      // Count all terminal-panel elements
-      const allPanels = document.querySelectorAll('.terminal-panel');
-      console.log('[SigintPanel] Total .terminal-panel elements in DOM:', allPanels.length);
-      
-      // Count specifically paradox alerts (those with "Containment Breach" text)
-      const paradoxAlerts = Array.from(allPanels).filter(panel => 
-        panel.textContent?.includes('Containment Breach')
-      );
-      console.log('[SigintPanel] Paradox alert panels found:', paradoxAlerts.length);
-      
-      // Check if modal is open
-      const modal = document.querySelector('[class*="fixed"][class*="inset-0"][class*="z-50"]');
-      console.log('[SigintPanel] Modal overlay present?', !!modal);
-      
-      if (paradoxAlerts.length > 1) {
-        console.error('[SigintPanel] ERROR: Multiple paradox alerts detected!', paradoxAlerts.length);
-        console.error('[SigintPanel] This should only happen in ParadoxPanel, not SigintPanel!');
-      }
-    }, 100);
-  }
-
   return (
     <div className="h-full flex flex-col overflow-hidden" data-panel="sigint" data-testid="sigint-panel">
-      {/* Paradox Section - ONLY show first (most urgent) paradox */}
-      {/* All other paradoxes accessible via header badge modal */}
-      {/* CRITICAL: This should render ONLY ONE ParadoxAlert component */}
-      {/* DOUBLE CHECK: Ensure mostUrgentParadox is a single object, not an array */}
-      {mostUrgentParadox && !Array.isArray(mostUrgentParadox) && typeof mostUrgentParadox === 'object' && 'id' in mostUrgentParadox ? (
+      {/* Show only the most urgent paradox - others accessible via header */}
+      {paradoxes && paradoxes.length > 0 && (
         <div className="flex-shrink-0 p-4 border-b border-terminal-border relative z-0">
-          <ParadoxAlert
-            key={`sigint-paradox-${mostUrgentParadox.id}`}
-            paradox={mostUrgentParadox}
-            onExtract={() => console.log('Extract', mostUrgentParadox.id)}
-            onAbandon={() => console.log('Abandon', mostUrgentParadox.id)}
+          <ParadoxAlert 
+            paradox={
+              [...paradoxes].sort((a, b) => 
+                new Date(a.detonation_time).getTime() - new Date(b.detonation_time).getTime()
+              )[0]
+            } 
+            onExtract={() => console.log('Extract', [...paradoxes].sort((a, b) => 
+              new Date(a.detonation_time).getTime() - new Date(b.detonation_time).getTime()
+            )[0].id)}
+            onAbandon={() => console.log('Abandon', [...paradoxes].sort((a, b) => 
+              new Date(a.detonation_time).getTime() - new Date(b.detonation_time).getTime()
+            )[0].id)}
           />
         </div>
-      ) : (
-        mostUrgentParadox && console.error('[SigintPanel] ERROR: mostUrgentParadox is not a valid single object!', mostUrgentParadox)
       )}
 
       {/* Main Content - Takes remaining space, scrollable */}
