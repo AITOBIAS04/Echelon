@@ -7,13 +7,18 @@ import { ParadoxAlert } from '../paradox/ParadoxAlert';
 import { TrendingUp, Activity, AlertTriangle } from 'lucide-react';
 
 export function SigintPanel() {
-  const { data: timelinesData, isLoading: timelinesLoading } = useTimelines({ limit: 8 });
-  const { data: flapsData, isLoading: flapsLoading } = useWingFlaps({ limit: 20 });
-  const { data: paradoxData } = useParadoxes();
+  const { data: timelinesData, isLoading: timelinesLoading, error: timelinesError } = useTimelines({ limit: 8 });
+  const { data: flapsData, isLoading: flapsLoading, error: flapsError } = useWingFlaps({ limit: 20 });
+  const { data: paradoxData, error: paradoxError } = useParadoxes();
 
   const timelines = timelinesData?.timelines || [];
   const flaps = flapsData?.flaps || [];
   const paradoxes = paradoxData?.paradoxes || [];
+  
+  // Log errors for debugging
+  if (timelinesError) console.error('Timelines error:', timelinesError);
+  if (flapsError) console.error('Wing flaps error:', flapsError);
+  if (paradoxError) console.error('Paradoxes error:', paradoxError);
 
   return (
     <div className="h-full flex flex-col gap-4 p-4">
