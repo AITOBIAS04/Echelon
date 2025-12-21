@@ -23,16 +23,20 @@ export function SigintPanel() {
   if (flapsError) console.error('Wing flaps error:', flapsError);
   if (paradoxError) console.error('Paradoxes error:', paradoxError);
 
+  // Get only the first (most urgent) paradox
+  const mostUrgentParadox = sortedParadoxes.length > 0 ? sortedParadoxes[0] : null;
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Paradox Section - Only show first (most urgent) */}
-      {sortedParadoxes.length > 0 && (
+      {/* Paradox Section - ONLY show first (most urgent) paradox */}
+      {/* All other paradoxes accessible via header badge modal */}
+      {mostUrgentParadox && (
         <div className="flex-shrink-0 p-4 border-b border-terminal-border">
           <ParadoxAlert
-            key={sortedParadoxes[0].id}
-            paradox={sortedParadoxes[0]}
-            onExtract={() => console.log('Extract', sortedParadoxes[0].id)}
-            onAbandon={() => console.log('Abandon', sortedParadoxes[0].id)}
+            key={mostUrgentParadox.id}
+            paradox={mostUrgentParadox}
+            onExtract={() => console.log('Extract', mostUrgentParadox.id)}
+            onAbandon={() => console.log('Abandon', mostUrgentParadox.id)}
           />
         </div>
       )}
