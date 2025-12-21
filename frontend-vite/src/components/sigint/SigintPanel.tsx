@@ -22,21 +22,17 @@ export function SigintPanel() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden" data-panel="sigint" data-testid="sigint-panel">
-      {/* Show only the most urgent paradox - others accessible via header */}
-      {paradoxes && paradoxes.length > 0 && (() => {
-        const mostUrgent = [...paradoxes].sort((a, b) => 
-          new Date(a.detonation_time).getTime() - new Date(b.detonation_time).getTime()
-        )[0];
-        return (
-          <div className="flex-shrink-0 p-4 border-b border-terminal-border relative z-0">
-            <ParadoxAlert 
-              paradox={mostUrgent} 
-              onExtract={() => console.log('Extract', mostUrgent.id)}
-              onAbandon={() => console.log('Abandon', mostUrgent.id)}
-            />
-          </div>
-        );
-      })()}
+      {/* Only show most urgent paradox to prevent layout overflow */}
+      {paradoxes && paradoxes.length > 0 && (
+        <div className="flex-shrink-0 p-4 border-b border-terminal-border relative z-0">
+          {(() => {
+            const sorted = [...paradoxes].sort((a, b) => 
+              new Date(a.detonation_time).getTime() - new Date(b.detonation_time).getTime()
+            );
+            return <ParadoxAlert key={sorted[0].id} paradox={sorted[0]} />;
+          })()}
+        </div>
+      )}
 
       {/* Main Content - Takes remaining space, scrollable */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
