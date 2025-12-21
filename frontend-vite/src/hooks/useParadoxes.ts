@@ -5,6 +5,6 @@ export function useParadoxes() {
   return useQuery({
     queryKey: ['paradoxes'],
     queryFn: () => paradoxApi.getActiveParadoxes(),
-    refetchInterval: 1000, // Refetch every second for countdown
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 }
