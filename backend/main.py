@@ -118,6 +118,31 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 app = FastAPI()
 
+# --- BACKGROUND TASKS ---
+# Start game loop as background task if enabled
+GAME_LOOP_ENABLED = os.getenv("ENABLE_GAME_LOOP", "true").lower() == "true"
+
+@app.on_event("startup")
+async def start_game_loop():
+    """Start the game loop as a background task."""
+    # Check USE_MOCKS here since it's defined later
+    use_mocks = os.getenv("USE_MOCKS", "true").lower() == "true"
+    if GAME_LOOP_ENABLED and not use_mocks:
+        try:
+            from backend.worker.game_loop import GameLoop
+            import asyncio
+            
+            async def run_game_loop():
+                loop = GameLoop()
+                await loop.start()
+            
+            # Start game loop in background
+            asyncio.create_task(run_game_loop())
+            print("✅ Game loop started as background task")
+        except Exception as e:
+            print(f"⚠️  Could not start game loop: {e}")
+            print("   Continuing without game loop...")
+
 # --- RATE LIMITING MIDDLEWARE ---
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -209,7 +234,9 @@ except Exception as e:
 
 # Initialize Butterfly and Paradox Engines (for USE_MOCKS mode)
 USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
+GAME_LOOP_ENABLED = os.getenv("ENABLE_GAME_LOOP", "true").lower() == "true"
 print(f"🔍 [Main] USE_MOCKS={USE_MOCKS} (from env: {os.getenv('USE_MOCKS', 'not set')})")
+print(f"🔍 [Main] ENABLE_GAME_LOOP={GAME_LOOP_ENABLED} (from env: {os.getenv('ENABLE_GAME_LOOP', 'not set')})")
 if USE_MOCKS and (butterfly_router or paradox_router):
     try:
         from backend.dependencies import init_butterfly_engine, init_paradox_engine
