@@ -24,42 +24,36 @@ export function SigintPanel() {
   if (paradoxError) console.error('Paradoxes error:', paradoxError);
 
   return (
-    <div className="h-full flex flex-col gap-4 p-4">
-      {/* Paradox Alerts - Show max 1, with overflow indicator */}
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Paradox Section - Fixed height, scrollable if many */}
       {paradoxes && paradoxes.length > 0 && (
-        <div className="space-y-2 mb-4">
-          {/* Show only the most urgent paradox */}
-          <ParadoxAlert
-            key={paradoxes[0].id}
-            paradox={paradoxes[0]}
-            onExtract={() => console.log('Extract', paradoxes[0].id)}
-            onAbandon={() => console.log('Abandon', paradoxes[0].id)}
-          />
-          
-          {/* If more paradoxes, show count */}
-          {paradoxes.length > 1 && (
-            <div className="text-center py-2 text-echelon-amber text-sm">
-              +{paradoxes.length - 1} more active breach{paradoxes.length > 2 ? 'es' : ''}
-            </div>
-          )}
+        <div className="flex-shrink-0 max-h-[40vh] overflow-y-auto p-4 space-y-3 border-b border-terminal-border">
+          {paradoxes.map((p) => (
+            <ParadoxAlert
+              key={p.id}
+              paradox={p}
+              onExtract={() => console.log('Extract', p.id)}
+              onAbandon={() => console.log('Abandon', p.id)}
+            />
+          ))}
         </div>
       )}
 
-      {/* Main Grid */}
-      <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
-        {/* Timeline Grid - Left 8 columns */}
-        <div className="col-span-8 flex flex-col min-h-0">
-          {/* Section Header */}
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-echelon-cyan" />
-            <span className="terminal-header">Trending Timelines</span>
-            <span className="text-xs text-terminal-muted ml-auto">
-              Sorted by Gravity Score
-            </span>
-          </div>
+      {/* Main Content - Takes remaining space, scrollable */}
+      <div className="flex-1 min-h-0 overflow-y-auto p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Timelines - 2 columns */}
+          <div className="lg:col-span-2">
+            {/* Section Header */}
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="w-4 h-4 text-echelon-cyan" />
+              <span className="terminal-header">Trending Timelines</span>
+              <span className="text-xs text-terminal-muted ml-auto">
+                Sorted by Gravity Score
+              </span>
+            </div>
 
-          {/* Timeline Cards */}
-          <div className="flex-1 overflow-y-auto">
+            {/* Timeline Cards */}
             {timelinesLoading ? (
               <div className="grid grid-cols-2 gap-3">
                 {[...Array(4)].map((_, i) => (
@@ -78,16 +72,16 @@ export function SigintPanel() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Wing Flap Feed - Right 4 columns */}
-        <div className="col-span-4 min-h-0">
-          <WingFlapFeed flaps={flaps} isLoading={flapsLoading} />
+          
+          {/* Wing Flap Feed - 1 column */}
+          <div className="lg:col-span-1">
+            <WingFlapFeed flaps={flaps} isLoading={flapsLoading} />
+          </div>
         </div>
       </div>
 
       {/* Status Bar */}
-      <div className="h-8 flex items-center justify-between px-3 bg-terminal-panel border border-terminal-border rounded text-xs">
+      <div className="flex-shrink-0 h-8 flex items-center justify-between px-3 bg-terminal-panel border-t border-terminal-border text-xs">
         <div className="flex items-center gap-4">
           <span className="text-terminal-muted">
             <Activity className="w-3 h-3 inline mr-1" />
