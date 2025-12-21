@@ -19,14 +19,17 @@ export function SigintPanel() {
   // Use useMemo to prevent unnecessary recalculations
   const mostUrgentParadox = useMemo(() => {
     if (!paradoxData?.paradoxes || paradoxData.paradoxes.length === 0) {
+      console.log('[SigintPanel] No paradoxes available');
       return null;
     }
     const sorted = [...paradoxData.paradoxes].sort((a, b) => 
       new Date(a.detonation_time).getTime() - new Date(b.detonation_time).getTime()
     );
     // CRITICAL: Only return the FIRST paradox, never more
-    const first = sorted[0];
-    console.log('[SigintPanel] Rendering ONLY first paradox:', first?.id, 'Total available:', sorted.length);
+    // Force return only the first element - never an array
+    const first = sorted.length > 0 ? sorted[0] : null;
+    console.log('[SigintPanel] useMemo returning ONLY first paradox:', first?.id, 'Total available:', sorted.length);
+    console.log('[SigintPanel] Type check - is array?', Array.isArray(first), 'is object?', typeof first === 'object');
     return first;
   }, [paradoxData?.paradoxes]);
   
@@ -68,7 +71,8 @@ export function SigintPanel() {
       {/* Paradox Section - ONLY show first (most urgent) paradox */}
       {/* All other paradoxes accessible via header badge modal */}
       {/* CRITICAL: This should render ONLY ONE ParadoxAlert component */}
-      {mostUrgentParadox ? (
+      {/* DOUBLE CHECK: Ensure mostUrgentParadox is a single object, not an array */}
+      {mostUrgentParadox && !Array.isArray(mostUrgentParadox) && typeof mostUrgentParadox === 'object' && 'id' in mostUrgentParadox ? (
         <div className="flex-shrink-0 p-4 border-b border-terminal-border relative z-0">
           <ParadoxAlert
             key={`sigint-paradox-${mostUrgentParadox.id}`}
@@ -77,7 +81,9 @@ export function SigintPanel() {
             onAbandon={() => console.log('Abandon', mostUrgentParadox.id)}
           />
         </div>
-      ) : null}
+      ) : (
+        mostUrgentParadox && console.error('[SigintPanel] ERROR: mostUrgentParadox is not a valid single object!', mostUrgentParadox)
+      )}
 
       {/* Main Content - Takes remaining space, scrollable */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
