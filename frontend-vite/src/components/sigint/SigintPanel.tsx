@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useTimelines } from '../../hooks/useWingFlaps';
 import { useWingFlaps } from '../../hooks/useWingFlaps';
 import { useParadoxes } from '../../hooks/useParadoxes';
@@ -13,18 +14,26 @@ export function SigintPanel() {
 
   const timelines = timelinesData?.timelines || [];
   const flaps = flapsData?.flaps || [];
-  // Sort by detonation time (most urgent first) - only show first one
-  const sortedParadoxes = (paradoxData?.paradoxes || []).slice().sort((a, b) => 
-    new Date(a.detonation_time).getTime() - new Date(b.detonation_time).getTime()
-  );
+  
+  // Sort by detonation time (most urgent first) - ONLY show first one
+  // Use useMemo to prevent unnecessary recalculations
+  const mostUrgentParadox = useMemo(() => {
+    if (!paradoxData?.paradoxes || paradoxData.paradoxes.length === 0) {
+      return null;
+    }
+    const sorted = [...paradoxData.paradoxes].sort((a, b) => 
+      new Date(a.detonation_time).getTime() - new Date(b.detonation_time).getTime()
+    );
+    // CRITICAL: Only return the FIRST paradox, never more
+    const first = sorted[0];
+    console.log('[SigintPanel] Rendering ONLY first paradox:', first?.id, 'Total available:', sorted.length);
+    return first;
+  }, [paradoxData?.paradoxes]);
   
   // Log errors for debugging
   if (timelinesError) console.error('Timelines error:', timelinesError);
   if (flapsError) console.error('Wing flaps error:', flapsError);
   if (paradoxError) console.error('Paradoxes error:', paradoxError);
-
-  // Get only the first (most urgent) paradox
-  const mostUrgentParadox = sortedParadoxes.length > 0 ? sortedParadoxes[0] : null;
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -94,10 +103,10 @@ export function SigintPanel() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {sortedParadoxes.length > 0 ? (
+          {(paradoxData?.paradoxes?.length || 0) > 0 ? (
             <span className="text-echelon-red">
               <AlertTriangle className="w-3 h-3 inline mr-1" />
-              {sortedParadoxes.length} breach{sortedParadoxes.length > 1 ? 'es' : ''}
+              {paradoxData?.paradoxes?.length || 0} breach{(paradoxData?.paradoxes?.length || 0) > 1 ? 'es' : ''}
             </span>
           ) : (
             <span className="text-echelon-green">All timelines stable</span>
