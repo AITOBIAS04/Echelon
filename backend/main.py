@@ -124,7 +124,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 # --- CORS MIDDLEWARE ---
-# Allow localhost for development and Vercel for production
+# Allow localhost for development
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -137,9 +137,10 @@ if vercel_url:
     origins.append(f"https://{vercel_url}")
     origins.append(f"http://{vercel_url}")
 
-# Allow all Vercel deployments (*.vercel.app)
-# This allows any Vercel preview or production deployment
-origins.append("https://*.vercel.app")
+# For production, allow all origins (Vercel uses dynamic preview URLs)
+# In a more secure setup, you'd maintain a list of allowed domains
+if os.getenv("ENVIRONMENT") == "production" or os.getenv("ALLOW_ALL_ORIGINS") == "true":
+    origins = ["*"]  # Allow all origins in production (Vercel preview URLs are dynamic)
 
 app.add_middleware(
     CORSMiddleware,
