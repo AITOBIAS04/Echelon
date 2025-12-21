@@ -13,21 +13,10 @@ export function SigintPanel() {
 
   const timelines = timelinesData?.timelines || [];
   const flaps = flapsData?.flaps || [];
-  // Sort paradoxes by detonation_time ascending (most urgent first)
-  const sortedParadoxes = (paradoxData?.paradoxes || []).sort((a, b) => {
-    const timeA = new Date(a.detonation_time).getTime();
-    const timeB = new Date(b.detonation_time).getTime();
-    return timeA - timeB;
-  });
-  
-  // Format countdown for compact display
-  const formatCountdown = (seconds: number): string => {
-    if (seconds <= 0) return '00:00:00';
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
+  // Sort by detonation time (most urgent first) - only show first one
+  const sortedParadoxes = (paradoxData?.paradoxes || []).slice().sort((a, b) => 
+    new Date(a.detonation_time).getTime() - new Date(b.detonation_time).getTime()
+  );
   
   // Log errors for debugging
   if (timelinesError) console.error('Timelines error:', timelinesError);
@@ -36,33 +25,15 @@ export function SigintPanel() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Paradox Section - Compact summary */}
-      {sortedParadoxes && sortedParadoxes.length > 0 && (
-        <div className="flex-shrink-0 max-h-[40vh] overflow-y-auto p-4 space-y-3 border-b border-terminal-border">
-          {/* Most urgent paradox - full display */}
+      {/* Paradox Section - Only show first (most urgent) */}
+      {sortedParadoxes.length > 0 && (
+        <div className="flex-shrink-0 p-4 border-b border-terminal-border">
           <ParadoxAlert
             key={sortedParadoxes[0].id}
             paradox={sortedParadoxes[0]}
             onExtract={() => console.log('Extract', sortedParadoxes[0].id)}
             onAbandon={() => console.log('Abandon', sortedParadoxes[0].id)}
           />
-          
-          {/* Other paradoxes - compact list */}
-          {sortedParadoxes.length > 1 && (
-            <div className="terminal-panel p-3 space-y-1">
-              <div className="text-xs text-terminal-muted uppercase mb-2">
-                +{sortedParadoxes.length - 1} More Breach{sortedParadoxes.length > 2 ? 'es' : ''}
-              </div>
-              {sortedParadoxes.slice(1).map((p) => (
-                <div key={p.id} className="flex justify-between items-center text-sm py-1 border-b border-terminal-border/50 last:border-0">
-                  <span className="text-terminal-text">{p.timeline_name}</span>
-                  <span className="font-mono text-echelon-red">
-                    {formatCountdown(p.time_remaining_seconds || 0)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
