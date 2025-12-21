@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock, Zap, Skull } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { useParadoxes } from '../../hooks/useParadoxes';
 import { ParadoxAlert } from './ParadoxAlert';
 import type { Paradox } from '../../types';
@@ -37,7 +37,7 @@ export function ParadoxPanel() {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto space-y-4">
-          {paradoxes.map((paradox) => (
+          {paradoxes.map((paradox: Paradox) => (
             <ParadoxAlert
               key={paradox.id}
               paradox={paradox}
@@ -59,13 +59,13 @@ export function ParadoxPanel() {
         <div>
           <div className="text-xs text-terminal-muted mb-1">Extracting</div>
           <div className="text-lg font-mono text-echelon-amber">
-            {paradoxes.filter(p => p.status === 'EXTRACTING').length}
+            {paradoxes.filter((p: Paradox) => p.status === 'EXTRACTING').length}
           </div>
         </div>
         <div>
           <div className="text-xs text-terminal-muted mb-1">Resolved</div>
           <div className="text-lg font-mono text-echelon-green">
-            {paradoxes.filter(p => p.status === 'RESOLVED').length}
+            {paradoxes.filter((p: Paradox) => p.status === 'RESOLVED').length}
           </div>
         </div>
       </div>
