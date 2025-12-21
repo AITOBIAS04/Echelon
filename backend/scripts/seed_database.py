@@ -263,8 +263,8 @@ async def seed_paradoxes(session, timelines: list) -> list:
             status=ParadoxStatus.ACTIVE,
             severity_class=SeverityClass.CLASS_2_SEVERE,
             logic_gap=0.47,
-            spawned_at=datetime.now(timezone.utc) - timedelta(hours=2),
-            detonation_time=datetime.now(timezone.utc) + timedelta(hours=4),
+            spawned_at=(datetime.now(timezone.utc) - timedelta(hours=2)).replace(tzinfo=None),
+            detonation_time=(datetime.now(timezone.utc) + timedelta(hours=4)).replace(tzinfo=None),
             decay_multiplier=5.0,
             extraction_cost_usdc=970.0,
             extraction_cost_echelon=288,
@@ -283,7 +283,7 @@ async def seed_paradoxes(session, timelines: list) -> list:
 async def seed_wing_flaps(session, timelines: list, agents: list) -> list:
     """Create test wing flaps."""
     flaps = []
-    base_time = datetime.now(timezone.utc)
+    base_time = datetime.now(timezone.utc).replace(tzinfo=None)
     
     actions = [
         ("bought", "YES", WingFlapType.TRADE),
