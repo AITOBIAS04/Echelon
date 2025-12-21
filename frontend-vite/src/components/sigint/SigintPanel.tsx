@@ -38,6 +38,17 @@ export function SigintPanel() {
   // Debug: Log what we're about to render
   console.log('[SigintPanel] Component rendering. Most urgent paradox:', mostUrgentParadox?.id || 'NONE');
   console.log('[SigintPanel] Total paradoxes available:', paradoxData?.paradoxes?.length || 0);
+  
+  // Debug: Count actual ParadoxAlert components in DOM after render
+  if (typeof window !== 'undefined') {
+    setTimeout(() => {
+      const alerts = document.querySelectorAll('[class*="terminal-panel"][class*="border-echelon"]');
+      console.log('[SigintPanel] Found', alerts.length, 'paradox alert elements in DOM');
+      if (alerts.length > 1) {
+        console.error('[SigintPanel] ERROR: Multiple paradox alerts detected!', alerts.length);
+      }
+    }, 100);
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -45,9 +56,9 @@ export function SigintPanel() {
       {/* All other paradoxes accessible via header badge modal */}
       {/* CRITICAL: This should render ONLY ONE ParadoxAlert component */}
       {mostUrgentParadox ? (
-        <div className="flex-shrink-0 p-4 border-b border-terminal-border">
+        <div className="flex-shrink-0 p-4 border-b border-terminal-border relative z-0">
           <ParadoxAlert
-            key={mostUrgentParadox.id}
+            key={`sigint-paradox-${mostUrgentParadox.id}`}
             paradox={mostUrgentParadox}
             onExtract={() => console.log('Extract', mostUrgentParadox.id)}
             onAbandon={() => console.log('Abandon', mostUrgentParadox.id)}

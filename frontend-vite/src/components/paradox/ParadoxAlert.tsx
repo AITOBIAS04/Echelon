@@ -33,7 +33,7 @@ export function ParadoxAlert({ paradox, onExtract, onAbandon }: ParadoxAlertProp
     'border-echelon-purple bg-echelon-purple/10';
 
   return (
-    <div className={`terminal-panel ${urgencyColor} p-4`}>
+    <div className={`terminal-panel ${urgencyColor} p-4 relative z-0`} style={{ position: 'relative' }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
