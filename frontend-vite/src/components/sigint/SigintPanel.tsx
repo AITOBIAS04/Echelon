@@ -35,11 +35,16 @@ export function SigintPanel() {
   if (flapsError) console.error('Wing flaps error:', flapsError);
   if (paradoxError) console.error('Paradoxes error:', paradoxError);
 
+  // Debug: Log what we're about to render
+  console.log('[SigintPanel] Component rendering. Most urgent paradox:', mostUrgentParadox?.id || 'NONE');
+  console.log('[SigintPanel] Total paradoxes available:', paradoxData?.paradoxes?.length || 0);
+
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Paradox Section - ONLY show first (most urgent) paradox */}
       {/* All other paradoxes accessible via header badge modal */}
-      {mostUrgentParadox && (
+      {/* CRITICAL: This should render ONLY ONE ParadoxAlert component */}
+      {mostUrgentParadox ? (
         <div className="flex-shrink-0 p-4 border-b border-terminal-border">
           <ParadoxAlert
             key={mostUrgentParadox.id}
@@ -48,7 +53,7 @@ export function SigintPanel() {
             onAbandon={() => console.log('Abandon', mostUrgentParadox.id)}
           />
         </div>
-      )}
+      ) : null}
 
       {/* Main Content - Takes remaining space, scrollable */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4">

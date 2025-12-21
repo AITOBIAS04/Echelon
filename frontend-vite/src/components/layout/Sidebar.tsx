@@ -14,7 +14,7 @@ const Sidebar = ({ activePanel, onPanelChange }: SidebarProps) => {
   ];
 
   return (
-    <aside className="w-48 border-r border-terminal-border bg-terminal-panel p-4">
+    <aside className="w-48 border-r border-terminal-border bg-terminal-panel p-4 relative z-10">
       <nav className="space-y-2">
         {panels.map((panel) => {
           const Icon = panel.icon;
@@ -23,13 +23,17 @@ const Sidebar = ({ activePanel, onPanelChange }: SidebarProps) => {
           return (
             <button
               key={panel.id}
-              onClick={() => onPanelChange(panel.id)}
+              onClick={() => {
+                console.log('[Sidebar] Clicked panel:', panel.id);
+                onPanelChange(panel.id);
+              }}
               className={clsx(
-                'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
+                'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors relative z-10',
                 isActive
                   ? 'bg-terminal-border text-echelon-cyan'
                   : 'text-terminal-muted hover:text-terminal-text hover:bg-terminal-border/50'
               )}
+              style={{ pointerEvents: 'auto' }}
             >
               <Icon size={18} />
               <span className="text-sm font-medium">{panel.label}</span>
