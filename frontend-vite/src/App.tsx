@@ -13,6 +13,8 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 5000,
       refetchOnWindowFocus: false,
+      // Explicitly do NOT set a default refetchInterval here
+      // Each hook should define its own refetchInterval
     },
   },
 });
