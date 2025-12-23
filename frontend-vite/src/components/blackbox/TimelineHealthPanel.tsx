@@ -31,7 +31,6 @@ export function TimelineHealthPanel() {
         const decayRate = timeline.decay_rate_per_hour || 1;
         const logicGap = timeline.logic_gap || 0;
         
-        const isStable = stability > 70;
         const isUnstable = stability > 40 && stability <= 70;
         const isCritical = stability <= 40;
         
@@ -149,13 +148,13 @@ export function TimelineHealthPanel() {
             </div>
 
             {/* Gravity Wells */}
-            {timeline.keywords && timeline.keywords.length > 0 && (
+            {timeline.gravity_factors && Object.keys(timeline.gravity_factors).length > 0 && (
               <div className="mb-3">
                 <span className="text-xs text-gray-500 block mb-1">GRAVITY WELLS</span>
                 <div className="flex flex-wrap gap-1">
-                  {timeline.keywords.slice(0, 3).map((keyword: string, i: number) => (
+                  {Object.keys(timeline.gravity_factors).slice(0, 3).map((key: string, i: number) => (
                     <span key={i} className="text-xs px-2 py-0.5 bg-[#1a3a1a] text-gray-400 rounded">
-                      • {keyword}
+                      • {key}
                     </span>
                   ))}
                 </div>

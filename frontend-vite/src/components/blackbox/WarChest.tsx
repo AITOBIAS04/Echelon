@@ -1,6 +1,6 @@
 import { useTimelines } from '../../hooks/useWingFlaps';
 import { useWingFlaps } from '../../hooks/useWingFlaps';
-import { Skull, Shield, Swords, Activity } from 'lucide-react';
+import { Skull, Shield, Swords } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useMemo } from 'react';
 
@@ -20,24 +20,24 @@ export function WarChest() {
   const { data: flapsData, isLoading: flapsLoading } = useWingFlaps();
   
   const timelines = timelinesData?.timelines || [];
-  const wingFlaps = flapsData?.wing_flaps || flapsData?.flaps || [];
+  const wingFlaps = flapsData?.flaps || [];
 
   // Calculate war data from wing flaps
   const warData: WarData[] = useMemo(() => {
-    return timelines.map(timeline => {
+    return timelines.map((timeline: any) => {
       // Get flaps for this timeline
-      const timelineFlaps = wingFlaps.filter(f => f.timeline_id === timeline.id);
+      const timelineFlaps = wingFlaps.filter((f: any) => f.timeline_id === timeline.id);
       
       // Calculate sabotage (negative stability) and shield (positive stability) pools
-      const sabotageFlaps = timelineFlaps.filter(f => 
+      const sabotageFlaps = timelineFlaps.filter((f: any) => 
         f.flap_type === 'SABOTAGE' || (f.direction === 'DESTABILISE' && f.volume_usd > 0)
       );
-      const shieldFlaps = timelineFlaps.filter(f => 
+      const shieldFlaps = timelineFlaps.filter((f: any) => 
         f.flap_type === 'SHIELD' || (f.direction === 'ANCHOR' && f.volume_usd > 0)
       );
       
-      const sabotage_pool = sabotageFlaps.reduce((sum, f) => sum + (f.volume_usd || 0), 0) || Math.random() * 30000;
-      const shield_pool = shieldFlaps.reduce((sum, f) => sum + (f.volume_usd || 0), 0) || Math.random() * 30000;
+      const sabotage_pool = sabotageFlaps.reduce((sum: number, f: any) => sum + (f.volume_usd || 0), 0) || Math.random() * 30000;
+      const shield_pool = shieldFlaps.reduce((sum: number, f: any) => sum + (f.volume_usd || 0), 0) || Math.random() * 30000;
       const total_pool = sabotage_pool + shield_pool;
       
       return {
@@ -47,12 +47,12 @@ export function WarChest() {
         shield_pool,
         total_pool,
         sabotage_pct: total_pool > 0 ? (sabotage_pool / total_pool) * 100 : 50,
-        recent_attacks: sabotageFlaps.slice(0, 3).map(f => ({
+        recent_attacks: sabotageFlaps.slice(0, 3).map((f: any) => ({
           agent_name: f.agent_name || 'UNKNOWN',
           amount: f.volume_usd || 0,
           timestamp: f.created_at || f.timestamp
         })),
-        recent_shields: shieldFlaps.slice(0, 3).map(f => ({
+        recent_shields: shieldFlaps.slice(0, 3).map((f: any) => ({
           agent_name: f.agent_name || 'UNKNOWN',
           amount: f.volume_usd || 0,
           timestamp: f.created_at || f.timestamp

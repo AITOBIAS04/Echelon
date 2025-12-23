@@ -8,7 +8,7 @@ export function WhaleWatch() {
   const [filter, setFilter] = useState<FilterType>('ALL');
   const { data: flapsData, isLoading } = useWingFlaps();
   
-  const wingFlaps = flapsData?.wing_flaps || flapsData?.flaps || [];
+  const wingFlaps = flapsData?.flaps || [];
 
   const getAgentColour = (archetype: string) => {
     switch (archetype?.toUpperCase()) {
@@ -29,7 +29,7 @@ export function WhaleWatch() {
     return direction === 'ANCHOR' ? 'text-green-400' : 'text-red-400';
   };
 
-  const filteredFlaps = wingFlaps.filter(flap => {
+  const filteredFlaps = wingFlaps.filter((flap: any) => {
     if (filter === 'ALL') return true;
     if (filter === 'SHARKS') return flap.agent_archetype?.toUpperCase() === 'SHARK';
     if (filter === 'WHALES') return flap.agent_archetype?.toUpperCase() === 'WHALE';
@@ -74,7 +74,7 @@ export function WhaleWatch() {
             No intercepts matching filter
           </div>
         ) : (
-          filteredFlaps.slice(0, 50).map((flap, i) => {
+          filteredFlaps.slice(0, 50).map((flap: any, i: number) => {
             const time = new Date(flap.timestamp || flap.created_at).toLocaleTimeString('en-GB', { hour12: false });
             const isDivergence = flap.spawned_ripple;
             
