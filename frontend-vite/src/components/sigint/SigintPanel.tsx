@@ -34,43 +34,53 @@ export function SigintPanel() {
         </div>
       )}
 
-      {/* Main Content - Takes remaining space, scrollable */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Timelines - 2 columns */}
-          <div className="lg:col-span-2">
-            {/* Section Header */}
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className="w-4 h-4 text-echelon-cyan" />
-              <span className="terminal-header">Trending Timelines</span>
-              <span className="text-xs text-terminal-muted ml-auto">
-                Sorted by Gravity Score
-              </span>
+      {/* Main Content - Full height, no overflow */}
+      <div className="flex-1 min-h-0 p-4">
+        <div className="h-full flex flex-col lg:flex-row gap-6 overflow-hidden">
+          {/* Trending Timelines - scrollable */}
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-echelon-cyan" />
+                <h2 className="terminal-header">TRENDING TIMELINES</h2>
+              </div>
+              <span className="text-xs text-terminal-muted">Sorted by Gravity Score</span>
             </div>
-
-            {/* Timeline Cards */}
-            {timelinesLoading ? (
-              <div className="grid grid-cols-2 gap-3">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="terminal-panel p-4 h-48 animate-pulse" />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {timelines.map((timeline) => (
-                  <TimelineCard
-                    key={timeline.id}
-                    timeline={timeline}
-                    onClick={() => console.log('Open timeline', timeline.id)}
-                  />
-                ))}
-              </div>
-            )}
+            {/* Scrollable area */}
+            <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+              {timelinesLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="terminal-panel p-4 h-48 animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {timelines.map((timeline) => (
+                    <TimelineCard
+                      key={timeline.id}
+                      timeline={timeline}
+                      onClick={() => console.log('Open timeline', timeline.id)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           
-          {/* Wing Flap Feed - 1 column */}
-          <div className="lg:col-span-1">
-            <WingFlapFeed flaps={flaps} isLoading={flapsLoading} />
+          {/* Wing Flap Feed - scrollable */}
+          <div className="w-full lg:w-96 flex flex-col min-h-0 lg:max-h-[calc(100vh-120px)]">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
+              <h3 className="terminal-header">WING FLAP FEED</h3>
+              <span className="text-xs text-echelon-green flex items-center gap-1">
+                <Activity className="w-3 h-3" />
+                LIVE
+              </span>
+            </div>
+            {/* Scrollable area */}
+            <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+              <WingFlapFeed flaps={flaps} isLoading={flapsLoading} />
+            </div>
           </div>
         </div>
       </div>

@@ -1,4 +1,3 @@
-import { Activity } from 'lucide-react';
 import type { WingFlap, AgentArchetype } from '../../types';
 import { clsx } from 'clsx';
 
@@ -26,33 +25,29 @@ const flapTypeIcons: Record<string, string> = {
 };
 
 export function WingFlapFeed({ flaps, isLoading }: WingFlapFeedProps) {
-  return (
-    <div className="terminal-panel h-full flex flex-col">
-      {/* Header */}
-      <div className="p-3 border-b border-terminal-border flex items-center gap-2">
-        <Activity className="w-4 h-4 text-echelon-cyan" />
-        <span className="terminal-header">Wing Flap Feed</span>
-        <span className="text-xs text-echelon-green ml-auto">● LIVE</span>
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="terminal-panel p-3 h-20 animate-pulse" />
+        ))}
       </div>
+    );
+  }
 
-      {/* Feed */}
-      <div className="wing-flap-feed flex-1 overflow-y-auto">
-        {isLoading ? (
-          <div className="p-4 text-center text-terminal-muted">
-            Loading feed...
-          </div>
-        ) : flaps.length === 0 ? (
-          <div className="p-4 text-center text-terminal-muted">
-            No recent activity
-          </div>
-        ) : (
-          <div className="divide-y divide-terminal-border">
-            {flaps.map((flap) => (
-              <WingFlapItem key={flap.id} flap={flap} />
-            ))}
-          </div>
-        )}
+  if (flaps.length === 0) {
+    return (
+      <div className="p-4 text-center text-terminal-muted">
+        No recent activity
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {flaps.map((flap) => (
+        <WingFlapItem key={flap.id} flap={flap} />
+      ))}
     </div>
   );
 }
@@ -62,7 +57,7 @@ function WingFlapItem({ flap }: { flap: WingFlap }) {
   const timeAgo = getTimeAgo(timestamp);
   
   return (
-    <div className="p-3 hover:bg-terminal-bg/50 transition">
+    <div className="terminal-panel p-3 hover:bg-terminal-bg/50 transition">
       {/* Agent + Time */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
