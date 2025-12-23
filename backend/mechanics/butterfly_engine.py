@@ -528,6 +528,12 @@ class ButterflyEngine:
             except (KeyError, AttributeError):
                 pass
         
+        # Clamp values to schema constraints
+        # Stability can exceed 100% in edge cases, but schema requires <= 100
+        clamped_stability = min(100.0, max(0.0, db_flap.timeline_stability or 0.0))
+        # Price must be between 0 and 1
+        clamped_price = min(1.0, max(0.0, db_flap.timeline_price or 0.0))
+        
         return WingFlap(
             id=db_flap.id,
             timestamp=db_flap.timestamp,
@@ -541,8 +547,8 @@ class ButterflyEngine:
             stability_delta=db_flap.stability_delta,
             direction=direction_enum,
             volume_usd=db_flap.volume_usd,
-            timeline_stability=db_flap.timeline_stability,
-            timeline_price=db_flap.timeline_price,
+            timeline_stability=clamped_stability,
+            timeline_price=clamped_price,
             spawned_ripple=db_flap.spawned_ripple,
             ripple_timeline_id=db_flap.ripple_timeline_id,
             founder_id=None,  # Will be populated from timeline if needed
