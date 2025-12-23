@@ -16,9 +16,9 @@ export function AppLayout() {
   ];
 
   return (
-    <div className="h-screen flex flex-col bg-terminal-bg">
-      {/* Header */}
-      <header className="h-14 bg-terminal-panel border-b border-terminal-border flex items-center justify-between px-6">
+    <div className="h-screen flex flex-col bg-terminal-bg overflow-hidden">
+      {/* Header - fixed height */}
+      <header className="flex-shrink-0 h-14 bg-terminal-panel border-b border-terminal-border flex items-center justify-between px-6">
         {/* Logo */}
         <NavLink to="/" className="flex items-center gap-3">
           <Shield className="w-6 h-6 text-echelon-cyan" />
@@ -82,8 +82,9 @@ export function AppLayout() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 min-h-0 overflow-hidden">
+      {/* Main content - takes remaining space, no overflow */}
+      <main className="flex-1 min-h-0 overflow-hidden p-6">
+        {/* Child panels handle their own scrolling */}
         <Outlet />
       </main>
     </div>
