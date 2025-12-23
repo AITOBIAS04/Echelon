@@ -193,3 +193,4 @@ python -m scripts.seed_database
 - Run migrations: `alembic upgrade head`
 - Or drop and recreate: `alembic downgrade base && alembic upgrade head`
 
+

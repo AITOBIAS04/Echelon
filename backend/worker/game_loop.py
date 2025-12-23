@@ -21,6 +21,7 @@ from backend.worker.tasks.entropy import EntropyTask
 from backend.worker.tasks.paradox import ParadoxTask
 from backend.worker.tasks.market_sync import MarketSyncTask
 from backend.worker.tasks.agent_tick import AgentTickTask
+from backend.worker.tasks.genesis import run_genesis_task
 
 # Configure logging
 logging.basicConfig(
@@ -56,9 +57,10 @@ class GameLoop:
         # Task intervals (in seconds)
         self.intervals = {
             'entropy': 60,      # Decay stability every minute
-            'paradox': 30,       # Check for breaches every 30s
-            'market': 10,        # Sync prices every 10s
-            'agent': 5,          # Agent decisions every 5s
+            'paradox': 30,      # Check for breaches every 30s
+            'market': 10,       # Sync prices every 10s
+            'agent': 5,         # Agent decisions every 5s
+            'genesis': 300,     # Phoenix protocol every 5 minutes
         }
         
         # Last run times (timezone-aware)
@@ -69,6 +71,7 @@ class GameLoop:
             'paradox': min_time,
             'market': min_time,
             'agent': min_time,
+            'genesis': min_time,
         }
     
     async def start(self):
@@ -135,6 +138,10 @@ class GameLoop:
         # Agent decisions
         if self._is_due('agent', now):
             await self._run_task('agent', self.agent_task.tick, session)
+
+        # Phoenix protocol (genesis)
+        if self._is_due('genesis', now):
+            await self._run_task('genesis', self._genesis_task, session)
     
     def _is_due(self, task_name: str, now: datetime) -> bool:
         """Check if a task is due to run."""
@@ -155,6 +162,18 @@ class GameLoop:
             
         except Exception as e:
             logger.error(f"[{task_name.upper():8}] Failed: {e}")
+
+    async def _genesis_task(self, session):
+        """Phoenix Protocol - ensure minimum timelines exist."""
+        try:
+            result = await run_genesis_task()
+            # Only log if we spawned timelines
+            if result and result.get("spawned", 0) > 0:
+                logger.info(f"Genesis: Spawned {result['spawned']} timelines")
+            return result
+        except Exception as e:
+            logger.error(f"Genesis task error: {e}")
+            raise
     
     def stop(self):
         """Stop the game loop."""

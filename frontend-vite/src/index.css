@@ -52,4 +52,10 @@
   .glow-purple {
     text-shadow: 0 0 10px theme('colors.echelon.purple');
   }
+
+  /* Make the wing flap feed scroll independently */
+  .wing-flap-feed {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+  }
 }

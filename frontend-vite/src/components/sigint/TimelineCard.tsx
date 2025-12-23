@@ -1,4 +1,5 @@
 import { TrendingUp, TrendingDown, AlertTriangle, Users, DollarSign } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import type { Timeline } from '../../types';
 import { clsx } from 'clsx';
 
@@ -19,10 +20,11 @@ export function TimelineCard({ timeline, onClick }: TimelineCardProps) {
     'bg-echelon-red/10 border-echelon-red/30';
 
   return (
-    <div
+    <Link
+      to={`/timeline/${timeline.id}`}
       onClick={onClick}
       className={clsx(
-        'terminal-panel p-4 cursor-pointer transition-all hover:border-echelon-cyan/50',
+        'block terminal-panel p-4 cursor-pointer transition-all hover:border-echelon-cyan/50',
         timeline.has_active_paradox && 'border-echelon-red/50 animate-pulse-slow'
       )}
     >
@@ -95,6 +97,6 @@ export function TimelineCard({ timeline, onClick }: TimelineCardProps) {
           <span>G: {timeline.gravity_score.toFixed(0)}</span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

@@ -36,7 +36,7 @@ export function WingFlapFeed({ flaps, isLoading }: WingFlapFeedProps) {
       </div>
 
       {/* Feed */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="wing-flap-feed flex-1 overflow-y-auto">
         {isLoading ? (
           <div className="p-4 text-center text-terminal-muted">
             Loading feed...

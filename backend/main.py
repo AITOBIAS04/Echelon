@@ -81,6 +81,34 @@ except ImportError as e:
     paradox_router = None
     print(f"⚠️ Could not import Paradox API router: {e}")
 
+# Admin/Demo API
+try:
+    from backend.api.admin_routes import router as admin_router
+except ImportError as e:
+    admin_router = None
+    print(f"⚠️ Could not import Admin API router: {e}")
+
+# Agents API
+try:
+    from backend.api.agents_routes import router as agents_router
+except ImportError as e:
+    agents_router = None
+    print(f"⚠️ Could not import Agents API router: {e}")
+
+# Positions API
+try:
+    from backend.api.positions_routes import router as positions_router
+except ImportError as e:
+    positions_router = None
+    print(f"⚠️ Could not import Positions API router: {e}")
+
+# OSINT API
+try:
+    from backend.api.osint_routes import router as osint_router
+except ImportError as e:
+    osint_router = None
+    print(f"⚠️ Could not import OSINT API router: {e}")
+
 # Initialize
 osint = get_osint_registry()
 
@@ -229,6 +257,54 @@ try:
         print("⚠️ Paradox Engine router is None, skipping")
 except Exception as e:
     print(f"❌ Failed to include Paradox Engine router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Admin router
+try:
+    if admin_router:
+        app.include_router(admin_router)
+        print("✅ Admin router included")
+    else:
+        print("⚠️ Admin router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Admin router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Agents router
+try:
+    if agents_router:
+        app.include_router(agents_router)
+        print("✅ Agents router included")
+    else:
+        print("⚠️ Agents router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Agents router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Positions router
+try:
+    if positions_router:
+        app.include_router(positions_router)
+        print("✅ Positions router included")
+    else:
+        print("⚠️ Positions router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Positions router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include OSINT router
+try:
+    if osint_router:
+        app.include_router(osint_router)
+        print("✅ OSINT router included")
+    else:
+        print("⚠️ OSINT router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include OSINT router: {e}")
     import traceback
     traceback.print_exc()
 

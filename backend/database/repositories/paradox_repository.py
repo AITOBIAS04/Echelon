@@ -40,3 +40,4 @@ class ParadoxRepository:
         return list(result.scalars().all())
 
 
+

@@ -30,3 +30,4 @@ const GravityMeter = ({ gravity }: GravityMeterProps) => {
 export default GravityMeter;
 
 
+

@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 
@@ -8,12 +9,18 @@ import './index.css';
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 if (import.meta.env.DEV) {
   // Development: Render without StrictMode to avoid double renders
-  root.render(<App />);
+  root.render(
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  );
 } else {
   // Production: Use StrictMode
   root.render(
     <React.StrictMode>
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </React.StrictMode>
   );
 }

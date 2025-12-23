@@ -275,3 +275,4 @@ async def mark_all_alerts_read(
     return {"message": f"Marked {count} alerts as read"}
 
 
+

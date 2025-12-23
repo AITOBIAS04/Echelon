@@ -129,3 +129,4 @@ class PortfolioSummary(BaseModel):
     highest_risk_stability: Optional[float] = None
 
 
+
