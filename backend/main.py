@@ -177,11 +177,11 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 # --- CORS MIDDLEWARE ---
-# More flexible CORS for production - allows Vercel and localhost
-# Uses regex to match all Vercel preview and production deployments
+# More flexible CORS for production - allows Vercel, Cloudflare Pages, and localhost
+# Uses regex to match all Vercel preview and production deployments, plus Cloudflare Pages
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.vercel\.app|http://localhost:.*|http://127\.0\.0\.1:.*",
+    allow_origin_regex=r"https://.*\.vercel\.app|https://(.*\.)?prediction-market-monorepo\.pages\.dev|http://localhost:.*|http://127\.0\.0\.1:.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
