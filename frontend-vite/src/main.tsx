@@ -1,26 +1,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 
-// Temporarily disable StrictMode to prevent double rendering in development
-// This helps debug if multiple paradox alerts are being rendered
+// RouterProvider is already used in App.tsx, so we don't need BrowserRouter here
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 if (import.meta.env.DEV) {
   // Development: Render without StrictMode to avoid double renders
-  root.render(
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  );
+  root.render(<App />);
 } else {
   // Production: Use StrictMode
   root.render(
     <React.StrictMode>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
+      <App />
     </React.StrictMode>
   );
 }
