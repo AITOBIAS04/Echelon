@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Radio, Activity, Shield, Database } from 'lucide-react';
+import { Radio, Activity, Shield, Database, Target } from 'lucide-react';
 import { WhaleWatch } from './WhaleWatch';
 import { TimelineHealthPanel } from './TimelineHealthPanel';
 import { WarChest } from './WarChest';
+import { GravityField } from './GravityField';
 import { clsx } from 'clsx';
 
-type TabType = 'intercepts' | 'health' | 'warchest';
+type TabType = 'intercepts' | 'health' | 'warchest' | 'gravity';
 
 export function Blackbox() {
   const [activeTab, setActiveTab] = useState<TabType>('intercepts');
@@ -21,6 +22,7 @@ export function Blackbox() {
     { id: 'intercepts' as TabType, label: 'INTERCEPTS', icon: Radio },
     { id: 'health' as TabType, label: 'TIMELINE HEALTH', icon: Activity },
     { id: 'warchest' as TabType, label: 'WAR CHEST', icon: Shield },
+    { id: 'gravity' as TabType, label: 'GRAVITY FIELD', icon: Target },
   ];
 
   return (
@@ -95,6 +97,7 @@ export function Blackbox() {
           {activeTab === 'intercepts' && <WhaleWatch />}
           {activeTab === 'health' && <TimelineHealthPanel />}
           {activeTab === 'warchest' && <WarChest />}
+          {activeTab === 'gravity' && <GravityField />}
         </div>
 
         {/* Blinking Cursor */}
