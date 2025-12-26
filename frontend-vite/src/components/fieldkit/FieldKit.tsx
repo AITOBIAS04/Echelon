@@ -2,7 +2,7 @@ import { useState, type ComponentType } from 'react';
 import { Briefcase, TrendingUp, Bot, GitBranch, Eye } from 'lucide-react';
 import { MyPositions } from './MyPositions';
 import { MyAgents } from './MyAgents';
-import { PrivateForks } from './PrivateForks';
+import { GhostForks } from './GhostForks';
 import { Watchlist } from './Watchlist';
 import { clsx } from 'clsx';
 
@@ -94,7 +94,7 @@ export function FieldKit() {
       <div className="flex-1 min-h-0 overflow-hidden">
         {activeTab === 'positions' && <MyPositions />}
         {activeTab === 'agents' && <MyAgents />}
-        {activeTab === 'forks' && <PrivateForks />}
+        {activeTab === 'forks' && <GhostForks />}
         {activeTab === 'watchlist' && <Watchlist />}
       </div>
     </div>
