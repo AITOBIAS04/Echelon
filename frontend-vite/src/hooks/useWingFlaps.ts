@@ -10,6 +10,8 @@ export function useWingFlaps(params?: {
     queryKey: ['wingFlaps', params],
     queryFn: () => butterflyApi.getWingFlaps(params),
     refetchInterval: 5000, // Refetch every 5 seconds
+    retry: 2, // Retry failed requests 2 times
+    retryDelay: 1000, // Wait 1 second between retries
   });
 }
 
@@ -21,5 +23,7 @@ export function useTimelines(params?: {
     queryKey: ['timelines', params],
     queryFn: () => butterflyApi.getTimelineHealth(params),
     refetchInterval: 10000, // Refetch every 10 seconds
+    retry: 2, // Retry failed requests 2 times
+    retryDelay: 1000, // Wait 1 second between retries
   });
 }

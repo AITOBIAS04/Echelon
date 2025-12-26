@@ -28,29 +28,29 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // Log API errors for debugging
-    console.error('❌ API Error:', {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      message: error.message,
-      baseURL: error.config?.baseURL,
-    });
+    // Only log errors in development, and make them less verbose
+    if (import.meta.env.DEV) {
+      // Log API errors for debugging (only in dev)
+      if (error.response) {
+        // Server responded with error status
+        console.warn(`⚠️ API Error [${error.response.status}]:`, error.config?.url);
+      } else if (error.request) {
+        // Request was made but no response received
+        // Only log if it's not a network suspend (which happens during page unload)
+        if (!error.message?.includes('ERR_NETWORK_IO_SUSPENDED')) {
+          console.warn('🌐 Network Error:', error.config?.url, {
+            message: error.message,
+            baseURL: API_URL,
+            hint: 'Check if backend is running and VITE_API_URL is set correctly'
+          });
+        }
+      }
+    }
     
     if (error.response?.status === 401) {
       // Could implement token refresh here
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
-    }
-    
-    // If it's a network error (CORS, connection refused, etc.)
-    if (!error.response) {
-      console.error('🌐 Network Error - Check:', {
-        'Is backend running?': 'Check Railway logs',
-        'Is CORS configured?': 'Check backend/main.py',
-        'Is VITE_API_URL set?': import.meta.env.VITE_API_URL || 'NOT SET',
-        'Current API URL': API_URL,
-      });
     }
     
     return Promise.reject(error);

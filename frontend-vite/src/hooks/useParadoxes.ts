@@ -6,30 +6,34 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const CODE_VERSION = 'v3-20250115-15000ms';
 
 export const useActiveParadoxes = () => {
-  // Debug: Log the refetch interval to verify it's 15 seconds
   const REFETCH_INTERVAL = 15000;
-  
-  // VERY OBVIOUS console logs that will show if new code is running
-  console.log('%c[useParadoxes] ✅✅✅ NEW CODE VERSION ' + CODE_VERSION + ' ✅✅✅', 'color: green; font-size: 16px; font-weight: bold;');
-  console.log('%c[useParadoxes] Refetch interval: ' + REFETCH_INTERVAL + 'ms (15 seconds)', 'color: green; font-weight: bold;');
-  console.log('[useParadoxes] Using fetch() directly, NOT paradoxApi.getActiveParadoxes()');
-  console.log('[useParadoxes] If you see getActiveParadoxes in stack trace, OLD CODE is running!');
   
   return useQuery({
     queryKey: ['paradoxes', 'active', CODE_VERSION], // Versioned queryKey
     queryFn: async () => {
       const url = `${API_BASE_URL}/api/v1/paradox/active`;
-      const timestamp = new Date().toISOString();
-      console.log('%c[useParadoxes] 🔄 FETCHING (not axios!) from:', 'color: blue; font-weight: bold;', url, 'at', timestamp);
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch paradoxes');
-      const data = await response.json();
-      console.log('[useParadoxes] ✅ Received', data?.paradoxes?.length || 0, 'paradoxes');
-      return data;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch paradoxes: ${response.status}`);
+        const data = await response.json();
+        return data;
+      } catch (error: any) {
+        // Suppress network suspend errors (happen during page unload/navigation)
+        if (error?.message?.includes('ERR_NETWORK_IO_SUSPENDED') || 
+            error?.message?.includes('Failed to fetch')) {
+          // Only log in development
+          if (import.meta.env.DEV) {
+            console.warn('[useParadoxes] Network error (backend may be down):', error.message);
+          }
+        }
+        throw error;
+      }
     },
-    refetchInterval: REFETCH_INTERVAL,      // Every 15 seconds, not 1 second
+    refetchInterval: REFETCH_INTERVAL,      // Every 15 seconds
     staleTime: 10000,            // Don't refetch on UI interactions
-    placeholderData: (prev) => prev,  // Keep previous data (v5 syntax for keepPreviousData)
+    placeholderData: (prev) => prev,  // Keep previous data
+    retry: 2, // Retry failed requests 2 times
+    retryDelay: 1000, // Wait 1 second between retries
   });
 };
 
