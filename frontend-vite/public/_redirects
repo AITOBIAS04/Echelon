@@ -1,16 +1,2 @@
-# SPA routing - redirect all non-file requests to index.html
-# Exclude actual files and assets
-/assets/*    200
-/*.js        200
-/*.css       200
-/*.json      200
-/*.png       200
-/*.jpg       200
-/*.svg       200
-/*.ico       200
-/*.woff      200
-/*.woff2     200
-/*.ttf       200
-/*.eot       200
-/*    /index.html   200
+/* /index.html 200
 
