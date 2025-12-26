@@ -177,23 +177,13 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
 # --- CORS MIDDLEWARE ---
-# More flexible CORS for production - allows Vercel, Cloudflare Pages, and localhost
-# Uses both explicit origins and regex for preview/branch deployments
+# Sledgehammer approach for demo - allows all origins
+# NOTE: allow_origins=["*"] is incompatible with allow_credentials=True
+# If credentials are needed, use explicit origins list instead
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        # Old Cloudflare deployment
-        "https://prediction-market-monorepo.pages.dev",
-        # New Echelon V2 deployment
-        "https://echelon-v2.pages.dev",
-    ],
-    # Allow preview URLs and branch deployments
-    allow_origin_regex=r"https://.*\.vercel\.app|https://(.*\.)?prediction-market-monorepo\.pages\.dev|https://(.*\.)?echelon-v2\.pages\.dev|http://localhost:.*|http://127\.0\.0\.1:.*",
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow everything
+    allow_credentials=False,  # Must be False when using allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
