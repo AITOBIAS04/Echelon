@@ -1,2 +1,6 @@
-/* /index.html 200
+# Force assets to load directly
+/assets/* /assets/:splat  200
+
+# Catch-all for SPA routing
+/* /index.html  200
 
