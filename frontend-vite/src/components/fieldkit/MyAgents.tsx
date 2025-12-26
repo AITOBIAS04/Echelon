@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Bot, Zap, ExternalLink, Search, Copy, Briefcase } from 'lucide-react';
 import { AgentSanityIndicator } from '../agents/AgentSanityIndicator';
+import { TaskAgentModal } from '../agents/TaskAgentModal';
 import { clsx } from 'clsx';
 import { useState } from 'react';
 
@@ -64,7 +65,7 @@ const archetypeIcons: Record<string, string> = {
 };
 
 export function MyAgents() {
-  const [taskedAgents, setTaskedAgents] = useState<Set<string>>(new Set());
+  const [taskingAgent, setTaskingAgent] = useState<any | null>(null);
 
   // Mock lineage data for demo
   const getMockLineage = (agentName: string) => {
@@ -80,9 +81,7 @@ export function MyAgents() {
   };
 
   const handleTaskAgent = (agent: any) => {
-    setTaskedAgents(prev => new Set(prev).add(agent.id));
-    // TODO: Open task modal or navigate to task force
-    console.log('Task agent:', agent.name);
+    setTaskingAgent(agent);
   };
 
   const handleCopyAgent = (agent: any) => {
@@ -232,12 +231,7 @@ export function MyAgents() {
                 {(agent.archetype === 'SPY' || agent.archetype === 'SHARK') && (
                   <button
                     onClick={() => handleTaskAgent(agent)}
-                    className={clsx(
-                      'flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2',
-                      taskedAgents.has(agent.id)
-                        ? 'bg-echelon-purple/50 border-echelon-purple text-echelon-purple'
-                        : 'bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30'
-                    )}
+                    className="flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2 bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30"
                   >
                     <Search className="w-4 h-4" />
                     TASK
@@ -274,6 +268,15 @@ export function MyAgents() {
           <span className="text-sm text-terminal-muted">Hire New Agent</span>
         </Link>
       </div>
+
+      {/* Task Agent Modal */}
+      {taskingAgent && (
+        <TaskAgentModal
+          agent={taskingAgent}
+          isOpen={!!taskingAgent}
+          onClose={() => setTaskingAgent(null)}
+        />
+      )}
     </div>
   );
 }

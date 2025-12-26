@@ -2,13 +2,14 @@ import { Link } from 'react-router-dom';
 import { User, TrendingUp, Activity, Search, Copy, Briefcase } from 'lucide-react';
 import { useAgents } from '../../hooks/useAgents';
 import { AgentSanityIndicator } from './AgentSanityIndicator';
+import { TaskAgentModal } from './TaskAgentModal';
 import { clsx } from 'clsx';
 import { useState } from 'react';
 
 export function AgentRoster() {
   const { data: agentsData, isLoading } = useAgents();
   const agents = agentsData?.agents || [];
-  const [taskedAgents, setTaskedAgents] = useState<Set<string>>(new Set());
+  const [taskingAgent, setTaskingAgent] = useState<any | null>(null);
 
   // Mock lineage data for demo
   const getMockLineage = (agentName: string) => {
@@ -26,9 +27,7 @@ export function AgentRoster() {
   const handleTaskAgent = (agent: any, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setTaskedAgents(prev => new Set(prev).add(agent.id));
-    // TODO: Open task modal or navigate to task force
-    console.log('Task agent:', agent.name);
+    setTaskingAgent(agent);
   };
 
   const handleCopyAgent = (agent: any, e: React.MouseEvent) => {
@@ -183,12 +182,7 @@ export function AgentRoster() {
                   {(agent.archetype === 'SPY' || agent.archetype === 'SHARK') && (
                     <button
                       onClick={(e) => handleTaskAgent(agent, e)}
-                      className={clsx(
-                        'flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2',
-                        taskedAgents.has(agent.id)
-                          ? 'bg-echelon-purple/50 border-echelon-purple text-echelon-purple'
-                          : 'bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30'
-                      )}
+                      className="flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2 bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30"
                     >
                       <Search className="w-4 h-4" />
                       TASK
@@ -217,6 +211,15 @@ export function AgentRoster() {
           })}
         </div>
       </div>
+
+      {/* Task Agent Modal */}
+      {taskingAgent && (
+        <TaskAgentModal
+          agent={taskingAgent}
+          isOpen={!!taskingAgent}
+          onClose={() => setTaskingAgent(null)}
+        />
+      )}
     </div>
   );
 }
