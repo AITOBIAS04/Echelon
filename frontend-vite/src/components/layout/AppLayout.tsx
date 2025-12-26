@@ -39,7 +39,7 @@ export function AppLayout() {
   return (
     <div className="h-screen flex flex-col bg-terminal-bg overflow-hidden">
       {/* Header - fixed height */}
-      <header className="flex-shrink-0 h-14 bg-terminal-panel border-b border-terminal-border flex items-center justify-between px-6 gap-4">
+      <header className="flex-shrink-0 h-14 bg-terminal-panel border-b border-terminal-border flex items-center px-4 md:px-6 gap-2 md:gap-4 overflow-x-auto scrollbar-hide">
         {/* Logo */}
         <NavLink to="/" className="flex items-center gap-3 flex-shrink-0">
           <Shield className="w-6 h-6 text-echelon-cyan" />
@@ -52,7 +52,7 @@ export function AppLayout() {
         <div className="h-6 w-px bg-gray-700 flex-shrink-0" />
 
         {/* Main Navigation - Primary Tabs */}
-        <nav className="flex items-center gap-1 flex-shrink-0">
+        <nav className="flex items-center gap-1 flex-shrink-0 min-w-0">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -109,7 +109,7 @@ export function AppLayout() {
         {/* Divider */}
         <div className="h-6 w-px bg-gray-700 flex-shrink-0" />
 
-        {/* Status Indicators - Right side */}
+        {/* Status Indicators - Right side - Always visible */}
         <div className="flex items-center gap-2 ml-auto flex-shrink-0">
           {/* Live Indicator */}
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-900/30 border border-green-500/30 rounded-lg">
@@ -130,18 +130,18 @@ export function AppLayout() {
             </NavLink>
           )}
 
-          {/* Founder's Yield Widget */}
-          <div className="relative">
+          {/* Founder's Yield Widget - Compact on small screens */}
+          <div className="relative flex-shrink-0">
             <button
               onClick={() => setShowYieldModal(!showYieldModal)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-amber-900/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-all group whitespace-nowrap"
+              className="flex items-center gap-1.5 px-2 md:px-3 py-1.5 bg-amber-900/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-all group whitespace-nowrap"
             >
-              <Zap className="w-3 h-3 text-amber-400" />
-              <span className="text-amber-400 text-sm font-bold font-mono">
+              <Zap className="w-3 h-3 text-amber-400 flex-shrink-0" />
+              <span className="text-amber-400 text-xs md:text-sm font-bold font-mono">
                 ${pendingYield.toFixed(2)}
               </span>
               <ChevronDown className={clsx(
-                'w-3 h-3 text-amber-400/50 transition-transform',
+                'w-3 h-3 text-amber-400/50 transition-transform flex-shrink-0',
                 showYieldModal && 'rotate-180'
               )} />
             </button>
@@ -215,13 +215,13 @@ export function AppLayout() {
             )}
           </div>
 
-          {/* Connect Button */}
+          {/* Connect Button - Always visible, icon-only on small screens */}
           <button 
             onClick={() => setShowConnectModal(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:border-echelon-cyan hover:text-echelon-cyan transition-all whitespace-nowrap"
+            className="flex items-center gap-2 px-3 md:px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:border-echelon-cyan hover:text-echelon-cyan transition-all whitespace-nowrap flex-shrink-0"
           >
-            <User className="w-4 h-4" />
-            <span>Connect</span>
+            <User className="w-4 h-4 flex-shrink-0" />
+            <span className="hidden sm:inline">Connect</span>
           </button>
         </div>
       </header>

@@ -78,6 +78,16 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: #4B5563;
   }
+
+  /* Hide scrollbar but allow scrolling */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @keyframes spin {
