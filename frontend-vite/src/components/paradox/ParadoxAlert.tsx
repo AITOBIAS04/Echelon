@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock, Skull, Zap } from 'lucide-react';
+import { AlertTriangle, Clock } from 'lucide-react';
 import type { Paradox } from '../../types';
 import { useState, useEffect } from 'react';
 
@@ -8,8 +8,10 @@ interface ParadoxAlertProps {
   onAbandon?: () => void;
 }
 
-export function ParadoxAlert({ paradox, onExtract, onAbandon }: ParadoxAlertProps) {
+export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
   const [timeRemaining, setTimeRemaining] = useState(paradox.time_remaining_seconds);
+  const [showExtractionModal, setShowExtractionModal] = useState(false);
+  const [showAbandonModal, setShowAbandonModal] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -93,22 +95,94 @@ export function ParadoxAlert({ paradox, onExtract, onAbandon }: ParadoxAlertProp
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex gap-2 mt-3">
         <button
-          onClick={onExtract}
-          className="flex-1 flex items-center justify-center gap-2 py-2 bg-echelon-purple/20 border border-echelon-purple text-echelon-purple rounded hover:bg-echelon-purple/30 transition"
+          onClick={() => setShowExtractionModal(true)}
+          className="px-3 py-1.5 bg-red-900/50 border border-red-500 text-red-400 rounded text-xs hover:bg-red-900 transition-colors flex items-center gap-1"
         >
-          <Zap className="w-4 h-4" />
-          Extract Paradox
+          🛡️ EXTRACT ({paradox.extraction_cost_echelon} $ECHELON)
         </button>
         <button
-          onClick={onAbandon}
-          className="flex-1 flex items-center justify-center gap-2 py-2 bg-terminal-bg border border-terminal-border text-terminal-muted rounded hover:border-echelon-red hover:text-echelon-red transition"
+          onClick={() => setShowAbandonModal(true)}
+          className="px-3 py-1.5 bg-gray-900/50 border border-gray-600 text-gray-400 rounded text-xs hover:bg-gray-800 transition-colors flex items-center gap-1"
         >
-          <Skull className="w-4 h-4" />
-          Abandon Timeline
+          ☠️ ABANDON
         </button>
       </div>
+
+      {/* Extraction Modal */}
+      {showExtractionModal && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          onClick={() => setShowExtractionModal(false)}
+        >
+          <div 
+            className="bg-[#0D0D0D] border border-cyan-500/50 rounded-lg p-6 max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-cyan-400 font-bold text-lg mb-4">⚠️ EXTRACTION PROTOCOL</h3>
+            <p className="text-gray-400 text-sm mb-4">
+              Deploying an agent to extract this paradox will cost{' '}
+              <span className="text-amber-400 font-bold">
+                {paradox.extraction_cost_echelon} $ECHELON
+              </span>
+              {' '}and risk agent sanity.
+            </p>
+            <p className="text-yellow-400 text-xs mb-6">
+              🔒 Wallet connection required. Feature available in full release.
+            </p>
+            <div className="flex gap-3">
+              <button
+                disabled
+                className="flex-1 px-4 py-2 bg-cyan-900/30 border border-cyan-500/50 text-cyan-400/50 rounded cursor-not-allowed"
+              >
+                CONNECT WALLET
+              </button>
+              <button
+                onClick={() => setShowExtractionModal(false)}
+                className="px-4 py-2 bg-gray-800 text-gray-400 rounded hover:bg-gray-700"
+              >
+                CLOSE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Abandon Modal */}
+      {showAbandonModal && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          onClick={() => setShowAbandonModal(false)}
+        >
+          <div 
+            className="bg-[#0D0D0D] border border-red-500/50 rounded-lg p-6 max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-red-400 font-bold text-lg mb-4">☠️ ABANDON TIMELINE</h3>
+            <p className="text-gray-400 text-sm mb-4">
+              Abandoning this timeline will permanently close all positions and forfeit any active agents.
+            </p>
+            <p className="text-yellow-400 text-xs mb-6">
+              ⚠️ This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                disabled
+                className="flex-1 px-4 py-2 bg-red-900/30 border border-red-500/50 text-red-400/50 rounded cursor-not-allowed"
+              >
+                CONFIRM ABANDON
+              </button>
+              <button
+                onClick={() => setShowAbandonModal(false)}
+                className="px-4 py-2 bg-gray-800 text-gray-400 rounded hover:bg-gray-700"
+              >
+                CANCEL
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

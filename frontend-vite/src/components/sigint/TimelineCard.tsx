@@ -37,6 +37,16 @@ export function TimelineCard({ timeline, onClick }: TimelineCardProps) {
           <p className="text-xs text-terminal-muted mt-0.5">
             {timeline.id}
           </p>
+          {/* Founder Badge */}
+          {timeline.founder_name && (
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-terminal-muted">Founded by</span>
+              <span className="text-xs text-echelon-cyan font-bold">{timeline.founder_name}</span>
+              <span className="text-xs text-echelon-amber" title="Founder's Yield">
+                ⚡ {((timeline.founder_yield_rate || 0.001) * 100).toFixed(1)}%
+              </span>
+            </div>
+          )}
         </div>
         
         {timeline.has_active_paradox && (

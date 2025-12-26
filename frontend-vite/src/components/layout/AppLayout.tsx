@@ -2,11 +2,13 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { Shield, Radio, AlertTriangle, User, Activity, Briefcase, Database } from 'lucide-react';
 import { useParadoxes } from '../../hooks/useParadoxes';
 import { clsx } from 'clsx';
+import { useState } from 'react';
 
 export function AppLayout() {
   const location = useLocation();
   const { data: paradoxData } = useParadoxes();
   const paradoxCount = paradoxData?.total_active || 0;
+  const [showConnectModal, setShowConnectModal] = useState(false);
 
   const navItems = [
     { path: '/sigint', label: 'SIGINT', icon: Radio },
@@ -75,12 +77,46 @@ export function AppLayout() {
           )}
 
           {/* Connect Button */}
-          <button className="flex items-center gap-2 px-4 py-2 border border-terminal-border rounded text-terminal-muted hover:text-terminal-text hover:border-echelon-cyan transition">
+          <button 
+            onClick={() => setShowConnectModal(true)}
+            className="flex items-center gap-2 px-4 py-2 border border-terminal-border rounded text-terminal-muted hover:text-terminal-text hover:border-echelon-cyan transition"
+          >
             <User className="w-4 h-4" />
             <span className="text-sm">Connect</span>
           </button>
         </div>
       </header>
+
+      {/* Connect Wallet Modal */}
+      {showConnectModal && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          onClick={() => setShowConnectModal(false)}
+        >
+          <div 
+            className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-6 max-w-md text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-4xl mb-4">🔐</div>
+            <h3 className="text-echelon-cyan font-bold text-lg mb-2">WALLET CONNECTION</h3>
+            <p className="text-terminal-muted text-sm mb-4">
+              Connect your wallet to trade Shards, hire Agents, and earn Founder's Yield.
+            </p>
+            <div className="bg-echelon-amber/20 border border-echelon-amber/30 rounded p-3 mb-6">
+              <p className="text-echelon-amber text-xs">
+                ⚡ Coming Q1 2025 — Join the waitlist at{' '}
+                <span className="text-echelon-cyan">playechelon.io</span>
+              </p>
+            </div>
+            <button 
+              onClick={() => setShowConnectModal(false)}
+              className="px-6 py-2 bg-echelon-cyan/20 border border-echelon-cyan text-echelon-cyan rounded hover:bg-echelon-cyan/30 transition-colors"
+            >
+              CLOSE
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main content - takes remaining space, no overflow */}
       <main className="flex-1 min-h-0 overflow-hidden p-6">
