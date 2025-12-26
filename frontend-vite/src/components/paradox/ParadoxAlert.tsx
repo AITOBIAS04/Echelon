@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock } from 'lucide-react';
+import { AlertTriangle, Clock, Shield, Skull, X } from 'lucide-react';
 import type { Paradox } from '../../types';
 import { useState, useEffect } from 'react';
 
@@ -95,56 +95,112 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2 mt-3">
+      <div className="flex gap-2 mt-4">
         <button
           onClick={() => setShowExtractionModal(true)}
-          className="px-3 py-1.5 bg-red-900/50 border border-red-500 text-red-400 rounded text-xs hover:bg-red-900 transition-colors flex items-center gap-1"
+          className="flex-1 px-3 py-2 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm hover:bg-echelon-cyan/30 transition-colors flex items-center justify-center gap-2"
         >
-          🛡️ EXTRACT ({paradox.extraction_cost_echelon} $ECHELON)
+          <Shield className="w-4 h-4" />
+          EXTRACT
         </button>
         <button
           onClick={() => setShowAbandonModal(true)}
-          className="px-3 py-1.5 bg-gray-900/50 border border-gray-600 text-gray-400 rounded text-xs hover:bg-gray-800 transition-colors flex items-center gap-1"
+          className="px-3 py-2 bg-echelon-red/20 border border-echelon-red/50 text-echelon-red rounded text-sm hover:bg-echelon-red/30 transition-colors flex items-center justify-center gap-2"
         >
-          ☠️ ABANDON
+          <Skull className="w-4 h-4" />
+          ABANDON
         </button>
       </div>
 
       {/* Extraction Modal */}
       {showExtractionModal && (
         <div 
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
           onClick={() => setShowExtractionModal(false)}
         >
           <div 
-            className="bg-[#0D0D0D] border border-cyan-500/50 rounded-lg p-6 max-w-md"
+            className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-6 max-w-md w-full relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-cyan-400 font-bold text-lg mb-4">⚠️ EXTRACTION PROTOCOL</h3>
-            <p className="text-gray-400 text-sm mb-4">
-              Deploying an agent to extract this paradox will cost{' '}
-              <span className="text-amber-400 font-bold">
-                {paradox.extraction_cost_echelon} $ECHELON
-              </span>
-              {' '}and risk agent sanity.
-            </p>
-            <p className="text-yellow-400 text-xs mb-6">
-              🔒 Wallet connection required. Feature available in full release.
-            </p>
+            {/* Close button */}
+            <button 
+              onClick={() => setShowExtractionModal(false)}
+              className="absolute top-4 right-4 text-terminal-muted hover:text-terminal-text"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-echelon-cyan/20 rounded-full flex items-center justify-center">
+                <Shield className="w-6 h-6 text-echelon-cyan" />
+              </div>
+              <div>
+                <h3 className="text-echelon-cyan font-bold text-lg">EXTRACTION PROTOCOL</h3>
+                <p className="text-terminal-muted text-xs">Deploy agent to contain paradox</p>
+              </div>
+            </div>
+            
+            {/* Paradox Info */}
+            <div className="bg-echelon-red/20 border border-echelon-red/30 rounded p-3 mb-4">
+              <div className="flex justify-between items-center">
+                <span className="text-echelon-red font-bold">{paradox.severity_class?.replace('CLASS_', '').replace('_', ' ') || 'CLASS_2_SEVERE'}</span>
+                <span className="text-terminal-muted text-sm">Logic Gap: {((paradox.logic_gap || 0.45) * 100).toFixed(0)}%</span>
+              </div>
+              <p className="text-terminal-text text-sm mt-2">
+                Timeline: <span className="text-terminal-text">{paradox.timeline_name || 'Unknown'}</span>
+              </p>
+            </div>
+            
+            {/* Cost Breakdown */}
+            <div className="space-y-2 mb-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-terminal-muted">Extraction Cost</span>
+                <span className="text-echelon-amber font-bold">{paradox.extraction_cost_echelon} $ECHELON</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-terminal-muted">Agent Sanity Cost</span>
+                <span className="text-echelon-purple">-{paradox.carrier_sanity_cost} Sanity</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-terminal-muted">Success Probability</span>
+                <span className="text-echelon-green">72%</span>
+              </div>
+              <div className="border-t border-terminal-border pt-2 mt-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-terminal-muted">Reward on Success</span>
+                  <span className="text-echelon-cyan font-bold">+250 $ECHELON + Rep</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Warning */}
+            <div className="bg-echelon-amber/20 border border-echelon-amber/30 rounded p-3 mb-6">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-echelon-amber mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-echelon-amber text-sm font-bold">Wallet Connection Required</p>
+                  <p className="text-terminal-muted text-xs mt-1">
+                    This feature requires a connected wallet and $ECHELON tokens. Available in full release Q1 2025.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Actions */}
             <div className="flex gap-3">
-              <button
+              <button 
                 disabled
-                className="flex-1 px-4 py-2 bg-cyan-900/30 border border-cyan-500/50 text-cyan-400/50 rounded cursor-not-allowed"
+                className="flex-1 px-4 py-3 bg-echelon-cyan/20 border border-echelon-cyan/30 text-echelon-cyan/50 rounded cursor-not-allowed flex items-center justify-center gap-2"
               >
-                CONNECT WALLET
-              </button>
-              <button
-                onClick={() => setShowExtractionModal(false)}
-                className="px-4 py-2 bg-gray-800 text-gray-400 rounded hover:bg-gray-700"
-              >
-                CLOSE
+                <Shield className="w-4 h-4" />
+                CONNECT WALLET TO EXTRACT
               </button>
             </div>
+            
+            <p className="text-center text-terminal-muted text-xs mt-4">
+              Join waitlist at <span className="text-echelon-cyan">playechelon.io</span>
+            </p>
           </div>
         </div>
       )}
@@ -152,32 +208,65 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
       {/* Abandon Modal */}
       {showAbandonModal && (
         <div 
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
           onClick={() => setShowAbandonModal(false)}
         >
           <div 
-            className="bg-[#0D0D0D] border border-red-500/50 rounded-lg p-6 max-w-md"
+            className="bg-[#0D0D0D] border border-echelon-red/50 rounded-lg p-6 max-w-md w-full relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-red-400 font-bold text-lg mb-4">☠️ ABANDON TIMELINE</h3>
-            <p className="text-gray-400 text-sm mb-4">
-              Abandoning this timeline will permanently close all positions and forfeit any active agents.
-            </p>
-            <p className="text-yellow-400 text-xs mb-6">
-              ⚠️ This action cannot be undone.
-            </p>
+            {/* Close button */}
+            <button 
+              onClick={() => setShowAbandonModal(false)}
+              className="absolute top-4 right-4 text-terminal-muted hover:text-terminal-text"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-echelon-red/20 rounded-full flex items-center justify-center">
+                <Skull className="w-6 h-6 text-echelon-red" />
+              </div>
+              <div>
+                <h3 className="text-echelon-red font-bold text-lg">ABANDON TIMELINE</h3>
+                <p className="text-terminal-muted text-xs">Let the paradox detonate</p>
+              </div>
+            </div>
+            
+            {/* Warning */}
+            <div className="bg-echelon-red/30 border border-echelon-red/50 rounded p-4 mb-4">
+              <p className="text-echelon-red text-sm font-bold mb-2">⚠️ CATASTROPHIC CONSEQUENCES</p>
+              <ul className="text-terminal-text text-sm space-y-1">
+                <li>• All shards in this timeline will be <span className="text-echelon-red">BURNED</span></li>
+                <li>• Invested agents lose <span className="text-echelon-purple">-30 Sanity</span></li>
+                <li>• Founder's Yield stream ends permanently</li>
+                <li>• Connected timelines receive stability shock</li>
+              </ul>
+            </div>
+            
+            {/* Your Exposure */}
+            <div className="bg-terminal-bg rounded p-3 mb-6">
+              <span className="text-terminal-muted text-xs">YOUR EXPOSURE IN THIS TIMELINE</span>
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-terminal-text">500 YES Shards</span>
+                <span className="text-echelon-red font-bold">-$340 loss</span>
+              </div>
+            </div>
+            
+            {/* Actions */}
             <div className="flex gap-3">
-              <button
-                disabled
-                className="flex-1 px-4 py-2 bg-red-900/30 border border-red-500/50 text-red-400/50 rounded cursor-not-allowed"
-              >
-                CONFIRM ABANDON
-              </button>
-              <button
+              <button 
                 onClick={() => setShowAbandonModal(false)}
-                className="px-4 py-2 bg-gray-800 text-gray-400 rounded hover:bg-gray-700"
+                className="flex-1 px-4 py-3 bg-terminal-bg border border-terminal-border text-terminal-text rounded hover:bg-terminal-panel transition-colors"
               >
                 CANCEL
+              </button>
+              <button 
+                disabled
+                className="flex-1 px-4 py-3 bg-echelon-red/20 border border-echelon-red/30 text-echelon-red/50 rounded cursor-not-allowed"
+              >
+                CONFIRM ABANDON
               </button>
             </div>
           </div>

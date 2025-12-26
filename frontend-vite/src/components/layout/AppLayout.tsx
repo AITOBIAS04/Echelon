@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Shield, Radio, AlertTriangle, User, Activity, Briefcase, Database } from 'lucide-react';
+import { Shield, Radio, AlertTriangle, User, Activity, Briefcase, Database, Wallet, X, ExternalLink } from 'lucide-react';
 import { useParadoxes } from '../../hooks/useParadoxes';
 import { clsx } from 'clsx';
 import { useState } from 'react';
@@ -90,30 +90,93 @@ export function AppLayout() {
       {/* Connect Wallet Modal */}
       {showConnectModal && (
         <div 
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
           onClick={() => setShowConnectModal(false)}
         >
           <div 
-            className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-6 max-w-md text-center"
+            className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-6 max-w-md w-full relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="text-4xl mb-4">🔐</div>
-            <h3 className="text-echelon-cyan font-bold text-lg mb-2">WALLET CONNECTION</h3>
-            <p className="text-terminal-muted text-sm mb-4">
-              Connect your wallet to trade Shards, hire Agents, and earn Founder's Yield.
-            </p>
-            <div className="bg-echelon-amber/20 border border-echelon-amber/30 rounded p-3 mb-6">
-              <p className="text-echelon-amber text-xs">
-                ⚡ Coming Q1 2025 — Join the waitlist at{' '}
-                <span className="text-echelon-cyan">playechelon.io</span>
-              </p>
-            </div>
+            {/* Close button */}
             <button 
               onClick={() => setShowConnectModal(false)}
-              className="px-6 py-2 bg-echelon-cyan/20 border border-echelon-cyan text-echelon-cyan rounded hover:bg-echelon-cyan/30 transition-colors"
+              className="absolute top-4 right-4 text-terminal-muted hover:text-terminal-text"
             >
-              CLOSE
+              <X className="w-5 h-5" />
             </button>
+            
+            {/* Icon */}
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-echelon-cyan/20 to-echelon-purple/20 rounded-full flex items-center justify-center border border-echelon-cyan/30">
+                <Wallet className="w-8 h-8 text-echelon-cyan" />
+              </div>
+            </div>
+            
+            {/* Header */}
+            <h3 className="text-echelon-cyan font-bold text-xl text-center mb-2">
+              CONNECT WALLET
+            </h3>
+            <p className="text-terminal-muted text-sm text-center mb-6">
+              Connect your wallet to trade Shards, hire Agents, and earn Founder's Yield
+            </p>
+            
+            {/* Wallet Options (Disabled) */}
+            <div className="space-y-3 mb-6">
+              <button 
+                disabled
+                className="w-full flex items-center gap-3 px-4 py-3 bg-terminal-bg border border-terminal-border rounded-lg text-terminal-muted cursor-not-allowed"
+              >
+                <div className="w-6 h-6 bg-orange-500 rounded-full opacity-50 flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">M</span>
+                </div>
+                <span>MetaMask</span>
+                <span className="ml-auto text-xs bg-terminal-bg px-2 py-0.5 rounded">SOON</span>
+              </button>
+              <button 
+                disabled
+                className="w-full flex items-center gap-3 px-4 py-3 bg-terminal-bg border border-terminal-border rounded-lg text-terminal-muted cursor-not-allowed"
+              >
+                <div className="w-6 h-6 bg-blue-500 rounded-full opacity-50 flex items-center justify-center text-white text-xs font-bold">C</div>
+                <span>Coinbase Wallet</span>
+                <span className="ml-auto text-xs bg-terminal-bg px-2 py-0.5 rounded">SOON</span>
+              </button>
+              <button 
+                disabled
+                className="w-full flex items-center gap-3 px-4 py-3 bg-terminal-bg border border-terminal-border rounded-lg text-terminal-muted cursor-not-allowed"
+              >
+                <div className="w-6 h-6 bg-echelon-purple rounded-full opacity-50 flex items-center justify-center text-white text-xs font-bold">W</div>
+                <span>WalletConnect</span>
+                <span className="ml-auto text-xs bg-terminal-bg px-2 py-0.5 rounded">SOON</span>
+              </button>
+            </div>
+            
+            {/* Coming Soon Banner */}
+            <div className="bg-gradient-to-r from-echelon-cyan/20 to-echelon-purple/20 border border-echelon-cyan/30 rounded-lg p-4 text-center">
+              <p className="text-echelon-cyan font-bold mb-1">🚀 Launching Q1 2025</p>
+              <p className="text-terminal-muted text-sm">
+                Join the waitlist to get early access
+              </p>
+            </div>
+            
+            {/* Links */}
+            <div className="flex justify-center gap-6 mt-6 text-sm">
+              <a 
+                href="https://x.com/play_echelon" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-terminal-muted hover:text-echelon-cyan transition-colors"
+              >
+                <span>@play_echelon</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+              <a 
+                href="mailto:playechelon0@gmail.com"
+                className="flex items-center gap-1 text-terminal-muted hover:text-echelon-cyan transition-colors"
+              >
+                <span>Contact</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           </div>
         </div>
       )}

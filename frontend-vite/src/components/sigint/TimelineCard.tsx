@@ -9,16 +9,6 @@ interface TimelineCardProps {
 }
 
 export function TimelineCard({ timeline, onClick }: TimelineCardProps) {
-  const stabilityColor = 
-    timeline.stability >= 70 ? 'text-echelon-green' :
-    timeline.stability >= 40 ? 'text-echelon-amber' :
-    'text-echelon-red';
-
-  const stabilityBg =
-    timeline.stability >= 70 ? 'bg-echelon-green/10 border-echelon-green/30' :
-    timeline.stability >= 40 ? 'bg-echelon-amber/10 border-echelon-amber/30' :
-    'bg-echelon-red/10 border-echelon-red/30';
-
   return (
     <Link
       to={`/timeline/${timeline.id}`}
@@ -37,16 +27,39 @@ export function TimelineCard({ timeline, onClick }: TimelineCardProps) {
           <p className="text-xs text-terminal-muted mt-0.5">
             {timeline.id}
           </p>
-          {/* Founder Badge */}
-          {timeline.founder_name && (
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-terminal-muted">Founded by</span>
-              <span className="text-xs text-echelon-cyan font-bold">{timeline.founder_name}</span>
-              <span className="text-xs text-echelon-amber" title="Founder's Yield">
-                ⚡ {((timeline.founder_yield_rate || 0.001) * 100).toFixed(1)}%
-              </span>
-            </div>
-          )}
+          {/* Founder Badge & Info */}
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            {/* Founder Badge */}
+            {(timeline.founder_id || timeline.founder_name || timeline.dominant_agent_name) && (
+              <div className="flex items-center gap-1.5 bg-echelon-cyan/20 border border-echelon-cyan/30 rounded px-2 py-0.5">
+                <span className="text-[10px] text-terminal-muted uppercase">Founded by</span>
+                <span className="text-xs text-echelon-cyan font-bold">
+                  {timeline.founder_name || timeline.dominant_agent_name || 'GENESIS'}
+                </span>
+              </div>
+            )}
+            
+            {/* Founder's Yield Badge */}
+            {timeline.founder_yield_rate && timeline.founder_yield_rate > 0 && (
+              <div 
+                className="flex items-center gap-1 bg-echelon-amber/20 border border-echelon-amber/30 rounded px-2 py-0.5"
+                title="Founder earns this % of timeline volume"
+              >
+                <span className="text-echelon-amber text-xs">⚡</span>
+                <span className="text-xs text-echelon-amber font-mono">
+                  {(timeline.founder_yield_rate * 100).toFixed(1)}% yield
+                </span>
+              </div>
+            )}
+            
+            {/* Active Agents Count */}
+            {timeline.active_agent_count > 0 && (
+              <div className="flex items-center gap-1 text-xs text-terminal-muted">
+                <span>👥</span>
+                <span>{timeline.active_agent_count} agents</span>
+              </div>
+            )}
+          </div>
         </div>
         
         {timeline.has_active_paradox && (
@@ -73,19 +86,36 @@ export function TimelineCard({ timeline, onClick }: TimelineCardProps) {
       </div>
 
       {/* Stability Bar */}
-      <div className="mb-3">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-terminal-muted">Stability</span>
-          <span className={clsx('text-xs font-mono', stabilityColor)}>
-            {timeline.stability.toFixed(1)}%
+      <div className="mt-3 pt-3 border-t border-terminal-border">
+        <div className="flex justify-between items-center text-xs mb-1">
+          <span className="text-terminal-muted uppercase tracking-wide">Stability</span>
+          <span className={clsx(
+            'font-mono font-bold',
+            (timeline.stability || 0) > 70 ? 'text-echelon-green' :
+            (timeline.stability || 0) > 40 ? 'text-echelon-amber' : 'text-echelon-red'
+          )}>
+            {(timeline.stability || 0).toFixed(0)}%
           </span>
         </div>
         <div className="h-1.5 bg-terminal-bg rounded-full overflow-hidden">
-          <div
-            className={clsx('h-full rounded-full transition-all', stabilityBg.replace('/10', ''))}
-            style={{ width: `${timeline.stability}%` }}
+          <div 
+            className={clsx(
+              'h-full rounded-full transition-all duration-500',
+              (timeline.stability || 0) > 70 ? 'bg-echelon-green' :
+              (timeline.stability || 0) > 40 ? 'bg-echelon-amber' : 'bg-echelon-red',
+              (timeline.stability || 0) < 30 && 'animate-pulse'
+            )}
+            style={{ width: `${Math.min(timeline.stability || 0, 100)}%` }}
           />
         </div>
+        
+        {/* Critical Warning */}
+        {(timeline.stability || 0) < 30 && (
+          <div className="flex items-center gap-1 mt-2 text-echelon-red text-xs animate-pulse">
+            <span>⚠️</span>
+            <span>COLLAPSE IMMINENT</span>
+          </div>
+        )}
       </div>
 
       {/* Stats Row */}
