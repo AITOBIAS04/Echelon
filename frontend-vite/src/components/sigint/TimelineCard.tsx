@@ -29,36 +29,30 @@ export function TimelineCard({ timeline, onClick }: TimelineCardProps) {
           </p>
           {/* Founder & Meta Badges */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            {/* Founder Badge */}
-            {(timeline.founder_id || timeline.founder_name || timeline.dominant_agent_name) && (
-              <div className="flex items-center gap-1.5 bg-echelon-cyan/20 border border-echelon-cyan/30 rounded px-2 py-0.5">
-                <span className="text-[10px] text-terminal-muted uppercase tracking-wide">Founded by</span>
-                <span className="text-xs text-echelon-cyan font-bold">
-                  {timeline.founder_name || timeline.dominant_agent_name || 'GENESIS'}
-                </span>
-              </div>
-            )}
+            {/* Founder Badge - Always show with fallback */}
+            <div className="flex items-center gap-1.5 bg-echelon-cyan/20 border border-echelon-cyan/30 rounded px-2 py-0.5">
+              <span className="text-[10px] text-terminal-muted uppercase tracking-wide">Founded by</span>
+              <span className="text-xs text-echelon-cyan font-bold">
+                {timeline.founder_name || timeline.dominant_agent_name || 'GENESIS'}
+              </span>
+            </div>
             
-            {/* Founder's Yield Badge */}
-            {(timeline.founder_yield_rate || 0) > 0 && (
-              <div 
-                className="flex items-center gap-1 bg-echelon-amber/20 border border-echelon-amber/30 rounded px-2 py-0.5"
-                title="Founder earns this percentage of timeline volume"
-              >
-                <Zap className="w-3 h-3 text-echelon-amber" />
-                <span className="text-xs text-echelon-amber font-mono">
-                  {((timeline.founder_yield_rate || 0.001) * 100).toFixed(1)}%
-                </span>
-              </div>
-            )}
+            {/* Founder's Yield Badge - Always show with fallback */}
+            <div 
+              className="flex items-center gap-1 bg-echelon-amber/20 border border-echelon-amber/30 rounded px-2 py-0.5"
+              title="Founder earns this percentage of timeline volume"
+            >
+              <Zap className="w-3 h-3 text-echelon-amber" />
+              <span className="text-xs text-echelon-amber font-mono">
+                {((timeline.founder_yield_rate || 0.005) * 100).toFixed(1)}%
+              </span>
+            </div>
             
-            {/* Active Agents Count */}
-            {(timeline.active_agent_count || 0) > 0 && (
-              <div className="flex items-center gap-1 bg-terminal-bg rounded px-2 py-0.5">
-                <Users className="w-3 h-3 text-terminal-muted" />
-                <span className="text-xs text-terminal-muted">{timeline.active_agent_count}</span>
-              </div>
-            )}
+            {/* Active Agents Count - Show if > 0, otherwise show 0 */}
+            <div className="flex items-center gap-1 bg-terminal-bg rounded px-2 py-0.5">
+              <Users className="w-3 h-3 text-terminal-muted" />
+              <span className="text-xs text-terminal-muted">{timeline.active_agent_count || 0}</span>
+            </div>
           </div>
         </div>
         
@@ -85,7 +79,7 @@ export function TimelineCard({ timeline, onClick }: TimelineCardProps) {
         </div>
       </div>
 
-      {/* Stability Bar */}
+      {/* Stability Bar - Always show with fallback */}
       <div className="mt-3 pt-3 border-t border-terminal-border">
         <div className="flex justify-between items-center text-xs mb-1.5">
           <span className="text-terminal-muted uppercase tracking-wide">Timeline Stability</span>
