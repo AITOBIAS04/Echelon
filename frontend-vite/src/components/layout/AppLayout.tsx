@@ -1,6 +1,7 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Shield, Radio, AlertTriangle, User, Briefcase, Database, Wallet, X, ExternalLink, Zap, ChevronDown } from 'lucide-react';
 import { useParadoxes } from '../../hooks/useParadoxes';
+import { ButlerWidget } from '../ButlerWidget';
 import { clsx } from 'clsx';
 import { useState } from 'react';
 
@@ -328,6 +329,9 @@ export function AppLayout() {
         {/* Child panels handle their own scrolling */}
         <Outlet />
       </main>
+
+      {/* Butler Widget - Floating CTA */}
+      <ButlerWidget />
     </div>
   );
 }
