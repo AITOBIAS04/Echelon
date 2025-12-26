@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
-import { Bot, Zap, ExternalLink } from 'lucide-react';
+import { Bot, Zap, ExternalLink, Search, Copy, Briefcase } from 'lucide-react';
 import { AgentSanityIndicator } from '../agents/AgentSanityIndicator';
 import { clsx } from 'clsx';
+import { useState } from 'react';
 
 // Mock data - replace with real API
 const mockAgents = [
@@ -63,11 +64,43 @@ const archetypeIcons: Record<string, string> = {
 };
 
 export function MyAgents() {
+  const [taskedAgents, setTaskedAgents] = useState<Set<string>>(new Set());
+
+  // Mock lineage data for demo
+  const getMockLineage = (agentName: string) => {
+    const lineages: Record<string, { gen: number; parents: string }> = {
+      'MEGALODON': { gen: 1, parents: 'GENESIS' },
+      'CARDINAL': { gen: 2, parents: 'MEGALODON × PHANTOM' },
+      'ENVOY': { gen: 1, parents: 'GENESIS' },
+      'VIPER': { gen: 3, parents: 'CARDINAL × SPECTER' },
+      'ORACLE': { gen: 2, parents: 'ENVOY × CARDINAL' },
+      'LEVIATHAN': { gen: 1, parents: 'GENESIS' },
+    };
+    return lineages[agentName] || { gen: 1, parents: 'GENESIS' };
+  };
+
+  const handleTaskAgent = (agent: any) => {
+    setTaskedAgents(prev => new Set(prev).add(agent.id));
+    // TODO: Open task modal or navigate to task force
+    console.log('Task agent:', agent.name);
+  };
+
+  const handleCopyAgent = (agent: any) => {
+    // TODO: Copy agent strategy
+    console.log('Copy agent:', agent.name);
+  };
+
+  const handleHireAgent = (agent: any) => {
+    // TODO: Open hire modal
+    console.log('Hire agent:', agent.name);
+  };
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {mockAgents.map((agent) => {
           const sanityPercent = (agent.sanity / agent.max_sanity) * 100;
+          const lineage = getMockLineage(agent.name);
           
           return (
             <div 
@@ -131,6 +164,21 @@ export function MyAgents() {
                 </Link>
               </div>
 
+              {/* Genealogy Metadata */}
+              <div className="flex items-center gap-2 mt-2 text-xs relative z-10">
+                <span className="bg-echelon-purple/20 border border-echelon-purple/30 px-2 py-0.5 rounded text-echelon-purple font-mono">
+                  GEN {lineage.gen}
+                </span>
+                <span className="text-terminal-muted">•</span>
+                <span className="text-terminal-muted">
+                  {lineage.parents === 'GENESIS' ? (
+                    <span className="text-echelon-cyan/60">GENESIS AGENT</span>
+                  ) : (
+                    <>LINEAGE: <span className="text-echelon-purple">{lineage.parents}</span></>
+                  )}
+                </span>
+              </div>
+
               {/* Sanity Indicator */}
               <div className="relative z-10">
                 <AgentSanityIndicator 
@@ -176,6 +224,42 @@ export function MyAgents() {
                   </span>
                 </div>
                 <span className="text-xs text-terminal-muted">{agent.current_timeline}</span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 mt-4 pt-3 border-t border-terminal-border relative z-10">
+                {/* Task Button - Primary for Spies and Sharks */}
+                {(agent.archetype === 'SPY' || agent.archetype === 'SHARK') && (
+                  <button
+                    onClick={() => handleTaskAgent(agent)}
+                    className={clsx(
+                      'flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2',
+                      taskedAgents.has(agent.id)
+                        ? 'bg-echelon-purple/50 border-echelon-purple text-echelon-purple'
+                        : 'bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30'
+                    )}
+                  >
+                    <Search className="w-4 h-4" />
+                    TASK
+                  </button>
+                )}
+                
+                {/* Copy Button - For social trading */}
+                <button
+                  onClick={() => handleCopyAgent(agent)}
+                  className="flex-1 px-3 py-2 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all flex items-center justify-center gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  COPY
+                </button>
+                
+                {/* Hire Button */}
+                <button
+                  onClick={() => handleHireAgent(agent)}
+                  className="px-3 py-2 bg-echelon-amber/20 border border-echelon-amber/50 text-echelon-amber rounded text-sm font-bold hover:bg-echelon-amber/30 transition-all"
+                >
+                  <Briefcase className="w-4 h-4" />
+                </button>
               </div>
             </div>
           );
