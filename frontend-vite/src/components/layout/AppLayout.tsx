@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Shield, Radio, AlertTriangle, User, Activity, Briefcase, Database, Wallet, X, ExternalLink } from 'lucide-react';
 import { useParadoxes } from '../../hooks/useParadoxes';
 import { clsx } from 'clsx';
@@ -6,9 +6,21 @@ import { useState } from 'react';
 
 export function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { data: paradoxData } = useParadoxes();
   const paradoxCount = paradoxData?.total_active || 0;
   const [showConnectModal, setShowConnectModal] = useState(false);
+  
+  // Determine view mode based on current route
+  const viewMode = location.pathname === '/fieldkit' ? 'personal' : 'global';
+  
+  const handleViewModeChange = (mode: 'global' | 'personal') => {
+    if (mode === 'global') {
+      navigate('/sigint');
+    } else {
+      navigate('/fieldkit');
+    }
+  };
 
   const navItems = [
     { path: '/sigint', label: 'SIGINT', icon: Radio },
@@ -54,6 +66,32 @@ export function AppLayout() {
             );
           })}
         </nav>
+        
+        {/* View Mode Toggle */}
+        <div className="flex items-center bg-terminal-bg rounded-lg p-1 border border-terminal-border">
+          <button
+            onClick={() => handleViewModeChange('global')}
+            className={clsx(
+              'px-3 py-1.5 rounded text-sm font-bold transition-colors',
+              viewMode === 'global'
+                ? 'bg-echelon-cyan/20 text-echelon-cyan'
+                : 'text-terminal-muted hover:text-terminal-text'
+            )}
+          >
+            📡 GLOBAL SIGINT
+          </button>
+          <button
+            onClick={() => handleViewModeChange('personal')}
+            className={clsx(
+              'px-3 py-1.5 rounded text-sm font-bold transition-colors',
+              viewMode === 'personal'
+                ? 'bg-echelon-purple/20 text-echelon-purple'
+                : 'text-terminal-muted hover:text-terminal-text'
+            )}
+          >
+            🎒 FIELD KIT
+          </button>
+        </div>
 
         {/* Right Side */}
         <div className="flex items-center gap-4">

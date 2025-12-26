@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Bot, Heart, Zap, ExternalLink } from 'lucide-react';
+import { Bot, Zap, ExternalLink } from 'lucide-react';
+import { AgentSanityIndicator } from '../agents/AgentSanityIndicator';
 import { clsx } from 'clsx';
 
 // Mock data - replace with real API
@@ -65,109 +66,120 @@ export function MyAgents() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-        {mockAgents.map((agent) => (
-          <div key={agent.id} className="terminal-panel p-4">
-            {/* Header */}
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="text-3xl">{archetypeIcons[agent.archetype]}</div>
-                <div>
-                  <h3 className="font-bold text-terminal-text">{agent.name}</h3>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={clsx(
-                        'text-xs px-2 py-0.5 rounded',
-                        archetypeColors[agent.archetype]
-                      )}
-                    >
-                      {agent.archetype}
-                    </span>
-                    <span className="text-xs text-terminal-muted">Tier {agent.tier}</span>
+        {mockAgents.map((agent) => {
+          const sanityPercent = (agent.sanity / agent.max_sanity) * 100;
+          
+          return (
+            <div 
+              key={agent.id} 
+              className={clsx(
+                'terminal-panel p-4 relative overflow-hidden transition-all',
+                sanityPercent > 40 
+                  ? 'border-terminal-border'
+                  : sanityPercent > 20
+                    ? 'border-echelon-amber/30'
+                    : 'border-echelon-red/50 animate-pulse',
+                // Glitch effect for critical sanity
+                sanityPercent <= 20 && 'relative overflow-hidden'
+              )}
+            >
+              {/* Glitch overlay for critical agents */}
+              {sanityPercent <= 20 && (
+                <div 
+                  className="absolute inset-0 pointer-events-none opacity-20"
+                  style={{
+                    background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,0,0.1) 2px, rgba(255,0,0,0.1) 4px)',
+                    animation: 'glitch 0.3s infinite'
+                  }}
+                />
+              )}
+              
+              {/* Header */}
+              <div className="flex items-start justify-between mb-3 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className={clsx(
+                    'text-3xl',
+                    sanityPercent <= 20 && 'animate-pulse'
+                  )}>
+                    {archetypeIcons[agent.archetype]}
+                  </div>
+                  <div>
+                    <h3 className={clsx(
+                      'font-bold',
+                      sanityPercent <= 20 ? 'text-echelon-red' : 'text-terminal-text'
+                    )}>
+                      {agent.name}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={clsx(
+                          'text-xs px-2 py-0.5 rounded',
+                          archetypeColors[agent.archetype]
+                        )}
+                      >
+                        {agent.archetype}
+                      </span>
+                      <span className="text-xs text-terminal-muted">Tier {agent.tier}</span>
+                    </div>
+                  </div>
+                </div>
+                <Link
+                  to={`/agent/${agent.id}`}
+                  className="text-terminal-muted hover:text-echelon-cyan transition"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </Link>
+              </div>
+
+              {/* Sanity Indicator */}
+              <div className="relative z-10">
+                <AgentSanityIndicator 
+                  sanity={agent.sanity}
+                  maxSanity={agent.max_sanity}
+                  name={agent.name}
+                />
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-2 mb-3 relative z-10">
+                <div className="text-center p-2 bg-terminal-bg rounded">
+                  <div className="text-xs text-terminal-muted">P&L</div>
+                  <div
+                    className={clsx(
+                      'text-sm font-mono font-bold',
+                      agent.total_pnl >= 0 ? 'text-echelon-green' : 'text-echelon-red'
+                    )}
+                  >
+                    ${agent.total_pnl.toLocaleString()}
+                  </div>
+                </div>
+                <div className="text-center p-2 bg-terminal-bg rounded">
+                  <div className="text-xs text-terminal-muted">Win Rate</div>
+                  <div className="text-sm font-mono font-bold text-terminal-text">
+                    {(agent.win_rate * 100).toFixed(0)}%
+                  </div>
+                </div>
+                <div className="text-center p-2 bg-terminal-bg rounded">
+                  <div className="text-xs text-terminal-muted">Trades</div>
+                  <div className="text-sm font-mono font-bold text-terminal-text">
+                    {agent.trades_count}
                   </div>
                 </div>
               </div>
-              <Link
-                to={`/agent/${agent.id}`}
-                className="text-terminal-muted hover:text-echelon-cyan transition"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </Link>
-            </div>
 
-            {/* Sanity Bar */}
-            <div className="mb-3">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1 text-xs text-terminal-muted">
-                  <Heart className="w-3 h-3" />
-                  <span>Sanity</span>
+              {/* Status */}
+              <div className="flex items-center justify-between p-2 bg-terminal-bg rounded relative z-10">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-3 h-3 text-echelon-cyan" />
+                  <span className="text-xs text-echelon-cyan uppercase">
+                    {agent.status.replace('_', ' ')}
+                  </span>
                 </div>
-                <span
-                  className={clsx(
-                    'text-xs font-mono',
-                    agent.sanity > 70
-                      ? 'text-echelon-green'
-                      : agent.sanity > 30
-                      ? 'text-echelon-amber'
-                      : 'text-echelon-red'
-                  )}
-                >
-                  {agent.sanity}/{agent.max_sanity}
-                </span>
-              </div>
-              <div className="h-2 bg-terminal-bg rounded-full overflow-hidden">
-                <div
-                  className={clsx(
-                    'h-full rounded-full transition-all',
-                    agent.sanity > 70
-                      ? 'bg-echelon-green'
-                      : agent.sanity > 30
-                      ? 'bg-echelon-amber'
-                      : 'bg-echelon-red'
-                  )}
-                  style={{ width: `${agent.sanity}%` }}
-                />
+                <span className="text-xs text-terminal-muted">{agent.current_timeline}</span>
               </div>
             </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              <div className="text-center p-2 bg-terminal-bg rounded">
-                <div className="text-xs text-terminal-muted">P&L</div>
-                <div
-                  className={clsx(
-                    'text-sm font-mono font-bold',
-                    agent.total_pnl >= 0 ? 'text-echelon-green' : 'text-echelon-red'
-                  )}
-                >
-                  ${agent.total_pnl.toLocaleString()}
-                </div>
-              </div>
-              <div className="text-center p-2 bg-terminal-bg rounded">
-                <div className="text-xs text-terminal-muted">Win Rate</div>
-                <div className="text-sm font-mono font-bold text-terminal-text">
-                  {(agent.win_rate * 100).toFixed(0)}%
-                </div>
-              </div>
-              <div className="text-center p-2 bg-terminal-bg rounded">
-                <div className="text-xs text-terminal-muted">Trades</div>
-                <div className="text-sm font-mono font-bold text-terminal-text">
-                  {agent.trades_count}
-                </div>
-              </div>
-            </div>
-
-            {/* Status */}
-            <div className="flex items-center justify-between p-2 bg-terminal-bg rounded">
-              <div className="flex items-center gap-2">
-                <Zap className="w-3 h-3 text-echelon-cyan" />
-                <span className="text-xs text-echelon-cyan uppercase">
-                  {agent.status.replace('_', ' ')}
-                </span>
-              </div>
-              <span className="text-xs text-terminal-muted">{agent.current_timeline}</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Add Agent Card */}
         <Link
