@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, Radio, AlertTriangle, User, Activity, Briefcase, Database, Wallet, X, ExternalLink } from 'lucide-react';
+import { Shield, Radio, AlertTriangle, User, Activity, Briefcase, Database, Wallet, X, ExternalLink, Zap, ChevronDown } from 'lucide-react';
 import { useParadoxes } from '../../hooks/useParadoxes';
 import { clsx } from 'clsx';
 import { useState } from 'react';
@@ -10,6 +10,12 @@ export function AppLayout() {
   const { data: paradoxData } = useParadoxes();
   const paradoxCount = paradoxData?.total_active || 0;
   const [showConnectModal, setShowConnectModal] = useState(false);
+  const [showYieldModal, setShowYieldModal] = useState(false);
+
+  // Mock yield data (would come from API in production)
+  const pendingYield = 127.50;
+  const totalEarned = 1842.30;
+  const activeTimelines = 3;
   
   // Determine view mode based on current route
   const viewMode = location.pathname === '/fieldkit' ? 'personal' : 'global';
@@ -113,6 +119,94 @@ export function AppLayout() {
               </span>
             </NavLink>
           )}
+
+          {/* Founder's Yield Widget */}
+          <div className="relative">
+            <button
+              onClick={() => setShowYieldModal(!showYieldModal)}
+              className="flex items-center gap-2 px-3 py-2 bg-amber-900/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-all group"
+            >
+              <Zap className="w-4 h-4 text-amber-400" />
+              <div className="text-left">
+                <p className="text-[10px] text-amber-400/70 uppercase tracking-wide leading-none">Yield</p>
+                <p className="text-amber-400 font-bold font-mono text-sm leading-tight">
+                  ${pendingYield.toFixed(2)}
+                </p>
+              </div>
+              <ChevronDown className={clsx(
+                'w-4 h-4 text-amber-400/50 transition-transform',
+                showYieldModal && 'rotate-180'
+              )} />
+            </button>
+
+            {/* Yield Dropdown */}
+            {showYieldModal && (
+              <div className="absolute top-full right-0 mt-2 w-72 bg-[#0D0D0D] border border-amber-500/30 rounded-lg shadow-xl z-50 overflow-hidden">
+                {/* Header */}
+                <div className="p-4 border-b border-gray-800 bg-amber-900/10">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-amber-400 font-bold flex items-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      FOUNDER'S YIELD
+                    </h3>
+                    <button onClick={() => setShowYieldModal(false)} className="text-gray-500 hover:text-white">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-gray-500 text-xs mt-1">Passive income from your timelines</p>
+                </div>
+
+                {/* Stats */}
+                <div className="p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-sm">Pending Yield</span>
+                    <span className="text-amber-400 font-bold font-mono text-lg">${pendingYield.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-sm">Total Earned</span>
+                    <span className="text-green-400 font-mono">${totalEarned.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-sm">Active Timelines</span>
+                    <span className="text-cyan-400">{activeTimelines} earning</span>
+                  </div>
+
+                  {/* Timeline Breakdown */}
+                  <div className="pt-3 border-t border-gray-800">
+                    <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Yield by Timeline</p>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-300">Oil Crisis - Hormuz</span>
+                        <span className="text-amber-400 font-mono">$52.30/hr</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-300">Fed Rate Decision</span>
+                        <span className="text-amber-400 font-mono">$38.10/hr</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-300">Contagion Zero</span>
+                        <span className="text-amber-400 font-mono">$37.10/hr</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Claim Button */}
+                <div className="p-4 border-t border-gray-800 bg-gray-900/50">
+                  <button
+                    disabled
+                    className="w-full px-4 py-3 bg-amber-900/30 border border-amber-500/30 text-amber-400/50 rounded-lg font-bold cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <Zap className="w-4 h-4" />
+                    CONNECT WALLET TO CLAIM
+                  </button>
+                  <p className="text-center text-gray-600 text-xs mt-2">
+                    Min. claim: $50.00
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Connect Button */}
           <button 

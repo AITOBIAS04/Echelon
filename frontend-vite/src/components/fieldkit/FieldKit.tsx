@@ -1,12 +1,13 @@
 import { useState, type ComponentType } from 'react';
-import { Briefcase, TrendingUp, Bot, GitBranch, Eye } from 'lucide-react';
+import { Briefcase, TrendingUp, Bot, GitBranch, Eye, Zap } from 'lucide-react';
 import { MyPositions } from './MyPositions';
 import { MyAgents } from './MyAgents';
 import { GhostForks } from './GhostForks';
 import { Watchlist } from './Watchlist';
+import { FounderYield } from './FounderYield';
 import { clsx } from 'clsx';
 
-type TabId = 'positions' | 'agents' | 'forks' | 'watchlist';
+type TabId = 'positions' | 'agents' | 'forks' | 'watchlist' | 'yield';
 
 interface Tab {
   id: TabId;
@@ -15,6 +16,7 @@ interface Tab {
 }
 
 const tabs: Tab[] = [
+  { id: 'yield', label: "Founder's Yield", icon: Zap },
   { id: 'positions', label: 'My Positions', icon: TrendingUp },
   { id: 'agents', label: 'My Agents', icon: Bot },
   { id: 'forks', label: 'Private Forks', icon: GitBranch },
@@ -92,6 +94,7 @@ export function FieldKit() {
 
       {/* Tab Content */}
       <div className="flex-1 min-h-0 overflow-hidden">
+        {activeTab === 'yield' && <FounderYield />}
         {activeTab === 'positions' && <MyPositions />}
         {activeTab === 'agents' && <MyAgents />}
         {activeTab === 'forks' && <GhostForks />}
