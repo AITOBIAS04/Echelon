@@ -117,10 +117,10 @@ export function AppLayout() {
           {/* Connect Button */}
           <button 
             onClick={() => setShowConnectModal(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-terminal-border rounded text-terminal-muted hover:text-terminal-text hover:border-echelon-cyan transition"
+            className="flex items-center gap-2 px-4 py-2 border border-terminal-border rounded-lg text-terminal-muted hover:text-terminal-text hover:border-echelon-cyan transition-all"
           >
             <User className="w-4 h-4" />
-            <span className="text-sm">Connect</span>
+            <span>Connect</span>
           </button>
         </div>
       </header>
@@ -128,88 +128,88 @@ export function AppLayout() {
       {/* Connect Wallet Modal */}
       {showConnectModal && (
         <div 
-          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setShowConnectModal(false)}
         >
           <div 
-            className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-6 max-w-md w-full relative"
+            className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-6 max-w-md w-full relative animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
             <button 
               onClick={() => setShowConnectModal(false)}
-              className="absolute top-4 right-4 text-terminal-muted hover:text-terminal-text"
+              className="absolute top-4 right-4 text-terminal-muted hover:text-terminal-text transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
             
-            {/* Icon */}
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-echelon-cyan/20 to-echelon-purple/20 rounded-full flex items-center justify-center border border-echelon-cyan/30">
-                <Wallet className="w-8 h-8 text-echelon-cyan" />
+            <div className="flex justify-center mb-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-echelon-cyan/20 to-echelon-purple/20 rounded-full flex items-center justify-center border border-echelon-cyan/30">
+                <Wallet className="w-10 h-10 text-echelon-cyan" />
               </div>
             </div>
             
-            {/* Header */}
             <h3 className="text-echelon-cyan font-bold text-xl text-center mb-2">
               CONNECT WALLET
             </h3>
             <p className="text-terminal-muted text-sm text-center mb-6">
-              Connect your wallet to trade Shards, hire Agents, and earn Founder's Yield
+              Connect to trade Shards, hire Agents, and earn Founder's Yield
             </p>
             
-            {/* Wallet Options (Disabled) */}
             <div className="space-y-3 mb-6">
               <button 
                 disabled
-                className="w-full flex items-center gap-3 px-4 py-3 bg-terminal-bg border border-terminal-border rounded-lg text-terminal-muted cursor-not-allowed"
+                className="w-full flex items-center gap-4 px-4 py-3.5 bg-terminal-bg border border-terminal-border rounded-lg text-terminal-muted cursor-not-allowed group"
               >
-                <div className="w-6 h-6 bg-orange-500 rounded-full opacity-50 flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">M</span>
+                <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center">
+                  <span className="text-lg">🦊</span>
                 </div>
-                <span>MetaMask</span>
-                <span className="ml-auto text-xs bg-terminal-bg px-2 py-0.5 rounded">SOON</span>
+                <span className="flex-1 text-left">MetaMask</span>
+                <span className="text-xs bg-terminal-bg px-2 py-1 rounded">SOON</span>
               </button>
+              
               <button 
                 disabled
-                className="w-full flex items-center gap-3 px-4 py-3 bg-terminal-bg border border-terminal-border rounded-lg text-terminal-muted cursor-not-allowed"
+                className="w-full flex items-center gap-4 px-4 py-3.5 bg-terminal-bg border border-terminal-border rounded-lg text-terminal-muted cursor-not-allowed"
               >
-                <div className="w-6 h-6 bg-blue-500 rounded-full opacity-50 flex items-center justify-center text-white text-xs font-bold">C</div>
-                <span>Coinbase Wallet</span>
-                <span className="ml-auto text-xs bg-terminal-bg px-2 py-0.5 rounded">SOON</span>
+                <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">C</span>
+                </div>
+                <span className="flex-1 text-left">Coinbase Wallet</span>
+                <span className="text-xs bg-terminal-bg px-2 py-1 rounded">SOON</span>
               </button>
+              
               <button 
                 disabled
-                className="w-full flex items-center gap-3 px-4 py-3 bg-terminal-bg border border-terminal-border rounded-lg text-terminal-muted cursor-not-allowed"
+                className="w-full flex items-center gap-4 px-4 py-3.5 bg-terminal-bg border border-terminal-border rounded-lg text-terminal-muted cursor-not-allowed"
               >
-                <div className="w-6 h-6 bg-echelon-purple rounded-full opacity-50 flex items-center justify-center text-white text-xs font-bold">W</div>
-                <span>WalletConnect</span>
-                <span className="ml-auto text-xs bg-terminal-bg px-2 py-0.5 rounded">SOON</span>
+                <div className="w-8 h-8 rounded-full bg-echelon-purple/20 flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">W</span>
+                </div>
+                <span className="flex-1 text-left">WalletConnect</span>
+                <span className="text-xs bg-terminal-bg px-2 py-1 rounded">SOON</span>
               </button>
             </div>
             
-            {/* Coming Soon Banner */}
-            <div className="bg-gradient-to-r from-echelon-cyan/20 to-echelon-purple/20 border border-echelon-cyan/30 rounded-lg p-4 text-center">
+            <div className="bg-gradient-to-r from-echelon-cyan/20 to-echelon-purple/20 border border-echelon-cyan/30 rounded-lg p-4 text-center mb-6">
               <p className="text-echelon-cyan font-bold mb-1">🚀 Launching Q1 2025</p>
               <p className="text-terminal-muted text-sm">
-                Join the waitlist to get early access
+                Join the waitlist for early access
               </p>
             </div>
             
-            {/* Links */}
-            <div className="flex justify-center gap-6 mt-6 text-sm">
+            <div className="flex justify-center gap-6 text-sm">
               <a 
                 href="https://x.com/play_echelon" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-terminal-muted hover:text-echelon-cyan transition-colors"
+                className="flex items-center gap-1.5 text-terminal-muted hover:text-echelon-cyan transition-colors"
               >
                 <span>@play_echelon</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
               <a 
                 href="mailto:playechelon0@gmail.com"
-                className="flex items-center gap-1 text-terminal-muted hover:text-echelon-cyan transition-colors"
+                className="flex items-center gap-1.5 text-terminal-muted hover:text-echelon-cyan transition-colors"
               >
                 <span>Contact</span>
                 <ExternalLink className="w-3 h-3" />
