@@ -30,25 +30,22 @@ export function TimelineCard({ timeline, onClick }: TimelineCardProps) {
           {/* Founder & Meta Badges */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             {/* Founder Badge - Always show with fallback */}
-            <div className="flex items-center gap-1.5 bg-echelon-cyan/20 border border-echelon-cyan/30 rounded px-2 py-0.5">
-              <span className="text-[10px] text-terminal-muted uppercase tracking-wide">Founded by</span>
-              <span className="text-xs text-echelon-cyan font-bold">
+            <div className="flex items-center gap-1.5 bg-cyan-900/20 border border-cyan-500/30 rounded px-2 py-0.5">
+              <span className="text-[10px] text-gray-500 uppercase tracking-wide">Founded by</span>
+              <span className="text-xs text-cyan-400 font-bold">
                 {timeline.founder_name || timeline.dominant_agent_name || 'GENESIS'}
               </span>
             </div>
             
             {/* Founder's Yield Badge - Always show with fallback */}
-            <div 
-              className="flex items-center gap-1 bg-echelon-amber/20 border border-echelon-amber/30 rounded px-2 py-0.5"
-              title="Founder earns this percentage of timeline volume"
-            >
-              <Zap className="w-3 h-3 text-echelon-amber" />
-              <span className="text-xs text-echelon-amber font-mono">
+            <div className="flex items-center gap-1 bg-amber-900/20 border border-amber-500/30 rounded px-2 py-0.5">
+              <Zap className="w-3 h-3 text-amber-400" />
+              <span className="text-xs text-amber-400 font-mono">
                 {((timeline.founder_yield_rate || 0.005) * 100).toFixed(1)}%
               </span>
             </div>
             
-            {/* Active Agents Count - Show if > 0, otherwise show 0 */}
+            {/* Active Agents Count - Always show */}
             <div className="flex items-center gap-1 bg-terminal-bg rounded px-2 py-0.5">
               <Users className="w-3 h-3 text-terminal-muted" />
               <span className="text-xs text-terminal-muted">{timeline.active_agent_count || 0}</span>
@@ -80,36 +77,19 @@ export function TimelineCard({ timeline, onClick }: TimelineCardProps) {
       </div>
 
       {/* Stability Bar - Always show with fallback */}
-      <div className="mt-3 pt-3 border-t border-terminal-border">
+      <div className="mt-3 pt-3 border-t border-gray-800">
         <div className="flex justify-between items-center text-xs mb-1.5">
-          <span className="text-terminal-muted uppercase tracking-wide">Timeline Stability</span>
-          <span className={clsx(
-            'font-mono font-bold',
-            (timeline.stability ?? 50) > 70 ? 'text-echelon-green' :
-            (timeline.stability ?? 50) > 40 ? 'text-echelon-amber' : 'text-echelon-red'
-          )}>
+          <span className="text-gray-500 uppercase tracking-wide">Stability</span>
+          <span className="font-mono font-bold text-amber-400">
             {(timeline.stability ?? 50).toFixed(0)}%
           </span>
         </div>
-        <div className="h-2 bg-terminal-bg rounded-full overflow-hidden">
+        <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
           <div 
-            className={clsx(
-              'h-full rounded-full transition-all duration-700',
-              (timeline.stability ?? 50) > 70 ? 'bg-echelon-green' :
-              (timeline.stability ?? 50) > 40 ? 'bg-echelon-amber' : 'bg-echelon-red',
-              (timeline.stability ?? 50) < 30 && 'animate-pulse'
-            )}
-            style={{ width: `${Math.min(timeline.stability ?? 50, 100)}%` }}
+            className="h-full rounded-full bg-amber-500 transition-all"
+            style={{ width: `${timeline.stability ?? 50}%` }}
           />
         </div>
-        
-        {/* Critical Warning */}
-        {(timeline.stability ?? 50) < 30 && (
-          <div className="flex items-center gap-1.5 mt-2 text-echelon-red text-xs animate-pulse">
-            <AlertTriangle className="w-3 h-3" />
-            <span className="font-bold">COLLAPSE IMMINENT — PARADOX RISK HIGH</span>
-          </div>
-        )}
       </div>
 
       {/* Stats Row */}
