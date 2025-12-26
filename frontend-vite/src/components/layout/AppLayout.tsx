@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, Radio, AlertTriangle, User, Activity, Briefcase, Database, Wallet, X, ExternalLink, Zap, ChevronDown } from 'lucide-react';
+import { Shield, Radio, AlertTriangle, User, Briefcase, Database, Wallet, X, ExternalLink, Zap, ChevronDown } from 'lucide-react';
 import { useParadoxes } from '../../hooks/useParadoxes';
 import { clsx } from 'clsx';
 import { useState } from 'react';
@@ -38,17 +38,20 @@ export function AppLayout() {
   return (
     <div className="h-screen flex flex-col bg-terminal-bg overflow-hidden">
       {/* Header - fixed height */}
-      <header className="flex-shrink-0 h-14 bg-terminal-panel border-b border-terminal-border flex items-center justify-between px-6">
+      <header className="flex-shrink-0 h-14 bg-terminal-panel border-b border-terminal-border flex items-center justify-between px-6 gap-4">
         {/* Logo */}
-        <NavLink to="/" className="flex items-center gap-3">
+        <NavLink to="/" className="flex items-center gap-3 flex-shrink-0">
           <Shield className="w-6 h-6 text-echelon-cyan" />
-          <span className="font-display text-xl tracking-wider text-echelon-cyan glow-green">
+          <span className="font-display text-xl tracking-wider text-echelon-cyan glow-green whitespace-nowrap">
             ECHELON
           </span>
         </NavLink>
 
-        {/* Navigation */}
-        <nav className="flex items-center gap-1">
+        {/* Divider */}
+        <div className="h-6 w-px bg-gray-700 flex-shrink-0" />
+
+        {/* Main Navigation - Primary Tabs */}
+        <nav className="flex items-center gap-1 flex-shrink-0">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -60,27 +63,30 @@ export function AppLayout() {
                 key={item.path}
                 to={item.path}
                 className={clsx(
-                  'flex items-center gap-2 px-4 py-2 rounded transition-all',
+                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
                   isActive
                     ? 'bg-echelon-cyan/20 text-echelon-cyan border border-echelon-cyan/30'
                     : 'text-terminal-muted hover:text-terminal-text hover:bg-terminal-bg'
                 )}
               >
                 <Icon className="w-4 h-4" />
-                <span className="text-sm font-medium">{item.label}</span>
+                <span>{item.label}</span>
               </NavLink>
             );
           })}
         </nav>
         
+        {/* Divider */}
+        <div className="h-6 w-px bg-gray-700 flex-shrink-0" />
+
         {/* View Mode Toggle */}
-        <div className="flex items-center bg-terminal-bg rounded-lg p-1 border border-terminal-border">
+        <div className="flex items-center bg-terminal-bg rounded-lg p-1 border border-terminal-border flex-shrink-0">
           <button
             onClick={() => handleViewModeChange('global')}
             className={clsx(
-              'px-3 py-1.5 rounded text-sm font-bold transition-colors',
+              'px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap',
               viewMode === 'global'
-                ? 'bg-echelon-cyan/20 text-echelon-cyan'
+                ? 'bg-echelon-cyan/20 text-echelon-cyan border border-echelon-cyan/30'
                 : 'text-terminal-muted hover:text-terminal-text'
             )}
           >
@@ -89,9 +95,9 @@ export function AppLayout() {
           <button
             onClick={() => handleViewModeChange('personal')}
             className={clsx(
-              'px-3 py-1.5 rounded text-sm font-bold transition-colors',
+              'px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap',
               viewMode === 'personal'
-                ? 'bg-echelon-purple/20 text-echelon-purple'
+                ? 'bg-echelon-purple/20 text-echelon-purple border border-echelon-purple/30'
                 : 'text-terminal-muted hover:text-terminal-text'
             )}
           >
@@ -99,19 +105,22 @@ export function AppLayout() {
           </button>
         </div>
 
-        {/* Right Side */}
-        <div className="flex items-center gap-4">
+        {/* Divider */}
+        <div className="h-6 w-px bg-gray-700 flex-shrink-0" />
+
+        {/* Status Indicators - Right side */}
+        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
           {/* Live Indicator */}
-          <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-echelon-green animate-pulse" />
-            <span className="text-xs text-echelon-green uppercase">Live</span>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-900/30 border border-green-500/30 rounded-lg">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-green-400 text-xs font-bold uppercase whitespace-nowrap">LIVE</span>
           </div>
 
           {/* Paradox Alert */}
           {paradoxCount > 0 && (
             <NavLink
               to="/sigint"
-              className="flex items-center gap-2 px-3 py-1.5 bg-echelon-red/20 border border-echelon-red/50 rounded animate-pulse"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-echelon-red/20 border border-echelon-red/50 rounded-lg animate-pulse whitespace-nowrap"
             >
               <AlertTriangle className="w-4 h-4 text-echelon-red" />
               <span className="text-xs text-echelon-red uppercase font-bold">
@@ -124,24 +133,21 @@ export function AppLayout() {
           <div className="relative">
             <button
               onClick={() => setShowYieldModal(!showYieldModal)}
-              className="flex items-center gap-2 px-3 py-2 bg-amber-900/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-all group"
+              className="flex items-center gap-2 px-3 py-1.5 bg-amber-900/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-all group whitespace-nowrap"
             >
-              <Zap className="w-4 h-4 text-amber-400" />
-              <div className="text-left">
-                <p className="text-[10px] text-amber-400/70 uppercase tracking-wide leading-none">Yield</p>
-                <p className="text-amber-400 font-bold font-mono text-sm leading-tight">
-                  ${pendingYield.toFixed(2)}
-                </p>
-              </div>
+              <Zap className="w-3 h-3 text-amber-400" />
+              <span className="text-amber-400 text-sm font-bold font-mono">
+                ${pendingYield.toFixed(2)}
+              </span>
               <ChevronDown className={clsx(
-                'w-4 h-4 text-amber-400/50 transition-transform',
+                'w-3 h-3 text-amber-400/50 transition-transform',
                 showYieldModal && 'rotate-180'
               )} />
             </button>
 
             {/* Yield Dropdown */}
             {showYieldModal && (
-              <div className="absolute top-full right-0 mt-2 w-72 bg-[#0D0D0D] border border-amber-500/30 rounded-lg shadow-xl z-50 overflow-hidden">
+              <div className="absolute top-full right-0 mt-2 w-72 bg-[#0D0D0D] border border-amber-500/30 rounded-lg shadow-xl z-[60] overflow-hidden">
                 {/* Header */}
                 <div className="p-4 border-b border-gray-800 bg-amber-900/10">
                   <div className="flex items-center justify-between">
@@ -211,7 +217,7 @@ export function AppLayout() {
           {/* Connect Button */}
           <button 
             onClick={() => setShowConnectModal(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-terminal-border rounded-lg text-terminal-muted hover:text-terminal-text hover:border-echelon-cyan transition-all"
+            className="flex items-center gap-2 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:border-echelon-cyan hover:text-echelon-cyan transition-all whitespace-nowrap"
           >
             <User className="w-4 h-4" />
             <span>Connect</span>
@@ -222,11 +228,15 @@ export function AppLayout() {
       {/* Connect Wallet Modal */}
       {showConnectModal && (
         <div 
-          className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           onClick={() => setShowConnectModal(false)}
         >
+          {/* Dark overlay */}
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
+          
+          {/* Modal content - above overlay */}
           <div 
-            className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-6 max-w-md w-full relative animate-in fade-in zoom-in-95 duration-200"
+            className="relative z-10 bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-6 max-w-md w-full mx-4 animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <button 
