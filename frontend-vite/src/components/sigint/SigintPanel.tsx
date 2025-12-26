@@ -40,11 +40,14 @@ export function SigintPanel() {
           {/* Trending Timelines - scrollable */}
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-echelon-cyan" />
-                <h2 className="terminal-header">TRENDING TIMELINES</h2>
-              </div>
-              <span className="text-xs text-terminal-muted">Sorted by Gravity Score</span>
+              <h2 className="text-lg font-bold text-cyan-400 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                TRENDING TIMELINES
+              </h2>
+              <span className="text-xs text-gray-500 flex items-center gap-1">
+                Sorted by <span className="text-amber-400 font-bold">Gravity Score</span>
+                <span className="text-gray-600">◉</span>
+              </span>
             </div>
             {/* Scrollable area */}
             <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
