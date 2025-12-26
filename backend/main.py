@@ -178,10 +178,21 @@ app.add_middleware(SlowAPIMiddleware)
 
 # --- CORS MIDDLEWARE ---
 # More flexible CORS for production - allows Vercel, Cloudflare Pages, and localhost
-# Uses regex to match all Vercel preview and production deployments, plus Cloudflare Pages
+# Uses both explicit origins and regex for preview/branch deployments
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https://.*\.vercel\.app|https://(.*\.)?prediction-market-monorepo\.pages\.dev|http://localhost:.*|http://127\.0\.0\.1:.*",
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        # Old Cloudflare deployment
+        "https://prediction-market-monorepo.pages.dev",
+        # New Echelon V2 deployment
+        "https://echelon-v2.pages.dev",
+    ],
+    # Allow preview URLs and branch deployments
+    allow_origin_regex=r"https://.*\.vercel\.app|https://(.*\.)?prediction-market-monorepo\.pages\.dev|https://(.*\.)?echelon-v2\.pages\.dev|http://localhost:.*|http://127\.0\.0\.1:.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
