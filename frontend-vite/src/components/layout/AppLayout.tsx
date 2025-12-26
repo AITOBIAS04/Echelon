@@ -39,19 +39,19 @@ export function AppLayout() {
   return (
     <div className="h-screen flex flex-col bg-terminal-bg overflow-hidden">
       {/* Header - fixed height */}
-      <header className="flex-shrink-0 h-14 bg-terminal-panel border-b border-terminal-border flex items-center px-4 md:px-6 gap-2 md:gap-4 overflow-x-auto scrollbar-hide">
-        {/* Logo */}
-        <NavLink to="/" className="flex items-center gap-3 flex-shrink-0">
-          <Shield className="w-6 h-6 text-echelon-cyan" />
-          <span className="font-display text-xl tracking-wider text-echelon-cyan glow-green whitespace-nowrap">
+      <header className="flex-shrink-0 h-14 bg-terminal-panel border-b border-terminal-border flex items-center px-2 sm:px-4 md:px-6 gap-1 sm:gap-2 md:gap-4 min-w-0">
+        {/* Logo - Always visible */}
+        <NavLink to="/" className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-echelon-cyan" />
+          <span className="font-display text-lg sm:text-xl tracking-wider text-echelon-cyan glow-green whitespace-nowrap hidden sm:inline">
             ECHELON
           </span>
         </NavLink>
 
-        {/* Divider */}
-        <div className="h-6 w-px bg-gray-700 flex-shrink-0" />
+        {/* Divider - Hidden on very small screens */}
+        <div className="h-6 w-px bg-gray-700 flex-shrink-0 hidden sm:block" />
 
-        {/* Main Navigation - Primary Tabs */}
+        {/* Main Navigation - Primary Tabs - Hide labels on small screens */}
         <nav className="flex items-center gap-1 flex-shrink-0 min-w-0">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -64,84 +64,90 @@ export function AppLayout() {
                 key={item.path}
                 to={item.path}
                 className={clsx(
-                  'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
+                  'flex items-center gap-1 sm:gap-2 px-2 sm:px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap',
                   isActive
                     ? 'bg-echelon-cyan/20 text-echelon-cyan border border-echelon-cyan/30'
                     : 'text-terminal-muted hover:text-terminal-text hover:bg-terminal-bg'
                 )}
+                title={item.label}
               >
-                <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                <span className="hidden md:inline">{item.label}</span>
               </NavLink>
             );
           })}
         </nav>
         
-        {/* Divider */}
-        <div className="h-6 w-px bg-gray-700 flex-shrink-0" />
+        {/* Divider - Hidden on small screens */}
+        <div className="h-6 w-px bg-gray-700 flex-shrink-0 hidden lg:block" />
 
-        {/* View Mode Toggle */}
-        <div className="flex items-center bg-terminal-bg rounded-lg p-1 border border-terminal-border flex-shrink-0">
+        {/* View Mode Toggle - Compact on small screens */}
+        <div className="flex items-center bg-terminal-bg rounded-lg p-1 border border-terminal-border flex-shrink-0 hidden lg:flex">
           <button
             onClick={() => handleViewModeChange('global')}
             className={clsx(
-              'px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap',
+              'px-2 sm:px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap',
               viewMode === 'global'
                 ? 'bg-echelon-cyan/20 text-echelon-cyan border border-echelon-cyan/30'
                 : 'text-terminal-muted hover:text-terminal-text'
             )}
           >
-            📡 GLOBAL SIGINT
+            <span className="hidden xl:inline">📡 GLOBAL SIGINT</span>
+            <span className="xl:hidden">📡</span>
           </button>
           <button
             onClick={() => handleViewModeChange('personal')}
             className={clsx(
-              'px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap',
+              'px-2 sm:px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap',
               viewMode === 'personal'
                 ? 'bg-echelon-purple/20 text-echelon-purple border border-echelon-purple/30'
                 : 'text-terminal-muted hover:text-terminal-text'
             )}
           >
-            🎒 FIELD KIT
+            <span className="hidden xl:inline">🎒 FIELD KIT</span>
+            <span className="xl:hidden">🎒</span>
           </button>
         </div>
 
-        {/* Divider */}
-        <div className="h-6 w-px bg-gray-700 flex-shrink-0" />
+        {/* Divider - Hidden on small screens */}
+        <div className="h-6 w-px bg-gray-700 flex-shrink-0 hidden lg:block" />
 
-        {/* Status Indicators - Right side - Always visible */}
-        <div className="flex items-center gap-2 ml-auto flex-shrink-0">
-          {/* Live Indicator */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-900/30 border border-green-500/30 rounded-lg">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-green-400 text-xs font-bold uppercase whitespace-nowrap">LIVE</span>
+        {/* Status Indicators - Right side - Always visible, priority order */}
+        <div className="flex items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
+          {/* Live Indicator - Icon only on very small screens */}
+          <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 bg-green-900/30 border border-green-500/30 rounded-lg flex-shrink-0">
+            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse flex-shrink-0" />
+            <span className="text-green-400 text-xs font-bold uppercase whitespace-nowrap hidden sm:inline">LIVE</span>
           </div>
 
-          {/* Paradox Alert */}
+          {/* Paradox Alert - Compact on small screens */}
           {paradoxCount > 0 && (
             <NavLink
               to="/sigint"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-echelon-red/20 border border-echelon-red/50 rounded-lg animate-pulse whitespace-nowrap"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 bg-echelon-red/20 border border-echelon-red/50 rounded-lg animate-pulse whitespace-nowrap flex-shrink-0"
             >
-              <AlertTriangle className="w-4 h-4 text-echelon-red" />
-              <span className="text-xs text-echelon-red uppercase font-bold">
+              <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-echelon-red flex-shrink-0" />
+              <span className="text-xs text-echelon-red uppercase font-bold hidden md:inline">
                 {paradoxCount} Active Breach{paradoxCount > 1 ? 'es' : ''}
+              </span>
+              <span className="text-xs text-echelon-red font-bold md:hidden">
+                {paradoxCount}
               </span>
             </NavLink>
           )}
 
-          {/* Founder's Yield Widget - Compact on small screens */}
-          <div className="relative flex-shrink-0">
+          {/* Founder's Yield Widget - Very compact on small screens */}
+          <div className="relative flex-shrink-0 hidden sm:block">
             <button
               onClick={() => setShowYieldModal(!showYieldModal)}
-              className="flex items-center gap-1.5 px-2 md:px-3 py-1.5 bg-amber-900/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-all group whitespace-nowrap"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 bg-amber-900/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-all group whitespace-nowrap"
             >
               <Zap className="w-3 h-3 text-amber-400 flex-shrink-0" />
-              <span className="text-amber-400 text-xs md:text-sm font-bold font-mono">
+              <span className="text-amber-400 text-xs font-bold font-mono">
                 ${pendingYield.toFixed(2)}
               </span>
               <ChevronDown className={clsx(
-                'w-3 h-3 text-amber-400/50 transition-transform flex-shrink-0',
+                'w-3 h-3 text-amber-400/50 transition-transform flex-shrink-0 hidden md:block',
                 showYieldModal && 'rotate-180'
               )} />
             </button>
@@ -215,13 +221,14 @@ export function AppLayout() {
             )}
           </div>
 
-          {/* Connect Button - Always visible, icon-only on small screens */}
+          {/* Connect Button - Always visible, highest priority */}
           <button 
             onClick={() => setShowConnectModal(true)}
-            className="flex items-center gap-2 px-3 md:px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:border-echelon-cyan hover:text-echelon-cyan transition-all whitespace-nowrap flex-shrink-0"
+            className="flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:border-echelon-cyan hover:text-echelon-cyan transition-all whitespace-nowrap flex-shrink-0 min-w-[44px]"
+            title="Connect Wallet"
           >
             <User className="w-4 h-4 flex-shrink-0" />
-            <span className="hidden sm:inline">Connect</span>
+            <span className="hidden md:inline">Connect</span>
           </button>
         </div>
       </header>
