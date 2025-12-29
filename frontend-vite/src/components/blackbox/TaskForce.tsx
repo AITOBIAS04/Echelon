@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Eye, Send, Lock, X, Target, Clock, Coins } from 'lucide-react';
 import { useAgents } from '../../hooks/useAgents';
 import { clsx } from 'clsx';
@@ -53,17 +53,9 @@ export function TaskForce() {
   const [targetQuery, setTargetQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
 
-  // Lock body scroll when modal is open
-  useEffect(() => {
-    if (showCreateModal) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [showCreateModal]);
+  // Note: do NOT lock body scroll here; iOS Safari can get "stuck" when combining
+  // body overflow locks with fixed/scrolling modals. The modal backdrop already
+  // prevents interacting with underlying content.
 
   return (
     <div className="space-y-6">
@@ -204,9 +196,8 @@ export function TaskForce() {
           />
           {/* Single scroll container (iOS-friendly) */}
           <div
-            className="fixed inset-0 z-[9995] overflow-y-auto overscroll-contain p-4"
-            style={{ WebkitOverflowScrolling: 'touch' }}
-            onClick={() => setShowCreateModal(false)}
+            className="fixed inset-0 z-[9995] overflow-y-scroll overscroll-contain p-4"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
           >
             <div className="min-h-full flex items-start justify-center py-8">
               <div
