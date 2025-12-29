@@ -47,9 +47,10 @@ export function FieldKit() {
           <div className="text-xs text-terminal-muted mb-1">Total P&L</div>
           <div
             className={clsx(
-              'text-2xl font-mono font-bold',
+              'text-xl sm:text-2xl font-mono font-bold leading-tight truncate',
               totalPnL >= 0 ? 'text-echelon-green' : 'text-echelon-red'
             )}
+            title={`${totalPnL >= 0 ? '+' : ''}$${totalPnL.toLocaleString()}`}
           >
             {totalPnL >= 0 ? '+' : ''}${totalPnL.toLocaleString()}
           </div>

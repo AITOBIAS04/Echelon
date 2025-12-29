@@ -12,6 +12,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
   const [timeRemaining, setTimeRemaining] = useState(paradox.time_remaining_seconds);
   const [showExtractionModal, setShowExtractionModal] = useState(false);
   const [showAbandonModal, setShowAbandonModal] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -47,82 +48,138 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
     'border-echelon-purple bg-echelon-purple/10';
 
   return (
-    <div className={`terminal-panel ${urgencyColor} p-4`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-echelon-red animate-pulse" />
-          <span className="font-display text-sm text-echelon-red uppercase tracking-wider">
-            Containment Breach
-          </span>
-          <span className="text-xs px-2 py-0.5 bg-echelon-red/20 text-echelon-red rounded">
-            {paradox.severity_class.replace('CLASS_', '').replace('_', ' ')}
-          </span>
-        </div>
-        <div className="text-xs text-terminal-muted">
-          {paradox.id}
-        </div>
-      </div>
-
-      {/* Timeline Info */}
-      <div className="mb-4">
-        <h3 className="text-lg font-medium text-terminal-text">
-          {paradox.timeline_name}
-        </h3>
-        <p className="text-sm text-terminal-muted">
-          Logic Gap: {(paradox.logic_gap * 100).toFixed(0)}% | 
-          Decay: {paradox.decay_multiplier}x
-        </p>
-      </div>
-
-      {/* Countdown */}
-      <div className="flex items-center justify-center gap-1 mb-4 py-3 bg-terminal-bg rounded">
-        <Clock className="w-5 h-5 text-echelon-red mr-2" />
-        <span className="font-mono text-3xl text-echelon-red glow-red">
-          {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-        </span>
-        <span className="text-xs text-terminal-muted ml-2">until detonation</span>
-      </div>
-
-      {/* Extraction Costs */}
-      <div className="grid grid-cols-3 gap-3 mb-4 text-center">
-        <div className="p-2 bg-terminal-bg rounded">
-          <div className="text-xs text-terminal-muted mb-1">USDC Cost</div>
-          <div className="text-sm font-mono text-echelon-green">
-            ${paradox.extraction_cost_usdc.toFixed(0)}
+    <div className={`terminal-panel ${urgencyColor} p-3 sm:p-4`}>
+      {/* Header (compact by default) */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-echelon-red animate-pulse flex-shrink-0" />
+            <span className="font-display text-sm text-echelon-red uppercase tracking-wider whitespace-nowrap">
+              Containment Breach
+            </span>
+            <span className="text-[10px] px-2 py-0.5 bg-echelon-red/20 text-echelon-red rounded whitespace-nowrap">
+              {paradox.severity_class.replace('CLASS_', '').replace('_', ' ')}
+            </span>
+          </div>
+          <div className="mt-1 flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-medium text-terminal-text truncate">
+              {paradox.timeline_name}
+            </h3>
+            <span className="text-xs text-terminal-muted whitespace-nowrap">
+              Gap {((paradox.logic_gap || 0) * 100).toFixed(0)}% • {paradox.decay_multiplier}x
+            </span>
           </div>
         </div>
-        <div className="p-2 bg-terminal-bg rounded">
-          <div className="text-xs text-terminal-muted mb-1">$ECHELON</div>
-          <div className="text-sm font-mono text-echelon-purple">
-            {paradox.extraction_cost_echelon}
+
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <div className="text-[10px] sm:text-xs text-terminal-muted max-w-[140px] sm:max-w-[220px] truncate">
+            {paradox.id}
           </div>
-        </div>
-        <div className="p-2 bg-terminal-bg rounded">
-          <div className="text-xs text-terminal-muted mb-1">Sanity Cost</div>
-          <div className="text-sm font-mono text-echelon-amber">
-            {paradox.carrier_sanity_cost}
-          </div>
+          <button
+            onClick={() => setIsExpanded((v) => !v)}
+            className="text-[10px] px-2 py-1 rounded bg-terminal-bg border border-terminal-border text-terminal-muted hover:text-terminal-text hover:border-gray-600 transition-colors whitespace-nowrap"
+          >
+            {isExpanded ? 'HIDE DETAILS' : 'DETAILS'}
+          </button>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-2 mt-4">
-        <button 
-          onClick={() => setShowExtractionModal(true)}
-          className="flex-1 px-3 py-2.5 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
-        >
-          <Shield className="w-4 h-4" />
-          EXTRACT
-        </button>
-        <button 
-          onClick={() => setShowAbandonModal(true)}
-          className="px-3 py-2.5 bg-echelon-red/20 border border-echelon-red/50 text-echelon-red rounded text-sm font-bold hover:bg-echelon-red/30 transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
-        >
-          <Skull className="w-4 h-4" />
-          ABANDON
-        </button>
-      </div>
+      {/* Compact banner content */}
+      {!isExpanded && (
+        <div className="mt-3">
+          <div className="flex items-center justify-between gap-3 bg-terminal-bg rounded px-3 py-2">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-echelon-red" />
+              <span className="font-mono text-xl sm:text-2xl text-echelon-red glow-red">
+                {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+              </span>
+              <span className="text-[10px] text-terminal-muted hidden sm:inline">until detonation</span>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] sm:text-xs">
+              <span className="text-echelon-green font-mono whitespace-nowrap">
+                ${paradox.extraction_cost_usdc.toFixed(0)}
+              </span>
+              <span className="text-echelon-purple font-mono whitespace-nowrap">
+                {paradox.extraction_cost_echelon} ECH
+              </span>
+              <span className="text-echelon-amber font-mono whitespace-nowrap">
+                {paradox.carrier_sanity_cost} SAN
+              </span>
+            </div>
+          </div>
+
+          <div className="flex gap-2 mt-3">
+            <button 
+              onClick={() => setShowExtractionModal(true)}
+              className="flex-1 px-3 py-2 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all flex items-center justify-center gap-2"
+            >
+              <Shield className="w-4 h-4" />
+              EXTRACT
+            </button>
+            <button 
+              onClick={() => setShowAbandonModal(true)}
+              className="px-3 py-2 bg-echelon-red/20 border border-echelon-red/50 text-echelon-red rounded text-sm font-bold hover:bg-echelon-red/30 transition-all flex items-center justify-center gap-2"
+            >
+              <Skull className="w-4 h-4" />
+              ABANDON
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Expanded content (old detailed view, slightly tighter) */}
+      {isExpanded && (
+        <>
+          {/* Countdown */}
+          <div className="flex items-center justify-center gap-1 mt-3 mb-3 py-2 bg-terminal-bg rounded">
+            <Clock className="w-5 h-5 text-echelon-red mr-2" />
+            <span className="font-mono text-2xl sm:text-3xl text-echelon-red glow-red">
+              {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+            </span>
+            <span className="text-xs text-terminal-muted ml-2">until detonation</span>
+          </div>
+
+          {/* Extraction Costs */}
+          <div className="grid grid-cols-3 gap-3 mb-3 text-center">
+            <div className="p-2 bg-terminal-bg rounded">
+              <div className="text-xs text-terminal-muted mb-1">USDC Cost</div>
+              <div className="text-sm font-mono text-echelon-green">
+                ${paradox.extraction_cost_usdc.toFixed(0)}
+              </div>
+            </div>
+            <div className="p-2 bg-terminal-bg rounded">
+              <div className="text-xs text-terminal-muted mb-1">$ECHELON</div>
+              <div className="text-sm font-mono text-echelon-purple">
+                {paradox.extraction_cost_echelon}
+              </div>
+            </div>
+            <div className="p-2 bg-terminal-bg rounded">
+              <div className="text-xs text-terminal-muted mb-1">Sanity Cost</div>
+              <div className="text-sm font-mono text-echelon-amber">
+                {paradox.carrier_sanity_cost}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 mt-2">
+            <button 
+              onClick={() => setShowExtractionModal(true)}
+              className="flex-1 px-3 py-2.5 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+            >
+              <Shield className="w-4 h-4" />
+              EXTRACT
+            </button>
+            <button 
+              onClick={() => setShowAbandonModal(true)}
+              className="px-3 py-2.5 bg-echelon-red/20 border border-echelon-red/50 text-echelon-red rounded text-sm font-bold hover:bg-echelon-red/30 transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+            >
+              <Skull className="w-4 h-4" />
+              ABANDON
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Extraction Modal */}
       {showExtractionModal && (

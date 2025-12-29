@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Eye, Send, Lock, X, Target, Clock, Coins } from 'lucide-react';
 import { useAgents } from '../../hooks/useAgents';
 import { clsx } from 'clsx';
@@ -52,6 +52,18 @@ export function TaskForce() {
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [targetQuery, setTargetQuery] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (showCreateModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showCreateModal]);
 
   return (
     <div className="space-y-6">
@@ -185,14 +197,16 @@ export function TaskForce() {
 
       {/* Create Mission Modal */}
       {showCreateModal && (
-        <div 
-          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowCreateModal(false)}
-        >
-          <div 
-            className="bg-[#0D0D0D] border border-echelon-amber/50 rounded-lg p-6 max-w-lg w-full relative"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <>
+          <div
+            className="fixed inset-0 bg-black/95 backdrop-blur-md z-[9990]"
+            onClick={() => setShowCreateModal(false)}
+          />
+          <div className="fixed inset-0 z-[9995] flex items-center justify-center p-4 pointer-events-none">
+            <div
+              className="relative bg-[#0D0D0D] border border-echelon-amber/50 rounded-lg p-4 sm:p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
             <button 
               onClick={() => setShowCreateModal(false)}
               className="absolute top-4 right-4 text-terminal-muted hover:text-terminal-text"
@@ -304,8 +318,9 @@ export function TaskForce() {
                 CANCEL
               </button>
             </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

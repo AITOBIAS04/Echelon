@@ -126,12 +126,7 @@ export function WarChest() {
                   )}
                   style={{ width: `${war.sabotage_pct}%` }}
                 >
-                  {war.sabotage_pct > 20 && (
-                    <span className="text-white text-sm font-bold flex items-center gap-1">
-                      <Skull className="w-4 h-4" />
-                      ${war.sabotage_pool.toLocaleString()}
-                    </span>
-                  )}
+                  {/* values shown below to avoid disappearing on small segments */}
                 </div>
                 
                 {/* Shield (Blue) Side */}
@@ -142,17 +137,24 @@ export function WarChest() {
                   )}
                   style={{ width: `${100 - war.sabotage_pct}%` }}
                 >
-                  {war.sabotage_pct < 80 && (
-                    <span className="text-white text-sm font-bold flex items-center gap-1">
-                      ${war.shield_pool.toLocaleString()}
-                      <Shield className="w-4 h-4" />
-                    </span>
-                  )}
+                  {/* values shown below to avoid disappearing on small segments */}
                 </div>
               </div>
               
               {/* Center Line */}
               <div className="absolute inset-y-0 left-1/2 w-0.5 bg-white/30" />
+            </div>
+
+            {/* Always-visible values */}
+            <div className="flex justify-between items-center text-xs mb-3">
+              <span className="text-red-300 font-mono flex items-center gap-1">
+                <Skull className="w-3 h-3" />
+                ${war.sabotage_pool.toLocaleString()}
+              </span>
+              <span className="text-blue-300 font-mono flex items-center gap-1">
+                ${war.shield_pool.toLocaleString()}
+                <Shield className="w-3 h-3" />
+              </span>
             </div>
 
             {/* Percentages */}
