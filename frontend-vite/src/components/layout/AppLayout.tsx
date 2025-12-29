@@ -3,7 +3,7 @@ import { Shield, Radio, AlertTriangle, User, Briefcase, Database, Wallet, X, Ext
 import { useParadoxes } from '../../hooks/useParadoxes';
 import { ButlerWidget } from '../ButlerWidget';
 import { clsx } from 'clsx';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export function AppLayout() {
   const location = useLocation();
@@ -12,11 +12,24 @@ export function AppLayout() {
   const paradoxCount = paradoxData?.total_active || 0;
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [showYieldModal, setShowYieldModal] = useState(false);
+  const yieldButtonRef = useRef<HTMLDivElement>(null);
+  const [yieldDropdownPosition, setYieldDropdownPosition] = useState({ top: 0, right: 0 });
 
   // Mock yield data (would come from API in production)
   const pendingYield = 127.50;
   const totalEarned = 1842.30;
   const activeTimelines = 3;
+
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (showYieldModal && yieldButtonRef.current) {
+      const rect = yieldButtonRef.current.getBoundingClientRect();
+      setYieldDropdownPosition({
+        top: rect.bottom + window.scrollY + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [showYieldModal]);
   
   // Determine view mode based on current route
   const viewMode = location.pathname === '/fieldkit' ? 'personal' : 'global';
@@ -38,8 +51,8 @@ export function AppLayout() {
 
   return (
     <div className="h-screen flex flex-col bg-terminal-bg overflow-hidden">
-      {/* Header - fixed height, ensure no horizontal overflow */}
-      <header className="flex-shrink-0 h-14 bg-terminal-panel border-b border-terminal-border flex items-center justify-between px-2 sm:px-3 md:px-4 gap-1 sm:gap-2 overflow-hidden">
+      {/* Header - fixed height, ensure no horizontal overflow but allow dropdowns to overflow */}
+      <header className="flex-shrink-0 h-14 bg-terminal-panel border-b border-terminal-border flex items-center justify-between px-2 sm:px-3 md:px-4 gap-1 sm:gap-2 overflow-x-auto overflow-y-visible">
         {/* Left section - Logo + Nav */}
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 min-w-0">
           {/* Logo - Always visible, minimal space */}
@@ -135,7 +148,7 @@ export function AppLayout() {
           )}
 
           {/* Founder's Yield Widget - Hide on smaller screens to ensure Connect button is always visible */}
-          <div className="relative flex-shrink-0 hidden lg:block">
+          <div ref={yieldButtonRef} className="relative flex-shrink-0 hidden lg:block z-50">
             <button
               onClick={() => setShowYieldModal(!showYieldModal)}
               className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-amber-900/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-all group whitespace-nowrap"
@@ -150,9 +163,22 @@ export function AppLayout() {
               )} />
             </button>
 
-            {/* Yield Dropdown */}
+            {/* Yield Dropdown - Fixed positioning to escape header overflow */}
             {showYieldModal && (
-              <div className="absolute top-full right-0 mt-2 w-72 bg-[#0D0D0D] border border-amber-500/30 rounded-lg shadow-xl z-[60] overflow-hidden">
+              <>
+                {/* Backdrop to close on outside click */}
+                <div 
+                  className="fixed inset-0 z-[9998]" 
+                  onClick={() => setShowYieldModal(false)}
+                />
+                <div 
+                  className="fixed w-72 sm:w-80 bg-[#0D0D0D] border border-amber-500/30 rounded-lg shadow-xl z-[9999] overflow-hidden"
+                  style={{ 
+                    top: `${yieldDropdownPosition.top}px`,
+                    right: `${yieldDropdownPosition.right}px`,
+                    maxWidth: 'calc(100vw - 1rem)',
+                  }}
+                >
                 {/* Header */}
                 <div className="p-4 border-b border-gray-800 bg-amber-900/10">
                   <div className="flex items-center justify-between">
@@ -216,6 +242,7 @@ export function AppLayout() {
                   </p>
                 </div>
               </div>
+              </>
             )}
           </div>
 
@@ -233,18 +260,19 @@ export function AppLayout() {
 
       {/* Connect Wallet Modal */}
       {showConnectModal && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          onClick={() => setShowConnectModal(false)}
-        >
-          {/* Dark overlay */}
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
+        <>
+          {/* Dark overlay - blocks all background content */}
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9990]" />
           
           {/* Modal content - above overlay */}
           <div 
-            className="relative z-10 bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-6 max-w-md w-full mx-4 animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[9995] flex items-center justify-center p-4"
+            onClick={() => setShowConnectModal(false)}
           >
+            <div 
+              className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
             <button 
               onClick={() => setShowConnectModal(false)}
               className="absolute top-4 right-4 text-terminal-muted hover:text-terminal-text transition-colors"
@@ -325,8 +353,9 @@ export function AppLayout() {
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Main content - takes remaining space, no overflow */}

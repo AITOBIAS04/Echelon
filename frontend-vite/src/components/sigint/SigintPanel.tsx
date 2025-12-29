@@ -35,8 +35,8 @@ export function SigintPanel() {
       )}
 
       {/* Main Content - Full height, no overflow */}
-      <div className="flex-1 min-h-0 p-4">
-        <div className="h-full flex flex-col lg:flex-row gap-6 overflow-hidden">
+      <div className="flex-1 min-h-0 p-2 sm:p-4">
+        <div className="h-full flex flex-col lg:flex-row gap-4 sm:gap-6 overflow-hidden">
           {/* Trending Timelines - scrollable */}
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
@@ -49,8 +49,8 @@ export function SigintPanel() {
                 <span className="text-gray-600">◉</span>
               </span>
             </div>
-            {/* Scrollable area */}
-            <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+            {/* Scrollable area - lower z-index to stay below modals */}
+            <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent relative z-0">
               {timelinesLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[...Array(4)].map((_, i) => (
@@ -58,7 +58,7 @@ export function SigintPanel() {
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   {timelines.map((timeline) => (
                     <TimelineCard
                       key={timeline.id}

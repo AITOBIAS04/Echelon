@@ -114,21 +114,22 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
 
       {/* Extraction Modal */}
       {showExtractionModal && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          onClick={(e) => {
-            // Close on backdrop click
-            if (e.target === e.currentTarget) setShowExtractionModal(false);
-          }}
-        >
-          {/* Dark overlay */}
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
+        <>
+          {/* Dark overlay - blocks all background content */}
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9990]" />
           
           {/* Modal content - above overlay */}
           <div 
-            className="relative z-10 bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-6 max-w-md w-full mx-4 animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[9995] flex items-center justify-center p-4"
+            onClick={(e) => {
+              // Close on backdrop click
+              if (e.target === e.currentTarget) setShowExtractionModal(false);
+            }}
           >
+            <div 
+              className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
             <button 
               onClick={() => setShowExtractionModal(false)}
               className="absolute top-4 right-4 text-terminal-muted hover:text-terminal-text transition-colors"
@@ -204,27 +205,29 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
             <p className="text-center text-terminal-muted text-xs mt-4">
               Join waitlist at <span className="text-echelon-cyan">playechelon.io</span>
             </p>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Abandon Modal */}
       {showAbandonModal && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          onClick={(e) => {
-            // Close on backdrop click
-            if (e.target === e.currentTarget) setShowAbandonModal(false);
-          }}
-        >
-          {/* Dark overlay */}
-          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
+        <>
+          {/* Dark overlay - blocks all background content */}
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9990]" />
           
           {/* Modal content - above overlay */}
           <div 
-            className="relative z-10 bg-[#0D0D0D] border border-echelon-red/50 rounded-lg p-6 max-w-md w-full mx-4 animate-in fade-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[9995] flex items-center justify-center p-4"
+            onClick={(e) => {
+              // Close on backdrop click
+              if (e.target === e.currentTarget) setShowAbandonModal(false);
+            }}
           >
+            <div 
+              className="bg-[#0D0D0D] border border-echelon-red/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
             <button 
               onClick={() => setShowAbandonModal(false)}
               className="absolute top-4 right-4 text-terminal-muted hover:text-terminal-text transition-colors"
@@ -286,8 +289,9 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
                 CONFIRM ABANDON
               </button>
             </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

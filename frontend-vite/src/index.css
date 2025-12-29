@@ -88,6 +88,80 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Ensure header dropdowns can overflow */
+  .header-dropdown {
+    z-index: 9999;
+    position: fixed;
+  }
+
+  /* Ensure modals block background content */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 9990;
+  }
+
+  .modal-content {
+    position: fixed;
+    z-index: 9995;
+  }
+
+  /* Keep background content below modals */
+  .background-content {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  /* Smaller fonts on mobile */
+  body {
+    font-size: 14px;
+  }
+
+  /* Full-width modals on mobile */
+  .modal-content {
+    max-width: calc(100vw - 1rem);
+    margin: 0.5rem;
+  }
+
+  /* Stack timeline cards on mobile */
+  .timeline-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Mobile-friendly header */
+  header {
+    padding: 0.5rem !important;
+    gap: 0.25rem !important;
+  }
+
+  /* Hide non-essential elements on mobile */
+  .mobile-hide {
+    display: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Even more compact on small screens */
+  header {
+    height: 3rem !important;
+    padding: 0.25rem !important;
+  }
+
+  /* Single column layouts */
+  .sigint-layout {
+    flex-direction: column !important;
+  }
+
+  /* Full-width cards */
+  .timeline-card {
+    width: 100% !important;
+    margin: 0.5rem 0 !important;
+  }
 }
 
 @keyframes spin {
