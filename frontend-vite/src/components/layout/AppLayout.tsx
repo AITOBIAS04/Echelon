@@ -169,6 +169,18 @@ export function AppLayout() {
             </NavLink>
           )}
 
+          {/* Mobile Yield Button (so yield is always discoverable on phones) */}
+          <button
+            onClick={() => setShowYieldModal(true)}
+            className="lg:hidden flex items-center gap-1 px-2 py-1 bg-amber-900/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-all whitespace-nowrap flex-shrink-0"
+            title="Founder's Yield"
+          >
+            <Zap className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <span className="text-amber-400 text-[10px] font-bold font-mono hidden sm:inline">
+              ${pendingYield.toFixed(2)}
+            </span>
+          </button>
+
           {/* Founder's Yield Widget - Hide on smaller screens to ensure Connect button is always visible */}
           <div ref={yieldButtonRef} className="relative flex-shrink-0 hidden lg:block z-50">
             <button

@@ -5,11 +5,13 @@ import { TimelineCard } from './TimelineCard';
 import { WingFlapFeed } from './WingFlapFeed';
 import { ParadoxAlert } from '../paradox/ParadoxAlert';
 import { TrendingUp, Activity, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
 
 export function SigintPanel() {
   const { data: timelinesData, isLoading: timelinesLoading, error: timelinesError } = useTimelines({ limit: 8 });
   const { data: flapsData, isLoading: flapsLoading, error: flapsError } = useWingFlaps({ limit: 20 });
   const { data: paradoxData, error: paradoxError } = useParadoxes();
+  const [mobileTab, setMobileTab] = useState<'timelines' | 'feed'>('timelines');
 
   const timelines = timelinesData?.timelines || [];
   const flaps = flapsData?.flaps || [];
@@ -36,7 +38,87 @@ export function SigintPanel() {
 
       {/* Main Content - Full height, no overflow */}
       <div className="flex-1 min-h-0 p-2 sm:p-4">
-        <div className="h-full flex flex-col lg:flex-row gap-4 sm:gap-6 overflow-hidden">
+        {/* Mobile: switch between timelines + feed so they don't visually compete */}
+        <div className="lg:hidden h-full flex flex-col min-h-0 overflow-hidden">
+          <div className="flex items-center gap-2 mb-3 flex-shrink-0">
+            <button
+              onClick={() => setMobileTab('timelines')}
+              className={
+                mobileTab === 'timelines'
+                  ? 'px-3 py-2 rounded-lg bg-terminal-panel border border-terminal-border text-echelon-cyan text-sm font-bold'
+                  : 'px-3 py-2 rounded-lg bg-terminal-bg border border-terminal-border text-terminal-muted text-sm font-bold'
+              }
+            >
+              <TrendingUp className="w-4 h-4 inline mr-1" />
+              Timelines
+            </button>
+            <button
+              onClick={() => setMobileTab('feed')}
+              className={
+                mobileTab === 'feed'
+                  ? 'px-3 py-2 rounded-lg bg-terminal-panel border border-terminal-border text-echelon-cyan text-sm font-bold'
+                  : 'px-3 py-2 rounded-lg bg-terminal-bg border border-terminal-border text-terminal-muted text-sm font-bold'
+              }
+            >
+              <Activity className="w-4 h-4 inline mr-1" />
+              Feed
+            </button>
+            <div className="flex-1" />
+            <span className="text-xs text-terminal-muted font-mono">
+              {mobileTab === 'timelines' ? `${timelines.length} timelines` : `${flapsData?.total_count || 0} events`}
+            </span>
+          </div>
+
+          {mobileTab === 'timelines' ? (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                <h2 className="text-base font-bold text-cyan-400 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  TRENDING
+                </h2>
+                <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                  Sorted by <span className="text-amber-400 font-bold">Gravity</span>
+                  <span className="text-gray-600">◉</span>
+                </span>
+              </div>
+              <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                {timelinesLoading ? (
+                  <div className="grid grid-cols-1 gap-3">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="terminal-panel p-4 h-44 animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {timelines.map((timeline) => (
+                      <TimelineCard
+                        key={timeline.id}
+                        timeline={timeline}
+                        onClick={() => console.log('Open timeline', timeline.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                <h3 className="terminal-header">WING FLAP FEED</h3>
+                <span className="text-xs text-echelon-green flex items-center gap-1">
+                  <Activity className="w-3 h-3" />
+                  LIVE
+                </span>
+              </div>
+              <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+                <WingFlapFeed flaps={flaps} isLoading={flapsLoading} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop: split view */}
+        <div className="hidden lg:flex h-full flex-row gap-6 overflow-hidden">
           {/* Trending Timelines - scrollable */}
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
@@ -49,7 +131,6 @@ export function SigintPanel() {
                 <span className="text-gray-600">◉</span>
               </span>
             </div>
-            {/* Scrollable area - lower z-index to stay below modals */}
             <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
               {timelinesLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -72,7 +153,7 @@ export function SigintPanel() {
           </div>
           
           {/* Wing Flap Feed - scrollable */}
-          <div className="w-full lg:w-96 flex flex-col min-h-0 lg:max-h-[calc(100vh-120px)]">
+          <div className="w-full lg:w-96 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
               <h3 className="terminal-header">WING FLAP FEED</h3>
               <span className="text-xs text-echelon-green flex items-center gap-1">
@@ -80,7 +161,6 @@ export function SigintPanel() {
                 LIVE
               </span>
             </div>
-            {/* Scrollable area */}
             <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
               <WingFlapFeed flaps={flaps} isLoading={flapsLoading} />
             </div>

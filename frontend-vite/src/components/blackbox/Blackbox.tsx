@@ -28,7 +28,7 @@ export function Blackbox() {
   ];
 
   return (
-    <div className="h-full flex flex-col p-6 overflow-hidden">
+    <div className="h-full flex flex-col p-2 sm:p-4 md:p-6 overflow-hidden">
       {/* Classification Banner */}
       <div className="flex-shrink-0 bg-red-900/30 border border-red-600 text-center py-2 mb-4 rounded">
         <span className="text-red-400 font-bold tracking-widest text-sm">
@@ -73,7 +73,8 @@ export function Blackbox() {
         </div>
 
         {/* Tabs */}
-        <div className="flex-shrink-0 flex gap-8 px-4 py-3 border-b border-[#1a3a1a] relative z-20">
+        <div className="flex-shrink-0 px-2 sm:px-4 py-3 border-b border-[#1a3a1a] relative z-20 overflow-x-auto scrollbar-hide">
+          <div className="flex items-center gap-4 sm:gap-8 min-w-max">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -81,7 +82,7 @@ export function Blackbox() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={clsx(
-                  'flex items-center gap-2 pb-2 uppercase tracking-wider text-sm transition-all',
+                  'flex items-center gap-2 pb-2 uppercase tracking-wider text-sm transition-all whitespace-nowrap flex-shrink-0',
                   activeTab === tab.id
                     ? 'text-[#00FF41] border-b-2 border-[#00FF41]'
                     : 'text-gray-500 hover:text-[#00FF41]/70'
@@ -92,6 +93,7 @@ export function Blackbox() {
               </button>
             );
           })}
+          </div>
         </div>
 
         {/* Tab Content */}

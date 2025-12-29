@@ -34,7 +34,7 @@ export function FieldKit() {
   return (
     <div className="h-full flex flex-col p-4 gap-4">
       {/* Header Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="terminal-panel p-4">
           <div className="flex items-center gap-2 mb-2">
             <Briefcase className="w-4 h-4 text-echelon-cyan" />
@@ -71,29 +71,31 @@ export function FieldKit() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 border-b border-terminal-border pb-2">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={clsx(
-                'flex items-center gap-2 px-4 py-2 rounded-t transition-all',
-                activeTab === tab.id
-                  ? 'bg-terminal-panel text-echelon-cyan border border-terminal-border border-b-0'
-                  : 'text-terminal-muted hover:text-terminal-text'
-              )}
-            >
-              <Icon className="w-4 h-4" />
-              <span className="text-sm">{tab.label}</span>
-            </button>
-          );
-        })}
+      <div className="border-b border-terminal-border pb-2 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-1 min-w-max">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={clsx(
+                  'flex items-center gap-2 px-3 sm:px-4 py-2 rounded-t transition-all whitespace-nowrap flex-shrink-0',
+                  activeTab === tab.id
+                    ? 'bg-terminal-panel text-echelon-cyan border border-terminal-border border-b-0'
+                    : 'text-terminal-muted hover:text-terminal-text'
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="text-sm">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
         {activeTab === 'yield' && <FounderYield />}
         {activeTab === 'positions' && <MyPositions />}
         {activeTab === 'agents' && <MyAgents />}
