@@ -34,8 +34,8 @@ export function FieldKit() {
   return (
     <div className="h-full flex flex-col p-4 gap-4">
       {/* Header Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="terminal-panel p-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+        <div className="terminal-panel p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-2">
             <Briefcase className="w-4 h-4 text-echelon-cyan" />
             <span className="terminal-header">Field Kit</span>
@@ -43,7 +43,7 @@ export function FieldKit() {
           <p className="text-xs text-terminal-muted">Personal Operations Centre</p>
         </div>
 
-        <div className="terminal-panel p-4">
+        <div className="terminal-panel p-3 sm:p-4">
           <div className="text-xs text-terminal-muted mb-1">Total P&L</div>
           <div
             className={clsx(
@@ -56,14 +56,14 @@ export function FieldKit() {
           </div>
         </div>
 
-        <div className="terminal-panel p-4">
+        <div className="terminal-panel p-3 sm:p-4">
           <div className="text-xs text-terminal-muted mb-1">Active Positions</div>
           <div className="text-2xl font-mono font-bold text-terminal-text">
             {totalPositions}
           </div>
         </div>
 
-        <div className="terminal-panel p-4">
+        <div className="terminal-panel p-3 sm:p-4">
           <div className="text-xs text-terminal-muted mb-1">Deployed Agents</div>
           <div className="text-2xl font-mono font-bold text-echelon-purple">
             {totalAgents}

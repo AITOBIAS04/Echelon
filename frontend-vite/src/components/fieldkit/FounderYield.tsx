@@ -31,18 +31,24 @@ export function FounderYield() {
         </div>
 
         {/* Main Stats */}
-        <div className="p-4 grid grid-cols-3 gap-4 border-b border-gray-800">
-          <div className="text-center">
+        <div className="p-3 sm:p-4 grid grid-cols-3 gap-2 sm:gap-4 border-b border-gray-800">
+          <div className="text-center min-w-0">
             <p className="text-gray-500 text-xs uppercase tracking-wide">Pending</p>
-            <p className="text-amber-400 font-bold text-2xl font-mono">${yieldData.pending.toFixed(2)}</p>
+            <p className="text-amber-400 font-bold text-lg sm:text-2xl font-mono tracking-tight truncate">
+              ${yieldData.pending.toFixed(2)}
+            </p>
           </div>
-          <div className="text-center border-x border-gray-800">
+          <div className="text-center border-x border-gray-800 min-w-0 px-1">
             <p className="text-gray-500 text-xs uppercase tracking-wide">Hourly Rate</p>
-            <p className="text-green-400 font-bold text-2xl font-mono">${yieldData.hourlyRate.toFixed(2)}</p>
+            <p className="text-green-400 font-bold text-lg sm:text-2xl font-mono tracking-tight truncate">
+              ${yieldData.hourlyRate.toFixed(2)}
+            </p>
           </div>
-          <div className="text-center">
+          <div className="text-center min-w-0">
             <p className="text-gray-500 text-xs uppercase tracking-wide">All Time</p>
-            <p className="text-cyan-400 font-bold text-2xl font-mono">${yieldData.totalEarned.toFixed(2)}</p>
+            <p className="text-cyan-400 font-bold text-lg sm:text-2xl font-mono tracking-tight truncate">
+              ${yieldData.totalEarned.toFixed(2)}
+            </p>
           </div>
         </div>
 

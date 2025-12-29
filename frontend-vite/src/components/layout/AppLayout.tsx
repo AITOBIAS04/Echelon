@@ -331,6 +331,80 @@ export function AppLayout() {
         </>
       )}
 
+      {/* Mobile Founder's Yield Modal (phones don't render the desktop dropdown) */}
+      {showYieldModal && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/95 backdrop-blur-md z-[9990] lg:hidden"
+            onClick={() => setShowYieldModal(false)}
+          />
+          <div className="fixed inset-0 z-[9995] flex items-center justify-center p-4 lg:hidden">
+            <div
+              className="relative w-full max-w-md bg-[#0D0D0D] border border-amber-500/30 rounded-lg shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-gray-800 bg-amber-900/10 sticky top-0 z-10">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-amber-400 font-bold flex items-center gap-2">
+                    <Zap className="w-4 h-4" />
+                    FOUNDER'S YIELD
+                  </h3>
+                  <button onClick={() => setShowYieldModal(false)} className="text-gray-500 hover:text-white">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-gray-500 text-xs mt-1">Passive income from your timelines</p>
+              </div>
+
+              <div className="p-4 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">Pending Yield</span>
+                  <span className="text-amber-400 font-bold font-mono text-lg">${pendingYield.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">Total Earned</span>
+                  <span className="text-green-400 font-mono">${totalEarned.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400 text-sm">Active Timelines</span>
+                  <span className="text-cyan-400">{activeTimelines} earning</span>
+                </div>
+
+                <div className="pt-3 border-t border-gray-800">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Yield by Timeline</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm gap-3">
+                      <span className="text-gray-300 truncate">Oil Crisis - Hormuz</span>
+                      <span className="text-amber-400 font-mono whitespace-nowrap">$52.30/hr</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm gap-3">
+                      <span className="text-gray-300 truncate">Fed Rate Decision</span>
+                      <span className="text-amber-400 font-mono whitespace-nowrap">$38.10/hr</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm gap-3">
+                      <span className="text-gray-300 truncate">Contagion Zero</span>
+                      <span className="text-amber-400 font-mono whitespace-nowrap">$37.10/hr</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-gray-800 bg-gray-900/50">
+                <button
+                  disabled
+                  className="w-full px-4 py-3 bg-amber-900/30 border border-amber-500/30 text-amber-400/50 rounded-lg font-bold cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <Zap className="w-4 h-4" />
+                  CONNECT WALLET TO CLAIM
+                </button>
+                <p className="text-center text-gray-600 text-xs mt-2">Min. claim: $50.00</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Connect Wallet Modal */}
       {showConnectModal && (
         <>
