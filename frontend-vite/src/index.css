@@ -99,19 +99,31 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.9);
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(8px);
     z-index: 9990;
+    pointer-events: auto;
   }
 
   .modal-content {
     position: fixed;
     z-index: 9995;
+    pointer-events: auto;
   }
 
   /* Keep background content below modals */
   .background-content {
     position: relative;
     z-index: 1;
+  }
+
+  /* When modal is open, disable pointer events on background */
+  body.modal-open {
+    overflow: hidden;
+  }
+
+  body.modal-open .background-content {
+    pointer-events: none;
   }
 }
 

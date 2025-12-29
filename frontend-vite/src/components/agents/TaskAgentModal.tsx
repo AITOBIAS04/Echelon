@@ -67,6 +67,18 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
   const [customQuery, setCustomQuery] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const selectedMission = MISSION_TEMPLATES.find(t => t.id === selectedTemplate);
@@ -74,21 +86,26 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
   const canAffordSanity = selectedMission ? agentSanity >= selectedMission.sanityCost : true;
 
   return (
-    <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      onClick={(e) => {
-        // Close on backdrop click
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
+    <>
+      {/* Dark overlay - blocks all background content and pointer events */}
+      <div 
+        className="fixed inset-0 bg-black/95 backdrop-blur-md z-[9990]"
+        style={{ pointerEvents: 'auto' }}
+        onClick={onClose}
+      />
       
       {/* Modal content - above overlay */}
       <div 
-        className="relative z-10 bg-[#0D0D0D] border border-purple-500/50 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[9995] flex items-center justify-center p-4 pointer-events-none"
+        onClick={(e) => {
+          // Close on backdrop click
+          if (e.target === e.currentTarget) onClose();
+        }}
       >
+        <div 
+          className="bg-[#0D0D0D] border border-purple-500/50 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Header */}
         <div className="p-4 border-b border-gray-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -255,7 +272,8 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

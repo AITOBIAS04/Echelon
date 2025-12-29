@@ -13,6 +13,18 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
   const [showExtractionModal, setShowExtractionModal] = useState(false);
   const [showAbandonModal, setShowAbandonModal] = useState(false);
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (showExtractionModal || showAbandonModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showExtractionModal, showAbandonModal]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTimeRemaining((prev) => Math.max(0, prev - 1));
@@ -115,19 +127,23 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
       {/* Extraction Modal */}
       {showExtractionModal && (
         <>
-          {/* Dark overlay - blocks all background content */}
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9990]" />
+          {/* Dark overlay - blocks all background content and pointer events */}
+          <div 
+            className="fixed inset-0 bg-black/95 backdrop-blur-md z-[9990]"
+            style={{ pointerEvents: 'auto' }}
+            onClick={() => setShowExtractionModal(false)}
+          />
           
           {/* Modal content - above overlay */}
           <div 
-            className="fixed inset-0 z-[9995] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[9995] flex items-center justify-center p-4 pointer-events-none"
             onClick={(e) => {
               // Close on backdrop click
               if (e.target === e.currentTarget) setShowExtractionModal(false);
             }}
           >
             <div 
-              className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+              className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
             <button 
@@ -213,19 +229,23 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
       {/* Abandon Modal */}
       {showAbandonModal && (
         <>
-          {/* Dark overlay - blocks all background content */}
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9990]" />
+          {/* Dark overlay - blocks all background content and pointer events */}
+          <div 
+            className="fixed inset-0 bg-black/95 backdrop-blur-md z-[9990]"
+            style={{ pointerEvents: 'auto' }}
+            onClick={() => setShowAbandonModal(false)}
+          />
           
           {/* Modal content - above overlay */}
           <div 
-            className="fixed inset-0 z-[9995] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[9995] flex items-center justify-center p-4 pointer-events-none"
             onClick={(e) => {
               // Close on backdrop click
               if (e.target === e.currentTarget) setShowAbandonModal(false);
             }}
           >
             <div 
-              className="bg-[#0D0D0D] border border-echelon-red/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+              className="bg-[#0D0D0D] border border-echelon-red/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
             <button 

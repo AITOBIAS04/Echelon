@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, Radio, AlertTriangle, User, Briefcase, Database, Wallet, X, ExternalLink, Zap, ChevronDown } from 'lucide-react';
+import { Shield, Radio, AlertTriangle, User, Briefcase, Database, Wallet, X, ExternalLink, Zap, ChevronDown, Menu } from 'lucide-react';
 import { useParadoxes } from '../../hooks/useParadoxes';
 import { ButlerWidget } from '../ButlerWidget';
 import { clsx } from 'clsx';
@@ -12,6 +12,7 @@ export function AppLayout() {
   const paradoxCount = paradoxData?.total_active || 0;
   const [showConnectModal, setShowConnectModal] = useState(false);
   const [showYieldModal, setShowYieldModal] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const yieldButtonRef = useRef<HTMLDivElement>(null);
   const [yieldDropdownPosition, setYieldDropdownPosition] = useState({ top: 0, right: 0 });
 
@@ -30,6 +31,18 @@ export function AppLayout() {
       });
     }
   }, [showYieldModal]);
+
+  // Lock body scroll when modals are open
+  useEffect(() => {
+    if (showConnectModal || showYieldModal || showMobileMenu) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showConnectModal, showYieldModal, showMobileMenu]);
   
   // Determine view mode based on current route
   const viewMode = location.pathname === '/fieldkit' ? 'personal' : 'global';
@@ -66,7 +79,16 @@ export function AppLayout() {
           {/* Divider - Hidden on very small screens */}
           <div className="h-6 w-px bg-gray-700 flex-shrink-0 hidden sm:block" />
 
-          {/* Main Navigation - Primary Tabs - More compact, hide labels on smaller screens */}
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className="md:hidden flex items-center justify-center p-1.5 text-terminal-muted hover:text-terminal-text transition-colors"
+            aria-label="Toggle menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          {/* Main Navigation - Primary Tabs - Desktop */}
           <nav className="hidden md:flex items-center gap-0.5 sm:gap-1 flex-shrink-0 min-w-0">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -258,19 +280,62 @@ export function AppLayout() {
         </div>
       </header>
 
+      {/* Mobile Navigation Menu */}
+      {showMobileMenu && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/80 z-[9980] md:hidden"
+            onClick={() => setShowMobileMenu(false)}
+          />
+          {/* Menu */}
+          <div className="fixed top-14 left-0 right-0 bg-terminal-panel border-b border-terminal-border z-[9985] md:hidden shadow-xl">
+            <nav className="flex flex-col p-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive =
+                  location.pathname === item.path ||
+                  (item.path === '/sigint' && location.pathname === '/');
+
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setShowMobileMenu(false)}
+                    className={clsx(
+                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all',
+                      isActive
+                        ? 'bg-echelon-cyan/20 text-echelon-cyan border border-echelon-cyan/30'
+                        : 'text-terminal-muted hover:text-terminal-text hover:bg-terminal-bg'
+                    )}
+                  >
+                    <Icon className="w-5 h-5 flex-shrink-0" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </nav>
+          </div>
+        </>
+      )}
+
       {/* Connect Wallet Modal */}
       {showConnectModal && (
         <>
-          {/* Dark overlay - blocks all background content */}
-          <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[9990]" />
+          {/* Dark overlay - blocks all background content and pointer events */}
+          <div 
+            className="fixed inset-0 bg-black/95 backdrop-blur-md z-[9990]"
+            style={{ pointerEvents: 'auto' }}
+            onClick={() => setShowConnectModal(false)}
+          />
           
           {/* Modal content - above overlay */}
           <div 
-            className="fixed inset-0 z-[9995] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[9995] flex items-center justify-center p-4 pointer-events-none"
             onClick={() => setShowConnectModal(false)}
           >
             <div 
-              className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto"
+              className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
             <button 

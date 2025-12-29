@@ -35,10 +35,10 @@ export function SigintPanel() {
       )}
 
       {/* Main Content - Full height, no overflow */}
-      <div className="flex-1 min-h-0 p-2 sm:p-4">
+      <div className="flex-1 min-h-0 p-2 sm:p-4 relative z-0">
         <div className="h-full flex flex-col lg:flex-row gap-4 sm:gap-6 overflow-hidden">
           {/* Trending Timelines - scrollable */}
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 relative z-0">
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
               <h2 className="text-lg font-bold text-cyan-400 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5" />
