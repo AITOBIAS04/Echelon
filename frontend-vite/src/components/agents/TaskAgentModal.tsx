@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Search, AlertTriangle, Crosshair, Globe, MessageSquare, FileText, Zap } from 'lucide-react';
 
 interface Agent {
