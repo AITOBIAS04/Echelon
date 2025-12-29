@@ -24,7 +24,7 @@ export function SigintPanel() {
     <div className="h-full flex flex-col overflow-hidden" data-panel="sigint" data-testid="sigint-panel">
       {/* Only show most urgent paradox to prevent layout overflow */}
       {paradoxes && paradoxes.length > 0 && (
-        <div className="flex-shrink-0 p-4 border-b border-terminal-border relative z-0">
+        <div className="flex-shrink-0 p-4 border-b border-terminal-border">
           {(() => {
             const sorted = [...paradoxes].sort((a, b) => 
               new Date(a.detonation_time).getTime() - new Date(b.detonation_time).getTime()
@@ -35,10 +35,10 @@ export function SigintPanel() {
       )}
 
       {/* Main Content - Full height, no overflow */}
-      <div className="flex-1 min-h-0 p-2 sm:p-4 relative z-0">
+      <div className="flex-1 min-h-0 p-2 sm:p-4">
         <div className="h-full flex flex-col lg:flex-row gap-4 sm:gap-6 overflow-hidden">
           {/* Trending Timelines - scrollable */}
-          <div className="flex-1 flex flex-col min-h-0 relative z-0">
+          <div className="flex-1 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-4 flex-shrink-0">
               <h2 className="text-lg font-bold text-cyan-400 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5" />
@@ -50,7 +50,7 @@ export function SigintPanel() {
               </span>
             </div>
             {/* Scrollable area - lower z-index to stay below modals */}
-            <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent relative z-0">
+            <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
               {timelinesLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[...Array(4)].map((_, i) => (

@@ -63,7 +63,7 @@ export function AppLayout() {
   ];
 
   return (
-    <div className="h-screen flex flex-col bg-terminal-bg overflow-hidden">
+    <div className="min-h-[100dvh] h-[100dvh] flex flex-col bg-terminal-bg overflow-hidden">
       {/* Header - fixed height, ensure no horizontal overflow but allow dropdowns to overflow */}
       <header className="flex-shrink-0 h-14 bg-terminal-panel border-b border-terminal-border flex items-center justify-between px-2 sm:px-3 md:px-4 gap-1 sm:gap-2 overflow-x-auto overflow-y-visible">
         {/* Left section - Logo + Nav */}
@@ -424,10 +424,41 @@ export function AppLayout() {
       )}
 
       {/* Main content - takes remaining space, no overflow */}
-      <main className="flex-1 min-h-0 overflow-hidden p-6">
+      <main className="flex-1 min-h-0 overflow-hidden p-2 sm:p-4 md:p-6 pb-20 md:pb-6">
         {/* Child panels handle their own scrolling */}
         <Outlet />
       </main>
+
+      {/* Mobile Bottom Tabs (primary navigation on phones) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[60] bg-terminal-panel/95 backdrop-blur border-t border-terminal-border">
+        <div className="flex items-center justify-around px-2 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive =
+              location.pathname === item.path ||
+              (item.path === '/sigint' && location.pathname === '/');
+
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={() => setShowMobileMenu(false)}
+                className={clsx(
+                  'flex flex-col items-center justify-center gap-1 px-3 py-1.5 rounded-lg min-w-[64px]',
+                  isActive
+                    ? 'text-echelon-cyan'
+                    : 'text-terminal-muted hover:text-terminal-text'
+                )}
+              >
+                <Icon className={clsx('w-5 h-5', isActive && 'glow-green')} />
+                <span className={clsx('text-[10px] font-bold', isActive && 'text-echelon-cyan')}>
+                  {item.label}
+                </span>
+              </NavLink>
+            );
+          })}
+        </div>
+      </nav>
 
       {/* Butler Widget - Floating CTA */}
       <ButlerWidget />
