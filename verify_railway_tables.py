@@ -12,9 +12,13 @@ from sqlalchemy import text
 
 async def verify_tables():
     """List all tables and their row counts."""
-    # Use public URL for local connection
+    # Never hardcode credentials. Require DATABASE_URL from the environment.
     if not os.getenv("DATABASE_URL"):
-        os.environ["DATABASE_URL"] = "postgresql://postgres:<PASSWORD>@hopper.proxy.rlwy.net:15300/railway"
+        raise SystemExit(
+            "DATABASE_URL is not set.\n"
+            "Set it to your Railway public Postgres URL, e.g.\n"
+            "  export DATABASE_URL='postgresql://postgres:<PASSWORD>@hopper.proxy.rlwy.net:15300/railway'\n"
+        )
     
     async with async_session_maker() as session:
         # Get all tables

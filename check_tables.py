@@ -43,10 +43,13 @@ async def check_tables():
             print(f"\n⚠️  Could not check Alembic version: {e}")
 
 if __name__ == "__main__":
-    # Use DATABASE_URL from environment or default
+    # Never hardcode credentials. Require DATABASE_URL from the environment.
     if not os.getenv("DATABASE_URL"):
-        print("⚠️  DATABASE_URL not set. Using public Railway URL...")
-        os.environ["DATABASE_URL"] = "postgresql://postgres:<PASSWORD>@hopper.proxy.rlwy.net:15300/railway"
+        raise SystemExit(
+            "DATABASE_URL is not set.\n"
+            "Set it to your Railway public Postgres URL, e.g.\n"
+            "  export DATABASE_URL='postgresql://postgres:<PASSWORD>@hopper.proxy.rlwy.net:15300/railway'\n"
+        )
     
     asyncio.run(check_tables())
 

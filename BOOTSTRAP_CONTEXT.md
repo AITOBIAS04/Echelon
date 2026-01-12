@@ -33,11 +33,11 @@
 ### Blockchain (Testnet)
 - **Chain:** Base Sepolia
 - **Settlement Wallet:** 0xA4885D48e09D62a47Fc5c9Add7eAd130DCBd5688
-- **OnchainKit API:** CHANGE_ME
+- **OnchainKit API:** (set via `NEXT_PUBLIC_ONCHAINKIT_API_KEY`)
 
 ### Coinbase Integration
-- **Commerce API Key:** CHANGE_ME
-- **Webhook Secret:** CHANGE_ME
+- **Commerce API Key:** (set via `COINBASE_COMMERCE_API_KEY`)
+- **Webhook Secret:** (set via `COINBASE_WEBHOOK_SECRET`)
 
 ---
 

@@ -25,6 +25,8 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.bak
+.env.*.bak
 
 # Logs
 npm-debug.log*
