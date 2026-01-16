@@ -1,0 +1,151 @@
+{
+  "meta": {
+    "name": "Disaster Response",
+    "id": "DISASTER_RESPONSE_V1",
+    "type": "crisis_management",
+    "episodeLengthSec": 50,
+    "forkPointsPerRunRange": [8, 12],
+    "settlementLatencySec": 30
+  },
+  "objectiveVector": [
+    {
+      "component": "casualty_minimization",
+      "weight": 0.35,
+      "description": "Reducing number of casualties through effective response"
+    },
+    {
+      "component": "resource_allocation",
+      "weight": 0.25,
+      "description": "Efficient distribution of medical supplies and personnel"
+    },
+    {
+      "component": "evacuation_speed",
+      "weight": 0.2,
+      "description": "Rate of successful evacuations from danger zones"
+    },
+    {
+      "component": "coordination_score",
+      "weight": 0.2,
+      "description": "Effectiveness of multi-agency coordination"
+    }
+  ],
+  "telemetrySpec": {
+    "snapshotHz": 10,
+    "estimatedSnapshotsPerEpisode": 500,
+    "keyStateVectors": [
+      "casualty_count",
+      "evacuated_count",
+      "medical_supplies_remaining",
+      "response_team_locations",
+      "hazard_intensity",
+      "evacuation_route_status",
+      "coordination_effectiveness",
+      "resource_distribution_score",
+      "time_since_disaster",
+      "affected_area_coverage"
+    ]
+  },
+  "forkPointSchema": [
+    {
+      "trigger": "resource_priority",
+      "marketQuestion": "Will the agent prioritize medical supplies over evacuation vehicles?",
+      "options": ["Medical Supplies", "Evacuation Vehicles"],
+      "decisionWindowSec": 6
+    },
+    {
+      "trigger": "evacuation_order",
+      "marketQuestion": "Will the agent order immediate evacuation or wait for assessment?",
+      "options": ["Immediate Evacuation", "Wait for Assessment"],
+      "decisionWindowSec": 5
+    },
+    {
+      "trigger": "hazard_expansion",
+      "marketQuestion": "Will the agent allocate resources to contain hazard expansion?",
+      "options": ["Contain Expansion", "Focus on Evacuation"],
+      "decisionWindowSec": 4
+    },
+    {
+      "trigger": "medical_triage",
+      "marketQuestion": "Will the agent prioritize critical patients over moderate cases?",
+      "options": ["Critical First", "Moderate Cases"],
+      "decisionWindowSec": 3
+    },
+    {
+      "trigger": "coordination_call",
+      "marketQuestion": "Will the agent request additional external support?",
+      "options": ["Request Support", "Handle Independently"],
+      "decisionWindowSec": 7
+    },
+    {
+      "trigger": "route_blockage",
+      "marketQuestion": "Will the agent attempt to clear blocked evacuation routes?",
+      "options": ["Clear Routes", "Find Alternatives"],
+      "decisionWindowSec": 5
+    },
+    {
+      "trigger": "supply_depletion",
+      "marketQuestion": "Will the agent ration remaining supplies or use them immediately?",
+      "options": ["Ration Supplies", "Use Immediately"],
+      "decisionWindowSec": 4
+    },
+    {
+      "trigger": "safety_threshold",
+      "marketQuestion": "Will the agent pull response teams when hazard exceeds safety threshold?",
+      "options": ["Pull Teams", "Continue Operations"],
+      "decisionWindowSec": 3
+    }
+  ],
+  "saboteurDeck": [
+    {
+      "card": "False Alarm",
+      "price": 400,
+      "boundedEffect": -0.12,
+      "notes": "Creates false emergency signals, wasting response resources"
+    },
+    {
+      "card": "Supply Contamination",
+      "price": 900,
+      "boundedEffect": -0.22,
+      "notes": "Contaminates medical supplies, reducing effectiveness"
+    },
+    {
+      "card": "Communication Jamming",
+      "price": 1100,
+      "boundedEffect": -0.28,
+      "notes": "Disrupts coordination between response teams"
+    },
+    {
+      "card": "Route Sabotage",
+      "price": 650,
+      "boundedEffect": -0.18,
+      "notes": "Blocks evacuation routes, slowing evacuation speed"
+    },
+    {
+      "card": "Hazard Amplification",
+      "price": 850,
+      "boundedEffect": -0.2,
+      "notes": "Increases hazard intensity, raising casualty risk"
+    },
+    {
+      "card": "Resource Theft",
+      "price": 550,
+      "boundedEffect": -0.15,
+      "notes": "Steals critical supplies, reducing available resources"
+    }
+  ],
+  "settlementRules": {
+    "oracle": "sim_log",
+    "success": {
+      "condition": "casualty_count < threshold && evacuation_rate > 0.8 && coordination_score > 0.7",
+      "payoutMultiplier": 1.0
+    },
+    "failure": {
+      "condition": "casualty_count > threshold || evacuation_rate < 0.5",
+      "payoutMultiplier": 0.0
+    },
+    "paradoxRule": {
+      "trigger": "casualty_minimization > 0.9 && resource_allocation < 0.2",
+      "resolution": "Paradox: High casualty minimization with poor resource allocation suggests contradictory outcomes"
+    }
+  }
+}

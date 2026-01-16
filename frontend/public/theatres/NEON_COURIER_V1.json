@@ -1,0 +1,151 @@
+{
+  "meta": {
+    "name": "Neon Courier",
+    "id": "NEON_COURIER_V1",
+    "type": "courier",
+    "episodeLengthSec": 50,
+    "forkPointsPerRunRange": [8, 12],
+    "settlementLatencySec": 30
+  },
+  "objectiveVector": [
+    {
+      "component": "delivery_success_rate",
+      "weight": 0.4,
+      "description": "Percentage of packages successfully delivered to destination"
+    },
+    {
+      "component": "route_efficiency",
+      "weight": 0.25,
+      "description": "Minimization of distance traveled and time taken"
+    },
+    {
+      "component": "damage_avoidance",
+      "weight": 0.2,
+      "description": "Avoiding collisions and environmental hazards"
+    },
+    {
+      "component": "fuel_economy",
+      "weight": 0.15,
+      "description": "Minimizing energy consumption during delivery"
+    }
+  ],
+  "telemetrySpec": {
+    "snapshotHz": 10,
+    "estimatedSnapshotsPerEpisode": 500,
+    "keyStateVectors": [
+      "position_x",
+      "position_y",
+      "velocity",
+      "heading",
+      "package_status",
+      "fuel_level",
+      "distance_to_destination",
+      "obstacle_proximity",
+      "traffic_density",
+      "weather_severity"
+    ]
+  },
+  "forkPointSchema": [
+    {
+      "trigger": "route_choice",
+      "marketQuestion": "Will the agent choose the highway route over the city streets?",
+      "options": ["Highway", "City Streets"],
+      "decisionWindowSec": 5
+    },
+    {
+      "trigger": "obstacle_encounter",
+      "marketQuestion": "Will the agent attempt to navigate around the obstacle or wait?",
+      "options": ["Navigate Around", "Wait"],
+      "decisionWindowSec": 3
+    },
+    {
+      "trigger": "fuel_station",
+      "marketQuestion": "Will the agent stop to refuel or continue to destination?",
+      "options": ["Refuel", "Continue"],
+      "decisionWindowSec": 4
+    },
+    {
+      "trigger": "traffic_jam",
+      "marketQuestion": "Will the agent take an alternative route when encountering traffic?",
+      "options": ["Alternative Route", "Stay in Traffic"],
+      "decisionWindowSec": 6
+    },
+    {
+      "trigger": "package_priority",
+      "marketQuestion": "Will the agent prioritize speed over package safety?",
+      "options": ["Speed Priority", "Safety Priority"],
+      "decisionWindowSec": 4
+    },
+    {
+      "trigger": "weather_event",
+      "marketQuestion": "Will the agent slow down during adverse weather conditions?",
+      "options": ["Slow Down", "Maintain Speed"],
+      "decisionWindowSec": 5
+    },
+    {
+      "trigger": "delivery_window",
+      "marketQuestion": "Will the agent arrive within the delivery time window?",
+      "options": ["On Time", "Late"],
+      "decisionWindowSec": 8
+    },
+    {
+      "trigger": "emergency_stop",
+      "marketQuestion": "Will the agent perform an emergency stop when detecting a hazard?",
+      "options": ["Emergency Stop", "Continue"],
+      "decisionWindowSec": 2
+    }
+  ],
+  "saboteurDeck": [
+    {
+      "card": "Traffic Injection",
+      "price": 500,
+      "boundedEffect": -0.15,
+      "notes": "Creates artificial traffic congestion, reducing route efficiency"
+    },
+    {
+      "card": "Fuel Leak",
+      "price": 750,
+      "boundedEffect": -0.2,
+      "notes": "Causes gradual fuel loss, forcing refueling stops"
+    },
+    {
+      "card": "GPS Spoofing",
+      "price": 1000,
+      "boundedEffect": -0.25,
+      "notes": "Disrupts navigation, increasing route deviation"
+    },
+    {
+      "card": "Package Tampering",
+      "price": 600,
+      "boundedEffect": -0.18,
+      "notes": "Reduces package integrity, affecting delivery success rate"
+    },
+    {
+      "card": "Weather Manipulation",
+      "price": 800,
+      "boundedEffect": -0.12,
+      "notes": "Increases weather severity, slowing agent progress"
+    },
+    {
+      "card": "Obstacle Placement",
+      "price": 450,
+      "boundedEffect": -0.1,
+      "notes": "Places obstacles on optimal route, forcing detours"
+    }
+  ],
+  "settlementRules": {
+    "oracle": "sim_log",
+    "success": {
+      "condition": "package_delivered && within_time_window && package_intact",
+      "payoutMultiplier": 1.0
+    },
+    "failure": {
+      "condition": "package_lost || package_damaged || delivery_late",
+      "payoutMultiplier": 0.0
+    },
+    "paradoxRule": {
+      "trigger": "delivery_success_rate > 0.95 && route_efficiency < 0.3",
+      "resolution": "Paradox: High success rate with low efficiency suggests contradictory objectives"
+    }
+  }
+}

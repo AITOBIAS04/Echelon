@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Radio, Activity, Shield, Database, Target, Eye } from 'lucide-react';
+import { Radio, Activity, Shield, Database, Target, Eye, Layers } from 'lucide-react';
 import { WhaleWatch } from './WhaleWatch';
 import { TimelineHealthPanel } from './TimelineHealthPanel';
 import { WarChest } from './WarChest';
 import { GravityField } from './GravityField';
 import { TaskForce } from './TaskForce';
+import { TheatreLibrary } from './TheatreLibrary';
 import { clsx } from 'clsx';
 
-type TabType = 'intercepts' | 'health' | 'warchest' | 'gravity' | 'taskforce';
+type TabType = 'intercepts' | 'health' | 'warchest' | 'gravity' | 'taskforce' | 'theatres';
 
 export function Blackbox() {
   const [activeTab, setActiveTab] = useState<TabType>('intercepts');
@@ -25,6 +26,7 @@ export function Blackbox() {
     { id: 'warchest' as TabType, label: 'WAR CHEST', icon: Shield },
     { id: 'gravity' as TabType, label: 'GRAVITY FIELD', icon: Target },
     { id: 'taskforce' as TabType, label: 'TASK FORCE', icon: Eye },
+    { id: 'theatres' as TabType, label: 'THEATRES', icon: Layers },
   ];
 
   return (
@@ -103,6 +105,7 @@ export function Blackbox() {
           {activeTab === 'warchest' && <WarChest />}
           {activeTab === 'gravity' && <GravityField />}
           {activeTab === 'taskforce' && <TaskForce />}
+          {activeTab === 'theatres' && <TheatreLibrary />}
         </div>
 
         {/* Blinking Cursor */}
