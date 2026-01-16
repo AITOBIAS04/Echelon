@@ -205,3 +205,15 @@ export type {
   GraphEdge,
   EntityGraph,
 } from './graph';
+
+// ============================================
+// PRESETS
+// ============================================
+
+export type {
+  WatchlistSortKey,
+  WatchlistSortDir,
+  WatchlistFilterConfig,
+  AlertRule,
+  WatchlistSavedView,
+} from './presets';
