@@ -3,7 +3,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import { SigintPanel } from './components/sigint/SigintPanel';
 import { FieldKit } from './components/fieldkit/FieldKit';
 import { Blackbox } from './components/blackbox/Blackbox';
-import { TimelineDetail } from './components/timeline/TimelineDetail';
+import { TimelineDetailPage } from './pages/TimelineDetailPage';
 import { AgentRoster } from './components/agents/AgentRoster';
 import { AgentDetail } from './components/agents/AgentDetail';
 
@@ -30,7 +30,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'timeline/:timelineId',
-        element: <TimelineDetail />,
+        element: <TimelineDetailPage />,
       },
       {
         path: 'agents',
