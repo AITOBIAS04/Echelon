@@ -1,10 +1,15 @@
 """
-Echelon Database Seeder - Enhanced Edition
-==========================================
+Echelon Database Seeder - Deterministic Edition
+================================================
 Full demo data: 12 genesis agents, 10 timelines, 3 paradoxes, 75 wing flaps
+
+This seeder is deterministic - running it multiple times produces the same data.
+All IDs, names, and values are fixed (no random generation).
 
 Run with: python -m backend.scripts.seed_database
 Or with auto-reseed: python -m backend.scripts.seed_database --force
+
+For fixtures-based seeding: python -m backend.scripts.seed_database --fixtures data/seed/fixtures/
 """
 
 import asyncio

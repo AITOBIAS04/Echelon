@@ -51,6 +51,8 @@ Thumbs.db
 *.pid
 *.seed
 *.pid.lock
+*.tmp
+*.temp
 
 # Project-specific
 backend/.env
@@ -59,5 +61,22 @@ backend/__pycache__/
 backend/**/__pycache__/
 backend/snapshots/
 data/snapshots/
+
+# Database files (all variants) - NEVER commit database files!
 *.db
+*.db.nosync
+*.sqlite
+*.sqlite3
+database.db
+database.db.nosync
+backend/database.db
+backend/database.db.nosync
+dev.db
+test.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Seed fixtures directory contains SQL/JSON fixtures (these ARE committed)
+# But actual generated database files should never be committed
 

@@ -1,4 +1,15 @@
 {
+  "name": "prediction-market-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "cd frontend && pnpm dev",
+    "dev:frontend": "cd frontend && pnpm dev",
+    "dev:backend": "cd backend && python -m uvicorn main:app --reload",
+    "build": "cd frontend && pnpm build",
+    "build:frontend": "cd frontend && pnpm build",
+    "lint": "cd frontend && pnpm lint"
+  },
   "dependencies": {
     "react-globe.gl": "^2.37.0",
     "three": "^0.181.2"
