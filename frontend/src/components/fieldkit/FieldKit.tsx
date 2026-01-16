@@ -1,14 +1,15 @@
 import { useState, type ComponentType } from 'react';
-import { Briefcase, TrendingUp, Bot, GitBranch, Eye, Zap, Database } from 'lucide-react';
+import { Briefcase, TrendingUp, Bot, GitBranch, Eye, Zap, Database, Share2 } from 'lucide-react';
 import { MyPositions } from './MyPositions';
 import { MyAgents } from './MyAgents';
 import { GhostForks } from './GhostForks';
 import { Watchlist } from './Watchlist';
 import { FounderYield } from './FounderYield';
 import { ExportConsole } from '../exports/ExportConsole';
+import { EntityGraphView } from '../graph/EntityGraphView';
 import { clsx } from 'clsx';
 
-type TabId = 'positions' | 'agents' | 'forks' | 'watchlist' | 'yield' | 'exports';
+type TabId = 'positions' | 'agents' | 'forks' | 'watchlist' | 'yield' | 'exports' | 'graph';
 
 interface Tab {
   id: TabId;
@@ -22,6 +23,7 @@ const tabs: Tab[] = [
   { id: 'agents', label: 'My Agents', icon: Bot },
   { id: 'forks', label: 'Private Forks', icon: GitBranch },
   { id: 'watchlist', label: 'Watchlist', icon: Eye },
+  { id: 'graph', label: 'Graph', icon: Share2 },
   { id: 'exports', label: 'Exports', icon: Database },
 ];
 
@@ -104,6 +106,7 @@ export function FieldKit() {
         {activeTab === 'agents' && <MyAgents />}
         {activeTab === 'forks' && <GhostForks />}
         {activeTab === 'watchlist' && <Watchlist />}
+        {activeTab === 'graph' && <EntityGraphView />}
         {activeTab === 'exports' && <ExportConsole />}
       </div>
     </div>
