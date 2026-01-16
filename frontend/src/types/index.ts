@@ -151,3 +151,19 @@ export type {
 
 // Export TimelineParadoxStatus to avoid conflict with ParadoxStatus type union
 export type { ParadoxStatus as TimelineParadoxStatus } from './timeline-detail';
+
+// ============================================
+// BREACH
+// ============================================
+
+export type {
+  BreachSeverity,
+  BreachCategory,
+  Breach,
+  AffectedTimeline,
+  AffectedAgent,
+  Beneficiary,
+  EvidenceChange,
+  SuggestedAction,
+  BreachStats,
+} from './breach';
