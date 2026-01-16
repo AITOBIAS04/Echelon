@@ -133,3 +133,21 @@ export type {
   WatchlistFilter,
   WatchlistState,
 } from './watchlist';
+
+// ============================================
+// TIMELINE DETAIL
+// ============================================
+
+export type {
+  TimelineDetail,
+  TimelineHealthSnapshot,
+  ForkEvent,
+  ForkOption,
+  SabotageEvent,
+  EvidenceEntry,
+  ExtractionAttempt,
+  UserPosition,
+} from './timeline-detail';
+
+// Export TimelineParadoxStatus to avoid conflict with ParadoxStatus type union
+export type { ParadoxStatus as TimelineParadoxStatus } from './timeline-detail';
