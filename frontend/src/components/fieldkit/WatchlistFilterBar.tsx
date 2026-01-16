@@ -63,7 +63,6 @@ export function WatchlistFilterBar({
   const activeColor = '#00FF41'; // green
   const inactiveBorder = '#333';
   const inactiveText = '#666';
-  const inactiveTextHover = '#999';
 
   return (
     <div className="flex items-center gap-2">
