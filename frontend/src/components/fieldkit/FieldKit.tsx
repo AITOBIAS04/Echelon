@@ -1,5 +1,5 @@
 import { useState, type ComponentType } from 'react';
-import { Briefcase, TrendingUp, Bot, GitBranch, Eye, Zap, Database, Share2 } from 'lucide-react';
+import { Briefcase, TrendingUp, Bot, GitBranch, Eye, Zap, Database, Share2, Activity } from 'lucide-react';
 import { MyPositions } from './MyPositions';
 import { MyAgents } from './MyAgents';
 import { GhostForks } from './GhostForks';
@@ -7,9 +7,10 @@ import { Watchlist } from './Watchlist';
 import { FounderYield } from './FounderYield';
 import { ExportConsole } from '../exports/ExportConsole';
 import { EntityGraphView } from '../graph/EntityGraphView';
+import { OverviewTab } from './OverviewTab';
 import { clsx } from 'clsx';
 
-type TabId = 'positions' | 'agents' | 'forks' | 'watchlist' | 'yield' | 'exports' | 'graph';
+type TabId = 'overview' | 'positions' | 'agents' | 'forks' | 'watchlist' | 'yield' | 'exports' | 'graph';
 
 interface Tab {
   id: TabId;
@@ -18,6 +19,7 @@ interface Tab {
 }
 
 const tabs: Tab[] = [
+  { id: 'overview', label: 'Overview', icon: Activity },
   { id: 'yield', label: "Founder's Yield", icon: Zap },
   { id: 'positions', label: 'My Positions', icon: TrendingUp },
   { id: 'agents', label: 'My Agents', icon: Bot },
@@ -28,7 +30,7 @@ const tabs: Tab[] = [
 ];
 
 export function FieldKit() {
-  const [activeTab, setActiveTab] = useState<TabId>('positions');
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
 
   // Mock P&L data - replace with real API
   const totalPnL = 12450.75;
@@ -101,6 +103,7 @@ export function FieldKit() {
 
       {/* Tab Content */}
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+        {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'yield' && <FounderYield />}
         {activeTab === 'positions' && <MyPositions />}
         {activeTab === 'agents' && <MyAgents />}

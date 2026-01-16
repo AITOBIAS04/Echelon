@@ -54,6 +54,21 @@ export async function getForkReplay(pointer: ReplayPointer): Promise<ForkReplay>
   // Simulate network delay
   await new Promise((resolve) => setTimeout(resolve, 150));
   
+  // Handle 'latest' forkId - in production, would resolve to actual latest fork ID
+  // For MVP, if forkId is 'latest', we'll simulate a scenario where replay might not be available
+  if (pointer.forkId === 'latest') {
+    // Mock: Some timelines might not have replays available yet
+    // In production, this would check if there's an actual latest fork
+    const hasReplay = Math.random() > 0.3; // 70% chance of having replay
+    
+    if (!hasReplay) {
+      throw new Error('Replay not available for this timeline yet');
+    }
+    
+    // If available, use a mock fork ID
+    pointer = { ...pointer, forkId: 'fork_latest_mock' };
+  }
+  
   const now = new Date();
   const openedAt = new Date(now.getTime() - 2 * 60 * 60 * 1000); // 2 hours ago
   const lockedAt = new Date(now.getTime() - 1.5 * 60 * 60 * 1000); // 1.5 hours ago

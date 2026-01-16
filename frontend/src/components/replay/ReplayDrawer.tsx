@@ -239,7 +239,11 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
           {error && (
             <div className="bg-red-500/20 border border-red-500 rounded-lg p-4">
               <p className="text-sm text-red-500 font-semibold mb-1">Error</p>
-              <p className="text-xs text-terminal-muted">{error}</p>
+              <p className="text-xs text-terminal-muted">
+                {error === 'Replay not available for this timeline yet'
+                  ? 'Replay not available for this timeline yet'
+                  : error}
+              </p>
             </div>
           )}
 
