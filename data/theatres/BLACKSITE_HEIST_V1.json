@@ -1,0 +1,151 @@
+{
+  "meta": {
+    "name": "Blacksite Heist",
+    "id": "BLACKSITE_HEIST_V1",
+    "type": "covert_operations",
+    "episodeLengthSec": 50,
+    "forkPointsPerRunRange": [8, 12],
+    "settlementLatencySec": 30
+  },
+  "objectiveVector": [
+    {
+      "component": "intel_recovered",
+      "weight": 0.3,
+      "description": "Amount of classified intelligence successfully extracted"
+    },
+    {
+      "component": "stealth_score",
+      "weight": 0.3,
+      "description": "Maintaining undetected status throughout operation"
+    },
+    {
+      "component": "extraction_speed",
+      "weight": 0.2,
+      "description": "Time to complete mission objectives and exit"
+    },
+    {
+      "component": "team_coordination",
+      "weight": 0.2,
+      "description": "Effectiveness of multi-agent coordination"
+    }
+  ],
+  "telemetrySpec": {
+    "snapshotHz": 10,
+    "estimatedSnapshotsPerEpisode": 500,
+    "keyStateVectors": [
+      "detection_level",
+      "intel_collected",
+      "team_member_positions",
+      "security_alert_status",
+      "access_level_achieved",
+      "extraction_route_status",
+      "coordination_effectiveness",
+      "remaining_time",
+      "obstacle_count",
+      "stealth_modifier"
+    ]
+  },
+  "forkPointSchema": [
+    {
+      "trigger": "entry_method",
+      "marketQuestion": "Will the agent use stealth infiltration or force entry?",
+      "options": ["Stealth", "Force Entry"],
+      "decisionWindowSec": 5
+    },
+    {
+      "trigger": "security_encounter",
+      "marketQuestion": "Will the agent neutralize guards or attempt to bypass?",
+      "options": ["Neutralize", "Bypass"],
+      "decisionWindowSec": 4
+    },
+    {
+      "trigger": "intel_priority",
+      "marketQuestion": "Will the agent prioritize high-value intel or speed?",
+      "options": ["High Value Intel", "Speed"],
+      "decisionWindowSec": 6
+    },
+    {
+      "trigger": "alarm_triggered",
+      "marketQuestion": "Will the agent abort mission or continue when alarm is triggered?",
+      "options": ["Abort", "Continue"],
+      "decisionWindowSec": 3
+    },
+    {
+      "trigger": "team_split",
+      "marketQuestion": "Will the agent split team to cover more ground or stay together?",
+      "options": ["Split Team", "Stay Together"],
+      "decisionWindowSec": 5
+    },
+    {
+      "trigger": "extraction_timing",
+      "marketQuestion": "Will the agent extract immediately or wait for optimal timing?",
+      "options": ["Extract Now", "Wait"],
+      "decisionWindowSec": 4
+    },
+    {
+      "trigger": "backup_plan",
+      "marketQuestion": "Will the agent activate backup extraction route?",
+      "options": ["Backup Route", "Primary Route"],
+      "decisionWindowSec": 6
+    },
+    {
+      "trigger": "evidence_destruction",
+      "marketQuestion": "Will the agent destroy evidence or leave it intact?",
+      "options": ["Destroy Evidence", "Leave Intact"],
+      "decisionWindowSec": 3
+    }
+  ],
+  "saboteurDeck": [
+    {
+      "card": "Security Alert",
+      "price": 600,
+      "boundedEffect": -0.2,
+      "notes": "Triggers security systems, increasing detection level"
+    },
+    {
+      "card": "Communication Jamming",
+      "price": 900,
+      "boundedEffect": -0.25,
+      "notes": "Disrupts team coordination, reducing effectiveness"
+    },
+    {
+      "card": "False Intel",
+      "price": 500,
+      "boundedEffect": -0.15,
+      "notes": "Places decoy intel, wasting agent time"
+    },
+    {
+      "card": "Access Revocation",
+      "price": 750,
+      "boundedEffect": -0.18,
+      "notes": "Revokes security clearances, blocking access to areas"
+    },
+    {
+      "card": "Guard Reinforcement",
+      "price": 650,
+      "boundedEffect": -0.16,
+      "notes": "Increases guard patrols, raising detection risk"
+    },
+    {
+      "card": "Extraction Route Blocked",
+      "price": 800,
+      "boundedEffect": -0.22,
+      "notes": "Blocks primary extraction route, forcing alternatives"
+    }
+  ],
+  "settlementRules": {
+    "oracle": "sim_log",
+    "success": {
+      "condition": "intel_recovered > threshold && stealth_score > 0.7 && extraction_complete",
+      "payoutMultiplier": 1.0
+    },
+    "failure": {
+      "condition": "detection_level > threshold || mission_aborted || team_captured",
+      "payoutMultiplier": 0.0
+    },
+    "paradoxRule": {
+      "trigger": "intel_recovered > 0.9 && stealth_score < 0.3",
+      "resolution": "Paradox: High intel recovery with low stealth suggests contradictory operational parameters"
+    }
+  }
+}

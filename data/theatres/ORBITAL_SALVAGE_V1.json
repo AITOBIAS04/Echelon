@@ -1,0 +1,153 @@
+{
+  "meta": {
+    "name": "Orbital Salvage",
+    "id": "ORBITAL_SALVAGE_V1",
+    "type": "space_operations",
+    "episodeLengthSec": 50,
+    "forkPointsPerRunRange": [8, 12],
+    "settlementLatencySec": 30
+  },
+  "objectiveVector": [
+    {
+      "component": "salvage_value_recovered",
+      "weight": 0.35,
+      "description": "Total value of salvaged materials and components"
+    },
+    {
+      "component": "fuel_efficiency",
+      "weight": 0.25,
+      "description": "Minimizing propellant consumption during operations"
+    },
+    {
+      "component": "collision_avoidance",
+      "weight": 0.2,
+      "description": "Avoiding collisions with debris and structures"
+    },
+    {
+      "component": "precision_docking",
+      "weight": 0.2,
+      "description": "Accuracy of docking maneuvers with target objects"
+    }
+  ],
+  "telemetrySpec": {
+    "snapshotHz": 10,
+    "estimatedSnapshotsPerEpisode": 500,
+    "keyStateVectors": [
+      "position_x",
+      "position_y",
+      "position_z",
+      "velocity_x",
+      "velocity_y",
+      "velocity_z",
+      "fuel_remaining",
+      "target_proximity",
+      "debris_density",
+      "salvage_inventory",
+      "docking_status",
+      "structural_integrity"
+    ]
+  },
+  "forkPointSchema": [
+    {
+      "trigger": "approach_strategy",
+      "marketQuestion": "Will the agent use a direct approach or orbital rendezvous?",
+      "options": ["Direct Approach", "Orbital Rendezvous"],
+      "decisionWindowSec": 6
+    },
+    {
+      "trigger": "debris_field",
+      "marketQuestion": "Will the agent navigate through debris or take a longer route?",
+      "options": ["Navigate Through", "Longer Route"],
+      "decisionWindowSec": 5
+    },
+    {
+      "trigger": "salvage_priority",
+      "marketQuestion": "Will the agent prioritize high-value items over quantity?",
+      "options": ["High Value", "Quantity"],
+      "decisionWindowSec": 4
+    },
+    {
+      "trigger": "fuel_management",
+      "marketQuestion": "Will the agent conserve fuel or use aggressive maneuvers?",
+      "options": ["Conserve Fuel", "Aggressive Maneuvers"],
+      "decisionWindowSec": 5
+    },
+    {
+      "trigger": "docking_method",
+      "marketQuestion": "Will the agent use automated docking or manual control?",
+      "options": ["Automated", "Manual"],
+      "decisionWindowSec": 4
+    },
+    {
+      "trigger": "structural_assessment",
+      "marketQuestion": "Will the agent assess structural integrity before docking?",
+      "options": ["Assess First", "Dock Immediately"],
+      "decisionWindowSec": 6
+    },
+    {
+      "trigger": "inventory_limit",
+      "marketQuestion": "Will the agent return to base when inventory is full or continue?",
+      "options": ["Return to Base", "Continue Salvaging"],
+      "decisionWindowSec": 7
+    },
+    {
+      "trigger": "emergency_abort",
+      "marketQuestion": "Will the agent abort mission when detecting critical system failure?",
+      "options": ["Abort Mission", "Continue Mission"],
+      "decisionWindowSec": 3
+    }
+  ],
+  "saboteurDeck": [
+    {
+      "card": "Debris Swarm",
+      "price": 700,
+      "boundedEffect": -0.18,
+      "notes": "Increases debris density, raising collision risk"
+    },
+    {
+      "card": "Fuel Leak",
+      "price": 950,
+      "boundedEffect": -0.25,
+      "notes": "Causes propellant loss, reducing operational time"
+    },
+    {
+      "card": "Navigation Drift",
+      "price": 800,
+      "boundedEffect": -0.2,
+      "notes": "Introduces navigation errors, affecting precision"
+    },
+    {
+      "card": "Target Destabilization",
+      "price": 600,
+      "boundedEffect": -0.15,
+      "notes": "Destabilizes target object, making docking difficult"
+    },
+    {
+      "card": "Sensor Interference",
+      "price": 750,
+      "boundedEffect": -0.17,
+      "notes": "Disrupts sensor readings, reducing situational awareness"
+    },
+    {
+      "card": "Structural Weakening",
+      "price": 850,
+      "boundedEffect": -0.22,
+      "notes": "Weakens salvage target structure, reducing recoverable value"
+    }
+  ],
+  "settlementRules": {
+    "oracle": "sim_log",
+    "success": {
+      "condition": "salvage_value > threshold && fuel_efficiency > 0.6 && no_collisions",
+      "payoutMultiplier": 1.0
+    },
+    "failure": {
+      "condition": "collision_detected || fuel_depleted || structural_failure",
+      "payoutMultiplier": 0.0
+    },
+    "paradoxRule": {
+      "trigger": "salvage_value_recovered > 0.9 && fuel_efficiency < 0.3",
+      "resolution": "Paradox: High salvage recovery with poor fuel efficiency suggests contradictory performance metrics"
+    }
+  }
+}
