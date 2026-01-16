@@ -1,10 +1,15 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { Play } from 'lucide-react';
 import type { ForkEvent, ForkOption } from '../../types/timeline-detail';
+import type { ReplayPointer } from '../../types/replay';
+import { ReplayDrawer } from '../replay/ReplayDrawer';
 
 /**
  * ForkTape Props
  */
 export interface ForkTapeProps {
+  /** Timeline identifier */
+  timelineId: string;
   /** Array of fork events */
   forks: ForkEvent[];
   /** Callback when a fork card is clicked */
@@ -134,10 +139,12 @@ function getStatusColor(status: ForkEvent['status']): string {
  * 
  * Displays a live feed of fork events with filtering and mini sparklines.
  */
-export function ForkTape({ forks, onForkClick }: ForkTapeProps) {
+export function ForkTape({ timelineId, forks, onForkClick }: ForkTapeProps) {
   const [activeFilter, setActiveFilter] = useState<ForkFilter>('all');
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [, setTimeNow] = useState(Date.now());
+  const [replayOpen, setReplayOpen] = useState(false);
+  const [replayPointer, setReplayPointer] = useState<ReplayPointer | null>(null);
 
   // Update time every second for countdowns (triggers re-render)
   useEffect(() => {
@@ -169,6 +176,17 @@ export function ForkTape({ forks, onForkClick }: ForkTapeProps) {
     if (onForkClick) {
       onForkClick(forkId);
     }
+  };
+
+  const handleReplayClick = (e: React.MouseEvent, forkId: string) => {
+    e.stopPropagation(); // Prevent triggering fork card click
+    setReplayPointer({ timelineId, forkId });
+    setReplayOpen(true);
+  };
+
+  const handleCloseReplay = () => {
+    setReplayOpen(false);
+    setReplayPointer(null);
   };
 
   return (
@@ -269,11 +287,29 @@ export function ForkTape({ forks, onForkClick }: ForkTapeProps) {
                     </div>
                   ))}
                 </div>
+
+                {/* Replay Button */}
+                <div className="mt-3 pt-3 border-t border-[#1A1A1A]">
+                  <button
+                    onClick={(e) => handleReplayClick(e, fork.id)}
+                    className="flex items-center gap-2 px-3 py-1.5 w-full bg-terminal-bg border border-terminal-border rounded text-xs font-medium text-terminal-text hover:border-echelon-cyan hover:text-echelon-cyan transition-colors"
+                  >
+                    <Play className="w-3 h-3" />
+                    REPLAY
+                  </button>
+                </div>
               </div>
             );
           })
         )}
       </div>
+
+      {/* Replay Drawer */}
+      <ReplayDrawer
+        open={replayOpen}
+        onClose={handleCloseReplay}
+        pointer={replayPointer}
+      />
     </div>
   );
 }

@@ -131,7 +131,7 @@ export function TimelineDetailPage() {
             </div>
 
             {/* Row 2: Fork Tape */}
-            <ForkTape forks={data.forkTape} onForkClick={handleForkClick} />
+            <ForkTape timelineId={data.id} forks={data.forkTape} onForkClick={handleForkClick} />
 
             {/* Row 3: Sabotage History + Evidence Ledger */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
