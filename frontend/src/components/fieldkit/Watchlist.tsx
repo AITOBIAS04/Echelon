@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Plus, AlertCircle } from 'lucide-react';
+import { Eye, Plus, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useWatchlist, getFilteredCount } from '../../hooks/useWatchlist';
+import { usePresets } from '../../hooks/usePresets';
 import type { WatchlistFilter } from '../../types/watchlist';
+import type { WatchlistSavedView } from '../../types/presets';
 import { WatchlistFilterBar } from './WatchlistFilterBar';
 import { WatchlistRow } from './WatchlistRow';
+import { SavedViewsBar } from '../watchlist/SavedViewsBar';
+import { SavedViewEditorModal } from '../watchlist/SavedViewEditorModal';
+import { AlertRulesPanel } from '../watchlist/AlertRulesPanel';
+import { applyFilter, applySort } from '../../utils/watchlistFilters';
+import { evaluateAlerts, type AlertTrigger } from '../../utils/alertEvaluator';
 
 /**
  * Skeleton Row Component
@@ -46,19 +53,59 @@ function SkeletonRow() {
 export function Watchlist() {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<WatchlistFilter>('all');
-  
-  // Fetch filtered watchlist data
+  const [showAlertPanel, setShowAlertPanel] = useState(false);
+  const [alerts, setAlerts] = useState<AlertTrigger[]>([]);
+  const [editingView, setEditingView] = useState<WatchlistSavedView | null>(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+
+  // Presets hook
+  const {
+    views,
+    selectedView,
+    selectedViewId,
+    selectView,
+    createView: createPresetView,
+    updateView: updatePresetView,
+    deleteView: deletePresetView,
+    isInitialized,
+  } = usePresets();
+
+  // Fetch all timelines (we'll apply filters/sorting client-side)
   const { 
-    data: filteredTimelines, 
+    data: allTimelines, 
     isLoading, 
     isError, 
     error,
     refetch 
-  } = useWatchlist(activeFilter);
-  
-  // Fetch all timelines for filter counts
-  const { data: allTimelines } = useWatchlist('all');
-  
+  } = useWatchlist('all');
+
+  // Apply view filter and sort if a view is selected
+  const processedTimelines = useMemo(() => {
+    if (!allTimelines || !isInitialized) return allTimelines || [];
+
+    let result = [...allTimelines];
+
+    // Apply saved view filter if selected
+    if (selectedView) {
+      result = applyFilter(result, selectedView.filter);
+      result = applySort(result, selectedView.sort.key, selectedView.sort.dir);
+    } else {
+      // Fall back to legacy filter
+      result = result.filter((t) => {
+        switch (activeFilter) {
+          case 'all': return true;
+          case 'brittle': return t.logicGap >= 40 && t.logicGap < 60;
+          case 'paradox-watch': return t.logicGap >= 60 || t.logicGapTrend === 'widening';
+          case 'high-entropy': return t.entropyRate < -3;
+          case 'under-attack': return t.sabotageCount1h >= 3;
+          default: return true;
+        }
+      });
+    }
+
+    return result;
+  }, [allTimelines, selectedView, activeFilter, isInitialized]);
+
   // Calculate counts for each filter
   const counts = {
     'all': allTimelines?.length || 0,
@@ -67,6 +114,25 @@ export function Watchlist() {
     'high-entropy': getFilteredCount(allTimelines || [], 'high-entropy'),
     'under-attack': getFilteredCount(allTimelines || [], 'under-attack'),
   };
+
+  // Evaluate alerts every 10 seconds
+  useEffect(() => {
+    if (!allTimelines || !selectedView || !isInitialized) return;
+
+    const evaluate = () => {
+      const triggers = evaluateAlerts(allTimelines, selectedView.alertRules);
+      setAlerts(triggers);
+
+      // Log to console
+      triggers.forEach((trigger) => {
+        console.log(`ALERT: ${trigger.ruleName} triggered on ${trigger.timelineName}`);
+      });
+    };
+
+    evaluate();
+    const interval = setInterval(evaluate, 10000); // 10 seconds
+    return () => clearInterval(interval);
+  }, [allTimelines, selectedView, isInitialized]);
 
   const handleRemove = (id: string) => {
     // TODO: Implement remove from watchlist API call
@@ -77,8 +143,58 @@ export function Watchlist() {
     navigate(`/timeline/${id}`);
   };
 
+  const handleNewView = () => {
+    setEditingView(null);
+    setIsEditorOpen(true);
+  };
+
+  const handleEditView = (id: string) => {
+    const view = views.find((v) => v.id === id);
+    if (view) {
+      setEditingView(view);
+      setIsEditorOpen(true);
+    }
+  };
+
+  const handleSaveView = (view: WatchlistSavedView) => {
+    if (view.id.startsWith('view_') && !views.find((v) => v.id === view.id)) {
+      // New view
+      createPresetView({
+        name: view.name,
+        sort: view.sort,
+        filter: view.filter,
+        alertRules: view.alertRules,
+      });
+    } else {
+      // Update existing
+      updatePresetView(view.id, {
+        name: view.name,
+        sort: view.sort,
+        filter: view.filter,
+        alertRules: view.alertRules,
+        updatedAt: view.updatedAt,
+      });
+    }
+    setIsEditorOpen(false);
+    setEditingView(null);
+  };
+
+  const handleDeleteView = (id: string) => {
+    deletePresetView(id);
+  };
+
+  const handleUpdateView = (updatedView: WatchlistSavedView) => {
+    updatePresetView(updatedView.id, {
+      name: updatedView.name,
+      sort: updatedView.sort,
+      filter: updatedView.filter,
+      alertRules: updatedView.alertRules,
+      updatedAt: updatedView.updatedAt,
+    });
+  };
+
   return (
-    <div className="h-full flex flex-col p-4 gap-4">
+    <div className="h-full flex flex-col p-4 gap-4 relative">
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
@@ -92,20 +208,64 @@ export function Watchlist() {
             }
           </p>
         </div>
-        <button className="flex items-center gap-2 px-3 py-1.5 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-echelon-cyan transition">
-          <Plus className="w-3 h-3" />
-          Add Timeline
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAlertPanel(!showAlertPanel)}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-echelon-cyan transition"
+          >
+            {showAlertPanel ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+            Alerts {alerts.length > 0 && `(${alerts.length})`}
+          </button>
+          <button className="flex items-center gap-2 px-3 py-1.5 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-echelon-cyan transition">
+            <Plus className="w-3 h-3" />
+            Add Timeline
+          </button>
+        </div>
       </div>
 
+      {/* Saved Views Bar */}
+      {isInitialized && (
+        <div>
+          <SavedViewsBar
+            views={views}
+            selectedViewId={selectedViewId}
+            onSelectView={selectView}
+            onNewView={handleNewView}
+            onEditView={handleEditView}
+            onDeleteView={handleDeleteView}
+          />
+        </div>
+      )}
+
+      {/* Alert Banner */}
+      {alerts.length > 0 && (
+        <div className="bg-red-500/20 border border-red-500/50 rounded p-3 space-y-1">
+          {alerts.slice(0, 3).map((alert) => (
+            <div key={`${alert.ruleId}-${alert.timelineId}`} className="text-sm">
+              <span className="text-red-400 font-semibold">ALERT:</span>{' '}
+              <span className="text-terminal-text">{alert.ruleName}</span>{' '}
+              triggered on{' '}
+              <span className="text-terminal-text font-medium">{alert.timelineName}</span>
+            </div>
+          ))}
+          {alerts.length > 3 && (
+            <div className="text-xs text-terminal-muted">
+              +{alerts.length - 3} more alert{alerts.length - 3 !== 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Filter Bar */}
-      <div>
-        <WatchlistFilterBar
-          activeFilter={activeFilter}
-          onFilterChange={setActiveFilter}
-          counts={counts}
-        />
-      </div>
+      {!selectedView && (
+        <div>
+          <WatchlistFilterBar
+            activeFilter={activeFilter}
+            onFilterChange={setActiveFilter}
+            counts={counts}
+          />
+        </div>
+      )}
 
       {/* Error State */}
       {isError && (
@@ -138,7 +298,7 @@ export function Watchlist() {
       )}
 
       {/* Empty State */}
-      {!isLoading && !isError && (!filteredTimelines || filteredTimelines.length === 0) && (
+      {!isLoading && !isError && (!processedTimelines || processedTimelines.length === 0) && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md">
             <Eye className="w-16 h-16 text-terminal-muted mx-auto mb-4 opacity-50" />
@@ -166,19 +326,55 @@ export function Watchlist() {
         </div>
       )}
 
-      {/* Timeline List */}
-      {!isLoading && !isError && filteredTimelines && filteredTimelines.length > 0 && (
-        <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-          {filteredTimelines.map((timeline) => (
-            <WatchlistRow
-              key={timeline.id}
-              timeline={timeline}
-              onRemove={handleRemove}
-              onNavigate={handleNavigate}
+      {/* Main Content Area */}
+      <div className="flex-1 min-h-0 flex gap-4">
+        {/* Timeline List */}
+        <div className={`flex-1 min-w-0 ${showAlertPanel ? 'lg:w-2/3' : ''}`}>
+          {!isLoading && !isError && processedTimelines && processedTimelines.length > 0 && (
+            <div className="h-full overflow-y-auto space-y-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+              {processedTimelines.map((timeline) => (
+                <WatchlistRow
+                  key={timeline.id}
+                  timeline={timeline}
+                  onRemove={handleRemove}
+                  onNavigate={handleNavigate}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Alert Rules Panel (Drawer) */}
+        {showAlertPanel && (
+          <div className="hidden lg:block w-1/3 flex-shrink-0 border-l border-terminal-border pl-4">
+            <AlertRulesPanel
+              view={selectedView}
+              onUpdateView={handleUpdateView}
             />
-          ))}
+          </div>
+        )}
+      </div>
+
+      {/* Alert Rules Panel (Mobile - Collapsible) */}
+      {showAlertPanel && (
+        <div className="lg:hidden">
+          <AlertRulesPanel
+            view={selectedView}
+            onUpdateView={handleUpdateView}
+          />
         </div>
       )}
+
+      {/* Saved View Editor Modal */}
+      <SavedViewEditorModal
+        view={editingView}
+        isOpen={isEditorOpen}
+        onClose={() => {
+          setIsEditorOpen(false);
+          setEditingView(null);
+        }}
+        onSave={handleSaveView}
+      />
     </div>
   );
 }
