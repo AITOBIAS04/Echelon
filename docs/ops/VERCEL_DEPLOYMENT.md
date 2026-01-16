@@ -19,11 +19,17 @@
    - Choose the repository: `prediction-market-monorepo`
 
 3. **Configure Project**
-   - **Root Directory**: Set to `frontend`
+   - **Root Directory**: Set to `frontend` ⚠️ **IMPORTANT**: If you previously used `frontend-vite`, you MUST update this setting!
    - **Framework Preset**: Select `Vite` (or it should auto-detect)
    - **Build Command**: `npm run build` (should auto-fill)
    - **Output Directory**: `dist` (should auto-fill)
    - **Install Command**: `npm install` (should auto-fill)
+   
+   **To update Root Directory in existing project:**
+   1. Go to Vercel Dashboard → Your Project → Settings → General
+   2. Scroll to "Root Directory"
+   3. Change from `frontend-vite` to `frontend`
+   4. Save and redeploy
 
 4. **Set Environment Variables**
    Click "Environment Variables" and add:
@@ -64,6 +70,16 @@ Follow the prompts:
 4. Copy the public URL (e.g., `https://your-backend-production.up.railway.app`)
 
 ## Troubleshooting
+
+### Build Fails with "Cannot find cwd: /opt/buildhome/repo/frontend-vite"
+**This means Vercel is still configured to use the old `frontend-vite` directory.**
+
+**Fix:**
+1. Go to Vercel Dashboard → Your Project → Settings → General
+2. Scroll to "Root Directory" 
+3. Change from `frontend-vite` to `frontend`
+4. Click "Save"
+5. Trigger a new deployment (push a commit or click "Redeploy")
 
 ### Build Fails
 - Check that all dependencies are in `package.json`
