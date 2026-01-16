@@ -5,6 +5,11 @@ import { FieldKit } from './components/fieldkit/FieldKit';
 import { Blackbox } from './components/blackbox/Blackbox';
 import { TimelineDetailPage } from './pages/TimelineDetailPage';
 import { BreachConsolePage } from './pages/BreachConsolePage';
+import { HomePage } from './pages/HomePage';
+import { LaunchpadPage } from './pages/LaunchpadPage';
+import { LaunchpadDetailPage } from './pages/LaunchpadDetailPage';
+import { LaunchpadNewPage } from './pages/LaunchpadNewPage';
+import { HomeRedirect } from './components/routing/HomeRedirect';
 import { AgentRoster } from './components/agents/AgentRoster';
 import { AgentDetail } from './components/agents/AgentDetail';
 
@@ -15,7 +20,12 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <SigintPanel />,
+        element: (
+          <>
+            <HomeRedirect />
+            <SigintPanel />
+          </>
+        ),
       },
       {
         path: 'sigint',
@@ -44,6 +54,22 @@ export const router = createBrowserRouter([
       {
         path: 'breaches',
         element: <BreachConsolePage />,
+      },
+      {
+        path: 'home',
+        element: <HomePage />,
+      },
+      {
+        path: 'launchpad',
+        element: <LaunchpadPage />,
+      },
+      {
+        path: 'launchpad/:id',
+        element: <LaunchpadDetailPage />,
+      },
+      {
+        path: 'launchpad/new',
+        element: <LaunchpadNewPage />,
       },
     ],
   },
