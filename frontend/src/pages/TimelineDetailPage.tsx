@@ -6,6 +6,8 @@ import { ParadoxPanel } from '../components/timeline/ParadoxPanel';
 import { ForkTape } from '../components/timeline/ForkTape';
 import { SabotageHistoryPanel } from '../components/timeline/SabotageHistoryPanel';
 import { EvidenceLedger } from '../components/timeline/EvidenceLedger';
+import { ForkCountdownRibbon } from '../components/timeline/ForkCountdownRibbon';
+import { useMemo } from 'react';
 
 /**
  * Skeleton Loader Component
@@ -48,6 +50,55 @@ export function TimelineDetailPage() {
     // TODO: Show evidence detail or highlight contradiction
     console.log('Evidence clicked:', entryId);
   };
+
+  // Determine activeFork and nextFork from timeline data
+  const { activeFork, nextFork } = useMemo(() => {
+    if (!data) return { activeFork: undefined, nextFork: undefined };
+
+    const now = new Date().getTime();
+    
+    // Find active fork (open, locked, or executing)
+    const active = data.forkTape.find(
+      (fork) => fork.status === 'open' || fork.status === 'locked' || fork.status === 'executing'
+    );
+
+    let activeForkData = undefined;
+    if (active) {
+      let remainingSeconds = 0;
+      if (active.status === 'open' && active.lockedAt) {
+        remainingSeconds = Math.max(0, Math.floor((new Date(active.lockedAt).getTime() - now) / 1000));
+      } else if ((active.status === 'locked' || active.status === 'executing') && active.settledAt) {
+        remainingSeconds = Math.max(0, Math.floor((new Date(active.settledAt).getTime() - now) / 1000));
+      }
+      
+      activeForkData = {
+        forkId: active.id,
+        question: active.question,
+        remainingSeconds,
+      };
+    }
+
+    // Find next fork (settled forks sorted by timestamp, or estimate next)
+    // For mock purposes, we'll use the most recent settled fork's timestamp + some time
+    const settledForks = data.forkTape.filter((f) => f.status === 'settled');
+    let nextForkData = undefined;
+    
+    if (settledForks.length > 0 && !active) {
+      // Estimate next fork will open in 30 minutes
+      const mostRecentSettled = settledForks.sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      )[0];
+      const etaSeconds = 30 * 60; // 30 minutes
+      
+      nextForkData = {
+        forkId: `next_${mostRecentSettled.id}`,
+        question: 'Next fork question will appear here',
+        etaSeconds,
+      };
+    }
+
+    return { activeFork: activeForkData, nextFork: nextForkData };
+  }, [data]);
 
   return (
     <div className="h-full overflow-y-auto bg-[#0D0D0D] p-6 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
@@ -115,6 +166,9 @@ export function TimelineDetailPage() {
         {/* Content */}
         {!isLoading && !isError && data && (
           <>
+            {/* Fork Countdown Ribbon */}
+            <ForkCountdownRibbon activeFork={activeFork} nextFork={nextFork} />
+
             {/* Row 1: Health Metrics + Paradox Panel */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <HealthMetricsPanel
