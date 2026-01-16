@@ -167,3 +167,16 @@ export type {
   SuggestedAction,
   BreachStats,
 } from './breach';
+
+// ============================================
+// EXPORTS
+// ============================================
+
+export type {
+  ExportDatasetKind,
+  ExportScope,
+  ExportFilter,
+  ExportJob,
+  DatasetSchemaField,
+  DatasetPreview,
+} from './exports';
