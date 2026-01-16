@@ -217,3 +217,14 @@ export type {
   AlertRule,
   WatchlistSavedView,
 } from './presets';
+
+// ============================================
+// RISK
+// ============================================
+
+export type {
+  PositionExposure,
+  TimelineRiskState,
+  TopRisk,
+  PortfolioRiskSummary,
+} from './risk';
