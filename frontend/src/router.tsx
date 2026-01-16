@@ -23,7 +23,7 @@ export const router = createBrowserRouter([
         element: (
           <>
             <HomeRedirect />
-            <SigintPanel />
+            <HomePage />
           </>
         ),
       },
@@ -54,10 +54,6 @@ export const router = createBrowserRouter([
       {
         path: 'breaches',
         element: <BreachConsolePage />,
-      },
-      {
-        path: 'home',
-        element: <HomePage />,
       },
       {
         path: 'launchpad',

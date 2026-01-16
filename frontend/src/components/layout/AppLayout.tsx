@@ -93,9 +93,7 @@ export function AppLayout() {
           <nav className="hidden md:flex items-center gap-0.5 sm:gap-1 flex-shrink-0 min-w-0">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive =
-                location.pathname === item.path ||
-                (item.path === '/sigint' && location.pathname === '/');
+              const isActive = location.pathname === item.path;
 
               return (
                 <NavLink
@@ -306,9 +304,7 @@ export function AppLayout() {
             <nav className="flex flex-col p-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive =
-                  location.pathname === item.path ||
-                  (item.path === '/sigint' && location.pathname === '/');
+                const isActive = location.pathname === item.path;
 
                 return (
                   <NavLink
@@ -521,9 +517,7 @@ export function AppLayout() {
         <div className="flex items-center justify-around px-2 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive =
-              location.pathname === item.path ||
-              (item.path === '/sigint' && location.pathname === '/');
+            const isActive = location.pathname === item.path;
 
             return (
               <NavLink
