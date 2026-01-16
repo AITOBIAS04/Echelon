@@ -193,3 +193,15 @@ export type {
   ForkReplay,
   ReplayPointer,
 } from './replay';
+
+// ============================================
+// GRAPH
+// ============================================
+
+export type {
+  GraphNodeType,
+  GraphEdgeRelation,
+  GraphNode,
+  GraphEdge,
+  EntityGraph,
+} from './graph';
