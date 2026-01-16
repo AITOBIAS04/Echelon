@@ -4,6 +4,7 @@ import { SigintPanel } from './components/sigint/SigintPanel';
 import { FieldKit } from './components/fieldkit/FieldKit';
 import { Blackbox } from './components/blackbox/Blackbox';
 import { TimelineDetailPage } from './pages/TimelineDetailPage';
+import { BreachConsolePage } from './pages/BreachConsolePage';
 import { AgentRoster } from './components/agents/AgentRoster';
 import { AgentDetail } from './components/agents/AgentDetail';
 
@@ -39,6 +40,10 @@ export const router = createBrowserRouter([
       {
         path: 'agent/:agentId',
         element: <AgentDetail />,
+      },
+      {
+        path: 'breaches',
+        element: <BreachConsolePage />,
       },
     ],
   },
