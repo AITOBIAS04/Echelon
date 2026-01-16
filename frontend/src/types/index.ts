@@ -180,3 +180,16 @@ export type {
   DatasetSchemaField,
   DatasetPreview,
 } from './exports';
+
+// ============================================
+// REPLAY
+// ============================================
+
+export type {
+  DisclosureEventType,
+  DisclosureEvent,
+  ForkOptionPricePath,
+  ForkOption,
+  ForkReplay,
+  ReplayPointer,
+} from './replay';
