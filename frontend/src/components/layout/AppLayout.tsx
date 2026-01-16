@@ -59,6 +59,7 @@ export function AppLayout() {
     { path: '/sigint', label: 'SIGINT', icon: Radio },
     { path: '/fieldkit', label: 'Field Kit', icon: Briefcase },
     { path: '/blackbox', label: 'Blackbox', icon: Database },
+    { path: '/breaches', label: 'Breaches', icon: AlertTriangle },
     { path: '/agents', label: 'Agents', icon: User },
   ];
 

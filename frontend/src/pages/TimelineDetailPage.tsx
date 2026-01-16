@@ -50,7 +50,7 @@ export function TimelineDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] p-6">
+    <div className="h-full overflow-y-auto bg-[#0D0D0D] p-6 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
