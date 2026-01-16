@@ -46,11 +46,11 @@ export interface ForkOptionPricePath {
 }
 
 /**
- * Fork Option
+ * ReplayForkOption
  * 
- * Represents an option within a fork with its price history.
+ * Represents an option within a fork replay with its price history.
  */
-export interface ForkOption {
+export interface ReplayForkOption {
   /** Human-readable label for the option */
   label: string;
   
@@ -75,7 +75,7 @@ export interface ForkReplay {
   forkQuestion: string;
   
   /** Available options with their price paths */
-  options: ForkOption[];
+  options: ReplayForkOption[];
   
   /** ISO timestamp when fork was opened */
   openedAt: string;

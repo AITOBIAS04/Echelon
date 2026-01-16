@@ -189,7 +189,7 @@ export type {
   DisclosureEventType,
   DisclosureEvent,
   ForkOptionPricePath,
-  ForkOption,
+  ReplayForkOption,
   ForkReplay,
   ReplayPointer,
 } from './replay';

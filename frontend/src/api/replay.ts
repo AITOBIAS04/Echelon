@@ -1,4 +1,4 @@
-import type { ForkReplay, ReplayPointer } from '../types/replay';
+import type { ForkReplay, ReplayPointer, ReplayForkOption } from '../types/replay';
 
 /**
  * Mock Replay API
