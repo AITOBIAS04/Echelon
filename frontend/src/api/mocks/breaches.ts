@@ -8,22 +8,39 @@ const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
 const mockBreaches: Breach[] = [
+  // 1. Critical breach - "Coordinated Sabotage Cluster"
   {
     id: 'breach_001',
     timestamp: fiveMinsAgo.toISOString(),
     severity: 'critical',
-    category: 'paradox_detonation',
-    title: 'Paradox Detonation in Oil Crisis Timeline',
+    category: 'sabotage_cluster',
+    title: 'Coordinated Sabotage Cluster',
     description:
-      'A critical paradox has detonated in the Oil Crisis - Hormuz Strait timeline, causing cascading failures across multiple agent positions. The timeline logic gap exceeded 60% threshold, triggering automatic paradox spawn.',
+      'Multiple simultaneous sabotage attacks detected across 3 critical timelines. Shadow Broker and Viper agents coordinated a synchronized assault, deploying sensor noise, evidence injection, and logic bombs simultaneously to maximize system disruption.',
     affectedTimelines: [
       {
         id: 'tl_oil_hormuz_001',
         name: 'Oil Crisis - Hormuz Strait',
-        stabilityBefore: 52.1,
-        stabilityAfter: 28.5,
-        logicGapBefore: 45,
-        logicGapAfter: 78,
+        stabilityBefore: 54.7,
+        stabilityAfter: 42.3,
+        logicGapBefore: 42,
+        logicGapAfter: 58,
+      },
+      {
+        id: 'tl_fed_rate_jan26',
+        name: 'Fed Rate Decision - January 2026',
+        stabilityBefore: 89.2,
+        stabilityAfter: 78.5,
+        logicGapBefore: 8,
+        logicGapAfter: 18,
+      },
+      {
+        id: 'tl_tech_reg_001',
+        name: 'Tech Regulation - AI Oversight',
+        stabilityBefore: 68.2,
+        stabilityAfter: 55.8,
+        logicGapBefore: 25,
+        logicGapAfter: 42,
       },
     ],
     affectedAgents: [
@@ -31,157 +48,94 @@ const mockBreaches: Breach[] = [
         id: 'agent_alpha',
         name: 'Alpha',
         archetype: 'Analyst',
-        pnlImpact: -2500,
-        sanityImpact: 45,
+        pnlImpact: -3500,
+        sanityImpact: 55,
       },
       {
         id: 'agent_beta',
         name: 'Beta',
         archetype: 'Trader',
-        pnlImpact: -1800,
-        sanityImpact: 30,
+        pnlImpact: -2800,
+        sanityImpact: 42,
+      },
+      {
+        id: 'agent_gamma',
+        name: 'Gamma',
+        archetype: 'Researcher',
+        pnlImpact: -1500,
+        sanityImpact: 28,
       },
     ],
     rootCause:
-      'Multiple contradictory OSINT sources created an unresolvable logic gap. RavenPack reported increased naval activity while X API dismissed tensions as overblown. The system could not reconcile these signals.',
+      'Coordinated attack by Shadow Broker and Viper agents. They synchronized their sabotage attempts across multiple timelines to overwhelm the system\'s defensive mechanisms. The attacks used a combination of sensor noise, evidence injection, and logic bombs deployed within a 5-minute window.',
     beneficiaries: [
       {
         type: 'agent',
         id: 'agent_shadow',
         name: 'Shadow Broker',
-        estimatedGain: 5000,
+        estimatedGain: 8500,
       },
       {
-        type: 'wallet',
-        id: 'wallet_0x1234',
-        name: '0x1234...5678',
-        estimatedGain: 3200,
+        type: 'agent',
+        id: 'agent_viper',
+        name: 'Viper',
+        estimatedGain: 7200,
       },
     ],
     evidenceChanges: [
       {
         timestamp: fiveMinsAgo.toISOString(),
-        source: 'RavenPack',
-        changeType: 'contradicted',
-        description:
-          'Satellite imagery contradicted earlier shipping lane reports from Spire AIS.',
+        source: 'System',
+        changeType: 'added',
+        description: 'Detected coordinated sabotage pattern across multiple timelines.',
       },
       {
         timestamp: tenMinsAgo.toISOString(),
-        source: 'X API',
-        changeType: 'added',
-        description: 'Analyst dismissed Hormuz tensions as "overblown".',
+        source: 'RavenPack',
+        changeType: 'contradicted',
+        description: 'Sensor noise injection detected, contradicting earlier stable readings.',
       },
     ],
     status: 'active',
-    recoverable: false,
+    recoverable: true,
     suggestedActions: [
       {
         id: 'action_001',
-        action: 'Emergency timeline extraction',
+        action: 'Emergency freeze on all affected timelines',
         priority: 'immediate',
-        estimatedImpact: 'High - May prevent total collapse',
+        estimatedImpact: 'Critical - Prevents further damage and allows recovery',
       },
       {
         id: 'action_002',
-        action: 'Freeze all trading on affected timeline',
+        action: 'Slash stakes from Shadow Broker and Viper immediately',
         priority: 'immediate',
-        estimatedImpact: 'High - Prevents further losses',
+        estimatedImpact: 'High - Deters future coordinated attacks and recovers funds',
       },
       {
         id: 'action_003',
-        action: 'Investigate Shadow Broker for potential manipulation',
+        action: 'Investigate coordination mechanism used by attackers',
         priority: 'recommended',
-        estimatedImpact: 'Medium - May reveal attack vector',
+        estimatedImpact: 'Medium - May reveal attack vector for future prevention',
       },
     ],
   },
+  // 2. High breach - "Oracle Data Flip"
   {
     id: 'breach_002',
     timestamp: thirtyMinsAgo.toISOString(),
     severity: 'high',
-    category: 'logic_gap_spike',
-    title: 'Sudden Logic Gap Spike in Tech Regulation Timeline',
+    category: 'oracle_flip',
+    title: 'Oracle Data Flip',
     description:
-      'The Tech Regulation timeline experienced an unexpected 35% logic gap increase within 5 minutes, indicating potential sensor manipulation or coordinated attack.',
+      'RavenPack oracle feed experienced a critical data flip, contradicting previous evidence and causing significant logic gap increase in the Oil Crisis timeline. The oracle reported a complete reversal of naval activity indicators within a 10-minute window.',
     affectedTimelines: [
       {
-        id: 'tl_tech_reg_001',
-        name: 'Tech Regulation - AI Oversight',
-        stabilityBefore: 68.2,
-        stabilityAfter: 55.8,
-        logicGapBefore: 25,
-        logicGapAfter: 60,
-      },
-    ],
-    affectedAgents: [
-      {
-        id: 'agent_gamma',
-        name: 'Gamma',
-        archetype: 'Researcher',
-        pnlImpact: -1200,
-        sanityImpact: 20,
-      },
-    ],
-    rootCause:
-      'Sensor feed from GDELT was compromised, injecting false positive signals about regulatory changes.',
-    beneficiaries: [
-      {
-        type: 'wallet',
-        id: 'wallet_0xabcd',
-        name: '0xabcd...ef01',
-        estimatedGain: 1800,
-      },
-    ],
-    evidenceChanges: [
-      {
-        timestamp: thirtyMinsAgo.toISOString(),
-        source: 'GDELT',
-        changeType: 'removed',
-        description: 'False positive regulatory change signal removed.',
-      },
-    ],
-    status: 'investigating',
-    recoverable: true,
-    suggestedActions: [
-      {
-        id: 'action_004',
-        action: 'Audit GDELT sensor feed integrity',
-        priority: 'recommended',
-        estimatedImpact: 'Medium - Prevents future attacks',
-      },
-      {
-        id: 'action_005',
-        action: 'Restore timeline from last known good state',
-        priority: 'recommended',
-        estimatedImpact: 'High - May recover stability',
-      },
-    ],
-  },
-  {
-    id: 'breach_003',
-    timestamp: oneHourAgo.toISOString(),
-    severity: 'medium',
-    category: 'sabotage_cluster',
-    title: 'Coordinated Sabotage Attack Cluster',
-    description:
-      'Multiple simultaneous sabotage attempts detected across 3 timelines, suggesting coordinated attack by malicious agents.',
-    affectedTimelines: [
-      {
-        id: 'tl_climate_001',
-        name: 'Climate Policy - Carbon Tax',
-        stabilityBefore: 72.5,
-        stabilityAfter: 65.1,
-        logicGapBefore: 20,
-        logicGapAfter: 28,
-      },
-      {
-        id: 'tl_election_001',
-        name: 'Election Outcome - Senate',
-        stabilityBefore: 58.3,
-        stabilityAfter: 52.0,
-        logicGapBefore: 30,
-        logicGapAfter: 38,
+        id: 'tl_oil_hormuz_001',
+        name: 'Oil Crisis - Hormuz Strait',
+        stabilityBefore: 54.7,
+        stabilityAfter: 48.2,
+        logicGapBefore: 42,
+        logicGapAfter: 52,
       },
     ],
     affectedAgents: [
@@ -189,32 +143,110 @@ const mockBreaches: Breach[] = [
         id: 'agent_delta',
         name: 'Delta',
         archetype: 'Defender',
-        pnlImpact: 500,
-        sanityImpact: 10,
+        pnlImpact: -1800,
+        sanityImpact: 25,
+      },
+      {
+        id: 'agent_epsilon',
+        name: 'Epsilon',
+        archetype: 'Oracle',
+        pnlImpact: -2200,
+        sanityImpact: 35,
       },
     ],
     rootCause:
-      'Coordinated attack by Shadow Broker and Viper agents, targeting multiple timelines simultaneously to maximize chaos.',
+      'RavenPack oracle feed experienced a data corruption event, causing a complete flip in naval activity indicators. The oracle initially reported increased activity, then reversed to report decreased activity within 10 minutes, creating an unresolvable contradiction.',
     beneficiaries: [
       {
-        type: 'agent',
-        id: 'agent_viper',
-        name: 'Viper',
-        estimatedGain: 2500,
-      },
-      {
-        type: 'agent',
-        id: 'agent_shadow',
-        name: 'Shadow Broker',
-        estimatedGain: 2200,
+        type: 'wallet',
+        id: 'wallet_0x7890',
+        name: '0x7890...abcd',
+        estimatedGain: 3200,
       },
     ],
     evidenceChanges: [
       {
+        timestamp: thirtyMinsAgo.toISOString(),
+        source: 'RavenPack',
+        changeType: 'contradicted',
+        description:
+          'Oracle data flip: Initially reported increased naval activity, then reversed to decreased activity. Previous evidence contradicted.',
+      },
+      {
+        timestamp: new Date(thirtyMinsAgo.getTime() - 10 * 60 * 1000).toISOString(),
+        source: 'RavenPack',
+        changeType: 'removed',
+        description: 'Previous naval activity report removed due to data corruption.',
+      },
+    ],
+    status: 'investigating',
+    recoverable: true,
+    suggestedActions: [
+      {
+        id: 'action_004',
+        action: 'Audit RavenPack oracle feed integrity',
+        priority: 'recommended',
+        estimatedImpact: 'High - Identifies root cause and prevents future flips',
+      },
+      {
+        id: 'action_005',
+        action: 'Restore timeline from pre-flip snapshot',
+        priority: 'recommended',
+        estimatedImpact: 'Medium - May recover stability if done quickly',
+      },
+    ],
+  },
+  // 3. Medium breach - "Logic Gap Spike"
+  {
+    id: 'breach_003',
+    timestamp: oneHourAgo.toISOString(),
+    severity: 'medium',
+    category: 'logic_gap_spike',
+    title: 'Logic Gap Spike',
+    description:
+      'Two timelines experienced sudden logic gap spikes within minutes of each other, indicating potential sensor manipulation or coordinated attack. The spikes occurred independently but suggest a common attack vector.',
+    affectedTimelines: [
+      {
+        id: 'tl_climate_001',
+        name: 'Climate Policy - Carbon Tax',
+        stabilityBefore: 72.5,
+        stabilityAfter: 68.1,
+        logicGapBefore: 20,
+        logicGapAfter: 32,
+      },
+      {
+        id: 'tl_election_001',
+        name: 'Election Outcome - Senate',
+        stabilityBefore: 58.3,
+        stabilityAfter: 54.2,
+        logicGapBefore: 30,
+        logicGapAfter: 42,
+      },
+    ],
+    affectedAgents: [
+      {
+        id: 'agent_zeta',
+        name: 'Zeta',
+        archetype: 'Analyst',
+        pnlImpact: -800,
+        sanityImpact: 15,
+      },
+    ],
+    rootCause:
+      'Sensor feeds from GDELT and Spire AIS were compromised, injecting false positive signals about policy changes and election outcomes. The attacks were not coordinated but exploited similar vulnerabilities in the sensor infrastructure.',
+    beneficiaries: [],
+    evidenceChanges: [
+      {
         timestamp: oneHourAgo.toISOString(),
-        source: 'System',
-        changeType: 'added',
-        description: 'Detected coordinated sabotage pattern.',
+        source: 'GDELT',
+        changeType: 'removed',
+        description: 'False positive policy change signal removed.',
+      },
+      {
+        timestamp: new Date(oneHourAgo.getTime() - 5 * 60 * 1000).toISOString(),
+        source: 'Spire AIS',
+        changeType: 'removed',
+        description: 'False positive election outcome signal removed.',
       },
     ],
     status: 'mitigated',
@@ -222,48 +254,51 @@ const mockBreaches: Breach[] = [
     suggestedActions: [
       {
         id: 'action_006',
-        action: 'Slash stakes from Shadow Broker and Viper',
+        action: 'Strengthen sensor feed validation protocols',
         priority: 'recommended',
-        estimatedImpact: 'High - Deters future attacks',
+        estimatedImpact: 'Medium - Prevents future sensor manipulation',
       },
     ],
-    resolvedAt: new Date(oneHourAgo.getTime() + 15 * 60 * 1000).toISOString(),
-    resolutionNotes: 'Sabotage attempts were successfully mitigated. Stakes slashed.',
+    resolvedAt: new Date(oneHourAgo.getTime() + 20 * 60 * 1000).toISOString(),
+    resolutionNotes: 'False positive signals removed. Sensor feeds restored to normal operation.',
   },
+  // 4. Low breach - "Sensor Contradiction"
   {
     id: 'breach_004',
     timestamp: twoHoursAgo.toISOString(),
     severity: 'low',
     category: 'sensor_contradiction',
-    title: 'Minor Sensor Contradiction in Weather Timeline',
+    title: 'Sensor Contradiction',
     description:
-      'Weather sensors reported conflicting data, causing minor logic gap increase.',
+      'Spire AIS sensor reported conflicting shipping data for the Oil Crisis timeline. Investigation revealed a false positive caused by scheduled maintenance on the AIS feed.',
     affectedTimelines: [
       {
-        id: 'tl_weather_001',
-        name: 'Weather - Hurricane Season',
-        stabilityBefore: 75.0,
-        stabilityAfter: 73.5,
-        logicGapBefore: 15,
-        logicGapAfter: 18,
+        id: 'tl_oil_hormuz_001',
+        name: 'Oil Crisis - Hormuz Strait',
+        stabilityBefore: 54.7,
+        stabilityAfter: 53.8,
+        logicGapBefore: 42,
+        logicGapAfter: 43,
       },
     ],
     affectedAgents: [],
-    rootCause: 'Temporary sensor calibration issue, resolved automatically.',
+    rootCause:
+      'Spire AIS was undergoing scheduled maintenance, causing temporary sensor calibration issues. The feed reported conflicting shipping lane data during the maintenance window.',
     beneficiaries: [],
     evidenceChanges: [
       {
         timestamp: twoHoursAgo.toISOString(),
-        source: 'Weather API',
+        source: 'Spire AIS',
         changeType: 'contradicted',
-        description: 'Sensor readings contradicted, auto-corrected.',
+        description:
+          'Sensor readings contradicted during maintenance window. Auto-corrected after maintenance completed.',
       },
     ],
     status: 'resolved',
     recoverable: true,
     suggestedActions: [],
     resolvedAt: new Date(twoHoursAgo.getTime() + 10 * 60 * 1000).toISOString(),
-    resolutionNotes: 'Sensor calibration issue resolved automatically.',
+    resolutionNotes: 'False positive from Spire AIS maintenance',
   },
 ];
 
@@ -308,3 +343,16 @@ export function calculateBreachStats(breaches: Breach[]): BreachStats {
 
   return stats;
 }
+
+/**
+ * Get Mock Breach Stats
+ * 
+ * Returns aggregated breach statistics.
+ * In production, this would call the actual API endpoint.
+ */
+export async function getMockBreachStats(): Promise<BreachStats> {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const breaches = await getMockBreaches();
+  return calculateBreachStats(breaches);
+}
+
