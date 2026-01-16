@@ -4,15 +4,23 @@ import { CreateTimelineCard } from './CreateTimelineCard';
 import { LaunchCardMini } from './LaunchCardMini';
 
 /**
+ * LaunchpadRail Props
+ */
+export interface LaunchpadRailProps {
+  /** Hide the Create Timeline card */
+  hideCreateCard?: boolean;
+}
+
+/**
  * LaunchpadRail Component
  * 
  * Displays launchpad feed with sections for:
- * - Create Timeline CTA
+ * - Create Timeline CTA (optional)
  * - Trending Launches
  * - Your Drafts
  * - Recently Graduated
  */
-export function LaunchpadRail() {
+export function LaunchpadRail({ hideCreateCard = false }: LaunchpadRailProps) {
   const { feed, loading, error } = useLaunchpadFeed();
 
   if (loading) {
@@ -43,13 +51,15 @@ export function LaunchpadRail() {
 
   return (
     <div className="w-full space-y-8">
-      {/* Create Timeline Card */}
-      <section>
-        <h2 className="text-sm font-semibold text-terminal-muted uppercase tracking-wide mb-4">
-          Quick Actions
-        </h2>
-        <CreateTimelineCard />
-      </section>
+      {/* Create Timeline Card (optional) */}
+      {!hideCreateCard && (
+        <section>
+          <h2 className="text-sm font-semibold text-terminal-muted uppercase tracking-wide mb-4">
+            Quick Actions
+          </h2>
+          <CreateTimelineCard />
+        </section>
+      )}
 
       {/* Trending Launches */}
       <section>

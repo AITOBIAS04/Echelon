@@ -1,81 +1,21 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, GitBranch, AlertTriangle, Zap } from 'lucide-react';
-import { Watchlist } from '../components/fieldkit/Watchlist';
+import { Plus } from 'lucide-react';
+import { OpsBoard } from '../components/home/OpsBoard';
 import { LaunchpadRail } from '../components/home/LaunchpadRail';
-import { useParadoxes } from '../hooks/useParadoxes';
-import { useBreaches } from '../hooks/useBreaches';
+import { QuickActionsLauncher } from '../components/home/QuickActionsLauncher';
 import { getHomePreference, setHomePreference, type HomePreference } from '../lib/userPrefs';
-
-/**
- * Live Now Ribbon Component
- * 
- * Compact ribbon showing live activity metrics:
- * - Fork Live count
- * - Paradox Active count
- * - Breaches count
- */
-function LiveNowRibbon() {
-  const { data: paradoxData } = useParadoxes();
-  const { data: breaches } = useBreaches();
-  
-  // Mock fork live count (would come from API in production)
-  const forkLiveCount = 12;
-  const paradoxActiveCount = paradoxData?.total_active || 0;
-  const breachesActiveCount = breaches?.filter((b) => b.status === 'active').length || 0;
-
-  return (
-    <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-3 mb-4">
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-        <span className="text-xs font-semibold text-terminal-text uppercase tracking-wide">
-          Live Now
-        </span>
-      </div>
-      <div className="flex items-center gap-4 flex-wrap">
-        {/* Fork Live */}
-        <div className="flex items-center gap-2">
-          <GitBranch className="w-4 h-4 text-[#00D4FF]" />
-          <div className="flex flex-col">
-            <span className="text-xs text-terminal-muted">Forks Live</span>
-            <span className="text-sm font-mono font-bold text-terminal-text">
-              {forkLiveCount}
-            </span>
-          </div>
-        </div>
-
-        {/* Paradox Active */}
-        <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-[#FF3B3B]" />
-          <div className="flex flex-col">
-            <span className="text-xs text-terminal-muted">Paradox Active</span>
-            <span className="text-sm font-mono font-bold text-terminal-text">
-              {paradoxActiveCount}
-            </span>
-          </div>
-        </div>
-
-        {/* Breaches */}
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-amber-500" />
-          <div className="flex flex-col">
-            <span className="text-xs text-terminal-muted">Breaches</span>
-            <span className="text-sm font-mono font-bold text-terminal-text">
-              {breachesActiveCount}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /**
  * HomePage Component
  * 
- * Main home page with two-column layout:
- * - Left: Markets (Watchlist with Live Now ribbon)
- * - Right: LaunchpadRail
+ * Main home page featuring Operations Board with kanban-style lanes:
+ * - New Creations
+ * - About to Happen
+ * - At Risk
+ * - Graduation
+ * 
+ * Also includes optional LaunchpadRail for discovering launches.
  */
 export function HomePage() {
   const navigate = useNavigate();
@@ -100,10 +40,10 @@ export function HomePage() {
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-terminal-text uppercase tracking-wide">
-            Home
+            OPS BOARD
           </h1>
           <p className="text-sm text-terminal-muted mt-1">
-            Monitor markets and discover new launches
+            New creations • About to happen • At risk • Graduation
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -128,27 +68,22 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* Two-Column Layout */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Left Column: Markets */}
-        <div className="flex flex-col min-h-0">
-          <div className="flex-shrink-0 mb-4">
-            <LiveNowRibbon />
-          </div>
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-              <Watchlist />
-            </div>
-          </div>
-        </div>
+      {/* Quick Actions Launcher */}
+      <div className="flex-shrink-0">
+        <QuickActionsLauncher />
+      </div>
 
-        {/* Right Column: Launchpad */}
-        <div className="flex flex-col min-h-0">
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-              <LaunchpadRail />
-            </div>
-          </div>
+      {/* Main Content: Ops Board */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+          <OpsBoard />
+        </div>
+      </div>
+
+      {/* Optional: Launchpad Rail (without Create Timeline card) */}
+      <div className="flex-shrink-0 border-t border-[#1A1A1A] pt-4">
+        <div className="h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+          <LaunchpadRail hideCreateCard />
         </div>
       </div>
     </div>

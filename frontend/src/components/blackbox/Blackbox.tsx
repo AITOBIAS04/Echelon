@@ -6,12 +6,16 @@ import { WarChest } from './WarChest';
 import { GravityField } from './GravityField';
 import { TaskForce } from './TaskForce';
 import { TheatreLibrary } from './TheatreLibrary';
+import { LiveTape } from './LiveTape';
 import { clsx } from 'clsx';
 
-type TabType = 'intercepts' | 'health' | 'warchest' | 'gravity' | 'taskforce' | 'theatres';
+type TabType = 'intercepts' | 'health' | 'warchest' | 'gravity' | 'taskforce' | 'theatres' | 'live_tape';
 
 export function Blackbox() {
-  const [activeTab, setActiveTab] = useState<TabType>('intercepts');
+  // Check URL params for tab
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTab = (urlParams.get('tab') as TabType) || 'intercepts';
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [timestamp, setTimestamp] = useState(new Date());
 
   // Update timestamp every second
@@ -22,12 +26,25 @@ export function Blackbox() {
 
   const tabs = [
     { id: 'intercepts' as TabType, label: 'INTERCEPTS', icon: Radio },
+    { id: 'live_tape' as TabType, label: 'LIVE TAPE', icon: Radio },
     { id: 'health' as TabType, label: 'TIMELINE HEALTH', icon: Activity },
     { id: 'warchest' as TabType, label: 'WAR CHEST', icon: Shield },
     { id: 'gravity' as TabType, label: 'GRAVITY FIELD', icon: Target },
     { id: 'taskforce' as TabType, label: 'TASK FORCE', icon: Eye },
     { id: 'theatres' as TabType, label: 'THEATRES', icon: Layers },
   ];
+
+  // Sync tab with URL params on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab') as TabType;
+    if (tabParam) {
+      const validTabs: TabType[] = ['intercepts', 'live_tape', 'health', 'warchest', 'gravity', 'taskforce', 'theatres'];
+      if (validTabs.includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+    }
+  }, []);
 
   return (
     <div className="h-full flex flex-col p-2 sm:p-4 md:p-6 overflow-hidden">
@@ -82,7 +99,13 @@ export function Blackbox() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  // Update URL without navigation
+                  const url = new URL(window.location.href);
+                  url.searchParams.set('tab', tab.id);
+                  window.history.pushState({}, '', url.toString());
+                }}
                 className={clsx(
                   'flex items-center gap-2 pb-2 uppercase tracking-wider text-sm transition-all whitespace-nowrap flex-shrink-0',
                   activeTab === tab.id
@@ -101,6 +124,7 @@ export function Blackbox() {
         {/* Tab Content */}
         <div className="flex-1 min-h-0 overflow-y-auto p-4 relative z-20 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           {activeTab === 'intercepts' && <WhaleWatch />}
+          {activeTab === 'live_tape' && <LiveTape />}
           {activeTab === 'health' && <TimelineHealthPanel />}
           {activeTab === 'warchest' && <WarChest />}
           {activeTab === 'gravity' && <GravityField />}

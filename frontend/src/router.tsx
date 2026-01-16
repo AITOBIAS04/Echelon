@@ -1,6 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
-import { SigintPanel } from './components/sigint/SigintPanel';
 import { FieldKit } from './components/fieldkit/FieldKit';
 import { Blackbox } from './components/blackbox/Blackbox';
 import { TimelineDetailPage } from './pages/TimelineDetailPage';
@@ -10,6 +9,7 @@ import { LaunchpadPage } from './pages/LaunchpadPage';
 import { LaunchpadDetailPage } from './pages/LaunchpadDetailPage';
 import { LaunchpadNewPage } from './pages/LaunchpadNewPage';
 import { HomeRedirect } from './components/routing/HomeRedirect';
+import { SigintRedirect } from './components/routing/SigintRedirect';
 import { AgentRoster } from './components/agents/AgentRoster';
 import { AgentDetail } from './components/agents/AgentDetail';
 
@@ -29,7 +29,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'sigint',
-        element: <SigintPanel />,
+        element: <SigintRedirect />,
       },
       {
         path: 'fieldkit',

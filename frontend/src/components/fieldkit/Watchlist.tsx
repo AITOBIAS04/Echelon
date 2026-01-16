@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, Plus, AlertCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useWatchlist, getFilteredCount } from '../../hooks/useWatchlist';
 import { usePresets } from '../../hooks/usePresets';
+import { listTracked } from '../../lib/tracking';
 import type { WatchlistFilter } from '../../types/watchlist';
 import type { WatchlistSavedView } from '../../types/presets';
 import { WatchlistFilterBar } from './WatchlistFilterBar';
@@ -57,6 +58,7 @@ export function Watchlist() {
   const [alerts, setAlerts] = useState<AlertTrigger[]>([]);
   const [editingView, setEditingView] = useState<WatchlistSavedView | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [trackedIds, setTrackedIds] = useState<string[]>(listTracked());
 
   // Presets hook
   const {
@@ -79,11 +81,17 @@ export function Watchlist() {
     refetch 
   } = useWatchlist('all');
 
+  // Update tracked IDs when component mounts or refetches
+  useEffect(() => {
+    setTrackedIds(listTracked());
+  }, [allTimelines]);
+
   // Apply view filter and sort if a view is selected
   const processedTimelines = useMemo(() => {
     if (!allTimelines || !isInitialized) return allTimelines || [];
 
-    let result = [...allTimelines];
+    // Filter to only tracked timelines (merge with mock data)
+    let result = allTimelines.filter((t) => trackedIds.includes(t.id));
 
     // Apply saved view filter if selected
     if (selectedView) {
@@ -104,7 +112,7 @@ export function Watchlist() {
     }
 
     return result;
-  }, [allTimelines, selectedView, activeFilter, isInitialized]);
+  }, [allTimelines, selectedView, activeFilter, isInitialized, trackedIds]);
 
   // Calculate counts for each filter
   const counts = {

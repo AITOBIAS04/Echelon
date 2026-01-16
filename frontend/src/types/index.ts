@@ -239,3 +239,26 @@ export type {
   LaunchCard,
   LaunchpadFeed,
 } from './launchpad';
+
+// ============================================
+// OPS BOARD
+// ============================================
+
+export type {
+  OpsLaneId,
+  OpsCardType,
+  OpsSignalTag,
+  OpsCard,
+  LiveNowSummary,
+  OpsBoardData,
+} from './opsBoard';
+
+// ============================================
+// LIVE TAPE
+// ============================================
+
+export type {
+  TapeEventType,
+  EventImpact,
+  TapeEvent,
+} from './liveTape';
