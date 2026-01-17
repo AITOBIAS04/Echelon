@@ -264,50 +264,83 @@ export function OpsBoard() {
 
   // Check if we should use tab switcher on mobile (if any list has >10 items)
   const totalCards = newCreations.length + activeAlpha.length + atRisk.length + recentlyGraduated.length;
-  const useMobileTabs = totalCards > 10;
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Desktop: 3-Column Grid | Mobile: Stacked or Tabs */}
-      {useMobileTabs ? (
-        <MobileTabSwitcher
-          aboutToHappen={activeAlpha}
-          newCreations={newCreations}
-          criticalAndGraduating={[...atRisk, ...recentlyGraduated]}
-        />
-      ) : (
-        <div className="h-[calc(100vh-160px)] grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* LEFT: New Creations (Green Accent) */}
-          <div className="flex flex-col h-full min-h-0 border border-[#00FF41]/20 rounded-lg bg-terminal-panel/50 order-2 lg:order-1">
-            <OpsColumn
-              title="🟢 New Creations"
-              accentColor="#00FF41"
-              cards={newCreations}
-              emptyMessage="No new creations"
-            />
-          </div>
+        return (
+          <>
+            {/* Desktop always shows grid */}
+            <div className="hidden lg:grid h-[calc(100vh-160px)] grid-cols-3 gap-4">
+              {/* LEFT: New Creations (Green Accent) */}
+              <div className="flex flex-col h-full min-h-0 border border-[#00FF41]/20 rounded-lg bg-terminal-panel/50">
+                <OpsColumn
+                  title="🟢 New Creations"
+                  accentColor="#00FF41"
+                  cards={newCreations}
+                  emptyMessage="No new creations"
+                />
+              </div>
 
-          {/* CENTER: Active Alpha (Orange Accent) - Includes Live Now Strip */}
-          <div className="flex flex-col h-full min-h-0 border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50 order-1 lg:order-2">
-            <OpsColumn
-              title="🟠 Active Alpha"
-              accentColor="#FF9500"
-              cards={activeAlpha}
-              emptyMessage="No active events"
-              liveNow={data?.liveNow}
-            />
-          </div>
+              {/* CENTER: Active Alpha (Orange Accent) - Includes Live Now Strip */}
+              <div className="flex flex-col h-full min-h-0 border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50">
+                <OpsColumn
+                  title="🟠 Active Alpha"
+                  accentColor="#FF9500"
+                  cards={activeAlpha}
+                  emptyMessage="No active events"
+                  liveNow={data?.liveNow}
+                />
+              </div>
 
-          {/* RIGHT: Risk & Results (Red/Purple Accent) */}
-          <div className="flex flex-col h-full min-h-0 border border-[#FF3B3B]/20 rounded-lg bg-terminal-panel/50 order-3 lg:order-3">
-            <RiskAndResultsColumn
-              atRisk={atRisk}
-              recentlyGraduated={recentlyGraduated}
-            />
-          </div>
-        </div>
-      )}
-    </div>
+              {/* RIGHT: Risk & Results (Red/Purple Accent) */}
+              <div className="flex flex-col h-full min-h-0 border border-[#FF3B3B]/20 rounded-lg bg-terminal-panel/50">
+                <RiskAndResultsColumn
+                  atRisk={atRisk}
+                  recentlyGraduated={recentlyGraduated}
+                />
+              </div>
+            </div>
+
+            {/* Mobile chooses tabs only when crowded; otherwise stacked */}
+            <div className="lg:hidden">
+              {totalCards > 10 ? (
+                <MobileTabSwitcher
+                  aboutToHappen={activeAlpha}
+                  newCreations={newCreations}
+                  criticalAndGraduating={[...atRisk, ...recentlyGraduated]}
+                />
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {/* LEFT: New Creations (Green Accent) */}
+                  <div className="flex flex-col h-full min-h-0 border border-[#00FF41]/20 rounded-lg bg-terminal-panel/50">
+                    <OpsColumn
+                      title="🟢 New Creations"
+                      accentColor="#00FF41"
+                      cards={newCreations}
+                      emptyMessage="No new creations"
+                    />
+                  </div>
+
+                  {/* CENTER: Active Alpha (Orange Accent) - Includes Live Now Strip */}
+                  <div className="flex flex-col h-full min-h-0 border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50">
+                    <OpsColumn
+                      title="🟠 Active Alpha"
+                      accentColor="#FF9500"
+                      cards={activeAlpha}
+                      emptyMessage="No active events"
+                      liveNow={data?.liveNow}
+                    />
+                  </div>
+
+                  {/* RIGHT: Risk & Results (Red/Purple Accent) */}
+                  <div className="flex flex-col h-full min-h-0 border border-[#FF3B3B]/20 rounded-lg bg-terminal-panel/50">
+                    <RiskAndResultsColumn
+                      atRisk={atRisk}
+                      recentlyGraduated={recentlyGraduated}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         );
       })()}
     </>
