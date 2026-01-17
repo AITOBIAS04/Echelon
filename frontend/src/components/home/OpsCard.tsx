@@ -10,6 +10,8 @@ import type { OpsCard } from '../../types/opsBoard';
 export interface OpsCardProps {
   /** Card data */
   card: OpsCard;
+  /** Compact mode - reduces height and simplifies layout */
+  compact?: boolean;
 }
 
 /**
@@ -71,8 +73,9 @@ function formatTimeRemaining(seconds: number): string {
  * OpsCard Component
  * 
  * Displays an operations card with title, lane badge, metrics, tags, and actions.
+ * Supports compact mode for reduced height and simplified layout.
  */
-export function OpsCard({ card }: OpsCardProps) {
+export function OpsCard({ card, compact = false }: OpsCardProps) {
   const navigate = useNavigate();
   const laneBadge = getLaneBadge(card.lane);
   const [tracked, setTracked] = useState<boolean>(isTracked(card.id));
@@ -95,7 +98,7 @@ export function OpsCard({ card }: OpsCardProps) {
     setTracked(newTrackedState);
   };
 
-  // Determine which metrics to show (2-4 key metrics)
+  // Determine which metrics to show
   const metrics: Array<{ label: string; value: string; color?: string }> = [];
 
   if (card.type === 'timeline') {
@@ -144,9 +147,69 @@ export function OpsCard({ card }: OpsCardProps) {
     }
   }
 
-  // Limit to 4 metrics max
-  const displayMetrics = metrics.slice(0, 4);
+  // For compact mode, show only 2 metrics
+  const displayMetrics = compact ? metrics.slice(0, 2) : metrics.slice(0, 4);
 
+  if (compact) {
+    return (
+      <div className="bg-[#0D0D0D] border border-[#1A1A1A] rounded-lg p-3 hover:border-[#333] transition mb-2 w-[240px] md:w-[280px]">
+        {/* Header: Title + Phase Badge */}
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-sm font-bold text-terminal-text uppercase tracking-wide truncate flex-1 min-w-0">
+            {card.title}
+          </h4>
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ml-2"
+            style={{
+              backgroundColor: laneBadge.bg,
+              color: laneBadge.text,
+            }}
+          >
+            {laneBadge.label}
+          </span>
+        </div>
+
+        {/* Body: 2 metrics side-by-side */}
+        {displayMetrics.length > 0 && (
+          <div className="flex items-center gap-3 mb-2">
+            {displayMetrics.map((metric, idx) => (
+              <div key={idx} className="flex-1">
+                <span
+                  className="text-xs font-mono font-semibold"
+                  style={{ color: metric.color || '#FFFFFF' }}
+                >
+                  {metric.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Footer: VIEW button + TRACK icon */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleView}
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[10px] bg-transparent border border-terminal-border rounded hover:border-[#00D4FF] hover:text-[#00D4FF] transition"
+          >
+            VIEW
+          </button>
+          <button
+            onClick={handleTrack}
+            className={`p-1.5 border rounded transition ${
+              tracked
+                ? 'bg-[#00D4FF]/20 border-[#00D4FF] text-[#00D4FF]'
+                : 'bg-transparent border-terminal-border hover:border-[#00D4FF] hover:text-[#00D4FF]'
+            }`}
+            title={tracked ? 'Remove from watchlist' : 'Add to watchlist'}
+          >
+            {tracked ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Full mode (original layout)
   return (
     <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-3 hover:border-[#333] transition mb-2">
       {/* Header */}

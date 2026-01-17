@@ -1,24 +1,13 @@
 import { useOpsBoard } from '../../hooks/useOpsBoard';
 import { LiveNowBar } from './LiveNowBar';
-import { OpsLane } from './OpsLane';
 import { OpsCard } from './OpsCard';
-import type { OpsLaneId } from '../../types/opsBoard';
-
-/**
- * Lane configuration
- */
-const LANE_CONFIG: Record<OpsLaneId, { title: string; isHorizontal?: boolean }> = {
-  new_creations: { title: 'New Creations' },
-  about_to_happen: { title: 'About to Happen' },
-  at_risk: { title: 'At Risk' },
-  graduation: { title: 'Graduation', isHorizontal: true },
-};
+import { HorizontalLane } from '../ui/HorizontalLane';
 
 /**
  * OpsBoard Component
  * 
- * Main operations board with kanban-style lanes.
- * Shows 3-column grid for main lanes and horizontal strip for graduation.
+ * Main operations board with horizontal scrolling lanes.
+ * Displays stacked horizontal lanes for each category.
  */
 export function OpsBoard() {
   const { data, loading, error } = useOpsBoard();
@@ -45,58 +34,66 @@ export function OpsBoard() {
   }
 
   return (
-    <div className="h-full flex flex-col gap-4">
+    <div className="h-full flex flex-col gap-6">
       {/* Live Now Bar */}
       <LiveNowBar liveNow={data.liveNow} />
 
-      {/* Main Lanes (3-column grid) */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <OpsLane
-          laneId="new_creations"
-          cards={data.lanes.new_creations}
-          title={LANE_CONFIG.new_creations.title}
-        />
-        <OpsLane
-          laneId="about_to_happen"
-          cards={data.lanes.about_to_happen}
-          title={LANE_CONFIG.about_to_happen.title}
-        />
-        <OpsLane
-          laneId="at_risk"
-          cards={data.lanes.at_risk}
-          title={LANE_CONFIG.at_risk.title}
-        />
-      </div>
+      {/* Lane 1: New Creations */}
+      {data.lanes.new_creations.length > 0 && (
+        <HorizontalLane title="🆕 New Creations">
+          {data.lanes.new_creations.map((card) => (
+            <div key={card.id} className="flex-shrink-0 md:w-[280px] w-[240px]">
+              <OpsCard card={card} compact />
+            </div>
+          ))}
+        </HorizontalLane>
+      )}
 
-      {/* Graduation Lane (horizontal strip) */}
-      <div className="flex-shrink-0 border-t border-[#1A1A1A] pt-4">
-        <div className="mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-1 h-4 rounded" style={{ backgroundColor: '#00FF41' }} />
-            <h3 className="text-sm font-bold text-terminal-text uppercase tracking-wide">
-              {LANE_CONFIG.graduation.title}
-            </h3>
-            <span className="text-xs text-terminal-muted font-mono">
-              ({data.lanes.graduation.length})
-            </span>
+      {/* Lane 2: About to Happen */}
+      {data.lanes.about_to_happen.length > 0 && (
+        <HorizontalLane title="⚠️ About to Happen">
+          {data.lanes.about_to_happen.map((card) => (
+            <div key={card.id} className="flex-shrink-0 md:w-[280px] w-[240px]">
+              <OpsCard card={card} compact />
+            </div>
+          ))}
+        </HorizontalLane>
+      )}
+
+      {/* Lane 3: At Risk */}
+      {data.lanes.at_risk.length > 0 && (
+        <HorizontalLane title="🚨 At Risk">
+          {data.lanes.at_risk.map((card) => (
+            <div key={card.id} className="flex-shrink-0 md:w-[280px] w-[240px]">
+              <OpsCard card={card} compact />
+            </div>
+          ))}
+        </HorizontalLane>
+      )}
+
+      {/* Lane 4: Graduation Zone */}
+      {data.lanes.graduation.length > 0 && (
+        <HorizontalLane title="🎓 Graduation Zone">
+          {data.lanes.graduation.map((card) => (
+            <div key={card.id} className="flex-shrink-0 md:w-[280px] w-[240px]">
+              <OpsCard card={card} compact />
+            </div>
+          ))}
+        </HorizontalLane>
+      )}
+
+      {/* Empty State: Show if all lanes are empty */}
+      {data.lanes.new_creations.length === 0 &&
+        data.lanes.about_to_happen.length === 0 &&
+        data.lanes.at_risk.length === 0 &&
+        data.lanes.graduation.length === 0 && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <p className="text-terminal-muted text-sm mb-1">No active signals</p>
+              <p className="text-terminal-muted text-xs">Operations board is empty</p>
+            </div>
           </div>
-        </div>
-        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-          <div className="flex gap-3 pb-2" style={{ minWidth: 'min-content' }}>
-            {data.lanes.graduation.length === 0 ? (
-              <div className="text-center py-8 text-terminal-muted text-xs w-full">
-                No graduation cards
-              </div>
-            ) : (
-              data.lanes.graduation.map((card) => (
-                <div key={card.id} className="flex-shrink-0" style={{ width: '280px' }}>
-                  <OpsCard card={card} />
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
+        )}
     </div>
   );
 }
