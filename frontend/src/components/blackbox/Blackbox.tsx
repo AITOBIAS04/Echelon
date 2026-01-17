@@ -12,9 +12,9 @@ import { clsx } from 'clsx';
 type TabType = 'intercepts' | 'health' | 'warchest' | 'gravity' | 'taskforce' | 'theatres' | 'live_tape';
 
 export function Blackbox() {
-  // Check URL params for tab
+  // Check URL params for tab, default to 'live_tape'
   const urlParams = new URLSearchParams(window.location.search);
-  const initialTab = (urlParams.get('tab') as TabType) || 'intercepts';
+  const initialTab = (urlParams.get('tab') as TabType) || 'live_tape';
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [timestamp, setTimestamp] = useState(new Date());
 

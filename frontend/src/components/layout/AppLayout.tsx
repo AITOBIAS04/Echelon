@@ -49,14 +49,14 @@ export function AppLayout() {
   
   const handleViewModeChange = (mode: 'global' | 'personal') => {
     if (mode === 'global') {
-      navigate('/sigint');
+      navigate('/'); // SIGINT now points to HOME (Ops Board)
     } else {
       navigate('/fieldkit');
     }
   };
 
   const navItems = [
-    { path: '/sigint', label: 'SIGINT', icon: Radio },
+    { path: '/', label: 'SIGINT', icon: Radio }, // SIGINT now points to HOME (Ops Board)
     { path: '/fieldkit', label: 'Field Kit', icon: Briefcase },
     { path: '/blackbox', label: 'Blackbox', icon: Database },
     { path: '/breaches', label: 'Breaches', icon: AlertTriangle },
@@ -93,7 +93,9 @@ export function AppLayout() {
           <nav className="hidden md:flex items-center gap-0.5 sm:gap-1 flex-shrink-0 min-w-0">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname === item.path;
+              const isActive = item.path === '/' 
+                ? location.pathname === '/' 
+                : location.pathname === item.path;
 
               return (
                 <NavLink
@@ -155,7 +157,7 @@ export function AppLayout() {
           {/* Paradox Alert - Ultra compact, show only icon + number on small screens */}
           {paradoxCount > 0 && (
             <NavLink
-              to="/sigint"
+              to="/breaches"
               className="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-1.5 py-1 bg-echelon-red/20 border border-echelon-red/50 rounded-lg animate-pulse whitespace-nowrap flex-shrink-0"
             >
               <AlertTriangle className="w-3 h-3 text-echelon-red flex-shrink-0" />
@@ -304,7 +306,9 @@ export function AppLayout() {
             <nav className="flex flex-col p-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.path;
+                const isActive = item.path === '/' 
+                ? location.pathname === '/' 
+                : location.pathname === item.path;
 
                 return (
                   <NavLink
