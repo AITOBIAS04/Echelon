@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, GitBranch, Sparkles } from 'lucide-react';
+import { Eye, GitBranch, Sparkles } from 'lucide-react';
+import { toggleTrack, isTracked } from '../../lib/tracking';
+import { useState, useEffect } from 'react';
 import type { OpsCard } from '../../types/opsBoard';
 
 /**
@@ -11,21 +13,19 @@ export interface TickerCardProps {
 }
 
 /**
- * Get status indicator color based on card state
+ * Get lane border color
  */
-function getStatusColor(card: OpsCard): 'green' | 'red' {
-  // Check for paradox or high risk indicators
-  if (card.paradoxProximity && card.paradoxProximity > 50) {
-    return 'red';
+function getLaneBorderColor(lane: OpsCard['lane']): string {
+  switch (lane) {
+    case 'new_creations':
+      return '#00FF41'; // Green
+    case 'about_to_happen':
+      return '#FF9500'; // Orange
+    case 'at_risk':
+      return '#FF3B3B'; // Red
+    case 'graduation':
+      return '#AA66FF'; // Purple
   }
-  if (card.tags.includes('paradox_active')) {
-    return 'red';
-  }
-  if (card.tags.includes('sabotage_heat')) {
-    return 'red';
-  }
-  // Default to green (live)
-  return 'green';
 }
 
 /**
@@ -52,62 +52,54 @@ function getPhaseBadge(card: OpsCard): string | null {
 }
 
 /**
- * Get score badge value
+ * Format time remaining
  */
-function getScoreBadge(card: OpsCard): string | null {
-  if (card.type === 'launch' && card.qualityScore !== undefined) {
-    return `${card.qualityScore}`;
+function formatTimeRemaining(seconds: number): string {
+  if (seconds < 60) {
+    return `${seconds}s`;
   }
-  if (card.type === 'timeline' && card.stability !== undefined) {
-    return `${Math.round(card.stability)}`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes}m`;
   }
-  return null;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h`;
 }
 
 /**
- * Generate simple sparkline SVG (placeholder)
+ * Get metric color based on value
  */
-function SparklinePlaceholder({ color = '#00FF41' }: { color?: string }) {
-  const width = 60;
-  const height = 20;
-  const points = [
-    { x: 0, y: 15 },
-    { x: 10, y: 12 },
-    { x: 20, y: 8 },
-    { x: 30, y: 10 },
-    { x: 40, y: 5 },
-    { x: 50, y: 8 },
-    { x: 60, y: 3 },
-  ];
-
-  const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-
-  return (
-    <svg width={width} height={height} className="overflow-visible">
-      <path
-        d={pathData}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+function getMetricColor(value: number, type: 'gap' | 'stability' | 'other'): string {
+  if (type === 'gap') {
+    // Higher gap = worse (red)
+    if (value >= 40) return '#FF3B3B';
+    if (value >= 20) return '#FF9500';
+    return '#00FF41';
+  }
+  if (type === 'stability') {
+    // Higher stability = better (green)
+    if (value >= 70) return '#00FF41';
+    if (value >= 50) return '#FF9500';
+    return '#FF3B3B';
+  }
+  return '#FFFFFF';
 }
 
 /**
  * TickerCard Component
  * 
- * BullX-style compact ticker card with icon, title, badges, sparkline, and action button.
- * Fixed dimensions: 260px width, 80px height.
+ * High-density BullX-style card with left image, right content, and metrics grid.
+ * Layout: Flex Row (Left Image | Right Content).
  */
 export function TickerCard({ card }: TickerCardProps) {
   const navigate = useNavigate();
-  const statusColor = getStatusColor(card);
+  const [tracked, setTracked] = useState<boolean>(isTracked(card.id));
+  const borderColor = getLaneBorderColor(card.lane);
   const phaseBadge = getPhaseBadge(card);
-  const scoreBadge = getScoreBadge(card);
-  const glowColor = statusColor === 'green' ? '#00FF41' : '#FF3B3B';
+
+  useEffect(() => {
+    setTracked(isTracked(card.id));
+  }, [card.id]);
 
   const handleClick = () => {
     if (card.type === 'timeline') {
@@ -117,77 +109,121 @@ export function TickerCard({ card }: TickerCardProps) {
     }
   };
 
+  const handleTrack = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newTrackedState = toggleTrack(card.id);
+    setTracked(newTrackedState);
+  };
+
   // Choose icon based on card type
   const IconComponent = card.type === 'timeline' ? GitBranch : Sparkles;
 
+  // Extract ticker/ID from card.id (e.g., "ops_new_timeline_1" -> "TL-001")
+  const tickerId = card.id.split('_').pop()?.toUpperCase() || 'N/A';
+
   return (
     <div
-      className="bg-white/5 border border-white/10 rounded-lg p-3 flex items-center gap-3 hover:border-white/20 transition-all group cursor-pointer"
+      className="bg-[#1a1a1a] border-l-2 rounded-lg p-3 flex items-start gap-3 hover:bg-[#222222] transition-all group cursor-pointer relative"
       style={{
-        width: '260px',
-        height: '80px',
-        boxShadow: 'none',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.boxShadow = `0 0 12px ${glowColor}40`;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.boxShadow = 'none';
+        borderLeftColor: borderColor,
       }}
       onClick={handleClick}
     >
-      {/* Left: Icon/Avatar with Status Dot */}
+      {/* Left: Category Icon/Image */}
       <div className="relative flex-shrink-0">
-        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
-          <IconComponent className="w-5 h-5 text-white/70" />
+        <div className="w-14 h-14 bg-white/10 rounded-lg flex items-center justify-center border border-white/10">
+          <IconComponent className="w-7 h-7 text-white/70" />
         </div>
-        {/* Status Indicator Dot */}
-        <div
-          className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0D0D0D]"
-          style={{
-            backgroundColor: statusColor === 'green' ? '#00FF41' : '#FF3B3B',
-            boxShadow: `0 0 4px ${statusColor === 'green' ? '#00FF41' : '#FF3B3B'}`,
-          }}
-        />
+        {/* Phase Badge Overlay */}
+        {phaseBadge && (
+          <div
+            className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase"
+            style={{
+              backgroundColor: borderColor,
+              color: '#000000',
+            }}
+          >
+            {phaseBadge}
+          </div>
+        )}
       </div>
 
-      {/* Middle: Title + Badges */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
-        {/* Title */}
-        <h4 className="text-[13px] font-bold text-white truncate leading-tight">
-          {card.title}
-        </h4>
-        {/* Badges */}
-        <div className="flex items-center gap-1.5">
-          {phaseBadge && (
-            <span className="px-1.5 py-0.5 bg-white/10 rounded text-[10px] font-semibold text-white/80 uppercase">
-              {phaseBadge}
-            </span>
-          )}
-          {scoreBadge && (
-            <span className="px-1.5 py-0.5 bg-white/10 rounded text-[10px] font-semibold text-white/80">
-              {scoreBadge}
-            </span>
-          )}
+      {/* Right: Content */}
+      <div className="flex-1 min-w-0 flex flex-col gap-2">
+        {/* Row 1: Title + Ticker/ID */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-bold text-white truncate leading-tight">
+              {card.title}
+            </h4>
+            <p className="text-xs text-terminal-muted font-mono mt-0.5">
+              {card.type === 'timeline' ? 'TL' : 'LN'}-{tickerId}
+            </p>
+          </div>
         </div>
-      </div>
 
-      {/* Right: Sparkline + Action Button */}
-      <div className="flex flex-col items-end justify-between h-full flex-shrink-0">
-        {/* Sparkline */}
-        <div className="opacity-60 group-hover:opacity-100 transition-opacity">
-          <SparklinePlaceholder color={statusColor === 'green' ? '#00FF41' : '#FF3B3B'} />
+        {/* Row 2: Metrics Grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Gap Metric */}
+          {card.logicGap !== undefined && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-terminal-muted">Gap:</span>
+              <span
+                className="text-xs font-mono font-semibold"
+                style={{ color: getMetricColor(card.logicGap, 'gap') }}
+              >
+                {Math.round(card.logicGap)}%
+              </span>
+            </div>
+          )}
+
+          {/* Stability Metric */}
+          {card.stability !== undefined && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-terminal-muted">Stab:</span>
+              <span
+                className="text-xs font-mono font-semibold"
+                style={{ color: getMetricColor(card.stability, 'stability') }}
+              >
+                {Math.round(card.stability)}%
+              </span>
+            </div>
+          )}
+
+          {/* Fork ETA Metric */}
+          {card.nextForkEtaSec !== undefined && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-terminal-muted">Fork:</span>
+              <span className="text-xs font-mono font-semibold text-[#00D4FF]">
+                {formatTimeRemaining(card.nextForkEtaSec)}
+              </span>
+            </div>
+          )}
+
+          {/* Quality Score (for launches) */}
+          {card.qualityScore !== undefined && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-terminal-muted">Score:</span>
+              <span
+                className="text-xs font-mono font-semibold"
+                style={{ color: getMetricColor(card.qualityScore, 'stability') }}
+              >
+                {Math.round(card.qualityScore)}
+              </span>
+            </div>
+          )}
         </div>
-        {/* Action Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleClick();
-          }}
-          className="w-6 h-6 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded border border-white/10 hover:border-white/20 transition"
-        >
-          <ArrowRight className="w-3 h-3 text-white/70" />
-        </button>
+
+        {/* Footer: Quick Action Button */}
+        <div className="flex items-center justify-end mt-auto pt-1">
+          <button
+            onClick={handleTrack}
+            className="w-6 h-6 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded border border-white/10 hover:border-white/20 transition"
+            title={tracked ? 'Remove from watchlist' : 'Add to watchlist'}
+          >
+            <Eye className="w-3.5 h-3.5 text-white/60" />
+          </button>
+        </div>
       </div>
     </div>
   );

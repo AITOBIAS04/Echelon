@@ -1,90 +1,72 @@
-import { useMemo } from 'react';
+import { useState } from 'react';
 import { useOpsBoard } from '../../hooks/useOpsBoard';
 import { LiveNowBar } from './LiveNowBar';
 import { TickerCard } from './TickerCard';
 import type { OpsCard } from '../../types/opsBoard';
 
 /**
- * Filter cards for TRENDING NOW lane
- * High Quality Score (>80) + High Activity
+ * OpsBoard Column Props
  */
-function filterTrendingNow(cards: OpsCard[]): OpsCard[] {
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  
-  return cards.filter((card) => {
-    // High quality score (>80) for launches
-    if (card.type === 'launch' && card.qualityScore && card.qualityScore > 80) {
-      return true;
-    }
-    // High stability (>80) + recent activity for timelines
-    if (card.type === 'timeline' && card.stability && card.stability > 80) {
-      const updatedAt = new Date(card.updatedAt);
-      return updatedAt > oneDayAgo;
-    }
-    return false;
-  });
+interface OpsColumnProps {
+  title: string;
+  accentColor: string;
+  cards: OpsCard[];
+  emptyMessage: string;
 }
 
 /**
- * Filter cards for NEW LAUNCHES lane
- * Created in last 24 hours
+ * OpsColumn Component
+ * 
+ * Individual column in the 3-column grid layout.
  */
-function filterNewLaunches(cards: OpsCard[]): OpsCard[] {
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  
-  return cards.filter((card) => {
-    const createdAt = new Date(card.createdAt);
-    return createdAt > oneDayAgo;
-  });
-}
+function OpsColumn({ title, accentColor, cards, emptyMessage }: OpsColumnProps) {
+  return (
+    <div className="flex flex-col h-full">
+      {/* Sticky Header */}
+      <div
+        className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 mb-3 bg-terminal-bg/95 backdrop-blur-sm border-b"
+        style={{ borderColor: `${accentColor}40` }}
+      >
+        <div
+          className="w-2 h-2 rounded-full"
+          style={{ backgroundColor: accentColor }}
+        />
+        <h3 className="text-sm font-bold text-terminal-text uppercase tracking-wide">
+          {title}
+        </h3>
+        <span className="text-xs text-terminal-muted font-mono ml-auto">
+          ({cards.length})
+        </span>
+      </div>
 
-/**
- * Filter cards for PARADOX / UNDER THREAT lane
- * paradox_active OR brittle OR sabotage_active
- */
-function filterParadoxThreat(cards: OpsCard[]): OpsCard[] {
-  return cards.filter((card) => {
-    // Check tags
-    if (card.tags.includes('paradox_active') || 
-        card.tags.includes('brittle') || 
-        card.tags.includes('sabotage_heat')) {
-      return true;
-    }
-    // Check paradox proximity
-    if (card.paradoxProximity && card.paradoxProximity > 50) {
-      return true;
-    }
-    // Check logic gap (brittle indicator)
-    if (card.logicGap && card.logicGap >= 40) {
-      return true;
-    }
-    return false;
-  });
+      {/* Cards List */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+        <div className="flex flex-col gap-3 px-4 pb-4">
+          {cards.length === 0 ? (
+            <div className="text-terminal-muted text-xs py-8 text-center">
+              {emptyMessage}
+            </div>
+          ) : (
+            cards.map((card) => (
+              <TickerCard key={card.id} card={card} />
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /**
  * OpsBoard Component
  * 
- * BullX-style 3-strip layout with horizontal scrolling lanes.
+ * BullX-style 3-column vertical grid layout.
+ * Column 1: New Creations (Green)
+ * Column 2: About to Happen (Orange)
+ * Column 3: Critical & Graduating (Red/Purple)
  */
 export function OpsBoard() {
   const { data, loading, error } = useOpsBoard();
-
-  // Combine all cards from all lanes
-  const allCards = useMemo(() => {
-    if (!data) return [];
-    return [
-      ...data.lanes.new_creations,
-      ...data.lanes.about_to_happen,
-      ...data.lanes.at_risk,
-      ...data.lanes.graduation,
-    ];
-  }, [data]);
-
-  // Filter into 3 categories
-  const trendingNow = useMemo(() => filterTrendingNow(allCards), [allCards]);
-  const newLaunches = useMemo(() => filterNewLaunches(allCards), [allCards]);
-  const paradoxThreat = useMemo(() => filterParadoxThreat(allCards), [allCards]);
 
   if (loading) {
     return (
@@ -107,102 +89,127 @@ export function OpsBoard() {
     return null;
   }
 
+  // Combine at_risk and graduation into Column 3
+  const criticalAndGraduating = [
+    ...data.lanes.at_risk,
+    ...data.lanes.graduation,
+  ];
+
+  // Check if we should use tab switcher on mobile (if any list has >10 items)
+  const totalCards = data.lanes.about_to_happen.length + data.lanes.new_creations.length + criticalAndGraduating.length;
+  const useMobileTabs = totalCards > 10;
+
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col h-full">
       {/* Live Now Bar */}
       <LiveNowBar liveNow={data.liveNow} />
 
-      {/* Lane A: TRENDING NOW */}
-      <div className="mb-2 laptop-compact:mb-4">
-        <div className="flex items-center gap-2 mb-2 px-4">
-          <span className="text-lg laptop-compact:text-xs">🔥</span>
-          <h3 className="text-lg font-bold text-terminal-text uppercase tracking-wide laptop-compact:text-xs laptop-compact:font-bold laptop-compact:uppercase laptop-compact:tracking-widest laptop-compact:text-white/50">
-            TRENDING NOW
-          </h3>
-        </div>
-        <div
-          className="overflow-x-auto scrollbar-hide px-4 laptop-compact:snap-x laptop-compact:snap-mandatory"
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          <div className="flex gap-3 pb-2" style={{ minWidth: 'min-content' }}>
-            {trendingNow.length === 0 ? (
-              <div className="text-terminal-muted text-xs py-4">No trending items</div>
-            ) : (
-              trendingNow.map((card) => (
-                <div key={card.id} className="flex-shrink-0 laptop-compact:snap-start">
-                  <TickerCard card={card} />
-                </div>
-              ))
-            )}
+      {/* Desktop: 3-Column Grid | Mobile: Stacked or Tabs */}
+      {useMobileTabs ? (
+        <MobileTabSwitcher
+          aboutToHappen={data.lanes.about_to_happen}
+          newCreations={data.lanes.new_creations}
+          criticalAndGraduating={criticalAndGraduating}
+        />
+      ) : (
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+          {/* Mobile Order: About to Happen first (most urgent) */}
+          {/* Column 2: About to Happen (Orange Accent) */}
+          <div className="flex flex-col min-h-0 border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50 order-1 lg:order-2">
+            <OpsColumn
+              title="🟠 About to Happen"
+              accentColor="#FF9500"
+              cards={data.lanes.about_to_happen}
+              emptyMessage="No upcoming events"
+            />
+          </div>
+
+          {/* Column 1: New Creations (Green Accent) */}
+          <div className="flex flex-col min-h-0 border border-[#00FF41]/20 rounded-lg bg-terminal-panel/50 order-2 lg:order-1">
+            <OpsColumn
+              title="🟢 New Creations"
+              accentColor="#00FF41"
+              cards={data.lanes.new_creations}
+              emptyMessage="No new creations"
+            />
+          </div>
+
+          {/* Column 3: Critical & Graduating (Red/Purple Accent) */}
+          <div className="flex flex-col min-h-0 border border-[#FF3B3B]/20 rounded-lg bg-terminal-panel/50 order-3 lg:order-3">
+            <OpsColumn
+              title="🔴 Critical & Graduating"
+              accentColor="#FF3B3B"
+              cards={criticalAndGraduating}
+              emptyMessage="No critical items"
+            />
           </div>
         </div>
-        <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Mobile Tab Switcher Component
+ * 
+ * Shows tabs on mobile when lists are long (>10 items total).
+ * Allows switching between the three columns to avoid infinite scrolling.
+ */
+function MobileTabSwitcher({
+  aboutToHappen,
+  newCreations,
+  criticalAndGraduating,
+}: {
+  aboutToHappen: OpsCard[];
+  newCreations: OpsCard[];
+  criticalAndGraduating: OpsCard[];
+}) {
+  const [activeTab, setActiveTab] = useState<'active' | 'new' | 'critical'>('active');
+
+  const tabs = [
+    { id: 'active' as const, label: 'Active', count: aboutToHappen.length, cards: aboutToHappen, accentColor: '#FF9500', title: '🟠 About to Happen' },
+    { id: 'new' as const, label: 'New', count: newCreations.length, cards: newCreations, accentColor: '#00FF41', title: '🟢 New Creations' },
+    { id: 'critical' as const, label: 'Critical', count: criticalAndGraduating.length, cards: criticalAndGraduating, accentColor: '#FF3B3B', title: '🔴 Critical & Graduating' },
+  ];
+
+  const activeTabData = tabs.find(t => t.id === activeTab)!;
+
+  return (
+    <div className="flex-1 min-h-0 flex flex-col mt-4 lg:hidden">
+      {/* Tab Switcher */}
+      <div className="flex items-center gap-2 mb-4 px-4 border-b border-terminal-border">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium transition relative ${
+              activeTab === tab.id
+                ? 'text-terminal-text'
+                : 'text-terminal-muted hover:text-terminal-text'
+            }`}
+          >
+            {tab.label}
+            <span className="ml-1.5 text-xs text-terminal-muted">({tab.count})</span>
+            {activeTab === tab.id && (
+              <div
+                className="absolute bottom-0 left-0 right-0 h-0.5"
+                style={{ backgroundColor: tab.accentColor }}
+              />
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* Lane B: NEW LAUNCHES */}
-      <div className="mb-2 laptop-compact:mb-4">
-        <div className="flex items-center gap-2 mb-2 px-4">
-          <span className="text-lg laptop-compact:text-xs">🚀</span>
-          <h3 className="text-lg font-bold text-terminal-text uppercase tracking-wide laptop-compact:text-xs laptop-compact:font-bold laptop-compact:uppercase laptop-compact:tracking-widest laptop-compact:text-white/50">
-            NEW LAUNCHES
-          </h3>
+      {/* Active Tab Content */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col min-h-0 border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50">
+          <OpsColumn
+            title={activeTabData.title}
+            accentColor={activeTabData.accentColor}
+            cards={activeTabData.cards}
+            emptyMessage={`No ${activeTabData.label.toLowerCase()} items`}
+          />
         </div>
-        <div
-          className="overflow-x-auto scrollbar-hide px-4 laptop-compact:snap-x laptop-compact:snap-mandatory"
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          <div className="flex gap-3 pb-2" style={{ minWidth: 'min-content' }}>
-            {newLaunches.length === 0 ? (
-              <div className="text-terminal-muted text-xs py-4">No new launches</div>
-            ) : (
-              newLaunches.map((card) => (
-                <div key={card.id} className="flex-shrink-0 laptop-compact:snap-start">
-                  <TickerCard card={card} />
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-        <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
-      </div>
-
-      {/* Lane C: PARADOX / UNDER THREAT */}
-      <div className="mb-2 laptop-compact:mb-4">
-        <div className="flex items-center gap-2 mb-2 px-4">
-          <span className="text-lg laptop-compact:text-xs">⚠️</span>
-          <h3 className="text-lg font-bold text-terminal-text uppercase tracking-wide laptop-compact:text-xs laptop-compact:font-bold laptop-compact:uppercase laptop-compact:tracking-widest laptop-compact:text-white/50">
-            PARADOX / UNDER THREAT
-          </h3>
-        </div>
-        <div
-          className="overflow-x-auto scrollbar-hide px-4 laptop-compact:snap-x laptop-compact:snap-mandatory"
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          <div className="flex gap-3 pb-2" style={{ minWidth: 'min-content' }}>
-            {paradoxThreat.length === 0 ? (
-              <div className="text-terminal-muted text-xs py-4">No threats detected</div>
-            ) : (
-              paradoxThreat.map((card) => (
-                <div key={card.id} className="flex-shrink-0 laptop-compact:snap-start">
-                  <TickerCard card={card} />
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-        <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; }`}</style>
       </div>
     </div>
   );

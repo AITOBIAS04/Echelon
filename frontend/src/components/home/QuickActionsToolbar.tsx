@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { LayoutTemplate, PlayCircle, Globe, Box } from 'lucide-react';
+import { Plus, Play, Globe } from 'lucide-react';
 
 /**
  * QuickActionsToolbar Component
  * 
  * A slim single-line toolbar with quick action buttons.
- * Designed to consume minimal vertical space (max 50px height).
+ * Height: ~40px, minimal styling for maximum density.
  */
 export function QuickActionsToolbar() {
   const navigate = useNavigate();
@@ -14,41 +14,37 @@ export function QuickActionsToolbar() {
     {
       id: 'template',
       label: 'Template',
-      icon: LayoutTemplate,
+      icon: Plus,
+      iconChar: '＋',
       onClick: () => navigate('/launchpad/new?mode=theatre&step=template'),
     },
     {
       id: 'replay',
       label: 'Replay',
-      icon: PlayCircle,
+      icon: Play,
+      iconChar: '▶',
       onClick: () => navigate('/launchpad/new?mode=incident'),
     },
     {
       id: 'osint',
       label: 'OSINT',
       icon: Globe,
+      iconChar: '🌐',
       onClick: () => navigate('/launchpad/new?mode=osint'),
-    },
-    {
-      id: 'theatres',
-      label: 'Theatres',
-      icon: Box,
-      onClick: () => navigate('/blackbox?tab=theatres'),
     },
   ];
 
   return (
-    <div className="flex items-center gap-2 h-9">
+    <div className="flex items-center gap-4 h-10">
       {actions.map((action) => {
-        const Icon = action.icon;
         return (
           <button
             key={action.id}
             onClick={action.onClick}
-            className="flex items-center gap-1.5 px-3 py-1.5 h-8 md:h-9 text-xs bg-transparent border border-terminal-border rounded-full hover:border-[#00D4FF] hover:text-[#00D4FF] hover:bg-[#00D4FF]/5 transition text-terminal-text"
+            className="flex items-center gap-1.5 text-sm text-terminal-muted hover:text-[#00D4FF] transition"
           >
-            <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="text-[12px] font-medium">{action.label}</span>
+            <span>{action.iconChar}</span>
+            <span>{action.label}</span>
           </button>
         );
       })}
