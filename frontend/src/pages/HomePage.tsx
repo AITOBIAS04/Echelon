@@ -32,10 +32,11 @@ export function HomePage() {
   };
 
   return (
-    <div className="h-full flex flex-col pb-20 md:pb-4">
-      <div className="w-full px-4 flex flex-col gap-3 pt-4 h-full">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden">
+      {/* Header area always visible */}
+      <div className="flex-shrink-0 px-4 pt-4 pb-3 flex flex-col gap-3">
         {/* Slim Header */}
-        <div className="flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center justify-between">
           <h1 className="text-lg md:text-xl font-bold text-terminal-text uppercase tracking-wide">
             OPS BOARD
           </h1>
@@ -64,9 +65,11 @@ export function HomePage() {
 
         {/* Quick Actions Toolbar - Slim horizontal toolbar */}
         <QuickActionsToolbar />
+      </div>
 
-        {/* Main Content: 3-Column Grid - Full Width */}
-        <div className="flex-1 min-h-0 overflow-hidden">
+      {/* Scroll container */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="px-4 pb-4">
           <OpsBoard />
         </div>
       </div>

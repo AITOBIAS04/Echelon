@@ -170,34 +170,67 @@ function RiskAndResultsColumn({
  * Column 2: About to Happen (Orange)
  * Column 3: Critical & Graduating (Red/Purple)
  */
+/**
+ * OpsBoardSkeleton Component
+ * 
+ * Simple placeholder skeleton for loading state.
+ */
+function OpsBoardSkeleton() {
+  return (
+    <div className="h-[calc(100vh-160px)] grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex flex-col h-full min-h-0 border border-terminal-border/20 rounded-lg bg-terminal-panel/50">
+          <div className="sticky top-0 z-10 px-4 py-3 mb-3 bg-terminal-bg/95 backdrop-blur-sm border-b border-terminal-border/40 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-terminal-muted/50 animate-pulse" />
+              <div className="h-4 w-24 bg-terminal-muted/50 rounded animate-pulse" />
+              <div className="h-3 w-8 bg-terminal-muted/50 rounded ml-auto animate-pulse" />
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto px-2">
+            {[1, 2, 3, 4, 5].map((j) => (
+              <div key={j} className="h-16 bg-terminal-bg/50 rounded mb-2 animate-pulse" />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function OpsBoard() {
   const { data, loading, error } = useOpsBoard();
 
-  if (loading) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-terminal-muted animate-pulse">Loading operations board...</div>
-      </div>
-    );
-  }
-
   if (error) {
     return (
-      <div className="h-full flex flex-col items-center justify-center">
-        <p className="text-lg font-semibold text-terminal-text mb-2">Error loading ops board</p>
-        <p className="text-sm text-terminal-muted">{error}</p>
+      <div className="terminal-panel p-4 text-echelon-red border border-echelon-red/30 rounded">
+        <div className="font-semibold mb-1">Failed to load ops board</div>
+        <div className="text-sm text-terminal-muted">{error}</div>
       </div>
     );
   }
 
+  if (loading && !data) {
+    return <OpsBoardSkeleton />;
+  }
+
+  // Use optional chaining and default arrays to prevent crashes
+  const lanes = data?.lanes ?? {
+    new_creations: [],
+    about_to_happen: [],
+    at_risk: [],
+    graduation: [],
+  };
+
+  // If no data and not loading, show skeleton (better than blank)
   if (!data) {
-    return null;
+    return <OpsBoardSkeleton />;
   }
 
   // Filter cards for each column based on requirements
   
   // LEFT: New Creations (Sandbox and Pilot timelines)
-  const newCreations = data.lanes.new_creations.filter((card) => {
+  const newCreations = (lanes.new_creations ?? []).filter((card) => {
     if (card.type === 'launch') {
       return card.phase === 'sandbox' || card.phase === 'pilot';
     }
@@ -206,25 +239,25 @@ export function OpsBoard() {
   });
 
   // CENTER: Active Alpha (Fork Soon ETA < 10m OR Disclosure Active)
-  const activeAlpha = data.lanes.about_to_happen.filter((card) => {
+  const activeAlpha = (lanes.about_to_happen ?? []).filter((card) => {
     // Fork Soon: nextForkEtaSec < 600 (10 minutes)
     if (card.nextForkEtaSec !== undefined && card.nextForkEtaSec < 600) {
       return true;
     }
     // Disclosure Active tag
-    if (card.tags.includes('disclosure_active')) {
+    if (card.tags?.includes('disclosure_active')) {
       return true;
     }
     // Fork Soon tag
-    if (card.tags.includes('fork_soon')) {
+    if (card.tags?.includes('fork_soon')) {
       return true;
     }
     return false;
   });
 
   // RIGHT: Risk & Results (At Risk on top, Recently Graduated on bottom)
-  const atRisk = data.lanes.at_risk;
-  const recentlyGraduated = data.lanes.graduation;
+  const atRisk = lanes.at_risk ?? [];
+  const recentlyGraduated = lanes.graduation ?? [];
 
   // Check if we should use tab switcher on mobile (if any list has >10 items)
   const totalCards = newCreations.length + activeAlpha.length + atRisk.length + recentlyGraduated.length;
@@ -258,7 +291,7 @@ export function OpsBoard() {
               accentColor="#FF9500"
               cards={activeAlpha}
               emptyMessage="No active events"
-              liveNow={data.liveNow}
+              liveNow={data?.liveNow}
             />
           </div>
 
