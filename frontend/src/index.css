@@ -189,3 +189,25 @@
   80% { transform: translateX(1px); }
   100% { transform: translateX(0); }
 }
+
+/* MacBook Air Density Tweaks (max-height: 800px) */
+@media (max-height: 800px) {
+  /* Compact section headers */
+  .section-header-compact {
+    @apply text-xs font-bold uppercase tracking-widest text-white/50;
+  }
+  
+  /* Scroll snapping for horizontal lanes */
+  .snap-lane {
+    scroll-snap-type: x mandatory;
+  }
+
+  .snap-lane > * {
+    scroll-snap-align: start;
+  }
+  
+  /* Reduced gaps between lanes */
+  .lane-gap-compact {
+    margin-bottom: 1rem; /* gap-4 */
+  }
+}

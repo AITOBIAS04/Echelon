@@ -6,6 +6,9 @@ export default {
   ],
   theme: {
     extend: {
+      screens: {
+        'laptop-compact': { 'raw': '(max-height: 800px)' },
+      },
       colors: {
         // Core terminal colours
         'terminal': {

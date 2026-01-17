@@ -65,8 +65,8 @@ export function AppLayout() {
 
   return (
     <div className="min-h-[100dvh] h-[100dvh] flex flex-col bg-terminal-bg overflow-hidden">
-      {/* Header - fixed height, ensure no horizontal overflow but allow dropdowns to overflow */}
-      <header className="flex-shrink-0 h-14 bg-terminal-panel border-b border-terminal-border flex items-center justify-between px-2 sm:px-3 md:px-4 gap-1 sm:gap-2 overflow-x-auto overflow-y-visible">
+      {/* Header - fixed height, max 64px, ensure no horizontal overflow but allow dropdowns to overflow */}
+      <header className="flex-shrink-0 h-14 max-h-16 bg-terminal-panel border-b border-terminal-border flex items-center justify-between px-2 sm:px-3 md:px-4 gap-1 sm:gap-2 overflow-x-auto overflow-y-visible">
         {/* Left section - Logo + Nav */}
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 min-w-0">
           {/* Logo - Always visible, minimal space */}

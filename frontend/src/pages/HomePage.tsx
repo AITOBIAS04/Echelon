@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import { OpsBoard } from '../components/home/OpsBoard';
 import { LaunchpadRail } from '../components/home/LaunchpadRail';
 import { QuickActionsToolbar } from '../components/home/QuickActionsToolbar';
+import { CreationRibbon } from '../components/home/CreationRibbon';
 import { getHomePreference, setHomePreference, type HomePreference } from '../lib/userPrefs';
 
 /**
@@ -35,8 +36,11 @@ export function HomePage() {
   };
 
   return (
-    <div className="h-full flex flex-col gap-4 pt-4 pb-20 md:pb-4">
-      <div className="max-w-7xl mx-auto w-full px-4 md:px-6 flex flex-col gap-4 h-full">
+    <div className="h-full flex flex-col pb-20 md:pb-4">
+      {/* Creation Ribbon - Directly under main Nav */}
+      <CreationRibbon />
+      
+      <div className="max-w-[100vw] w-full px-4 flex flex-col gap-4 pt-4 h-full">
         {/* Header Section */}
         <div className="flex flex-col gap-3 flex-shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
