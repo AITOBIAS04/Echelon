@@ -11,6 +11,7 @@ import { LaunchpadNewPage } from './pages/LaunchpadNewPage';
 import { SigintRedirect } from './components/routing/SigintRedirect';
 import { AgentRoster } from './components/agents/AgentRoster';
 import { AgentDetail } from './components/agents/AgentDetail';
+import { ErrorBoundary } from './components/system/ErrorBoundary';
 
 export const router = createBrowserRouter([
   {
@@ -19,7 +20,11 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <HomePage />,
+        element: (
+          <ErrorBoundary>
+            <HomePage />
+          </ErrorBoundary>
+        ),
       },
       {
         path: 'sigint',

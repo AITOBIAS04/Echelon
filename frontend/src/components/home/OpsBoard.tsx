@@ -201,31 +201,34 @@ function OpsBoardSkeleton() {
 export function OpsBoard() {
   const { data, loading, error } = useOpsBoard();
 
-  if (error) {
-    return (
-      <div className="terminal-panel p-4 text-echelon-red border border-echelon-red/30 rounded">
-        <div className="font-semibold mb-1">Failed to load ops board</div>
-        <div className="text-sm text-terminal-muted">{error}</div>
+  // Debug HUD - temporary
+  return (
+    <>
+      <div className="text-xs text-terminal-muted mb-2">
+        loading={String(loading)} | data={String(!!data)} | error={String(!!error)}
       </div>
-    );
-  }
-
-  if (loading && !data) {
-    return <OpsBoardSkeleton />;
-  }
-
-  // Use optional chaining and default arrays to prevent crashes
-  const lanes = data?.lanes ?? {
-    new_creations: [],
-    about_to_happen: [],
-    at_risk: [],
-    graduation: [],
-  };
-
-  // If no data and not loading, show skeleton (better than blank)
-  if (!data) {
-    return <OpsBoardSkeleton />;
-  }
+      {error ? (
+        <div className="terminal-panel p-4 text-echelon-red border border-echelon-red/30 rounded">
+          <div className="font-semibold mb-1">Failed to load ops board</div>
+          <div className="text-sm text-terminal-muted">{error}</div>
+        </div>
+      ) : loading && !data ? (
+        <OpsBoardSkeleton />
+      ) : !data ? (
+        <div className="terminal-panel p-4 border border-terminal-border text-terminal-text">
+          <div className="font-semibold mb-1">Ops Board: no data</div>
+          <div className="text-sm text-terminal-muted">
+            Hook returned no data and not loading. Check console/logs.
+          </div>
+        </div>
+      ) : (() => {
+        // Use optional chaining and default arrays to prevent crashes
+        const lanes = data?.lanes ?? {
+          new_creations: [],
+          about_to_happen: [],
+          at_risk: [],
+          graduation: [],
+        };
 
   // Filter cards for each column based on requirements
   
@@ -305,6 +308,9 @@ export function OpsBoard() {
         </div>
       )}
     </div>
+        );
+      })()}
+    </>
   );
 }
 
