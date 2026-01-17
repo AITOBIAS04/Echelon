@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useOpsBoard } from '../../hooks/useOpsBoard';
 import { OpsRow } from './OpsRow';
-import type { OpsCard, LiveNowSummary } from '../../types/opsBoard';
+import { BreachesPanel } from './BreachesPanel';
+import { computeTrendingScore } from '../../lib/trendingRanker';
+import type { OpsCard } from '../../types/opsBoard';
 
 /**
  * OpsBoard Column Props
@@ -11,7 +13,7 @@ interface OpsColumnProps {
   accentColor: string;
   cards: OpsCard[];
   emptyMessage: string;
-  liveNow?: LiveNowSummary;
+  headerBottom?: ReactNode;
 }
 
 /**
@@ -19,12 +21,12 @@ interface OpsColumnProps {
  * 
  * Individual column in the 3-column grid layout.
  */
-function OpsColumn({ title, accentColor, cards, emptyMessage, liveNow }: OpsColumnProps) {
+function OpsColumn({ title, accentColor, cards, emptyMessage, headerBottom }: OpsColumnProps) {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Sticky Header */}
       <div
-        className="sticky top-0 z-10 flex flex-col gap-2 px-4 py-3 mb-3 bg-terminal-bg/95 backdrop-blur-sm border-b flex-shrink-0"
+        className="sticky top-0 z-10 flex flex-col gap-1 px-3 py-2 mb-2 bg-terminal-bg/95 backdrop-blur-sm border-b flex-shrink-0"
         style={{ borderColor: `${accentColor}40` }}
       >
         <div className="flex items-center gap-2">
@@ -39,23 +41,7 @@ function OpsColumn({ title, accentColor, cards, emptyMessage, liveNow }: OpsColu
             ({cards.length})
           </span>
         </div>
-        {/* Live Now Strip - Only in Center column */}
-        {liveNow && (
-          <div className="flex items-center gap-3 pt-1 border-t border-terminal-border/50">
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-[10px] text-terminal-muted font-mono">
-                Forks: <span className="text-terminal-text font-bold">{liveNow.forksLive}</span>
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 bg-[#FF3B3B] rounded-full animate-pulse" />
-              <span className="text-[10px] text-terminal-muted font-mono">
-                Paradox: <span className="text-terminal-text font-bold">{liveNow.paradoxActive}</span>
-              </span>
-            </div>
-          </div>
-        )}
+        {headerBottom}
       </div>
 
       {/* Cards List - Independent Scroll */}
@@ -83,29 +69,25 @@ function OpsColumn({ title, accentColor, cards, emptyMessage, liveNow }: OpsColu
  */
 function RiskAndResultsColumn({
   atRisk,
-  recentlyGraduated,
+  headerBottom,
 }: {
   atRisk: OpsCard[];
-  recentlyGraduated: OpsCard[];
+  headerBottom?: ReactNode;
 }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* At Risk Section */}
       <div className="flex flex-col flex-1 min-h-0">
         <div
-          className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 mb-3 bg-terminal-bg/95 backdrop-blur-sm border-b flex-shrink-0"
+          className="sticky top-0 z-10 flex flex-col gap-1 px-3 py-2 mb-2 bg-terminal-bg/95 backdrop-blur-sm border-b flex-shrink-0"
           style={{ borderColor: '#FF3B3B40' }}
         >
-          <div
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: '#FF3B3B' }}
-          />
-          <h3 className="text-sm font-bold text-terminal-text uppercase tracking-wide">
-            🔴 At Risk
-          </h3>
-          <span className="text-xs text-terminal-muted font-mono ml-auto">
-            ({atRisk.length})
-          </span>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#FF3B3B' }} />
+            <h3 className="text-sm font-bold text-terminal-text uppercase tracking-wide">At Risk</h3>
+            <span className="text-xs text-terminal-muted font-mono ml-auto">({atRisk.length})</span>
+          </div>
+          {headerBottom}
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           <div className="flex flex-col pb-2">
@@ -123,40 +105,11 @@ function RiskAndResultsColumn({
       </div>
 
       {/* Divider */}
-      {atRisk.length > 0 && recentlyGraduated.length > 0 && (
-        <div className="h-px bg-terminal-border mx-4 my-2 flex-shrink-0" />
-      )}
+      <div className="h-px bg-terminal-border mx-3 my-2 flex-shrink-0" />
 
-      {/* Recently Graduated Section */}
+      {/* Breaches Section */}
       <div className="flex flex-col flex-1 min-h-0">
-        <div
-          className="sticky top-0 z-10 flex items-center gap-2 px-4 py-3 mb-3 bg-terminal-bg/95 backdrop-blur-sm border-b flex-shrink-0"
-          style={{ borderColor: '#AA66FF40' }}
-        >
-          <div
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: '#AA66FF' }}
-          />
-          <h3 className="text-sm font-bold text-terminal-text uppercase tracking-wide">
-            🎓 Recently Graduated
-          </h3>
-          <span className="text-xs text-terminal-muted font-mono ml-auto">
-            ({recentlyGraduated.length})
-          </span>
-        </div>
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-          <div className="flex flex-col pb-2">
-            {recentlyGraduated.length === 0 ? (
-              <div className="text-terminal-muted text-xs py-4 text-center px-4">
-                No graduations
-              </div>
-            ) : (
-              recentlyGraduated.map((card) => (
-                <OpsRow key={card.id} card={card} />
-              ))
-            )}
-          </div>
-        </div>
+        <BreachesPanel />
       </div>
     </div>
   );
@@ -177,7 +130,7 @@ function RiskAndResultsColumn({
  */
 function OpsBoardSkeleton() {
   return (
-    <div className="h-[calc(100vh-160px)] grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-3">
       {[1, 2, 3].map((i) => (
         <div key={i} className="flex flex-col h-full min-h-0 border border-terminal-border/20 rounded-lg bg-terminal-panel/50">
           <div className="sticky top-0 z-10 px-4 py-3 mb-3 bg-terminal-bg/95 backdrop-blur-sm border-b border-terminal-border/40 flex-shrink-0">
@@ -201,34 +154,31 @@ function OpsBoardSkeleton() {
 export function OpsBoard() {
   const { data, loading, error } = useOpsBoard();
 
-  // Debug HUD - temporary
-  return (
-    <>
-      <div className="text-xs text-terminal-muted mb-2">
-        loading={String(loading)} | data={String(!!data)} | error={String(!!error)}
+  if (error) {
+    return (
+      <div className="terminal-panel p-4 text-echelon-red border border-echelon-red/30 rounded">
+        <div className="font-semibold mb-1">Failed to load ops board</div>
+        <div className="text-sm text-terminal-muted">{error}</div>
       </div>
-      {error ? (
-        <div className="terminal-panel p-4 text-echelon-red border border-echelon-red/30 rounded">
-          <div className="font-semibold mb-1">Failed to load ops board</div>
-          <div className="text-sm text-terminal-muted">{error}</div>
-        </div>
-      ) : loading && !data ? (
-        <OpsBoardSkeleton />
-      ) : !data ? (
-        <div className="terminal-panel p-4 border border-terminal-border text-terminal-text">
-          <div className="font-semibold mb-1">Ops Board: no data</div>
-          <div className="text-sm text-terminal-muted">
-            Hook returned no data and not loading. Check console/logs.
-          </div>
-        </div>
-      ) : (() => {
-        // Use optional chaining and default arrays to prevent crashes
-        const lanes = data?.lanes ?? {
-          new_creations: [],
-          about_to_happen: [],
-          at_risk: [],
-          graduation: [],
-        };
+    );
+  }
+
+  if (loading && !data) {
+    return <OpsBoardSkeleton />;
+  }
+
+  // Use optional chaining and default arrays to prevent crashes
+  const lanes = data?.lanes ?? {
+    new_creations: [],
+    about_to_happen: [],
+    at_risk: [],
+    graduation: [],
+  };
+
+  // If no data and not loading, show skeleton (better than blank)
+  if (!data) {
+    return <OpsBoardSkeleton />;
+  }
 
   // Filter cards for each column based on requirements
   
@@ -241,109 +191,102 @@ export function OpsBoard() {
     return true;
   });
 
-  // CENTER: Active Alpha (Fork Soon ETA < 10m OR Disclosure Active)
-  const activeAlpha = (lanes.about_to_happen ?? []).filter((card) => {
-    // Fork Soon: nextForkEtaSec < 600 (10 minutes)
-    if (card.nextForkEtaSec !== undefined && card.nextForkEtaSec < 600) {
-      return true;
-    }
-    // Disclosure Active tag
-    if (card.tags?.includes('disclosure_active')) {
-      return true;
-    }
-    // Fork Soon tag
-    if (card.tags?.includes('fork_soon')) {
-      return true;
-    }
-    return false;
-  });
+  // CENTER: Trending (sorted by urgency + signal strength)
+  const trending = [...(lanes.about_to_happen ?? [])]
+    .sort((a, b) => {
+      const d = computeTrendingScore(b) - computeTrendingScore(a);
+      if (d !== 0) return d;
+      return Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
+    });
 
-  // RIGHT: Risk & Results (At Risk on top, Recently Graduated on bottom)
+  // RIGHT: At Risk (plus Breaches panel)
   const atRisk = lanes.at_risk ?? [];
-  const recentlyGraduated = lanes.graduation ?? [];
+
+  // Trending status line counts (BullX-like)
+  const forksCount = data?.liveNow?.forksLive ?? trending.filter((c) => (c.tags?.includes('fork_soon') || (typeof c.nextForkEtaSec === 'number' && c.nextForkEtaSec <= 900))).length;
+  const paradoxCount = data?.liveNow?.paradoxActive ?? trending.filter((c) => c.tags?.includes('paradox_active')).length;
+  const disclosuresCount = trending.filter((c) => c.tags?.includes('disclosure_active')).length;
+  const flipsCount = trending.filter((c) => c.tags?.includes('evidence_flip')).length;
+  const showTrendingStatus = forksCount + paradoxCount + disclosuresCount + flipsCount > 0;
 
   // Check if we should use tab switcher on mobile (if any list has >10 items)
-  const totalCards = newCreations.length + activeAlpha.length + atRisk.length + recentlyGraduated.length;
+  const totalCards = newCreations.length + trending.length + atRisk.length;
+  const useMobileTabs = totalCards > 10;
 
-        return (
-          <>
-            {/* Desktop always shows grid */}
-            <div className="hidden lg:grid h-[calc(100vh-160px)] grid-cols-3 gap-4">
-              {/* LEFT: New Creations (Green Accent) */}
-              <div className="flex flex-col h-full min-h-0 border border-[#00FF41]/20 rounded-lg bg-terminal-panel/50">
-                <OpsColumn
-                  title="🟢 New Creations"
-                  accentColor="#00FF41"
-                  cards={newCreations}
-                  emptyMessage="No new creations"
-                />
-              </div>
+  return (
+    <div className="flex flex-col h-full">
+      {/* Desktop (lg+): Always render the grid */}
+      <div className="hidden lg:grid h-full grid-cols-3 gap-3">
+        {/* LEFT: Newly Created */}
+        <div className="flex flex-col h-full min-h-0 border border-[#00FF41]/20 rounded-lg bg-terminal-panel/50">
+          <OpsColumn
+            title="Newly Created"
+            accentColor="#00FF41"
+            cards={newCreations}
+            emptyMessage="No new creations"
+          />
+        </div>
 
-              {/* CENTER: Active Alpha (Orange Accent) - Includes Live Now Strip */}
-              <div className="flex flex-col h-full min-h-0 border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50">
-                <OpsColumn
-                  title="🟠 Active Alpha"
-                  accentColor="#FF9500"
-                  cards={activeAlpha}
-                  emptyMessage="No active events"
-                  liveNow={data?.liveNow}
-                />
-              </div>
-
-              {/* RIGHT: Risk & Results (Red/Purple Accent) */}
-              <div className="flex flex-col h-full min-h-0 border border-[#FF3B3B]/20 rounded-lg bg-terminal-panel/50">
-                <RiskAndResultsColumn
-                  atRisk={atRisk}
-                  recentlyGraduated={recentlyGraduated}
-                />
-              </div>
-            </div>
-
-            {/* Mobile chooses tabs only when crowded; otherwise stacked */}
-            <div className="lg:hidden">
-              {totalCards > 10 ? (
-                <MobileTabSwitcher
-                  aboutToHappen={activeAlpha}
-                  newCreations={newCreations}
-                  criticalAndGraduating={[...atRisk, ...recentlyGraduated]}
-                />
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {/* LEFT: New Creations (Green Accent) */}
-                  <div className="flex flex-col h-full min-h-0 border border-[#00FF41]/20 rounded-lg bg-terminal-panel/50">
-                    <OpsColumn
-                      title="🟢 New Creations"
-                      accentColor="#00FF41"
-                      cards={newCreations}
-                      emptyMessage="No new creations"
-                    />
-                  </div>
-
-                  {/* CENTER: Active Alpha (Orange Accent) - Includes Live Now Strip */}
-                  <div className="flex flex-col h-full min-h-0 border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50">
-                    <OpsColumn
-                      title="🟠 Active Alpha"
-                      accentColor="#FF9500"
-                      cards={activeAlpha}
-                      emptyMessage="No active events"
-                      liveNow={data?.liveNow}
-                    />
-                  </div>
-
-                  {/* RIGHT: Risk & Results (Red/Purple Accent) */}
-                  <div className="flex flex-col h-full min-h-0 border border-[#FF3B3B]/20 rounded-lg bg-terminal-panel/50">
-                    <RiskAndResultsColumn
-                      atRisk={atRisk}
-                      recentlyGraduated={recentlyGraduated}
-                    />
-                  </div>
+        {/* CENTER: Trending */}
+        <div className="flex flex-col h-full min-h-0 border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50">
+          <OpsColumn
+            title="Trending"
+            accentColor="#FF9500"
+            cards={trending}
+            emptyMessage="No active signals"
+            headerBottom={
+              showTrendingStatus ? (
+                <div className="flex items-center gap-2 pt-1 border-t border-terminal-border/50 text-[10px] text-terminal-muted font-mono">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500/80" />
+                    Forks: <span className="text-terminal-text font-bold">{forksCount}</span>
+                  </span>
+                  <span className="opacity-50">·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500/80" />
+                    Paradox: <span className="text-terminal-text font-bold">{paradoxCount}</span>
+                  </span>
+                  <span className="opacity-50">·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500/80" />
+                    Disclosures: <span className="text-terminal-text font-bold">{disclosuresCount}</span>
+                  </span>
+                  <span className="opacity-50">·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500/80" />
+                    Flips: <span className="text-terminal-text font-bold">{flipsCount}</span>
+                  </span>
                 </div>
-              )}
+              ) : null
+            }
+          />
+        </div>
+
+        {/* RIGHT: At Risk + Breaches */}
+        <div className="flex flex-col h-full min-h-0 border border-[#FF3B3B]/20 rounded-lg bg-terminal-panel/50">
+          <RiskAndResultsColumn atRisk={atRisk} />
+        </div>
+      </div>
+
+      {/* Mobile: Tabs when crowded, else stacked */}
+      <div className="lg:hidden">
+        {useMobileTabs ? (
+          <MobileTabSwitcher trending={trending} newCreations={newCreations} atRisk={atRisk} />
+        ) : (
+          <div className="grid grid-cols-1 gap-3">
+            <div className="border border-[#00FF41]/20 rounded-lg bg-terminal-panel/50">
+              <OpsColumn title="Newly Created" accentColor="#00FF41" cards={newCreations} emptyMessage="No new creations" />
             </div>
-          </>
-        );
-      })()}
-    </>
+            <div className="border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50">
+              <OpsColumn title="Trending" accentColor="#FF9500" cards={trending} emptyMessage="No active signals" />
+            </div>
+            <div className="border border-[#FF3B3B]/20 rounded-lg bg-terminal-panel/50">
+              <RiskAndResultsColumn atRisk={atRisk} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -354,26 +297,26 @@ export function OpsBoard() {
  * Allows switching between the three columns to avoid infinite scrolling.
  */
 function MobileTabSwitcher({
-  aboutToHappen,
+  trending,
   newCreations,
-  criticalAndGraduating,
+  atRisk,
 }: {
-  aboutToHappen: OpsCard[];
+  trending: OpsCard[];
   newCreations: OpsCard[];
-  criticalAndGraduating: OpsCard[];
+  atRisk: OpsCard[];
 }) {
   const [activeTab, setActiveTab] = useState<'active' | 'new' | 'critical'>('active');
 
   const tabs = [
-    { id: 'active' as const, label: 'Active', count: aboutToHappen.length, cards: aboutToHappen, accentColor: '#FF9500', title: '🟠 About to Happen' },
-    { id: 'new' as const, label: 'New', count: newCreations.length, cards: newCreations, accentColor: '#00FF41', title: '🟢 New Creations' },
-    { id: 'critical' as const, label: 'Critical', count: criticalAndGraduating.length, cards: criticalAndGraduating, accentColor: '#FF3B3B', title: '🔴 Critical & Graduating' },
+    { id: 'active' as const, label: 'Trending', count: trending.length, cards: trending, accentColor: '#FF9500', title: 'Trending' },
+    { id: 'new' as const, label: 'New', count: newCreations.length, cards: newCreations, accentColor: '#00FF41', title: 'Newly Created' },
+    { id: 'critical' as const, label: 'Risk', count: atRisk.length, cards: atRisk, accentColor: '#FF3B3B', title: 'At Risk' },
   ];
 
   const activeTabData = tabs.find(t => t.id === activeTab)!;
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col mt-4 lg:hidden">
+    <div className="flex-1 min-h-0 flex flex-col mt-1">
       {/* Tab Switcher */}
       <div className="flex items-center gap-2 mb-4 px-4 border-b border-terminal-border">
         {tabs.map((tab) => (

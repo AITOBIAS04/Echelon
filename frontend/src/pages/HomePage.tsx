@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { OpsBoard } from '../components/home/OpsBoard';
 import { QuickActionsToolbar } from '../components/home/QuickActionsToolbar';
+import { LiveRibbon } from '../components/home/LiveRibbon';
 import { getHomePreference, setHomePreference, type HomePreference } from '../lib/userPrefs';
-import { ErrorBoundary } from '../components/system/ErrorBoundary';
 
 /**
  * HomePage Component
@@ -15,8 +15,6 @@ import { ErrorBoundary } from '../components/system/ErrorBoundary';
  * - RIGHT: Risk & Results (At Risk on top, Recently Graduated on bottom)
  */
 export function HomePage() {
-  console.log('HomePage Rendered');
-  
   const navigate = useNavigate();
   const [homePref, setHomePref] = useState<HomePreference>(getHomePreference());
 
@@ -35,7 +33,7 @@ export function HomePage() {
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden">
       {/* Header area always visible */}
-      <div className="flex-shrink-0 px-4 pt-4 pb-3 flex flex-col gap-3">
+      <div className="flex-shrink-0 px-4 pt-2 pb-2 flex flex-col gap-2">
         {/* Slim Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-lg md:text-xl font-bold text-terminal-text uppercase tracking-wide">
@@ -65,16 +63,16 @@ export function HomePage() {
         </div>
 
         {/* Quick Actions Toolbar - Slim horizontal toolbar */}
+        {/* Live tape ribbon: keeps the Ops Board feeling alive */}
+        <LiveRibbon />
+
+        {/* Quick actions */}
         <QuickActionsToolbar />
       </div>
 
-      {/* Scroll container */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="px-4 pb-4">
-          <ErrorBoundary>
-            <OpsBoard />
-          </ErrorBoundary>
-        </div>
+      {/* Ops board: columns scroll internally */}
+      <div className="flex-1 min-h-0 px-4 pb-4 overflow-hidden">
+        <OpsBoard />
       </div>
     </div>
   );

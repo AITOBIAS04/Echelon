@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { GitBranch, Sparkles } from 'lucide-react';
 import type { OpsCard } from '../../types/opsBoard';
+import { getTrendingReason } from '../../lib/trendingRanker';
 
 /**
  * OpsRow Props
@@ -153,7 +154,9 @@ export function OpsRow({ card }: OpsRowProps) {
   const navigate = useNavigate();
   const borderColor = getLaneBorderColor(card.lane);
   const phaseBadge = getPhaseBadge(card);
-  const statusPill = getStatusPill(card);
+  const isTrendingLane = card.lane === 'about_to_happen';
+  const trendingReason = isTrendingLane ? getTrendingReason(card) : null;
+  const statusPill = isTrendingLane ? null : getStatusPill(card);
 
   const handleClick = () => {
     if (card.type === 'timeline') {
@@ -168,6 +171,15 @@ export function OpsRow({ card }: OpsRowProps) {
 
   // Determine sparkline color based on status
   const sparklineColor = statusPill?.color || borderColor;
+
+  const reasonToneClass = trendingReason
+    ? ({
+        green: 'bg-green-500/15 text-green-300 border-green-500/30',
+        amber: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+        red: 'bg-red-500/15 text-red-300 border-red-500/30',
+        purple: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+      } as const)[trendingReason.tone]
+    : '';
 
   return (
     <div
@@ -201,14 +213,21 @@ export function OpsRow({ card }: OpsRowProps) {
         <h4 className="text-sm font-bold text-white truncate leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
           {card.title}
         </h4>
-        {statusPill && (
+        {trendingReason ? (
+          <span
+            className={`text-[10px] font-mono font-semibold inline-flex items-center px-2 py-0.5 rounded border ${reasonToneClass} w-fit max-w-full truncate`}
+            title={trendingReason.label}
+          >
+            {trendingReason.label}
+          </span>
+        ) : statusPill ? (
           <span
             className="text-xs font-mono font-semibold inline-block truncate"
             style={{ color: statusPill.color }}
           >
             {statusPill.text}
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* Right: Mini Sparkline */}

@@ -7,14 +7,15 @@ import { GravityField } from './GravityField';
 import { TaskForce } from './TaskForce';
 import { TheatreLibrary } from './TheatreLibrary';
 import { LiveTape } from './LiveTape';
+import { LiveRibbon } from './LiveRibbon';
 import { clsx } from 'clsx';
 
 type TabType = 'intercepts' | 'health' | 'warchest' | 'gravity' | 'taskforce' | 'theatres' | 'live_tape';
 
 export function Blackbox() {
-  // Check URL params for tab, default to 'live_tape'
+  // Check URL params for tab, default to 'intercepts'
   const urlParams = new URLSearchParams(window.location.search);
-  const initialTab = (urlParams.get('tab') as TabType) || 'live_tape';
+  const initialTab = (urlParams.get('tab') as TabType) || 'intercepts';
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [timestamp, setTimestamp] = useState(new Date());
 
@@ -26,7 +27,7 @@ export function Blackbox() {
 
   const tabs = [
     { id: 'intercepts' as TabType, label: 'INTERCEPTS', icon: Radio },
-    { id: 'live_tape' as TabType, label: 'LIVE TAPE', icon: Radio },
+    { id: 'live_tape' as TabType, label: 'LIVE TAPE', icon: Radio, deEmphasized: true },
     { id: 'health' as TabType, label: 'TIMELINE HEALTH', icon: Activity },
     { id: 'warchest' as TabType, label: 'WAR CHEST', icon: Shield },
     { id: 'gravity' as TabType, label: 'GRAVITY FIELD', icon: Target },
@@ -91,11 +92,15 @@ export function Blackbox() {
           </div>
         </div>
 
+        {/* Live Ribbon - directly beneath header */}
+        <LiveRibbon />
+
         {/* Tabs */}
         <div className="flex-shrink-0 px-2 sm:px-4 py-3 border-b border-[#1a3a1a] relative z-20 overflow-x-auto scrollbar-hide">
           <div className="flex items-center gap-4 sm:gap-8 min-w-max">
           {tabs.map((tab) => {
             const Icon = tab.icon;
+            const isDeEmphasized = (tab as any).deEmphasized;
             return (
               <button
                 key={tab.id}
@@ -110,6 +115,8 @@ export function Blackbox() {
                   'flex items-center gap-2 pb-2 uppercase tracking-wider text-sm transition-all whitespace-nowrap flex-shrink-0',
                   activeTab === tab.id
                     ? 'text-[#00FF41] border-b-2 border-[#00FF41]'
+                    : isDeEmphasized
+                    ? 'text-gray-600 hover:text-gray-400 opacity-60'
                     : 'text-gray-500 hover:text-[#00FF41]/70'
                 )}
               >
