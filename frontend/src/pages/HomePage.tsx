@@ -14,6 +14,8 @@ import { getHomePreference, setHomePreference, type HomePreference } from '../li
  * - RIGHT: Risk & Results (At Risk on top, Recently Graduated on bottom)
  */
 export function HomePage() {
+  console.log('HomePage Rendered');
+  
   const navigate = useNavigate();
   const [homePref, setHomePref] = useState<HomePreference>(getHomePreference());
 

@@ -8,7 +8,6 @@ import { HomePage } from './pages/HomePage';
 import { LaunchpadPage } from './pages/LaunchpadPage';
 import { LaunchpadDetailPage } from './pages/LaunchpadDetailPage';
 import { LaunchpadNewPage } from './pages/LaunchpadNewPage';
-import { HomeRedirect } from './components/routing/HomeRedirect';
 import { SigintRedirect } from './components/routing/SigintRedirect';
 import { AgentRoster } from './components/agents/AgentRoster';
 import { AgentDetail } from './components/agents/AgentDetail';
@@ -20,12 +19,7 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: (
-          <>
-            <HomeRedirect />
-            <HomePage />
-          </>
-        ),
+        element: <HomePage />,
       },
       {
         path: 'sigint',
