@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, Radio, AlertTriangle, User, Briefcase, Database, Wallet, X, ExternalLink, Zap, ChevronDown, Menu, BarChart3, Activity } from 'lucide-react';
+import { Shield, AlertTriangle, User, Briefcase, Wallet, X, ExternalLink, Zap, ChevronDown, Menu, BarChart3, Activity } from 'lucide-react';
 import { useParadoxes } from '../../hooks/useParadoxes';
 import { ButlerWidget } from '../ButlerWidget';
 import { clsx } from 'clsx';

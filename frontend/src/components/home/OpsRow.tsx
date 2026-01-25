@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { GitBranch, Sparkles, TrendingUp, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { GitBranch, AlertTriangle } from 'lucide-react';
 import type { OpsCard } from '../../types/opsBoard';
-import { getTrendingReason } from '../../lib/trendingRanker';
 
 /**
  * OpsRow Props
@@ -84,9 +83,9 @@ function getStatusPill(card: OpsCard): { text: string; className: string } | nul
     };
   }
   if (card.logicGap !== undefined) {
-    const colorClass = card.logicGap >= 40 
+    const colorClass = card.logicGap >= 40
       ? 'bg-status-danger/10 text-status-danger border-status-danger/20'
-      : card.logicGap >= 20 
+      : card.logicGap >= 20
         ? 'bg-status-warning/10 text-status-warning border-status-warning/20'
         : 'bg-status-success/10 text-status-success border-status-success/20';
     return {
@@ -95,24 +94,13 @@ function getStatusPill(card: OpsCard): { text: string; className: string } | nul
     };
   }
   if (card.stability !== undefined) {
-    const colorClass = card.stability >= 70 
+    const colorClass = card.stability >= 70
       ? 'bg-status-success/10 text-status-success border-status-success/20'
-      : card.stability >= 50 
+      : card.stability >= 50
         ? 'bg-status-warning/10 text-status-warning border-status-warning/20'
         : 'bg-status-danger/10 text-status-danger border-status-danger/20';
     return {
       text: `Stab: ${Math.round(card.stability)}%`,
-      className: colorClass,
-    };
-  }
-  if (card.score !== undefined) {
-    const colorClass = card.score >= 50 
-      ? 'bg-status-success/10 text-status-success border-status-success/20'
-      : card.score >= 30 
-        ? 'bg-status-warning/10 text-status-warning border-status-warning/20'
-        : 'bg-status-danger/10 text-status-danger border-status-danger/20';
-    return {
-      text: `Score: ${Math.round(card.score)}`,
       className: colorClass,
     };
   }
@@ -123,24 +111,6 @@ function getStatusPill(card: OpsCard): { text: string; className: string } | nul
  * Get metric display
  */
 function getMetricDisplay(card: OpsCard): { label: string; value: string; className: string } | null {
-  if (card.marketCap !== undefined) {
-    return {
-      label: 'MC',
-      value: card.marketCap >= 1000000 
-        ? `$${(card.marketCap / 1000000).toFixed(1)}M`
-        : `$${(card.marketCap / 1000).toFixed(0)}K`,
-className: 'text-terminal-text',
-    };
-  }
-  if (card.volume !== undefined) {
-    return {
-      label: 'Vol',
-      value: card.volume >= 1000000 
-        ? `$${(card.volume / 1000000).toFixed(1)}M`
-        : `$${(card.volume / 1000).toFixed(0)}K`,
-      className: 'text-terminal-text-secondary',
-    };
-  }
   if (card.nextForkEtaSec !== undefined) {
     return {
       label: 'ETA',
@@ -152,8 +122,15 @@ className: 'text-terminal-text',
 }
 
 /**
+ * Check if card has paradox active tag
+ */
+function hasParadoxActive(card: OpsCard): boolean {
+  return card.tags.includes('paradox_active');
+}
+
+/**
  * OpsRow Component
- * 
+ *
  * BullX-style card: minimal, information-dense, subtle borders, rounded corners.
  */
 export function OpsRow({ card }: OpsRowProps) {
@@ -162,7 +139,7 @@ export function OpsRow({ card }: OpsRowProps) {
   const phaseBadge = getPhaseBadge(card);
   const statusPill = getStatusPill(card);
   const metricDisplay = getMetricDisplay(card);
-  const trendingReason = card.score !== undefined ? getTrendingReason(card) : null;
+  const paradoxActive = hasParadoxActive(card);
 
   return (
     <div
@@ -178,9 +155,9 @@ export function OpsRow({ card }: OpsRowProps) {
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Phase badge */}
           {phaseBadge && (
-            <span 
+            <span
               className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold"
-              style={{ 
+              style={{
                 backgroundColor: `${laneAccentColor}20`,
                 color: laneAccentColor,
                 border: `1px solid ${laneAccentColor}40`
@@ -189,7 +166,7 @@ export function OpsRow({ card }: OpsRowProps) {
               {phaseBadge}
             </span>
           )}
-          
+
           {/* Card name */}
           <span className="text-sm font-medium text-terminal-text truncate">
             {card.title}
@@ -218,7 +195,7 @@ export function OpsRow({ card }: OpsRowProps) {
               </span>
             </>
           )}
-          
+
           {/* Fork indicator */}
           {card.nextForkEtaSec !== undefined && card.nextForkEtaSec > 0 && card.nextForkEtaSec < 600 && (
             <div className="flex items-center gap-1 text-status-warning">
@@ -233,16 +210,9 @@ export function OpsRow({ card }: OpsRowProps) {
         {/* Quick icons */}
         <div className="flex items-center gap-2">
           {/* Paradox alert */}
-          {card.hasParadox && (
+          {paradoxActive && (
             <div className="flex items-center gap-1 px-1.5 py-0.5 bg-status-paradox/10 border border-status-paradox/20 rounded">
               <AlertTriangle className="w-3 h-3 text-status-paradox" />
-            </div>
-          )}
-          
-          {/* Trending indicator */}
-          {trendingReason && (
-            <div className="flex items-center gap-1 text-status-success">
-              <TrendingUp className="w-3 h-3" />
             </div>
           )}
         </div>
@@ -251,9 +221,9 @@ export function OpsRow({ card }: OpsRowProps) {
       {/* Fork countdown bar (if fork imminent) */}
       {card.nextForkEtaSec !== undefined && card.nextForkEtaSec > 0 && card.nextForkEtaSec < 600 && (
         <div className="mt-2 h-1 bg-terminal-border rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full rounded-full transition-all duration-1000"
-            style={{ 
+            style={{
               width: `${Math.max(0, (1 - card.nextForkEtaSec / 600) * 100)}%`,
               backgroundColor: laneAccentColor,
             }}
