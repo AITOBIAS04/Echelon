@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, Radio, AlertTriangle, User, Briefcase, Database, Wallet, X, ExternalLink, Zap, ChevronDown, Menu } from 'lucide-react';
+import { Shield, Radio, AlertTriangle, User, Briefcase, Database, Wallet, X, ExternalLink, Zap, ChevronDown, Menu, BarChart3, Activity } from 'lucide-react';
 import { useParadoxes } from '../../hooks/useParadoxes';
 import { ButlerWidget } from '../ButlerWidget';
 import { clsx } from 'clsx';
@@ -56,10 +56,10 @@ export function AppLayout() {
   };
 
   const navItems = [
-    { path: '/', label: 'SIGINT', icon: Radio }, // SIGINT now points to HOME (Ops Board)
-    { path: '/fieldkit', label: 'Field Kit', icon: Briefcase },
-    { path: '/blackbox', label: 'Blackbox', icon: Database },
-    { path: '/breaches', label: 'Breaches', icon: AlertTriangle },
+    { path: '/', label: 'Markets', icon: BarChart3 },
+    { path: '/fieldkit', label: 'Portfolio', icon: Briefcase },
+    { path: '/blackbox', label: 'Analytics', icon: Activity },
+    { path: '/breaches', label: 'Alerts', icon: AlertTriangle },
     { path: '/agents', label: 'Agents', icon: User },
   ];
 
@@ -71,8 +71,8 @@ export function AppLayout() {
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 min-w-0">
           {/* Logo - Always visible, minimal space */}
           <NavLink to="/" className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-echelon-cyan flex-shrink-0" />
-            <span className="font-display text-base sm:text-lg md:text-xl tracking-wider text-echelon-cyan glow-green whitespace-nowrap hidden sm:inline">
+            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-status-success flex-shrink-0" />
+            <span className="font-sans text-base sm:text-lg md:text-xl font-bold tracking-wide text-terminal-text whitespace-nowrap hidden sm:inline">
               ECHELON
             </span>
           </NavLink>
@@ -104,8 +104,8 @@ export function AppLayout() {
                   className={clsx(
                     'flex items-center gap-1 px-1.5 sm:px-2 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0',
                     isActive
-                      ? 'bg-echelon-cyan/20 text-echelon-cyan border border-echelon-cyan/30'
-                      : 'text-terminal-muted hover:text-terminal-text hover:bg-terminal-bg'
+                      ? 'bg-status-info/10 text-status-info border border-status-info/20'
+                      : 'text-terminal-text-secondary hover:text-terminal-text hover:bg-terminal-bg'
                   )}
                   title={item.label}
                 >
@@ -126,22 +126,22 @@ export function AppLayout() {
               className={clsx(
                 'px-1.5 py-1 rounded text-xs font-bold transition-colors whitespace-nowrap',
                 viewMode === 'global'
-                  ? 'bg-echelon-cyan/20 text-echelon-cyan border border-echelon-cyan/30'
-                  : 'text-terminal-muted hover:text-terminal-text'
+                  ? 'bg-status-info/10 text-status-info border border-status-info/20'
+                  : 'text-terminal-text-secondary hover:text-terminal-text'
               )}
             >
-              📡
+              <BarChart3 className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => handleViewModeChange('personal')}
               className={clsx(
                 'px-1.5 py-1 rounded text-xs font-bold transition-colors whitespace-nowrap',
                 viewMode === 'personal'
-                  ? 'bg-echelon-purple/20 text-echelon-purple border border-echelon-purple/30'
-                  : 'text-terminal-muted hover:text-terminal-text'
+                  ? 'bg-status-success/10 text-status-success border border-status-success/20'
+                  : 'text-terminal-text-secondary hover:text-terminal-text'
               )}
             >
-              🎒
+              <Briefcase className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -149,23 +149,23 @@ export function AppLayout() {
           <div className="h-6 w-px bg-gray-700 flex-shrink-0 hidden lg:block" />
 
           {/* Live Indicator - Compact, icon only on very small screens */}
-          <div className="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-1.5 py-1 bg-green-900/30 border border-green-500/30 rounded-lg flex-shrink-0">
-            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full animate-pulse flex-shrink-0" />
-            <span className="text-green-400 text-[10px] sm:text-xs font-bold uppercase whitespace-nowrap hidden sm:inline">LIVE</span>
+          <div className="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-1.5 py-1 bg-status-success/10 border border-status-success/20 rounded-lg flex-shrink-0">
+            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-status-success rounded-full animate-pulse flex-shrink-0" />
+            <span className="text-status-success text-[10px] sm:text-xs font-semibold uppercase whitespace-nowrap hidden sm:inline">LIVE</span>
           </div>
 
           {/* Paradox Alert - Ultra compact, show only icon + number on small screens */}
           {paradoxCount > 0 && (
             <NavLink
               to="/breaches"
-              className="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-1.5 py-1 bg-echelon-red/20 border border-echelon-red/50 rounded-lg animate-pulse whitespace-nowrap flex-shrink-0"
+              className="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-1.5 py-1 bg-status-danger/10 border border-status-danger/20 rounded-lg animate-pulse whitespace-nowrap flex-shrink-0"
             >
-              <AlertTriangle className="w-3 h-3 text-echelon-red flex-shrink-0" />
-              <span className="text-[10px] sm:text-xs text-echelon-red font-bold">
+              <AlertTriangle className="w-3 h-3 text-status-danger flex-shrink-0" />
+              <span className="text-[10px] sm:text-xs text-status-danger font-bold">
                 {paradoxCount}
               </span>
-              <span className="text-[10px] sm:text-xs text-echelon-red uppercase font-bold hidden md:inline">
-                BREACH{paradoxCount > 1 ? 'ES' : ''}
+              <span className="text-[10px] sm:text-xs text-status-danger font-semibold uppercase hidden md:inline">
+                ALERT{paradoxCount > 1 ? 'S' : ''}
               </span>
             </NavLink>
           )}
@@ -173,11 +173,11 @@ export function AppLayout() {
           {/* Mobile Yield Button (so yield is always discoverable on phones) */}
           <button
             onClick={() => setShowYieldModal(true)}
-            className="lg:hidden flex items-center gap-1 px-2 py-1 bg-amber-900/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-all whitespace-nowrap flex-shrink-0"
-            title="Founder's Yield"
+            className="lg:hidden flex items-center gap-1 px-2 py-1 bg-status-warning/10 border border-status-warning/20 rounded-lg hover:border-status-warning/30 transition-all whitespace-nowrap flex-shrink-0"
+            title="Yield"
           >
-            <Zap className="w-4 h-4 text-amber-400 flex-shrink-0" />
-            <span className="text-amber-400 text-[10px] font-bold font-mono hidden sm:inline">
+            <Zap className="w-4 h-4 text-status-warning flex-shrink-0" />
+            <span className="text-status-warning text-[10px] font-bold font-mono hidden sm:inline">
               ${pendingYield.toFixed(2)}
             </span>
           </button>
@@ -186,14 +186,14 @@ export function AppLayout() {
           <div ref={yieldButtonRef} className="relative flex-shrink-0 hidden lg:block z-50">
             <button
               onClick={() => setShowYieldModal(!showYieldModal)}
-              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-amber-900/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-all group whitespace-nowrap"
+              className="flex items-center gap-1 px-1.5 sm:px-2 py-1 bg-status-warning/10 border border-status-warning/20 rounded-lg hover:border-status-warning/30 transition-all group whitespace-nowrap"
             >
-              <Zap className="w-3 h-3 text-amber-400 flex-shrink-0" />
-              <span className="text-amber-400 text-[10px] sm:text-xs font-bold font-mono">
+              <Zap className="w-3 h-3 text-status-warning flex-shrink-0" />
+              <span className="text-status-warning text-[10px] sm:text-xs font-bold font-mono">
                 ${pendingYield.toFixed(2)}
               </span>
               <ChevronDown className={clsx(
-                'w-3 h-3 text-amber-400/50 transition-transform flex-shrink-0 hidden xl:block',
+                'w-3 h-3 text-status-warning/50 transition-transform flex-shrink-0 hidden xl:block',
                 showYieldModal && 'rotate-180'
               )} />
             </button>

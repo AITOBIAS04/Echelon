@@ -41,7 +41,7 @@ export function QuickActionsToolbar() {
           <button
             key={action.id}
             onClick={action.onClick}
-            className="flex items-center gap-1.5 text-sm text-terminal-muted hover:text-[#00D4FF] transition"
+            className="flex items-center gap-1.5 text-sm text-terminal-text-secondary hover:text-status-info transition"
           >
             <span>{action.iconChar}</span>
             <span>{action.label}</span>

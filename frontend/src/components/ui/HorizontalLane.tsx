@@ -53,7 +53,7 @@ export function HorizontalLane({
         {hasViewAll && (
           <button
             onClick={handleViewAll}
-            className="flex items-center gap-1 text-xs text-terminal-muted hover:text-[#00D4FF] transition"
+            className="flex items-center gap-1 text-xs text-terminal-text-secondary hover:text-status-info transition"
           >
             View All
             <ChevronRight className="w-3 h-3" />

@@ -113,17 +113,17 @@ export function GhostForks() {
       {/* Header */}
       <div className="flex justify-between items-center flex-shrink-0">
         <div>
-          <h3 className="text-echelon-cyan font-bold flex items-center gap-2">
+          <h3 className="text-status-info font-bold flex items-center gap-2">
             <GitBranch className="w-5 h-5" />
             GHOST FORKS
           </h3>
-          <p className="text-terminal-muted text-xs mt-1">
+          <p className="text-terminal-text-secondary text-xs mt-1">
             Private simulations — test "what if" scenarios without real capital
           </p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-echelon-cyan/20 border border-echelon-cyan text-echelon-cyan rounded hover:bg-echelon-cyan/30 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-status-info/20 border border-status-info text-status-info rounded hover:bg-status-info/30 transition-colors flex items-center gap-2"
         >
           <Zap className="w-4 h-4" />
           CREATE FORK
@@ -131,24 +131,24 @@ export function GhostForks() {
       </div>
 
       {/* Virtual Balance Banner */}
-      <div className="bg-gradient-to-r from-echelon-purple/20 to-echelon-cyan/20 border border-echelon-purple/30 rounded-lg p-4 flex-shrink-0">
+      <div className="bg-gradient-to-r from-status-paradox/20 to-status-info/20 border border-status-paradox/30 rounded-lg p-4 flex-shrink-0">
         <div className="flex justify-between items-center w-full">
           <div>
-            <span className="text-terminal-muted text-sm">Simulation Balance</span>
+            <span className="text-terminal-text-secondary text-sm">Simulation Balance</span>
             <div className="text-2xl font-bold text-terminal-text">$10,000.00</div>
-            <span className="text-xs text-terminal-muted">Virtual USDC — No real funds required</span>
+            <span className="text-xs text-terminal-text-secondary">Virtual USDC — No real funds required</span>
           </div>
           <div className="text-right">
-            <span className="text-terminal-muted text-sm">Total Ghost P&L</span>
+            <span className="text-terminal-text-secondary text-sm">Total Ghost P&L</span>
             <div className={clsx(
               'text-xl font-bold',
-              totalPnL >= 0 ? 'text-echelon-green' : 'text-echelon-red'
+              totalPnL >= 0 ? 'text-status-success' : 'text-status-danger'
             )}>
               {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
             </div>
             <span className={clsx(
               'text-xs',
-              totalPnLPercent >= 0 ? 'text-echelon-green' : 'text-echelon-red'
+              totalPnLPercent >= 0 ? 'text-status-success' : 'text-status-danger'
             )}>
               {totalPnLPercent >= 0 ? '+' : ''}{totalPnLPercent.toFixed(2)}% across all forks
             </span>
@@ -159,11 +159,11 @@ export function GhostForks() {
       {/* Ghost Forks List */}
       {ghostForks.length === 0 ? (
         <div className="text-center py-12 border border-dashed border-terminal-border rounded-lg flex-shrink-0">
-          <GitBranch className="w-12 h-12 mx-auto mb-4 text-terminal-muted" />
-          <p className="text-terminal-muted mb-4">No ghost forks yet</p>
+          <GitBranch className="w-12 h-12 mx-auto mb-4 text-terminal-text-secondary" />
+          <p className="text-terminal-text-secondary mb-4">No ghost forks yet</p>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="text-echelon-cyan hover:underline"
+            className="text-status-info hover:underline"
           >
             Create your first simulation →
           </button>
@@ -171,9 +171,9 @@ export function GhostForks() {
       ) : (
         <div className="space-y-4 flex-shrink-0">
           {ghostForks.map(fork => (
-            <div 
+            <div
               key={fork.id}
-              className="terminal-panel p-4 hover:border-echelon-cyan/50 transition-colors"
+              className="terminal-card p-4 hover:border-status-info/50 transition-colors"
             >
               <div className="flex justify-between items-start mb-3">
                 <div>
@@ -181,27 +181,27 @@ export function GhostForks() {
                     <h4 className="text-terminal-text font-bold">{fork.name}</h4>
                     <span className={clsx(
                       'px-2 py-0.5 rounded text-xs',
-                      fork.status === 'running' 
-                        ? 'bg-echelon-green/20 text-echelon-green border border-echelon-green/30' 
-                        : 'bg-terminal-bg text-terminal-muted border border-terminal-border'
+                      fork.status === 'running'
+                        ? 'bg-status-success/20 text-status-success border border-status-success/30'
+                        : 'bg-terminal-bg text-terminal-text-secondary border border-terminal-border'
                     )}>
                       {fork.status === 'running' ? '● LIVE' : '⏸ PAUSED'}
                     </span>
                   </div>
-                  <p className="text-terminal-muted text-xs mt-1">
-                    Forked from: <span className="text-echelon-cyan">{fork.baseTimelineName}</span>
+                  <p className="text-terminal-text-secondary text-xs mt-1">
+                    Forked from: <span className="text-status-info">{fork.baseTimelineName}</span>
                   </p>
                 </div>
                 <div className="text-right">
                   <div className={clsx(
                     'text-lg font-bold',
-                    fork.pnl >= 0 ? 'text-echelon-green' : 'text-echelon-red'
+                    fork.pnl >= 0 ? 'text-status-success' : 'text-status-danger'
                   )}>
                     {fork.pnl >= 0 ? '+' : ''}${fork.pnl.toFixed(2)} USDC
                   </div>
                   <div className={clsx(
                     'text-xs',
-                    fork.pnl >= 0 ? 'text-echelon-green' : 'text-echelon-red'
+                    fork.pnl >= 0 ? 'text-status-success' : 'text-status-danger'
                   )}>
                     {fork.pnlPercent >= 0 ? '+' : ''}{fork.pnlPercent.toFixed(1)}%
                   </div>
@@ -209,32 +209,32 @@ export function GhostForks() {
               </div>
 
               {/* Pivot Point */}
-              <div className="bg-echelon-amber/10 border border-echelon-amber/20 rounded p-3 mb-3">
-                <span className="text-echelon-amber text-xs font-bold">PIVOT POINT:</span>
+              <div className="bg-status-warning/10 border border-status-warning/20 rounded p-3 mb-3">
+                <span className="text-status-warning text-xs font-bold">PIVOT POINT:</span>
                 <p className="text-terminal-text text-sm mt-1">{fork.pivotPoint}</p>
               </div>
 
               {/* Positions */}
               {fork.positions.length > 0 && (
                 <div className="mb-3">
-                  <span className="text-terminal-muted text-xs">POSITIONS:</span>
+                  <span className="text-terminal-text-secondary text-xs">POSITIONS:</span>
                   <div className="flex gap-4 mt-2">
                     {fork.positions.map((pos, i) => (
                       <div key={i} className="flex items-center gap-2 text-sm">
                         <span className={clsx(
                           'px-2 py-0.5 rounded text-xs font-bold',
-                          pos.side === 'YES' 
-                            ? 'bg-echelon-green/20 text-echelon-green' 
-                            : 'bg-echelon-red/20 text-echelon-red'
+                          pos.side === 'YES'
+                            ? 'bg-status-success/20 text-status-success'
+                            : 'bg-status-danger/20 text-status-danger'
                         )}>
                           {pos.side}
                         </span>
-                        <span className="text-terminal-muted">{pos.shares} shares</span>
-                        <span className="text-terminal-muted">@</span>
+                        <span className="text-terminal-text-secondary">{pos.shares} shares</span>
+                        <span className="text-terminal-text-secondary">@</span>
                         <span className="text-terminal-text">${pos.avgPrice.toFixed(2)}</span>
-                        <span className="text-terminal-muted">→</span>
+                        <span className="text-terminal-text-secondary">→</span>
                         <span className={clsx(
-                          pos.currentPrice > pos.avgPrice ? 'text-echelon-green' : 'text-echelon-red'
+                          pos.currentPrice > pos.avgPrice ? 'text-status-success' : 'text-status-danger'
                         )}>
                           ${pos.currentPrice.toFixed(2)}
                         </span>
@@ -249,27 +249,27 @@ export function GhostForks() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => toggleForkStatus(fork.id)}
-                    className="p-2 text-terminal-muted hover:text-echelon-cyan transition-colors"
+                    className="p-2 text-terminal-text-secondary hover:text-status-info transition-colors"
                     title={fork.status === 'running' ? 'Pause' : 'Resume'}
                   >
                     {fork.status === 'running' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                   </button>
                   <button
-                    className="p-2 text-terminal-muted hover:text-echelon-amber transition-colors"
+                    className="p-2 text-terminal-text-secondary hover:text-status-warning transition-colors"
                     title="Reset Simulation"
                   >
                     <RotateCcw className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => deleteFork(fork.id)}
-                    className="p-2 text-terminal-muted hover:text-echelon-red transition-colors"
+                    className="p-2 text-terminal-text-secondary hover:text-status-danger transition-colors"
                     title="Delete Fork"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
                 <button
-                  className="px-3 py-1.5 bg-echelon-purple/20 border border-echelon-purple/50 text-echelon-purple rounded text-xs hover:bg-echelon-purple/30 transition-colors flex items-center gap-2"
+                  className="px-3 py-1.5 bg-status-paradox/20 border border-status-paradox/50 text-status-paradox rounded text-xs hover:bg-status-paradox/30 transition-colors flex items-center gap-2"
                   title="Publish this fork to global SIGINT"
                 >
                   <Upload className="w-3 h-3" />

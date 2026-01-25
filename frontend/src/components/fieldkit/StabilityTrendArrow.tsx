@@ -26,9 +26,9 @@ export interface StabilityTrendArrowProps {
  */
 export function StabilityTrendArrow({ trend }: StabilityTrendArrowProps) {
   const colors = {
-    up: '#00FF41',    // green
-    down: '#FF3B3B',  // red
-    flat: '#666666',  // grey
+    up: '#10B981',    // emerald
+    down: '#EF4444',  // crimson
+    flat: '#64748B',  // muted
   };
   
   const color = colors[trend];

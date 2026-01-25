@@ -57,11 +57,11 @@ export function MyPositions() {
           </div>
         </div>
         <div className="text-right">
-          <span className="text-xs text-terminal-muted">Unrealised P&L</span>
+          <span className="text-xs text-terminal-text-secondary">Unrealised P&L</span>
           <div
             className={clsx(
               'text-lg font-mono font-bold',
-              totalPnL >= 0 ? 'text-echelon-green' : 'text-echelon-red'
+              totalPnL >= 0 ? 'text-status-success' : 'text-status-danger'
             )}
           >
             {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
@@ -73,7 +73,7 @@ export function MyPositions() {
       <div className="flex-1 overflow-y-auto">
         <table className="w-full">
           <thead className="sticky top-0 bg-terminal-panel">
-            <tr className="text-xs text-terminal-muted uppercase">
+            <tr className="text-xs text-terminal-text-secondary uppercase">
               <th className="text-left p-3">Timeline</th>
               <th className="text-center p-3">Side</th>
               <th className="text-right p-3">Shares</th>
@@ -91,7 +91,7 @@ export function MyPositions() {
                   <div className="font-medium text-terminal-text text-sm">
                     {position.timeline_name}
                   </div>
-                  <div className="text-xs text-terminal-muted">
+                  <div className="text-xs text-terminal-text-secondary">
                     {position.timeline_id}
                   </div>
                 </td>
@@ -100,8 +100,8 @@ export function MyPositions() {
                     className={clsx(
                       'px-2 py-1 rounded text-xs font-bold',
                       position.side === 'YES'
-                        ? 'bg-echelon-green/20 text-echelon-green'
-                        : 'bg-echelon-red/20 text-echelon-red'
+                        ? 'bg-status-success/20 text-status-success'
+                        : 'bg-status-danger/20 text-status-danger'
                     )}
                   >
                     {position.side}
@@ -110,7 +110,7 @@ export function MyPositions() {
                 <td className="p-3 text-right font-mono text-sm">
                   {position.shares.toLocaleString()}
                 </td>
-                <td className="p-3 text-right font-mono text-sm text-terminal-muted">
+                <td className="p-3 text-right font-mono text-sm text-terminal-text-secondary">
                   ${position.avg_price.toFixed(2)}
                 </td>
                 <td className="p-3 text-right font-mono text-sm">
@@ -123,7 +123,7 @@ export function MyPositions() {
                   <div
                     className={clsx(
                       'font-mono text-sm font-medium',
-                      position.pnl_usd >= 0 ? 'text-echelon-green' : 'text-echelon-red'
+                      position.pnl_usd >= 0 ? 'text-status-success' : 'text-status-danger'
                     )}
                   >
                     {position.pnl_usd >= 0 ? '+' : ''}${position.pnl_usd.toFixed(2)}
@@ -131,7 +131,7 @@ export function MyPositions() {
                   <div
                     className={clsx(
                       'text-xs',
-                      position.pnl_percent >= 0 ? 'text-echelon-green' : 'text-echelon-red'
+                      position.pnl_percent >= 0 ? 'text-status-success' : 'text-status-danger'
                     )}
                   >
                     {position.pnl_percent >= 0 ? '+' : ''}{position.pnl_percent.toFixed(1)}%
@@ -140,7 +140,7 @@ export function MyPositions() {
                 <td className="p-3 text-center">
                   <Link
                     to={`/timeline/${position.timeline_id}`}
-                    className="text-terminal-muted hover:text-echelon-cyan transition"
+                    className="text-terminal-text-secondary hover:text-status-info transition"
                   >
                     <ExternalLink className="w-4 h-4" />
                   </Link>

@@ -29,7 +29,7 @@ export function EntropySparkline({
   const width = 60;
   const height = 20;
   const strokeWidth = 1.5;
-  const lineColor = '#FF9500'; // amber
+  const lineColor = '#F59E0B'; // muted amber
   
   // X positions: evenly distributed across 60px (0, 12, 24, 36, 48, 60)
   const xPositions = [0, 12, 24, 36, 48, 60];

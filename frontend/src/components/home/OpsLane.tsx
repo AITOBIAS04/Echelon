@@ -19,13 +19,13 @@ export interface OpsLaneProps {
 function getLaneHeaderColor(laneId: OpsLaneId): string {
   switch (laneId) {
     case 'new_creations':
-      return '#00D4FF';
+      return '#10B981';
     case 'about_to_happen':
-      return '#FF9500';
+      return '#F59E0B';
     case 'at_risk':
-      return '#FF3B3B';
+      return '#EF4444';
     case 'graduation':
-      return '#00FF41';
+      return '#8B5CF6';
   }
 }
 

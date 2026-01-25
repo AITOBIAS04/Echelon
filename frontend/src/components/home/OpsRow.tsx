@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { GitBranch, Sparkles } from 'lucide-react';
+import { GitBranch, Sparkles, TrendingUp, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 import type { OpsCard } from '../../types/opsBoard';
 import { getTrendingReason } from '../../lib/trendingRanker';
 
@@ -12,18 +12,18 @@ export interface OpsRowProps {
 }
 
 /**
- * Get lane border color
+ * Get lane accent color
  */
-function getLaneBorderColor(lane: OpsCard['lane']): string {
+function getLaneAccentColor(lane: OpsCard['lane']): string {
   switch (lane) {
     case 'new_creations':
-      return '#00FF41'; // Green
+      return '#10B981'; // Emerald
     case 'about_to_happen':
-      return '#FF9500'; // Orange
+      return '#F59E0B'; // Amber
     case 'at_risk':
-      return '#FF3B3B'; // Red
+      return '#EF4444'; // Crimson
     case 'graduation':
-      return '#AA66FF'; // Purple
+      return '#8B5CF6'; // Purple
   }
 }
 
@@ -32,7 +32,6 @@ function getLaneBorderColor(lane: OpsCard['lane']): string {
  */
 function getPhaseBadge(card: OpsCard): string | null {
   if (card.type === 'launch' && card.phase) {
-    // Single letter abbreviation
     switch (card.phase) {
       case 'pilot':
         return 'P';
@@ -45,7 +44,6 @@ function getPhaseBadge(card: OpsCard): string | null {
     }
   }
   if (card.type === 'timeline') {
-    // Use lane as phase indicator
     switch (card.lane) {
       case 'new_creations':
         return 'N';
@@ -76,164 +74,192 @@ function formatTimeRemaining(seconds: number): string {
 }
 
 /**
- * Get status pill text and color
+ * Get status pill configuration
  */
-function getStatusPill(card: OpsCard): { text: string; color: string } | null {
-  // Priority: Fork ETA > Logic Gap > Stability > Quality Score
+function getStatusPill(card: OpsCard): { text: string; className: string } | null {
   if (card.nextForkEtaSec !== undefined) {
     return {
       text: `Fork: ${formatTimeRemaining(card.nextForkEtaSec)}`,
-      color: '#00D4FF',
+      className: 'bg-status-info/10 text-status-info border-status-info/20',
     };
   }
   if (card.logicGap !== undefined) {
-    const color = card.logicGap >= 40 ? '#FF3B3B' : card.logicGap >= 20 ? '#FF9500' : '#00FF41';
+    const colorClass = card.logicGap >= 40 
+      ? 'bg-status-danger/10 text-status-danger border-status-danger/20'
+      : card.logicGap >= 20 
+        ? 'bg-status-warning/10 text-status-warning border-status-warning/20'
+        : 'bg-status-success/10 text-status-success border-status-success/20';
     return {
       text: `Gap: ${Math.round(card.logicGap)}%`,
-      color,
+      className: colorClass,
     };
   }
   if (card.stability !== undefined) {
-    const color = card.stability >= 70 ? '#00FF41' : card.stability >= 50 ? '#FF9500' : '#FF3B3B';
+    const colorClass = card.stability >= 70 
+      ? 'bg-status-success/10 text-status-success border-status-success/20'
+      : card.stability >= 50 
+        ? 'bg-status-warning/10 text-status-warning border-status-warning/20'
+        : 'bg-status-danger/10 text-status-danger border-status-danger/20';
     return {
       text: `Stab: ${Math.round(card.stability)}%`,
-      color,
+      className: colorClass,
     };
   }
-  if (card.qualityScore !== undefined) {
-    const color = card.qualityScore >= 70 ? '#00FF41' : card.qualityScore >= 50 ? '#FF9500' : '#FF3B3B';
+  if (card.score !== undefined) {
+    const colorClass = card.score >= 50 
+      ? 'bg-status-success/10 text-status-success border-status-success/20'
+      : card.score >= 30 
+        ? 'bg-status-warning/10 text-status-warning border-status-warning/20'
+        : 'bg-status-danger/10 text-status-danger border-status-danger/20';
     return {
-      text: `Score: ${Math.round(card.qualityScore)}`,
-      color,
+      text: `Score: ${Math.round(card.score)}`,
+      className: colorClass,
     };
   }
   return null;
 }
 
 /**
- * Generate mini sparkline SVG
+ * Get metric display
  */
-function MiniSparkline({ color = '#00FF41' }: { color?: string }) {
-  const width = 40;
-  const height = 12;
-  const points = [
-    { x: 0, y: 8 },
-    { x: 5, y: 6 },
-    { x: 10, y: 4 },
-    { x: 15, y: 5 },
-    { x: 20, y: 3 },
-    { x: 25, y: 4 },
-    { x: 30, y: 2 },
-    { x: 35, y: 3 },
-    { x: 40, y: 1 },
-  ];
-
-  const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-
-  return (
-    <svg width={width} height={height} className="overflow-visible">
-      <path
-        d={pathData}
-        fill="none"
-        stroke={color}
-        strokeWidth="1"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+function getMetricDisplay(card: OpsCard): { label: string; value: string; className: string } | null {
+  if (card.marketCap !== undefined) {
+    return {
+      label: 'MC',
+      value: card.marketCap >= 1000000 
+        ? `$${(card.marketCap / 1000000).toFixed(1)}M`
+        : `$${(card.marketCap / 1000).toFixed(0)}K`,
+className: 'text-terminal-text',
+    };
+  }
+  if (card.volume !== undefined) {
+    return {
+      label: 'Vol',
+      value: card.volume >= 1000000 
+        ? `$${(card.volume / 1000000).toFixed(1)}M`
+        : `$${(card.volume / 1000).toFixed(0)}K`,
+      className: 'text-terminal-text-secondary',
+    };
+  }
+  if (card.nextForkEtaSec !== undefined) {
+    return {
+      label: 'ETA',
+      value: formatTimeRemaining(card.nextForkEtaSec),
+      className: 'text-status-info',
+    };
+  }
+  return null;
 }
 
 /**
  * OpsRow Component
  * 
- * High-density horizontal row component for BullX-style layout.
- * Minimal padding, compact design for maximum information density.
+ * BullX-style card: minimal, information-dense, subtle borders, rounded corners.
  */
 export function OpsRow({ card }: OpsRowProps) {
   const navigate = useNavigate();
-  const borderColor = getLaneBorderColor(card.lane);
+  const laneAccentColor = getLaneAccentColor(card.lane);
   const phaseBadge = getPhaseBadge(card);
-  const isTrendingLane = card.lane === 'about_to_happen';
-  const trendingReason = isTrendingLane ? getTrendingReason(card) : null;
-  const statusPill = isTrendingLane ? null : getStatusPill(card);
-
-  const handleClick = () => {
-    if (card.type === 'timeline') {
-      navigate(`/timeline/${card.id}`);
-    } else {
-      navigate(`/launchpad/${card.id}`);
-    }
-  };
-
-  // Choose icon based on card type
-  const IconComponent = card.type === 'timeline' ? GitBranch : Sparkles;
-
-  // Determine sparkline color based on status
-  const sparklineColor = statusPill?.color || borderColor;
-
-  const reasonToneClass = trendingReason
-    ? ({
-        green: 'bg-green-500/15 text-green-300 border-green-500/30',
-        amber: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-        red: 'bg-red-500/15 text-red-300 border-red-500/30',
-        purple: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
-      } as const)[trendingReason.tone]
-    : '';
+  const statusPill = getStatusPill(card);
+  const metricDisplay = getMetricDisplay(card);
+  const trendingReason = card.score !== undefined ? getTrendingReason(card) : null;
 
   return (
     <div
-      className="bg-[#1a1a1a] border-l-2 p-2 flex items-center gap-2 hover:bg-[#222222] transition-all cursor-pointer group"
+      onClick={() => navigate(card.type === 'launch' ? `/launchpad/${card.id}` : `/timeline/${card.id}`)}
+      className="terminal-card cursor-pointer p-3"
       style={{
-        borderLeftColor: borderColor,
+        borderLeftWidth: '3px',
+        borderLeftColor: laneAccentColor,
       }}
-      onClick={handleClick}
     >
-      {/* Left: Thumbnail with Phase Badge */}
-      <div className="relative flex-shrink-0">
-        <div className="w-10 h-10 bg-white/10 rounded border border-white/10 flex items-center justify-center">
-          <IconComponent className="w-5 h-5 text-white/70" />
+      {/* Header: Name + Phase badge */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {/* Phase badge */}
+          {phaseBadge && (
+            <span 
+              className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded text-[10px] font-bold"
+              style={{ 
+                backgroundColor: `${laneAccentColor}20`,
+                color: laneAccentColor,
+                border: `1px solid ${laneAccentColor}40`
+              }}
+            >
+              {phaseBadge}
+            </span>
+          )}
+          
+          {/* Card name */}
+          <span className="text-sm font-medium text-terminal-text truncate">
+            {card.title}
+          </span>
         </div>
-        {/* Phase Badge Overlay */}
-        {phaseBadge && (
-          <div
-            className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded text-[8px] font-bold flex items-center justify-center"
-            style={{
-              backgroundColor: borderColor,
-              color: '#000000',
-            }}
-          >
-            {phaseBadge}
-          </div>
+
+        {/* Status pill */}
+        {statusPill && (
+          <span className={`status-pill flex-shrink-0 ml-2 ${statusPill.className}`}>
+            {statusPill.text}
+          </span>
         )}
       </div>
 
-      {/* Center: Title + Status Pill */}
-      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-        <h4 className="text-sm font-bold text-white truncate leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
-          {card.title}
-        </h4>
-        {trendingReason ? (
-          <span
-            className={`text-[10px] font-mono font-semibold inline-flex items-center px-2 py-0.5 rounded border ${reasonToneClass} w-fit max-w-full truncate`}
-            title={trendingReason.label}
-          >
-            {trendingReason.label}
-          </span>
-        ) : statusPill ? (
-          <span
-            className="text-xs font-mono font-semibold inline-block truncate"
-            style={{ color: statusPill.color }}
-          >
-            {statusPill.text}
-          </span>
-        ) : null}
+      {/* Secondary info: metrics row */}
+      <div className="flex items-center justify-between">
+        {/* Metrics */}
+        <div className="flex items-center gap-3">
+          {metricDisplay && (
+            <>
+              <span className="text-[10px] text-terminal-text-muted font-medium">
+                {metricDisplay.label}
+              </span>
+              <span className={`text-xs font-mono ${metricDisplay.className}`}>
+                {metricDisplay.value}
+              </span>
+            </>
+          )}
+          
+          {/* Fork indicator */}
+          {card.nextForkEtaSec !== undefined && card.nextForkEtaSec > 0 && card.nextForkEtaSec < 600 && (
+            <div className="flex items-center gap-1 text-status-warning">
+              <GitBranch className="w-3 h-3" />
+              <span className="text-[10px] font-mono">
+                {formatTimeRemaining(card.nextForkEtaSec)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Quick icons */}
+        <div className="flex items-center gap-2">
+          {/* Paradox alert */}
+          {card.hasParadox && (
+            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-status-paradox/10 border border-status-paradox/20 rounded">
+              <AlertTriangle className="w-3 h-3 text-status-paradox" />
+            </div>
+          )}
+          
+          {/* Trending indicator */}
+          {trendingReason && (
+            <div className="flex items-center gap-1 text-status-success">
+              <TrendingUp className="w-3 h-3" />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Right: Mini Sparkline */}
-      <div className="flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
-        <MiniSparkline color={sparklineColor} />
-      </div>
+      {/* Fork countdown bar (if fork imminent) */}
+      {card.nextForkEtaSec !== undefined && card.nextForkEtaSec > 0 && card.nextForkEtaSec < 600 && (
+        <div className="mt-2 h-1 bg-terminal-border rounded-full overflow-hidden">
+          <div 
+            className="h-full rounded-full transition-all duration-1000"
+            style={{ 
+              width: `${Math.max(0, (1 - card.nextForkEtaSec / 600) * 100)}%`,
+              backgroundColor: laneAccentColor,
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -18,13 +18,13 @@ export interface TickerCardProps {
 function getLaneBorderColor(lane: OpsCard['lane']): string {
   switch (lane) {
     case 'new_creations':
-      return '#00FF41'; // Green
+      return '#10B981'; // emerald
     case 'about_to_happen':
-      return '#FF9500'; // Orange
+      return '#F59E0B'; // amber
     case 'at_risk':
-      return '#FF3B3B'; // Red
+      return '#EF4444'; // crimson
     case 'graduation':
-      return '#AA66FF'; // Purple
+      return '#8B5CF6'; // purple
   }
 }
 
@@ -71,18 +71,18 @@ function formatTimeRemaining(seconds: number): string {
  */
 function getMetricColor(value: number, type: 'gap' | 'stability' | 'other'): string {
   if (type === 'gap') {
-    // Higher gap = worse (red)
-    if (value >= 40) return '#FF3B3B';
-    if (value >= 20) return '#FF9500';
-    return '#00FF41';
+    // Higher gap = worse (crimson)
+    if (value >= 40) return '#EF4444';
+    if (value >= 20) return '#F59E0B';
+    return '#10B981';
   }
   if (type === 'stability') {
-    // Higher stability = better (green)
-    if (value >= 70) return '#00FF41';
-    if (value >= 50) return '#FF9500';
-    return '#FF3B3B';
+    // Higher stability = better (emerald)
+    if (value >= 70) return '#10B981';
+    if (value >= 50) return '#F59E0B';
+    return '#EF4444';
   }
-  return '#FFFFFF';
+  return '#F1F5F9';
 }
 
 /**
@@ -156,7 +156,7 @@ export function TickerCard({ card }: TickerCardProps) {
             <h4 className="text-sm font-bold text-white truncate leading-tight">
               {card.title}
             </h4>
-            <p className="text-xs text-terminal-muted font-mono mt-0.5">
+            <p className="text-xs text-terminal-text-secondary font-mono mt-0.5">
               {card.type === 'timeline' ? 'TL' : 'LN'}-{tickerId}
             </p>
           </div>
@@ -167,7 +167,7 @@ export function TickerCard({ card }: TickerCardProps) {
           {/* Gap Metric */}
           {card.logicGap !== undefined && (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-terminal-muted">Gap:</span>
+              <span className="text-xs text-terminal-text-secondary">Gap:</span>
               <span
                 className="text-xs font-mono font-semibold"
                 style={{ color: getMetricColor(card.logicGap, 'gap') }}
@@ -180,7 +180,7 @@ export function TickerCard({ card }: TickerCardProps) {
           {/* Stability Metric */}
           {card.stability !== undefined && (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-terminal-muted">Stab:</span>
+              <span className="text-xs text-terminal-text-secondary">Stab:</span>
               <span
                 className="text-xs font-mono font-semibold"
                 style={{ color: getMetricColor(card.stability, 'stability') }}
@@ -193,8 +193,8 @@ export function TickerCard({ card }: TickerCardProps) {
           {/* Fork ETA Metric */}
           {card.nextForkEtaSec !== undefined && (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-terminal-muted">Fork:</span>
-              <span className="text-xs font-mono font-semibold text-[#00D4FF]">
+              <span className="text-xs text-terminal-text-secondary">Fork:</span>
+              <span className="text-xs font-mono font-semibold text-status-info">
                 {formatTimeRemaining(card.nextForkEtaSec)}
               </span>
             </div>
@@ -203,7 +203,7 @@ export function TickerCard({ card }: TickerCardProps) {
           {/* Quality Score (for launches) */}
           {card.qualityScore !== undefined && (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-terminal-muted">Score:</span>
+              <span className="text-xs text-terminal-text-secondary">Score:</span>
               <span
                 className="text-xs font-mono font-semibold"
                 style={{ color: getMetricColor(card.qualityScore, 'stability') }}

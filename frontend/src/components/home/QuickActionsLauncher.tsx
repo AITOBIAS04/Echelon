@@ -48,7 +48,7 @@ export function QuickActionsLauncher() {
             <button
               key={action.id}
               onClick={action.onClick}
-              className="flex items-center gap-2 px-3 py-2 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-[#00D4FF] hover:text-[#00D4FF] transition text-left"
+              className="flex items-center gap-2 px-3 py-2 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-status-info hover:text-status-info transition text-left"
             >
               <Icon className="w-4 h-4 flex-shrink-0" />
               <span className="text-terminal-text">{action.label}</span>

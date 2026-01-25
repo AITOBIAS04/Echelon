@@ -18,12 +18,12 @@ export type Severity = 'healthy' | 'warning' | 'critical';
 
 /**
  * Color mapping for severity levels
- * Uses Echelon's terminal color palette
+ * Uses professional muted colour palette (BullX-style)
  */
 export const SEVERITY_COLORS = {
-  healthy: '#00FF41',  // green
-  warning: '#FF9500',  // amber
-  critical: '#FF3B3B', // red
+  healthy: '#10B981',  // emerald
+  warning: '#F59E0B',  // amber
+  critical: '#EF4444', // crimson
 } as const;
 
 /**

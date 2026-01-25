@@ -58,11 +58,11 @@ export function WatchlistRow({
     // TODO: Implement alert toggle
   };
 
-  // YES price badge color
-  const yesPriceColor = timeline.yesPrice >= 0.5 ? '#00FF41' : '#FF3B3B';
-  const yesPriceBg = timeline.yesPrice >= 0.5 
-    ? 'bg-green-500/20' 
-    : 'bg-red-500/20';
+  // YES price badge color - professional muted palette
+  const yesPriceColor = timeline.yesPrice >= 0.5 ? '#10B981' : '#EF4444';
+  const yesPriceBg = timeline.yesPrice >= 0.5
+    ? 'bg-status-success/20'
+    : 'bg-status-danger/20';
 
   return (
     <div

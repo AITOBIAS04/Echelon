@@ -33,7 +33,7 @@ export function LiveNowBar({ liveNow }: LiveNowBarProps) {
   return (
     <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-3 md:p-4 mb-4">
       <div className="flex items-center gap-2 mb-3">
-        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        <div className="w-2 h-2 bg-status-success rounded-full animate-pulse" />
         <span className="text-xs font-semibold text-terminal-text uppercase tracking-wide">
           Live Now
         </span>
@@ -44,12 +44,12 @@ export function LiveNowBar({ liveNow }: LiveNowBarProps) {
           {/* Forks Live */}
           <button
             onClick={handleForksLive}
-            className="flex items-center gap-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded hover:border-[#00D4FF] hover:text-[#00D4FF] transition group flex-shrink-0"
+            className="flex items-center gap-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded hover:border-status-info hover:text-status-info transition group flex-shrink-0"
           >
-            <GitBranch className="w-4 h-4 text-[#00D4FF] group-hover:text-[#00D4FF]" />
+            <GitBranch className="w-4 h-4 text-status-info group-hover:text-status-info" />
             <div className="flex flex-col items-start">
-              <span className="text-xs text-terminal-muted">Forks Live</span>
-              <span className="text-sm font-mono font-bold text-terminal-text group-hover:text-[#00D4FF]">
+              <span className="text-xs text-terminal-text-secondary">Forks Live</span>
+              <span className="text-sm font-mono font-bold text-terminal-text group-hover:text-status-info">
                 {liveNow.forksLive}
               </span>
             </div>
@@ -58,12 +58,12 @@ export function LiveNowBar({ liveNow }: LiveNowBarProps) {
           {/* Paradox Active */}
           <button
             onClick={handleParadoxActive}
-            className="flex items-center gap-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded hover:border-[#FF3B3B] hover:text-[#FF3B3B] transition group flex-shrink-0"
+            className="flex items-center gap-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded hover:border-status-danger hover:text-status-danger transition group flex-shrink-0"
           >
-            <Zap className="w-4 h-4 text-[#FF3B3B] group-hover:text-[#FF3B3B]" />
+            <Zap className="w-4 h-4 text-status-danger group-hover:text-status-danger" />
             <div className="flex flex-col items-start">
-              <span className="text-xs text-terminal-muted">Paradox Active</span>
-              <span className="text-sm font-mono font-bold text-terminal-text group-hover:text-[#FF3B3B]">
+              <span className="text-xs text-terminal-text-secondary">Paradox Active</span>
+              <span className="text-sm font-mono font-bold text-terminal-text group-hover:text-status-danger">
                 {liveNow.paradoxActive}
               </span>
             </div>
@@ -72,12 +72,12 @@ export function LiveNowBar({ liveNow }: LiveNowBarProps) {
           {/* Breaches */}
           <button
             onClick={handleBreaches}
-            className="flex items-center gap-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded hover:border-amber-500 hover:text-amber-500 transition group flex-shrink-0"
+            className="flex items-center gap-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded hover:border-status-warning hover:text-status-warning transition group flex-shrink-0"
           >
-            <AlertTriangle className="w-4 h-4 text-amber-500 group-hover:text-amber-500" />
+            <AlertTriangle className="w-4 h-4 text-status-warning group-hover:text-status-warning" />
             <div className="flex flex-col items-start">
-              <span className="text-xs text-terminal-muted">Breaches</span>
-              <span className="text-sm font-mono font-bold text-terminal-text group-hover:text-amber-500">
+              <span className="text-xs text-terminal-text-secondary">Breaches</span>
+              <span className="text-sm font-mono font-bold text-terminal-text group-hover:text-status-warning">
                 {liveNow.breaches}
               </span>
             </div>

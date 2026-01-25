@@ -23,21 +23,21 @@ export function SabotageHeatDots({ count }: SabotageHeatDotsProps) {
   const maxDots = 5;
   const litCount = Math.min(Math.max(0, count), maxDots); // Clamp between 0 and 5
   
-  const litColor = '#FF3B3B'; // red
-  const unlitColor = '#2D2D2D'; // dark grey
-  
+  const litColor = '#EF4444'; // crimson
+  const unlitColor = '#2A2D33'; // terminal border
+
   return (
     <div className="flex items-center gap-1">
       {Array.from({ length: maxDots }, (_, index) => {
         const isLit = index < litCount;
-        
+
         return (
           <div
             key={index}
             className="w-1.5 h-1.5 rounded-full"
             style={{
               backgroundColor: isLit ? litColor : unlitColor,
-              boxShadow: isLit ? '0 0 4px #FF3B3B' : 'none',
+              boxShadow: isLit ? 'none' : 'none',
             }}
           />
         );

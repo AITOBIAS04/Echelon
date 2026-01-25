@@ -76,7 +76,7 @@ export function OpsFiltersBar({ filters, onFiltersChange }: OpsFiltersBarProps) 
     <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide pb-1">
       {/* Category Filters */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-xs text-terminal-muted font-medium uppercase tracking-wide whitespace-nowrap">
+        <span className="text-xs text-terminal-text-secondary font-medium uppercase tracking-wide whitespace-nowrap">
           Category:
         </span>
         <div className="flex items-center gap-1.5">
@@ -87,8 +87,8 @@ export function OpsFiltersBar({ filters, onFiltersChange }: OpsFiltersBarProps) 
               className={clsx(
                 'px-2.5 py-1 text-xs font-medium rounded border transition whitespace-nowrap',
                 filters.categories.has(cat.id)
-                  ? 'bg-terminal-bg border-[#00D4FF] text-[#00D4FF]'
-                  : 'bg-terminal-bg/50 border-terminal-border text-terminal-muted hover:border-terminal-text hover:text-terminal-text'
+                  ? 'bg-terminal-bg border-status-info text-status-info'
+                  : 'bg-terminal-bg/50 border-terminal-border text-terminal-text-secondary hover:border-terminal-text hover:text-terminal-text'
               )}
             >
               {cat.label}
@@ -99,7 +99,7 @@ export function OpsFiltersBar({ filters, onFiltersChange }: OpsFiltersBarProps) 
 
       {/* Origin Filters */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-xs text-terminal-muted font-medium uppercase tracking-wide whitespace-nowrap">
+        <span className="text-xs text-terminal-text-secondary font-medium uppercase tracking-wide whitespace-nowrap">
           Origin:
         </span>
         <div className="flex items-center gap-1.5">
@@ -110,8 +110,8 @@ export function OpsFiltersBar({ filters, onFiltersChange }: OpsFiltersBarProps) 
               className={clsx(
                 'px-2.5 py-1 text-xs font-medium rounded border transition whitespace-nowrap',
                 filters.origins.has(origin.id)
-                  ? 'bg-terminal-bg border-[#00D4FF] text-[#00D4FF]'
-                  : 'bg-terminal-bg/50 border-terminal-border text-terminal-muted hover:border-terminal-text hover:text-terminal-text'
+                  ? 'bg-terminal-bg border-status-info text-status-info'
+                  : 'bg-terminal-bg/50 border-terminal-border text-terminal-text-secondary hover:border-terminal-text hover:text-terminal-text'
               )}
             >
               {origin.label}
@@ -122,7 +122,7 @@ export function OpsFiltersBar({ filters, onFiltersChange }: OpsFiltersBarProps) 
 
       {/* Creator Filters */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span className="text-xs text-terminal-muted font-medium uppercase tracking-wide whitespace-nowrap">
+        <span className="text-xs text-terminal-text-secondary font-medium uppercase tracking-wide whitespace-nowrap">
           Creator:
         </span>
         <div className="flex items-center gap-1.5">
@@ -133,8 +133,8 @@ export function OpsFiltersBar({ filters, onFiltersChange }: OpsFiltersBarProps) 
               className={clsx(
                 'px-2.5 py-1 text-xs font-medium rounded border transition whitespace-nowrap',
                 filters.creators.has(creator.id)
-                  ? 'bg-terminal-bg border-[#00D4FF] text-[#00D4FF]'
-                  : 'bg-terminal-bg/50 border-terminal-border text-terminal-muted hover:border-terminal-text hover:text-terminal-text'
+                  ? 'bg-terminal-bg border-status-info text-status-info'
+                  : 'bg-terminal-bg/50 border-terminal-border text-terminal-text-secondary hover:border-terminal-text hover:text-terminal-text'
               )}
             >
               {creator.label}

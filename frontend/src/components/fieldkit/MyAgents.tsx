@@ -105,12 +105,12 @@ export function MyAgents() {
             <div 
               key={agent.id} 
               className={clsx(
-                'terminal-panel p-4 relative overflow-hidden transition-all',
-                sanityPercent > 40 
+                'terminal-card p-4 relative overflow-hidden transition-all',
+                sanityPercent > 40
                   ? 'border-terminal-border'
                   : sanityPercent > 20
-                    ? 'border-echelon-amber/30'
-                    : 'border-echelon-red/50 animate-pulse',
+                    ? 'border-status-warning/30'
+                    : 'border-status-danger/50 animate-pulse',
                 // Glitch effect for critical sanity
                 sanityPercent <= 20 && 'relative overflow-hidden'
               )}
@@ -138,7 +138,7 @@ export function MyAgents() {
                   <div>
                     <h3 className={clsx(
                       'font-bold',
-                      sanityPercent <= 20 ? 'text-echelon-red' : 'text-terminal-text'
+                      sanityPercent <= 20 ? 'text-status-danger' : 'text-terminal-text'
                     )}>
                       {agent.name}
                     </h3>
@@ -151,13 +151,13 @@ export function MyAgents() {
                       >
                         {agent.archetype}
                       </span>
-                      <span className="text-xs text-terminal-muted">Tier {agent.tier}</span>
+                      <span className="text-xs text-terminal-text-secondary">Tier {agent.tier}</span>
                     </div>
                   </div>
                 </div>
                 <Link
                   to={`/agent/${agent.id}`}
-                  className="text-terminal-muted hover:text-echelon-cyan transition"
+                  className="text-terminal-text-secondary hover:text-status-info transition"
                 >
                   <ExternalLink className="w-4 h-4" />
                 </Link>
@@ -194,7 +194,7 @@ export function MyAgents() {
                   <div
                     className={clsx(
                       'text-sm font-mono font-bold',
-                      agent.total_pnl >= 0 ? 'text-echelon-green' : 'text-echelon-red'
+                      agent.total_pnl >= 0 ? 'text-status-success' : 'text-status-danger'
                     )}
                   >
                     ${agent.total_pnl.toLocaleString()}
@@ -217,12 +217,12 @@ export function MyAgents() {
               {/* Status */}
               <div className="flex items-center justify-between p-2 bg-terminal-bg rounded relative z-10">
                 <div className="flex items-center gap-2">
-                  <Zap className="w-3 h-3 text-echelon-cyan" />
-                  <span className="text-xs text-echelon-cyan uppercase">
+                  <Zap className="w-3 h-3 text-status-info" />
+                  <span className="text-xs text-status-info uppercase">
                     {agent.status.replace('_', ' ')}
                   </span>
                 </div>
-                <span className="text-xs text-terminal-muted">{agent.current_timeline}</span>
+                <span className="text-xs text-terminal-text-secondary">{agent.current_timeline}</span>
               </div>
 
               {/* Action Buttons */}
@@ -231,26 +231,26 @@ export function MyAgents() {
                 {(agent.archetype === 'SPY' || agent.archetype === 'SHARK') && (
                   <button
                     onClick={() => handleTaskAgent(agent)}
-                    className="flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2 bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30"
+                    className="flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2 bg-status-paradox/20 border-status-paradox/50 text-status-paradox hover:bg-status-paradox/30"
                   >
                     <Search className="w-4 h-4" />
                     TASK
                   </button>
                 )}
-                
+
                 {/* Copy Button - For social trading */}
                 <button
                   onClick={() => handleCopyAgent(agent)}
-                  className="flex-1 px-3 py-2 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all flex items-center justify-center gap-2"
+                  className="flex-1 px-3 py-2 bg-status-info/20 border border-status-info/50 text-status-info rounded text-sm font-bold hover:bg-status-info/30 transition-all flex items-center justify-center gap-2"
                 >
                   <Copy className="w-4 h-4" />
                   COPY
                 </button>
-                
+
                 {/* Hire Button */}
                 <button
                   onClick={() => handleHireAgent(agent)}
-                  className="px-3 py-2 bg-echelon-amber/20 border border-echelon-amber/50 text-echelon-amber rounded text-sm font-bold hover:bg-echelon-amber/30 transition-all"
+                  className="px-3 py-2 bg-status-warning/20 border border-status-warning/50 text-status-warning rounded text-sm font-bold hover:bg-status-warning/30 transition-all"
                 >
                   <Briefcase className="w-4 h-4" />
                 </button>
@@ -262,10 +262,10 @@ export function MyAgents() {
         {/* Add Agent Card */}
         <Link
           to="/agents"
-          className="terminal-panel p-4 flex flex-col items-center justify-center min-h-[200px] border-dashed hover:border-echelon-cyan/50 transition"
+          className="terminal-card p-4 flex flex-col items-center justify-center min-h-[200px] border-dashed hover:border-status-info/50 transition"
         >
-          <Bot className="w-8 h-8 text-terminal-muted mb-2" />
-          <span className="text-sm text-terminal-muted">Hire New Agent</span>
+          <Bot className="w-8 h-8 text-terminal-text-secondary mb-2" />
+          <span className="text-sm text-terminal-text-secondary">Hire New Agent</span>
         </Link>
       </div>
 

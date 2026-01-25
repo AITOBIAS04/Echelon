@@ -8,17 +8,17 @@ type RibbonEvent = Pick<TapeEvent, 'id' | 'ts' | 'type' | 'summary' | 'timelineI
 function badge(type: TapeEventType): { bg: string; text: string; label: string } {
   switch (type) {
     case 'wing_flap':
-      return { bg: '#00D4FF', text: '#000000', label: 'WING FLAP' };
+      return { bg: '#3B82F6', text: '#FFFFFF', label: 'WING FLAP' };
     case 'fork_live':
-      return { bg: '#00FF41', text: '#000000', label: 'FORK' };
+      return { bg: '#10B981', text: '#FFFFFF', label: 'FORK' };
     case 'sabotage_disclosed':
-      return { bg: '#FF3B3B', text: '#FFFFFF', label: 'SABOTAGE' };
+      return { bg: '#EF4444', text: '#FFFFFF', label: 'SABOTAGE' };
     case 'paradox_spawn':
-      return { bg: '#FF9500', text: '#FFFFFF', label: 'PARADOX' };
+      return { bg: '#F59E0B', text: '#FFFFFF', label: 'PARADOX' };
     case 'evidence_flip':
-      return { bg: '#9932CC', text: '#FFFFFF', label: 'FLIP' };
+      return { bg: '#10B981', text: '#FFFFFF', label: 'FLIP' };
     case 'settlement':
-      return { bg: '#00FF41', text: '#000000', label: 'SETTLE' };
+      return { bg: '#10B981', text: '#FFFFFF', label: 'SETTLE' };
   }
 }
 

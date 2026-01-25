@@ -60,9 +60,9 @@ export function WatchlistFilterBar({
   onFilterChange,
   counts,
 }: WatchlistFilterBarProps) {
-  const activeColor = '#00FF41'; // green
-  const inactiveBorder = '#333';
-  const inactiveText = '#666';
+  const activeColor = '#10B981'; // emerald
+  const inactiveBorder = '#363A40';
+  const inactiveText = '#64748B';
 
   return (
     <div className="flex items-center gap-2">
@@ -95,7 +95,7 @@ export function WatchlistFilterBar({
                   absolute -top-1 -right-1 min-w-[16px] h-4 px-1
                   rounded-full text-[10px] font-bold
                   flex items-center justify-center
-                  ${isActive ? 'bg-green-500' : 'bg-[#666]'}
+                  ${isActive ? 'bg-status-success' : 'bg-terminal-border'}
                   text-white
                 `}
               >

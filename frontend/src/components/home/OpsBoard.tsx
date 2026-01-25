@@ -6,6 +6,15 @@ import { computeTrendingScore } from '../../lib/trendingRanker';
 import type { OpsCard } from '../../types/opsBoard';
 
 /**
+ * Column accent colors - muted professional palette
+ */
+const COLUMN_ACCENTS = {
+  newCreations: '#10B981',   // Emerald
+  trending: '#F59E0B',       // Amber
+  atRisk: '#EF4444',         // Crimson
+} as const;
+
+/**
  * OpsBoard Column Props
  */
 interface OpsColumnProps {
@@ -27,28 +36,28 @@ function OpsColumn({ title, accentColor, cards, emptyMessage, headerBottom }: Op
       {/* Sticky Header */}
       <div
         className="sticky top-0 z-10 flex flex-col gap-1 px-3 py-2 mb-2 bg-terminal-bg/95 backdrop-blur-sm border-b flex-shrink-0"
-        style={{ borderColor: `${accentColor}40` }}
+        style={{ borderColor: accentColor }}
       >
         <div className="flex items-center gap-2">
           <div
-            className="w-2 h-2 rounded-full"
+            className="w-1.5 h-1.5 rounded-full"
             style={{ backgroundColor: accentColor }}
           />
-          <h3 className="text-sm font-bold text-terminal-text uppercase tracking-wide">
+          <h3 className="text-xs font-semibold text-terminal-text uppercase tracking-wide">
             {title}
           </h3>
-          <span className="text-xs text-terminal-muted font-mono ml-auto">
-            ({cards.length})
+          <span className="text-xs text-terminal-text-secondary font-mono ml-auto">
+            {cards.length}
           </span>
         </div>
         {headerBottom}
       </div>
 
       {/* Cards List - Independent Scroll */}
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-        <div className="flex flex-col pb-2">
+      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-track-transparent">
+        <div className="flex flex-col pb-2 gap-2">
           {cards.length === 0 ? (
-            <div className="text-terminal-muted text-xs py-8 text-center px-4">
+            <div className="text-terminal-text-secondary text-xs py-8 text-center px-4">
               {emptyMessage}
             </div>
           ) : (
@@ -80,19 +89,18 @@ function RiskAndResultsColumn({
       <div className="flex flex-col flex-1 min-h-0">
         <div
           className="sticky top-0 z-10 flex flex-col gap-1 px-3 py-2 mb-2 bg-terminal-bg/95 backdrop-blur-sm border-b flex-shrink-0"
-          style={{ borderColor: '#FF3B3B40' }}
         >
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#FF3B3B' }} />
-            <h3 className="text-sm font-bold text-terminal-text uppercase tracking-wide">At Risk</h3>
-            <span className="text-xs text-terminal-muted font-mono ml-auto">({atRisk.length})</span>
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLUMN_ACCENTS.atRisk }} />
+            <h3 className="text-xs font-semibold text-terminal-text uppercase tracking-wide">At Risk</h3>
+            <span className="text-xs text-terminal-text-secondary font-mono ml-auto">({atRisk.length})</span>
           </div>
           {headerBottom}
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-terminal-border scrollbar-track-transparent">
           <div className="flex flex-col pb-2">
             {atRisk.length === 0 ? (
-              <div className="text-terminal-muted text-xs py-4 text-center px-4">
+              <div className="text-terminal-text-secondary text-xs py-4 text-center px-4">
                 No risks detected
               </div>
             ) : (
@@ -132,12 +140,12 @@ function OpsBoardSkeleton() {
   return (
     <div className="h-full grid grid-cols-1 lg:grid-cols-3 gap-3">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="flex flex-col h-full min-h-0 border border-terminal-border/20 rounded-lg bg-terminal-panel/50">
-          <div className="sticky top-0 z-10 px-4 py-3 mb-3 bg-terminal-bg/95 backdrop-blur-sm border-b border-terminal-border/40 flex-shrink-0">
+        <div key={i} className="flex flex-col h-full min-h-0 border border-terminal-border rounded-lg bg-terminal-panel">
+          <div className="sticky top-0 z-10 px-4 py-3 mb-3 bg-terminal-bg/95 backdrop-blur-sm border-b border-terminal-border flex-shrink-0">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-terminal-muted/50 animate-pulse" />
-              <div className="h-4 w-24 bg-terminal-muted/50 rounded animate-pulse" />
-              <div className="h-3 w-8 bg-terminal-muted/50 rounded ml-auto animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-terminal-border animate-pulse" />
+              <div className="h-4 w-24 bg-terminal-border rounded animate-pulse" />
+              <div className="h-3 w-8 bg-terminal-border rounded ml-auto animate-pulse" />
             </div>
           </div>
           <div className="flex-1 min-h-0 overflow-y-auto px-2">
@@ -156,9 +164,9 @@ export function OpsBoard() {
 
   if (error) {
     return (
-      <div className="terminal-panel p-4 text-echelon-red border border-echelon-red/30 rounded">
+      <div className="terminal-card p-4 text-status-danger border border-status-danger/30 rounded">
         <div className="font-semibold mb-1">Failed to load ops board</div>
-        <div className="text-sm text-terminal-muted">{error}</div>
+        <div className="text-sm text-terminal-text-secondary">{error}</div>
       </div>
     );
   }
@@ -218,43 +226,43 @@ export function OpsBoard() {
       {/* Desktop (lg+): Always render the grid */}
       <div className="hidden lg:grid h-full grid-cols-3 gap-3">
         {/* LEFT: Newly Created */}
-        <div className="flex flex-col h-full min-h-0 border border-[#00FF41]/20 rounded-lg bg-terminal-panel/50">
+        <div className="flex flex-col h-full min-h-0 border border-terminal-border rounded-lg bg-terminal-panel">
           <OpsColumn
             title="Newly Created"
-            accentColor="#00FF41"
+            accentColor={COLUMN_ACCENTS.newCreations}
             cards={newCreations}
             emptyMessage="No new creations"
           />
         </div>
 
         {/* CENTER: Trending */}
-        <div className="flex flex-col h-full min-h-0 border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50">
+        <div className="flex flex-col h-full min-h-0 border border-terminal-border rounded-lg bg-terminal-panel">
           <OpsColumn
             title="Trending"
-            accentColor="#FF9500"
+            accentColor={COLUMN_ACCENTS.trending}
             cards={trending}
             emptyMessage="No active signals"
             headerBottom={
               showTrendingStatus ? (
-                <div className="flex items-center gap-2 pt-1 border-t border-terminal-border/50 text-[10px] text-terminal-muted font-mono">
+                <div className="flex items-center gap-3 pt-1 border-t border-terminal-border/50 text-[10px] text-terminal-text-secondary font-mono">
                   <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500/80" />
-                    Forks: <span className="text-terminal-text font-bold">{forksCount}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-status-warning/80" />
+                    Forks: <span className="text-terminal-text font-semibold">{forksCount}</span>
                   </span>
-                  <span className="opacity-50">·</span>
+                  <span className="opacity-40">·</span>
                   <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500/80" />
-                    Paradox: <span className="text-terminal-text font-bold">{paradoxCount}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-status-paradox/80" />
+                    Paradox: <span className="text-terminal-text font-semibold">{paradoxCount}</span>
                   </span>
-                  <span className="opacity-50">·</span>
+                  <span className="opacity-40">·</span>
                   <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500/80" />
-                    Disclosures: <span className="text-terminal-text font-bold">{disclosuresCount}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-status-warning/80" />
+                    Disclosures: <span className="text-terminal-text font-semibold">{disclosuresCount}</span>
                   </span>
-                  <span className="opacity-50">·</span>
+                  <span className="opacity-40">·</span>
                   <span className="inline-flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500/80" />
-                    Flips: <span className="text-terminal-text font-bold">{flipsCount}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-status-success/80" />
+                    Flips: <span className="text-terminal-text font-semibold">{flipsCount}</span>
                   </span>
                 </div>
               ) : null
@@ -263,7 +271,7 @@ export function OpsBoard() {
         </div>
 
         {/* RIGHT: At Risk + Breaches */}
-        <div className="flex flex-col h-full min-h-0 border border-[#FF3B3B]/20 rounded-lg bg-terminal-panel/50">
+        <div className="flex flex-col h-full min-h-0 border border-terminal-border rounded-lg bg-terminal-panel">
           <RiskAndResultsColumn atRisk={atRisk} />
         </div>
       </div>
@@ -274,13 +282,13 @@ export function OpsBoard() {
           <MobileTabSwitcher trending={trending} newCreations={newCreations} atRisk={atRisk} />
         ) : (
           <div className="grid grid-cols-1 gap-3">
-            <div className="border border-[#00FF41]/20 rounded-lg bg-terminal-panel/50">
-              <OpsColumn title="Newly Created" accentColor="#00FF41" cards={newCreations} emptyMessage="No new creations" />
+            <div className="border border-terminal-border rounded-lg bg-terminal-panel">
+              <OpsColumn title="Newly Created" accentColor={COLUMN_ACCENTS.newCreations} cards={newCreations} emptyMessage="No new creations" />
             </div>
-            <div className="border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50">
-              <OpsColumn title="Trending" accentColor="#FF9500" cards={trending} emptyMessage="No active signals" />
+            <div className="border border-terminal-border rounded-lg bg-terminal-panel">
+              <OpsColumn title="Trending" accentColor={COLUMN_ACCENTS.trending} cards={trending} emptyMessage="No active signals" />
             </div>
-            <div className="border border-[#FF3B3B]/20 rounded-lg bg-terminal-panel/50">
+            <div className="border border-terminal-border rounded-lg bg-terminal-panel">
               <RiskAndResultsColumn atRisk={atRisk} />
             </div>
           </div>
@@ -308,9 +316,9 @@ function MobileTabSwitcher({
   const [activeTab, setActiveTab] = useState<'active' | 'new' | 'critical'>('active');
 
   const tabs = [
-    { id: 'active' as const, label: 'Trending', count: trending.length, cards: trending, accentColor: '#FF9500', title: 'Trending' },
-    { id: 'new' as const, label: 'New', count: newCreations.length, cards: newCreations, accentColor: '#00FF41', title: 'Newly Created' },
-    { id: 'critical' as const, label: 'Risk', count: atRisk.length, cards: atRisk, accentColor: '#FF3B3B', title: 'At Risk' },
+    { id: 'active' as const, label: 'Trending', count: trending.length, cards: trending, accentColor: COLUMN_ACCENTS.trending, title: 'Trending' },
+    { id: 'new' as const, label: 'New', count: newCreations.length, cards: newCreations, accentColor: COLUMN_ACCENTS.newCreations, title: 'Newly Created' },
+    { id: 'critical' as const, label: 'Risk', count: atRisk.length, cards: atRisk, accentColor: COLUMN_ACCENTS.atRisk, title: 'At Risk' },
   ];
 
   const activeTabData = tabs.find(t => t.id === activeTab)!;
@@ -326,11 +334,11 @@ function MobileTabSwitcher({
             className={`px-4 py-2 text-sm font-medium transition relative ${
               activeTab === tab.id
                 ? 'text-terminal-text'
-                : 'text-terminal-muted hover:text-terminal-text'
+                : 'text-terminal-text-secondary hover:text-terminal-text'
             }`}
           >
             {tab.label}
-            <span className="ml-1.5 text-xs text-terminal-muted">({tab.count})</span>
+            <span className="ml-1.5 text-xs text-terminal-text-muted">({tab.count})</span>
             {activeTab === tab.id && (
               <div
                 className="absolute bottom-0 left-0 right-0 h-0.5"
@@ -343,7 +351,7 @@ function MobileTabSwitcher({
 
       {/* Active Tab Content */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-col min-h-0 border border-[#FF9500]/20 rounded-lg bg-terminal-panel/50">
+        <div className="flex flex-col min-h-0 border border-terminal-border rounded-lg bg-terminal-panel">
           <OpsColumn
             title={activeTabData.title}
             accentColor={activeTabData.accentColor}

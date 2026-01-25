@@ -16,15 +16,15 @@ export interface LaunchCardMiniProps {
 function getPhaseBadge(phase: LaunchCard['phase']): { bg: string; text: string; label: string } {
   switch (phase) {
     case 'draft':
-      return { bg: '#666666', text: '#FFFFFF', label: 'DRAFT' };
+      return { bg: '#64748B', text: '#FFFFFF', label: 'DRAFT' };
     case 'sandbox':
-      return { bg: '#FF9500', text: '#FFFFFF', label: 'SANDBOX' };
+      return { bg: '#F59E0B', text: '#FFFFFF', label: 'SANDBOX' };
     case 'pilot':
-      return { bg: '#00D4FF', text: '#000000', label: 'PILOT' };
+      return { bg: '#3B82F6', text: '#FFFFFF', label: 'PILOT' };
     case 'graduated':
-      return { bg: '#00FF41', text: '#000000', label: 'GRADUATED' };
+      return { bg: '#10B981', text: '#FFFFFF', label: 'GRADUATED' };
     case 'failed':
-      return { bg: '#FF3B3B', text: '#FFFFFF', label: 'FAILED' };
+      return { bg: '#EF4444', text: '#FFFFFF', label: 'FAILED' };
   }
 }
 
@@ -34,9 +34,9 @@ function getPhaseBadge(phase: LaunchCard['phase']): { bg: string; text: string; 
 function getCategoryColor(category: LaunchCard['category']): string {
   switch (category) {
     case 'theatre':
-      return '#00D4FF';
+      return '#3B82F6';
     case 'osint':
-      return '#9932CC';
+      return '#8B5CF6';
   }
 }
 
@@ -44,9 +44,9 @@ function getCategoryColor(category: LaunchCard['category']): string {
  * Get quality score color
  */
 function getQualityColor(score: number): string {
-  if (score >= 80) return '#00FF41'; // green
-  if (score >= 60) return '#FF9500'; // amber
-  return '#FF3B3B'; // red
+  if (score >= 80) return '#10B981'; // emerald
+  if (score >= 60) return '#F59E0B'; // amber
+  return '#EF4444'; // crimson
 }
 
 /**
@@ -98,7 +98,7 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
             </span>
             {/* Export Badge */}
             {launch.exportEligible && (
-              <span className="flex items-center gap-1 text-xs text-[#00D4FF]">
+              <span className="flex items-center gap-1 text-xs text-status-info">
                 <Database className="w-3 h-3" />
                 EXPORT
               </span>
@@ -110,7 +110,7 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
       {/* Quality Score Meter */}
       <div className="mb-3">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-terminal-muted">Quality Score</span>
+          <span className="text-xs text-terminal-text-secondary">Quality Score</span>
           <span
             className="text-xs font-mono font-semibold"
             style={{ color: qualityColor }}
@@ -131,7 +131,7 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
 
       {/* Fork Range */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-terminal-muted">Fork Range</span>
+        <span className="text-xs text-terminal-text-secondary">Fork Range</span>
         <span className="text-xs font-mono text-terminal-text">
           {launch.forkTargetRange[0]}-{launch.forkTargetRange[1]}
         </span>
@@ -140,7 +140,7 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
       {/* Action Button */}
       <button
         onClick={handleView}
-        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-[#00D4FF] hover:text-[#00D4FF] transition"
+        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-status-info hover:text-status-info transition"
       >
         <ExternalLink className="w-3 h-3" />
         VIEW

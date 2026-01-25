@@ -20,13 +20,13 @@ export interface OpsCardProps {
 function getLaneBadge(lane: OpsCard['lane']): { bg: string; text: string; label: string } {
   switch (lane) {
     case 'new_creations':
-      return { bg: '#00D4FF', text: '#000000', label: 'NEW' };
+      return { bg: '#10B981', text: '#FFFFFF', label: 'NEW' };
     case 'about_to_happen':
-      return { bg: '#FF9500', text: '#FFFFFF', label: 'SOON' };
+      return { bg: '#F59E0B', text: '#FFFFFF', label: 'SOON' };
     case 'at_risk':
-      return { bg: '#FF3B3B', text: '#FFFFFF', label: 'RISK' };
+      return { bg: '#EF4444', text: '#FFFFFF', label: 'RISK' };
     case 'graduation':
-      return { bg: '#00FF41', text: '#000000', label: 'GRAD' };
+      return { bg: '#8B5CF6', text: '#FFFFFF', label: 'GRAD' };
   }
 }
 
@@ -36,21 +36,21 @@ function getLaneBadge(lane: OpsCard['lane']): { bg: string; text: string; label:
 function getTagColor(tag: OpsCard['tags'][0]): string {
   switch (tag) {
     case 'fork_soon':
-      return '#00D4FF';
+      return '#3B82F6';
     case 'disclosure_active':
-      return '#FF9500';
+      return '#F59E0B';
     case 'evidence_flip':
-      return '#9932CC';
+      return '#10B981';
     case 'brittle':
-      return '#FF9500';
+      return '#F59E0B';
     case 'paradox_active':
-      return '#FF3B3B';
+      return '#EF4444';
     case 'high_entropy':
-      return '#FF3B3B';
+      return '#EF4444';
     case 'sabotage_heat':
-      return '#FF3B3B';
+      return '#EF4444';
     case 'graduating':
-      return '#00FF41';
+      return '#8B5CF6';
   }
 }
 
@@ -106,28 +106,28 @@ export function OpsCard({ card, compact = false }: OpsCardProps) {
       metrics.push({
         label: 'Stability',
         value: `${card.stability.toFixed(0)}%`,
-        color: card.stability >= 70 ? '#00FF41' : card.stability >= 50 ? '#FF9500' : '#FF3B3B',
+        color: card.stability >= 70 ? '#10B981' : card.stability >= 50 ? '#F59E0B' : '#EF4444',
       });
     }
     if (card.logicGap !== undefined) {
       metrics.push({
         label: 'Logic Gap',
         value: `${card.logicGap.toFixed(0)}%`,
-        color: card.logicGap >= 60 ? '#FF3B3B' : card.logicGap >= 40 ? '#FF9500' : '#00FF41',
+        color: card.logicGap >= 60 ? '#EF4444' : card.logicGap >= 40 ? '#F59E0B' : '#10B981',
       });
     }
     if (card.nextForkEtaSec !== undefined) {
       metrics.push({
         label: 'Next Fork',
         value: formatTimeRemaining(card.nextForkEtaSec),
-        color: '#00D4FF',
+        color: '#3B82F6',
       });
     }
     if (card.paradoxProximity !== undefined && card.paradoxProximity > 50) {
       metrics.push({
         label: 'Paradox',
         value: `${card.paradoxProximity.toFixed(0)}%`,
-        color: '#FF3B3B',
+        color: '#EF4444',
       });
     }
   } else {
@@ -136,7 +136,7 @@ export function OpsCard({ card, compact = false }: OpsCardProps) {
       metrics.push({
         label: 'Quality',
         value: `${card.qualityScore.toFixed(0)}`,
-        color: card.qualityScore >= 80 ? '#00FF41' : card.qualityScore >= 60 ? '#FF9500' : '#FF3B3B',
+        color: card.qualityScore >= 80 ? '#10B981' : card.qualityScore >= 60 ? '#F59E0B' : '#EF4444',
       });
     }
     if (card.phase) {
@@ -189,7 +189,7 @@ export function OpsCard({ card, compact = false }: OpsCardProps) {
         <div className="flex items-center gap-2">
           <button
             onClick={handleView}
-            className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[10px] bg-transparent border border-terminal-border rounded hover:border-[#00D4FF] hover:text-[#00D4FF] transition"
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[10px] bg-transparent border border-terminal-border rounded hover:border-status-info hover:text-status-info transition"
           >
             VIEW
           </button>
@@ -197,8 +197,8 @@ export function OpsCard({ card, compact = false }: OpsCardProps) {
             onClick={handleTrack}
             className={`p-1.5 border rounded transition ${
               tracked
-                ? 'bg-[#00D4FF]/20 border-[#00D4FF] text-[#00D4FF]'
-                : 'bg-transparent border-terminal-border hover:border-[#00D4FF] hover:text-[#00D4FF]'
+                ? 'bg-status-info/20 border-status-info text-status-info'
+                : 'bg-transparent border-terminal-border hover:border-status-info hover:text-status-info'
             }`}
             title={tracked ? 'Remove from watchlist' : 'Add to watchlist'}
           >
@@ -276,7 +276,7 @@ export function OpsCard({ card, compact = false }: OpsCardProps) {
       <div className="flex items-center gap-2">
         <button
           onClick={handleView}
-          className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-[#00D4FF] hover:text-[#00D4FF] transition"
+          className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-status-info hover:text-status-info transition"
         >
           <ExternalLink className="w-3 h-3" />
           VIEW
@@ -285,8 +285,8 @@ export function OpsCard({ card, compact = false }: OpsCardProps) {
           onClick={handleTrack}
           className={`flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs border rounded transition ${
             tracked
-              ? 'bg-[#00D4FF]/20 border-[#00D4FF] text-[#00D4FF]'
-              : 'bg-terminal-bg border-terminal-border hover:border-[#00D4FF] hover:text-[#00D4FF]'
+              ? 'bg-status-info/20 border-status-info text-status-info'
+              : 'bg-terminal-bg border-terminal-border hover:border-status-info hover:text-status-info'
           }`}
           title={tracked ? 'Remove from watchlist' : 'Add to watchlist'}
         >
