@@ -207,7 +207,7 @@ export function AppLayout() {
                   onClick={() => setShowYieldModal(false)}
                 />
                 <div 
-                  className="fixed w-72 sm:w-80 bg-[#0D0D0D] border border-amber-500/30 rounded-lg shadow-xl z-[9999] overflow-hidden"
+                  className="fixed w-72 sm:w-80 bg-terminal-panel border border-amber-500/30 rounded-lg shadow-xl z-[9999] overflow-hidden"
                   style={{ 
                     top: `${yieldDropdownPosition.top}px`,
                     right: `${yieldDropdownPosition.right}px`,
@@ -341,7 +341,7 @@ export function AppLayout() {
           />
           <div className="fixed inset-0 z-[9995] flex items-center justify-center p-4 lg:hidden">
             <div
-              className="relative w-full max-w-md bg-[#0D0D0D] border border-amber-500/30 rounded-lg shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto overscroll-contain"
+              className="relative w-full max-w-md bg-terminal-panel border border-amber-500/30 rounded-lg shadow-2xl overflow-hidden max-h-[90dvh] overflow-y-auto overscroll-contain"
               style={{ WebkitOverflowScrolling: 'touch' }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -422,7 +422,7 @@ export function AppLayout() {
             onClick={() => setShowConnectModal(false)}
           >
             <div 
-              className="bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto pointer-events-auto"
+              className="bg-terminal-panel border border-echelon-cyan/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
             <button 

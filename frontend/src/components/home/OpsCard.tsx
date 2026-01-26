@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, Plus, Check } from 'lucide-react';
+import { ExternalLink, Plus, Check, GitBranch } from 'lucide-react';
 import { toggleTrack, isTracked } from '../../lib/tracking';
 import type { OpsCard } from '../../types/opsBoard';
 
@@ -152,14 +152,22 @@ export function OpsCard({ card, compact = false }: OpsCardProps) {
 
   if (compact) {
     return (
-      <div className="bg-[#0D0D0D] border border-[#1A1A1A] rounded-lg p-3 hover:border-[#333] transition mb-2 w-[240px] md:w-[280px]">
-        {/* Header: Title + Phase Badge */}
-        <div className="flex items-center justify-between mb-2">
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3 hover:bg-terminal-card transition mb-2 w-[240px] md:w-[280px]">
+        {/* Header: Image Tile + Title + Phase Badge */}
+        <div className="flex items-center gap-2 mb-2">
+          {/* Image Tile - 40x40px outlined */}
+          <div className="flex-shrink-0 w-10 h-10 border border-terminal-border rounded bg-terminal-bg flex items-center justify-center overflow-hidden">
+            {card.image_url ? (
+              <img src={card.image_url} alt={card.title} className="w-full h-full object-cover" />
+            ) : (
+              <GitBranch className="w-4 h-4 text-terminal-text-muted" />
+            )}
+          </div>
           <h4 className="text-sm font-bold text-terminal-text uppercase tracking-wide truncate flex-1 min-w-0">
             {card.title}
           </h4>
           <span
-            className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 ml-2"
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
             style={{
               backgroundColor: laneBadge.bg,
               color: laneBadge.text,
@@ -211,26 +219,37 @@ export function OpsCard({ card, compact = false }: OpsCardProps) {
 
   // Full mode (original layout)
   return (
-    <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-3 hover:border-[#333] transition mb-2">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-terminal-text uppercase tracking-wide truncate mb-1">
-            {card.title}
-          </h4>
-          {card.subtitle && (
-            <p className="text-xs text-terminal-muted truncate">{card.subtitle}</p>
+    <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3 hover:bg-terminal-card transition mb-2">
+      {/* Header: Image Tile + Content */}
+      <div className="flex items-start gap-3 mb-2">
+        {/* Image Tile - 40x40px outlined */}
+        <div className="flex-shrink-0 w-10 h-10 border border-terminal-border rounded bg-terminal-bg flex items-center justify-center overflow-hidden">
+          {card.image_url ? (
+            <img src={card.image_url} alt={card.title} className="w-full h-full object-cover" />
+          ) : (
+            <GitBranch className="w-4 h-4 text-terminal-text-muted" />
           )}
         </div>
-        <span
-          className="text-xs font-bold px-2 py-0.5 rounded flex-shrink-0 ml-2"
-          style={{
-            backgroundColor: laneBadge.bg,
-            color: laneBadge.text,
-          }}
-        >
-          {laneBadge.label}
-        </span>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-semibold text-terminal-text uppercase tracking-wide truncate">
+              {card.title}
+            </h4>
+            <span
+              className="text-xs font-bold px-2 py-0.5 rounded flex-shrink-0 ml-2"
+              style={{
+                backgroundColor: laneBadge.bg,
+                color: laneBadge.text,
+              }}
+            >
+              {laneBadge.label}
+            </span>
+          </div>
+          {card.subtitle && (
+            <p className="text-xs text-terminal-muted truncate mt-0.5">{card.subtitle}</p>
+          )}
+        </div>
       </div>
 
       {/* Tags */}

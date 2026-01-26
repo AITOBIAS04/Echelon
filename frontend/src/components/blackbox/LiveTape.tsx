@@ -16,15 +16,15 @@ function getEventTypeBadge(type: TapeEventType): { bg: string; text: string; lab
     case 'wing_flap':
       return { bg: '#3B82F6', text: '#FFFFFF', label: 'WING FLAP' };
     case 'fork_live':
-      return { bg: '#10B981', text: '#FFFFFF', label: 'FORK LIVE' };
+      return { bg: '#4ADE80', text: '#FFFFFF', label: 'FORK LIVE' };
     case 'sabotage_disclosed':
-      return { bg: '#EF4444', text: '#FFFFFF', label: 'SABOTAGE' };
+      return { bg: '#FB7185', text: '#FFFFFF', label: 'SABOTAGE' };
     case 'paradox_spawn':
-      return { bg: '#F59E0B', text: '#FFFFFF', label: 'PARADOX' };
+      return { bg: '#FACC15', text: '#FFFFFF', label: 'PARADOX' };
     case 'evidence_flip':
-      return { bg: '#10B981', text: '#FFFFFF', label: 'EVIDENCE' };
+      return { bg: '#4ADE80', text: '#FFFFFF', label: 'EVIDENCE' };
     case 'settlement':
-      return { bg: '#10B981', text: '#FFFFFF', label: 'SETTLE' };
+      return { bg: '#8B5CF6', text: '#FFFFFF', label: 'SETTLE' };
   }
 }
 
@@ -66,7 +66,7 @@ function formatImpact(value: number, prefix: string = ''): string {
 
 /**
  * LiveTape Component
- * 
+ *
  * Displays live tape events with filtering and actions.
  */
 export function LiveTape() {
@@ -93,7 +93,7 @@ export function LiveTape() {
         }
         const data = await listTapeEvents(params);
         setEvents(data);
-        
+
         // Initialize tracked states
         const states: Record<string, boolean> = {};
         data.forEach((event) => {
@@ -112,7 +112,7 @@ export function LiveTape() {
     };
 
     fetchEvents();
-    
+
     // Refresh every 20 seconds
     const interval = setInterval(fetchEvents, 20000);
     return () => clearInterval(interval);
@@ -167,16 +167,16 @@ export function LiveTape() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <span className="text-status-success animate-pulse">SCANNING TAPE...</span>
+        <span className="text-emerald-400 animate-pulse">SCANNING TAPE...</span>
       </div>
     );
   }
 
   if (error) {
-    return (
+return (
       <div className="flex flex-col items-center justify-center h-64">
-        <span className="text-status-danger mb-2">ERROR: {error}</span>
-        <span className="text-terminal-text-secondary text-sm">Failed to load tape events</span>
+        <span className="text-red-400 mb-2">ERROR: {error}</span>
+        <span className="text-slate-400 text-sm">Failed to load tape events</span>
       </div>
     );
   }
@@ -189,7 +189,7 @@ export function LiveTape() {
         <div className="relative">
           <button
             onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
-            className="flex items-center gap-2 px-3 py-2 text-xs bg-terminal-bg border border-terminal-border rounded text-terminal-text hover:text-status-success transition min-w-[160px]"
+            className="flex items-center gap-2 px-3 py-2 text-xs bg-slate-900/50 border border-slate-700/50 rounded text-slate-300 hover:text-blue-400 transition min-w-[160px]"
           >
             <span>{eventTypes.find((t) => t.value === selectedType)?.label || 'ALL EVENTS'}</span>
             <ChevronDown className={`w-3 h-3 transition ${isTypeDropdownOpen ? 'rotate-180' : ''}`} />
@@ -200,7 +200,7 @@ export function LiveTape() {
                 className="fixed inset-0 z-10"
                 onClick={() => setIsTypeDropdownOpen(false)}
               />
-              <div className="absolute top-full left-0 mt-1 bg-terminal-panel border border-terminal-border rounded shadow-lg z-20 min-w-[160px]">
+              <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-700 rounded shadow-lg z-20 min-w-[160px]">
                 {eventTypes.map((type) => (
                   <button
                     key={type.value}
@@ -209,8 +209,8 @@ export function LiveTape() {
                       setIsTypeDropdownOpen(false);
                     }}
                     className={clsx(
-                      'w-full text-left px-3 py-2 text-xs hover:bg-terminal-bg transition',
-                      selectedType === type.value ? 'text-status-success' : 'text-terminal-text-secondary'
+                      'w-full text-left px-3 py-2 text-xs hover:bg-slate-700 transition',
+                      selectedType === type.value ? 'text-blue-400' : 'text-slate-400'
                     )}
                   >
                     {type.label}
@@ -227,7 +227,7 @@ export function LiveTape() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search timeline, agent, wallet..."
-          className="flex-1 px-3 py-2 text-xs bg-terminal-bg border border-terminal-border rounded text-terminal-text placeholder-terminal-text-muted focus:outline-none focus:border-status-success focus:text-status-success"
+          className="flex-1 px-3 py-2 text-xs bg-slate-900/50 border border-slate-700/50 rounded text-slate-300 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:text-blue-400"
         />
       </div>
 
@@ -235,7 +235,7 @@ export function LiveTape() {
       <div className="overflow-x-auto">
         <table className="w-full text-xs font-mono">
           <thead>
-            <tr className="border-b border-terminal-border text-terminal-text-secondary">
+            <tr className="border-b border-slate-700/50 text-slate-500">
               <th className="text-left p-2">TIME</th>
               <th className="text-left p-2">TYPE</th>
               <th className="text-left p-2">TIMELINE</th>
@@ -248,7 +248,7 @@ export function LiveTape() {
           <tbody>
             {filteredEvents.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-terminal-text-secondary">
+                <td colSpan={7} className="text-center py-8 text-slate-400">
                   No events found
                 </td>
               </tr>
@@ -260,9 +260,9 @@ export function LiveTape() {
                 return (
                   <tr
                     key={event.id}
-                    className="border-b border-terminal-border/50 hover:bg-terminal-bg/50 transition"
+                    className="border-b border-slate-700/50 hover:bg-slate-800/30 transition"
                   >
-                    <td className="p-2 text-terminal-text-secondary">{formatTimestamp(event.ts)}</td>
+                    <td className="p-2 text-slate-500">{formatTimestamp(event.ts)}</td>
                     <td className="p-2">
                       <span
                         className="px-2 py-0.5 rounded text-[10px] font-bold"
@@ -274,31 +274,31 @@ export function LiveTape() {
                         {typeBadge.label}
                       </span>
                     </td>
-                    <td className="p-2 text-terminal-text">
+                    <td className="p-2 text-slate-300">
                       {event.timelineTitle || event.timelineId || '-'}
                     </td>
-                    <td className="p-2 text-terminal-text">
+                    <td className="p-2 text-slate-300">
                       {event.agentName || event.wallet?.slice(0, 8) + '...' || '-'}
                     </td>
-                    <td className="p-2 text-terminal-text max-w-md truncate">{event.summary}</td>
+                    <td className="p-2 text-slate-400 max-w-md truncate">{event.summary}</td>
                     <td className="p-2">
                       <div className="flex items-center gap-1 flex-wrap">
                         {event.impact?.stabilityDelta !== undefined && (
-                          <span className="px-1.5 py-0.5 bg-terminal-bg rounded text-[10px]">
+                          <span className="px-1.5 py-0.5 bg-slate-800/50 rounded text-[10px]">
                             S{formatImpact(event.impact.stabilityDelta)}
                           </span>
                         )}
                         {event.impact?.logicGapDelta !== undefined && (
-                          <span className="px-1.5 py-0.5 bg-terminal-bg rounded text-[10px]">
+                          <span className="px-1.5 py-0.5 bg-slate-800/50 rounded text-[10px]">
                             L{formatImpact(event.impact.logicGapDelta)}
                           </span>
                         )}
                         {event.impact?.priceDelta !== undefined && (
-                          <span className="px-1.5 py-0.5 bg-terminal-bg rounded text-[10px]">
+                          <span className="px-1.5 py-0.5 bg-slate-800/50 rounded text-[10px]">
                             P{formatImpact(event.impact.priceDelta, '$')}
                           </span>
                         )}
-                        {!event.impact && <span className="text-gray-600">-</span>}
+                        {!event.impact && <span className="text-slate-600">-</span>}
                       </div>
                     </td>
                     <td className="p-2">
@@ -306,7 +306,7 @@ export function LiveTape() {
                         {event.timelineId && (
                           <button
                             onClick={() => handleOpenTimeline(event.timelineId!)}
-                            className="px-2 py-1 bg-[#0a0a0a] border border-[#1a3a1a] rounded hover:border-[#00FF41] hover:text-[#00FF41] transition text-[10px]"
+                            className="px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded hover:border-blue-500 hover:text-blue-400 transition text-[10px]"
                             title="Open timeline"
                           >
                             <ExternalLink className="w-3 h-3" />
@@ -315,7 +315,7 @@ export function LiveTape() {
                         {event.replayPointer && (
                           <button
                             onClick={() => handleReplay(event.replayPointer!)}
-                            className="px-2 py-1 bg-[#0a0a0a] border border-[#1a3a1a] rounded hover:border-[#00FF41] hover:text-[#00FF41] transition text-[10px]"
+                            className="px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded hover:border-blue-500 hover:text-blue-400 transition text-[10px]"
                             title="View replay"
                           >
                             <Play className="w-3 h-3" />
@@ -327,8 +327,8 @@ export function LiveTape() {
                             className={clsx(
                               'px-2 py-1 border rounded transition text-[10px] flex items-center gap-1',
                               tracked
-                                ? 'bg-[#00FF41]/20 border-[#00FF41] text-[#00FF41]'
-                                : 'bg-[#0a0a0a] border-[#1a3a1a] hover:border-[#00FF41] hover:text-[#00FF41]'
+                                ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
+                                : 'bg-slate-800/50 border-slate-700/50 hover:border-emerald-500 hover:text-emerald-400'
                             )}
                             title={tracked ? 'Untrack timeline' : 'Track timeline'}
                           >
@@ -354,3 +354,5 @@ export function LiveTape() {
     </div>
   );
 }
+
+export default LiveTape;

@@ -50,6 +50,9 @@ export interface OpsCard {
   /** Signal tags indicating important states or events */
   tags: OpsSignalTag[];
   
+  /** Image URL for card thumbnail (40x40px) */
+  image_url?: string;
+  
   /** Stability metric (0-100, for timelines) */
   stability?: number;
   

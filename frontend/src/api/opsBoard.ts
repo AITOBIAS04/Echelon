@@ -2,21 +2,37 @@ import type { OpsBoardData, OpsCard, LiveNowSummary } from '../types/opsBoard';
 
 /**
  * Mock Operations Board API
- * 
+ *
  * Provides mock data for the operations board with realistic
  * timeline and launch cards organized by operational lanes.
  */
 
-const now = new Date();
-const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
-const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-/**
- * Generate random number in range
- */
+// Helper functions and variables for mock data generation
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+const now = new Date();
+const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+
+const MOCK_IMAGES = [
+  'https://images.unsplash.com/photo-1518457683858-667fcf3a9a3c?w=80&h=80&fit=crop',  // Oil/Energy
+  'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=80&h=80&fit=crop',  // Finance/Markets
+  'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=80&h=80&fit=crop',  // Tech/AI
+  'https://images.unsplash.com/photo-1591076482161-42ce6d7a4610?w=80&h=80&fit=crop',  // Shipping/Logistics
+  'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=80&h=80&fit=crop',  // Cyber/Security
+  'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=80&h=80&fit=crop',  // Geopolitics
+  'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=80&h=80&fit=crop',  // Science
+  'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=80&h=80&fit=crop',  // Space
+];
+
+/**
+ * Get random image URL for mock data
+ */
+function getRandomImage(): string {
+  return MOCK_IMAGES[Math.floor(Math.random() * MOCK_IMAGES.length)];
 }
 
 /**
@@ -53,6 +69,7 @@ function generateNewCreationsCards(): OpsCard[] {
         qualityScore: randomInt(30, 70),
         phase: Math.random() > 0.7 ? 'sandbox' : 'draft',
         exportEligible: Math.random() > 0.8,
+        image_url: getRandomImage(),
         createdAt: createdAt.toISOString(),
         updatedAt: updatedAt.toISOString(),
       });
@@ -67,6 +84,7 @@ function generateNewCreationsCards(): OpsCard[] {
         stability: randomInt(60, 90),
         logicGap: randomInt(10, 30),
         sabotageHeat24h: Math.random() > 0.6 ? randomInt(0, 5) : undefined,
+        image_url: getRandomImage(),
         createdAt: createdAt.toISOString(),
         updatedAt: updatedAt.toISOString(),
       });
@@ -102,6 +120,7 @@ function generateAboutToHappenCards(): OpsCard[] {
       nextForkEtaSec: forkEta,
       entropyRate: randomInt(-2, 2),
       sabotageHeat24h: randomInt(0, 8),
+      image_url: getRandomImage(),
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     });
@@ -124,6 +143,7 @@ function generateAboutToHappenCards(): OpsCard[] {
       logicGap: randomInt(15, 35),
       entropyRate: randomInt(-2, 2),
       sabotageHeat24h: randomInt(0, 6),
+      image_url: getRandomImage(),
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     });
@@ -144,6 +164,7 @@ function generateAboutToHappenCards(): OpsCard[] {
     logicGap: randomInt(25, 45),
     entropyRate: randomInt(-3, 1),
     sabotageHeat24h: randomInt(0, 5),
+    image_url: getRandomImage(),
     createdAt: createdAt.toISOString(),
     updatedAt: updatedAt.toISOString(),
   });
@@ -170,6 +191,7 @@ function generateAboutToHappenCards(): OpsCard[] {
       nextForkEtaSec: tags.includes('fork_soon') ? randomInt(60, 900) : randomInt(300, 3600),
       entropyRate: randomInt(-3, 1),
       sabotageHeat24h: Math.random() > 0.4 ? randomInt(0, 10) : undefined,
+      image_url: getRandomImage(),
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     });
@@ -204,6 +226,7 @@ function generateAtRiskCards(): OpsCard[] {
       paradoxProximity: randomInt(80, 95),
       entropyRate: randomInt(-6, -3),
       sabotageHeat24h: randomInt(3, 10),
+      image_url: getRandomImage(),
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     });
@@ -228,6 +251,7 @@ function generateAtRiskCards(): OpsCard[] {
       paradoxProximity: randomInt(30, 70),
       entropyRate: randomInt(-5, -2),
       sabotageHeat24h: randomInt(2, 8),
+      image_url: getRandomImage(),
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     });
@@ -256,6 +280,7 @@ function generateAtRiskCards(): OpsCard[] {
       paradoxProximity: randomInt(50, 90),
       entropyRate: randomInt(-6, -2),
       sabotageHeat24h: Math.random() > 0.3 ? randomInt(0, 10) : undefined,
+      image_url: getRandomImage(),
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     });
@@ -285,6 +310,7 @@ function generateGraduationCards(): OpsCard[] {
       qualityScore: randomInt(80, 95),
       phase: 'pilot',
       exportEligible: true,
+      image_url: getRandomImage(),
       createdAt: oneWeekAgo.toISOString(),
       updatedAt: oneDayAgo.toISOString(),
     });
@@ -306,6 +332,7 @@ function generateGraduationCards(): OpsCard[] {
         qualityScore: randomInt(85, 98),
         phase: 'graduated',
         exportEligible: true,
+        image_url: getRandomImage(),
         createdAt: twoDaysAgo.toISOString(),
         updatedAt: graduatedAt.toISOString(),
       });
@@ -319,6 +346,7 @@ function generateGraduationCards(): OpsCard[] {
         tags: [],
         stability: randomInt(75, 95),
         logicGap: randomInt(5, 25),
+        image_url: getRandomImage(),
         createdAt: twoDaysAgo.toISOString(),
         updatedAt: graduatedAt.toISOString(),
       });

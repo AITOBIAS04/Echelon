@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Eye, GitBranch, Sparkles } from 'lucide-react';
+import { Eye, GitBranch } from 'lucide-react';
 import { toggleTrack, isTracked } from '../../lib/tracking';
 import { useState, useEffect } from 'react';
 import type { OpsCard } from '../../types/opsBoard';
@@ -88,8 +88,8 @@ function getMetricColor(value: number, type: 'gap' | 'stability' | 'other'): str
 /**
  * TickerCard Component
  * 
- * High-density BullX-style card with left image, right content, and metrics grid.
- * Layout: Flex Row (Left Image | Right Content).
+ * High-density BullX-style card with left image tile, right content, and metrics grid.
+ * Layout: Flex Row (Left 40x40 Image Tile | Right Content).
  */
 export function TickerCard({ card }: TickerCardProps) {
   const navigate = useNavigate();
@@ -115,25 +115,30 @@ export function TickerCard({ card }: TickerCardProps) {
     setTracked(newTrackedState);
   };
 
-  // Choose icon based on card type
-  const IconComponent = card.type === 'timeline' ? GitBranch : Sparkles;
-
   // Extract ticker/ID from card.id (e.g., "ops_new_timeline_1" -> "TL-001")
   const tickerId = card.id.split('_').pop()?.toUpperCase() || 'N/A';
 
   return (
     <div
-      className="bg-[#1a1a1a] border-l-2 rounded-lg p-3 flex items-start gap-3 hover:bg-[#222222] transition-all group cursor-pointer relative"
+      className="bg-terminal-panel border-l-2 rounded-lg p-3 flex items-start gap-3 hover:bg-terminal-card transition-all group cursor-pointer relative"
       style={{
         borderLeftColor: borderColor,
       }}
       onClick={handleClick}
     >
-      {/* Left: Category Icon/Image */}
-      <div className="relative flex-shrink-0">
-        <div className="w-14 h-14 bg-white/10 rounded-lg flex items-center justify-center border border-white/10">
-          <IconComponent className="w-7 h-7 text-white/70" />
-        </div>
+      {/* Left: Image Tile - 40x40px outlined */}
+      <div className="relative flex-shrink-0 w-10 h-10 border border-terminal-border rounded bg-terminal-bg flex items-center justify-center overflow-hidden">
+        {card.image_url ? (
+          <img 
+            src={card.image_url} 
+            alt={card.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <GitBranch className="w-4 h-4 text-terminal-text-muted" />
+          </div>
+        )}
         {/* Phase Badge Overlay */}
         {phaseBadge && (
           <div
@@ -153,7 +158,7 @@ export function TickerCard({ card }: TickerCardProps) {
         {/* Row 1: Title + Ticker/ID */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-bold text-white truncate leading-tight">
+            <h4 className="text-sm font-bold text-terminal-text truncate leading-tight">
               {card.title}
             </h4>
             <p className="text-xs text-terminal-text-secondary font-mono mt-0.5">
@@ -179,7 +184,7 @@ export function TickerCard({ card }: TickerCardProps) {
 
           {/* Stability Metric */}
           {card.stability !== undefined && (
-            <div className="flex items-center gap-1.5">
+<div className="flex items-center gap-1.5">
               <span className="text-xs text-terminal-text-secondary">Stab:</span>
               <span
                 className="text-xs font-mono font-semibold"
@@ -218,10 +223,10 @@ export function TickerCard({ card }: TickerCardProps) {
         <div className="flex items-center justify-end mt-auto pt-1">
           <button
             onClick={handleTrack}
-            className="w-6 h-6 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded border border-white/10 hover:border-white/20 transition"
+            className="w-6 h-6 flex items-center justify-center bg-terminal-bg hover:bg-terminal-border rounded border border-terminal-border hover:border-terminal-border-light transition"
             title={tracked ? 'Remove from watchlist' : 'Add to watchlist'}
           >
-            <Eye className="w-3.5 h-3.5 text-white/60" />
+            <Eye className="w-3.5 h-3.5 text-terminal-text-secondary" />
           </button>
         </div>
       </div>

@@ -10,32 +10,47 @@ export default {
         'laptop-compact': { 'raw': '(max-height: 800px)' },
       },
       colors: {
-        // Professional trading terminal palette (BullX-style)
+        // Cool grey with dark slate accents (ECHELON Signal Intelligence style)
+        'slate': {
+          '950': '#0B0C0E', // Deepest layer - main content areas
+          '900': '#121417', // Card/Section surface
+          '850': '#151719', // Panel backgrounds
+          '800': '#1A1D21', // Header & elevated elements - cool grey main
+          '750': '#26292E', // Borders & dividers
+          '700': '#363A40', // Hover states
+          '600': '#4B5563', // Secondary borders
+          '500': '#6B7280', // Muted text
+          '400': '#9CA3AF', // Secondary text
+          '300': '#D1D5DB', // Primary text
+          '200': '#E5E7EB', // High contrast text
+          '100': '#F3F4F6', // brightest text
+        },
+        // Professional trading terminal palette (BullX-style) - cool grey scheme
         'terminal': {
-          'bg': '#0B0C0E',        // Deep charcoal (not pure black)
-          'panel': '#151719',     // Slate gray for cards
-          'card': '#1A1D21',      // Slightly lighter for hover states
-          'border': '#2A2D33',    // Subtle borders
-          'border-light': '#363A40', // Hover states
-          'text': '#F1F5F9',      // Off-white for readability
-          'text-secondary': '#94A3B8',  // Muted text
-          'text-muted': '#64748B', // Deeper muted
+          'bg': '#1A1D21',      // Cool grey main background (slate-800)
+          'panel': '#151719',   // Panel backgrounds (slate-850)
+          'card': '#121417',    // Card surfaces (slate-900)
+          'border': '#26292E',  // Borders (slate-750)
+          'border-light': '#363A40',  // Hover states (slate-700)
+          'text': '#F1F5F9',    // Primary text
+          'text-secondary': '#94A3B8',  // Secondary text
+          'text-muted': '#64748B',  // Muted text
         },
         // Functional colours (muted, not neon)
         'status': {
-          'success': '#10B981',   // Emerald - growth, active
-          'warning': '#F59E0B',   // Muted amber - at risk
-          'danger': '#EF4444',    // Crimson - breaches, critical
+          'success': '#4ADE80',   // Emerald green - growth, positive
+          'warning': '#FACC15',   // Gold - at risk, evidence flip
+          'danger': '#FB7185',    // Rose red - breaches, negative
           'info': '#3B82F6',      // Blue - neutral info
           'paradox': '#8B5CF6',   // Soft purple - paradox events
         },
         // Agent archetype colours (more refined)
         'agent': {
-          'shark': '#EF4444',     // Crimson - aggressive
+          'shark': '#FB7185',     // Rose red - aggressive
           'spy': '#8B5CF6',       // Soft purple - mysterious
           'diplomat': '#3B82F6',  // Blue - calm, cooperative
-          'saboteur': '#F59E0B',  // Amber - disruptive
-          'whale': '#10B981',     // Emerald - capital
+          'saboteur': '#FACC15',  // Gold - disruptive
+          'whale': '#4ADE80',     // Emerald - capital
           'degen': '#F97316',     // Orange - high risk
         },
       },

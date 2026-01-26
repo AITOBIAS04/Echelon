@@ -1,5 +1,5 @@
 import { useTimelines } from '../../hooks/useWingFlaps';
-import { Target, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Target, TrendingUp, TrendingDown, Minus, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useMemo } from 'react';
 
@@ -17,9 +17,9 @@ export function GravityField() {
 
   // Extract and aggregate keywords from timelines
   const gravityWells: GravityWell[] = useMemo(() => {
-    const keywordMap = new Map<string, { 
-      strength: number; 
-      agentCount: number; 
+    const keywordMap = new Map<string, {
+      strength: number;
+      agentCount: number;
       timelines: string[];
       volumes: number[];
     }>();
@@ -35,14 +35,14 @@ export function GravityField() {
         const words = timeline.name.split(/[\s-]+/).filter((w: string) => w.length > 3);
         keywords.push(...words.slice(0, 3));
       }
-      
+
       const gravity = timeline.gravity_score || 50;
       const agents = timeline.active_agent_count || 0;
-      
+
       keywords.forEach((keyword: string) => {
-        const existing = keywordMap.get(keyword) || { 
-          strength: 0, 
-          agentCount: 0, 
+        const existing = keywordMap.get(keyword) || {
+          strength: 0,
+          agentCount: 0,
           timelines: [],
           volumes: []
         };
@@ -66,39 +66,42 @@ export function GravityField() {
       .slice(0, 8); // Top 8 keywords
   }, [timelines]);
 
-  const getStrengthColour = (strength: number) => {
+  const getStrengthColor = (strength: number): string => {
     if (strength > 0.7) return 'text-red-400';
     if (strength > 0.4) return 'text-amber-400';
-    return 'text-green-400';
+    return 'text-emerald-400';
   };
 
-  const getBarColour = (strength: number) => {
+  const getBarColor = (strength: number): string => {
     if (strength > 0.7) return 'bg-red-500';
     if (strength > 0.4) return 'bg-amber-500';
-    return 'bg-green-500';
+    return 'bg-emerald-500';
   };
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
-      case 'up': return <TrendingUp className="w-3 h-3 text-green-400" />;
+      case 'up': return <TrendingUp className="w-3 h-3 text-emerald-400" />;
       case 'down': return <TrendingDown className="w-3 h-3 text-red-400" />;
-      default: return <Minus className="w-3 h-3 text-gray-400" />;
+      default: return <Minus className="w-3 h-3 text-slate-600" />;
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <span className="text-[#00FF41] animate-pulse">SCANNING GRAVITY WELLS...</span>
+      <div className="flex items-center justify-center h-32">
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-blue-400 animate-pulse" />
+          <span className="text-slate-400 text-xs">Loading gravity data...</span>
+        </div>
       </div>
     );
   }
 
   if (gravityWells.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <Target className="w-12 h-12 mb-4 opacity-50" />
-        <span>No gravity wells detected</span>
+      <div className="flex flex-col items-center justify-center h-48 text-slate-400">
+        <Target className="w-8 h-8 mb-2 text-slate-600 opacity-50" />
+        <span className="text-xs">No gravity wells detected</span>
       </div>
     );
   }
@@ -107,65 +110,51 @@ export function GravityField() {
   const dominant = gravityWells[0];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
       {/* Radar Visualization */}
-      <div className="bg-[#0a0a0a] border border-[#1a3a1a] rounded-lg p-4">
-        <div className="text-xs text-gray-500 mb-3 flex items-center gap-2">
-          <Target className="w-4 h-4" />
-          KEYWORD RADAR — GHOST_TANKER CLUSTER
+      <div className="bg-slate-900/50 border border-slate-700/50 rounded p-3">
+        <div className="text-xs font-medium text-slate-200 mb-2 flex items-center gap-2">
+          <Target className="w-3.5 h-3.5 text-blue-400" />
+          Keyword Radar
         </div>
-        
-        <div className="relative w-full aspect-square max-w-[300px] mx-auto">
+
+        <div className="relative w-full aspect-square max-w-[180px] mx-auto">
           {/* Radar circles */}
-          <svg viewBox="0 0 200 200" className="w-full h-full">
+          <svg viewBox="0 0 100 100" className="w-full h-full">
             {/* Concentric circles */}
-            <circle cx="100" cy="100" r="90" fill="none" stroke="#1a3a1a" strokeWidth="1" />
-            <circle cx="100" cy="100" r="60" fill="none" stroke="#1a3a1a" strokeWidth="1" />
-            <circle cx="100" cy="100" r="30" fill="none" stroke="#1a3a1a" strokeWidth="1" />
-            
-            {/* Radar sweep */}
-            <line 
-              x1="100" y1="100" x2="100" y2="10" 
-              stroke="#00FF41" 
-              strokeWidth="1" 
-              opacity="0.3"
-              className="origin-center"
-              style={{ 
-                transformOrigin: '100px 100px',
-                animation: 'spin 4s linear infinite'
-              }}
-            />
-            
+            <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-700" />
+            <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-700" />
+            <circle cx="50" cy="50" r="15" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-700" />
+
             {/* Plot keywords as dots */}
             {gravityWells.slice(0, 6).map((well, i) => {
               // Position in a spiral pattern
               const angle = (i * 60) * (Math.PI / 180);
-              const radius = 30 + (1 - well.strength) * 60; // Higher strength = closer to center
-              const x = 100 + Math.cos(angle) * radius;
-              const y = 100 + Math.sin(angle) * radius;
-              const dotSize = 4 + well.strength * 6;
-              
+              const radius = 15 + (1 - well.strength) * 30; // Higher strength = closer to center
+              const x = 50 + Math.cos(angle) * radius;
+              const y = 50 + Math.sin(angle) * radius;
+              const dotSize = 2 + well.strength * 3;
+
               return (
                 <g key={well.keyword}>
-                  <circle 
-                    cx={x} 
-                    cy={y} 
+                  <circle
+                    cx={x}
+                    cy={y}
                     r={dotSize}
                     className={clsx(
+                      'transition-all',
                       well.strength > 0.7 ? 'fill-red-500' :
-                      well.strength > 0.4 ? 'fill-amber-500' : 'fill-green-500',
-                      well.strength > 0.7 && 'animate-pulse'
+                      well.strength > 0.4 ? 'fill-amber-500' : 'fill-emerald-500'
                     )}
                   />
-                  <text 
-                    x={x} 
-                    y={y - dotSize - 4} 
+                  <text
+                    x={x}
+                    y={y - dotSize - 2}
                     textAnchor="middle"
                     className={clsx(
-                      'text-[8px]',
+                      'text-[5px] font-medium',
                       well.strength > 0.7 ? 'fill-red-400' :
-                      well.strength > 0.4 ? 'fill-amber-400' : 'fill-green-400'
+                      well.strength > 0.4 ? 'fill-amber-400' : 'fill-emerald-400'
                     )}
                   >
                     {well.keyword}
@@ -174,15 +163,15 @@ export function GravityField() {
               );
             })}
           </svg>
-          
+
           {/* Center label */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center">
-              <div className="text-xs text-gray-500">DOMINANT</div>
+              <div className="text-[9px] text-slate-500">DOM</div>
               <div className={clsx(
-                'font-bold',
-                getStrengthColour(dominant.strength)
-              )} style={{ textShadow: '0 0 10px currentColor' }}>
+                'font-bold text-sm',
+                getStrengthColor(dominant.strength)
+              )}>
                 {dominant.keyword}
               </div>
             </div>
@@ -191,51 +180,50 @@ export function GravityField() {
       </div>
 
       {/* Gravity Well Strength List */}
-      <div className="bg-[#0a0a0a] border border-[#1a3a1a] rounded-lg p-4">
-        <div className="text-xs text-gray-500 mb-3">GRAVITY WELL STRENGTH</div>
-        
-        <div className="space-y-3">
+      <div className="bg-slate-900/50 border border-slate-700/50 rounded p-3">
+        <div className="text-xs font-medium text-slate-200 mb-2">Gravity Wells</div>
+
+        <div className="space-y-2">
           {gravityWells.map((well) => (
-            <div key={well.keyword} className="flex items-center gap-3">
+            <div key={well.keyword} className="flex items-center gap-2">
               <span className={clsx(
-                'w-24 font-bold text-sm truncate',
-                getStrengthColour(well.strength)
+                'w-16 text-xs font-bold truncate',
+                getStrengthColor(well.strength)
               )}>
                 {well.keyword}
               </span>
-              
-              <div className="flex-1 h-3 bg-[#1a3a1a] rounded overflow-hidden">
-                <div 
+
+              <div className="flex-1 h-2 bg-slate-800/50 border border-slate-700/50 rounded-full overflow-hidden">
+                <div
                   className={clsx(
-                    'h-full rounded transition-all duration-500',
-                    getBarColour(well.strength),
-                    well.strength > 0.7 && 'animate-pulse'
+                    'h-full rounded-full transition-all',
+                    getBarColor(well.strength)
                   )}
                   style={{ width: `${well.strength * 100}%` }}
                 />
               </div>
-              
+
               <span className={clsx(
-                'w-10 text-sm font-mono',
-                getStrengthColour(well.strength)
+                'w-10 text-xs font-mono text-right',
+                getStrengthColor(well.strength)
               )}>
-                {well.strength.toFixed(2)}
+                {well.strength.toFixed(1)}
               </span>
-              
+
               {getTrendIcon(well.trend)}
-              
-              <span className="text-xs text-gray-600 w-16">
-                {well.agentCount} agents
+
+              <span className="text-[10px] text-slate-500 w-12 text-right">
+                {well.agentCount}
               </span>
             </div>
           ))}
         </div>
 
         {/* Legend */}
-        <div className="mt-4 pt-4 border-t border-[#1a3a1a] text-xs text-gray-500">
-          <span className="text-green-400">●</span> Low (&lt;0.4) 
-          <span className="text-amber-400 ml-4">●</span> Medium (0.4-0.7) 
-          <span className="text-red-400 ml-4">●</span> High (&gt;0.7) — OSINT prioritising
+        <div className="mt-2 pt-2 border-t border-slate-700/30 text-[10px] text-slate-500 flex gap-3">
+          <span><span className="text-emerald-400">●</span> Low</span>
+          <span><span className="text-amber-400">●</span> Med</span>
+          <span><span className="text-red-400">●</span> High</span>
         </div>
       </div>
     </div>
@@ -243,4 +231,3 @@ export function GravityField() {
 }
 
 export default GravityField;
-

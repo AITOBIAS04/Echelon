@@ -6,7 +6,7 @@ import { GitBranch, Zap, Shield, AlertTriangle, FileText, TrendingUp } from 'luc
 
 /**
  * LiveRibbon Component
- * 
+ *
  * Horizontal ribbon displaying recent live events beneath the header.
  * Shows agent, event type, timeline, delta, and time-ago in compact pills.
  */
@@ -55,19 +55,19 @@ export function LiveRibbon() {
   const getEventColor = (type: TapeEvent['type']): string => {
     switch (type) {
       case 'wing_flap':
-        return '#00D4FF';
+        return '#3B82F6';
       case 'fork_live':
-        return '#00FF41';
+        return '#4ADE80';
       case 'sabotage_disclosed':
-        return '#FF9500';
+        return '#FACC15';
       case 'paradox_spawn':
-        return '#FF3B3B';
+        return '#FB7185';
       case 'evidence_flip':
-        return '#FFD700';
+        return '#4ADE80';
       case 'settlement':
-        return '#AA66FF';
+        return '#8B5CF6';
       default:
-        return '#00D4FF';
+        return '#3B82F6';
     }
   };
 
@@ -100,9 +100,9 @@ export function LiveRibbon() {
 
   if (isLoading) {
     return (
-      <div className="flex-shrink-0 border-b border-[#1a3a1a] py-2 px-4 relative z-20">
+      <div className="flex-shrink-0 border-b border-slate-700/50 py-2 px-4 relative z-20">
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-          <div className="text-xs text-gray-500 animate-pulse">Loading events...</div>
+          <div className="text-xs text-slate-500 animate-pulse">Loading events...</div>
         </div>
       </div>
     );
@@ -115,7 +115,7 @@ export function LiveRibbon() {
   }
 
   return (
-    <div className="flex-shrink-0 border-b border-[#1a3a1a] py-2 px-4 relative z-20 bg-[#0a0a0a]">
+    <div className="flex-shrink-0 border-b border-slate-700/50 py-2 px-4 relative z-20 bg-slate-950">
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
         {recentEvents.map((event) => {
           const Icon = getEventIcon(event.type);
@@ -127,14 +127,14 @@ export function LiveRibbon() {
             <button
               key={event.id}
               onClick={() => handleEventClick(event)}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-[#1a1a1a] border border-[#1a3a1a] rounded hover:border-[#00FF41]/50 hover:bg-[#1a3a1a] transition-all flex-shrink-0 group"
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/50 border border-slate-700/50 rounded hover:border-slate-600/50 hover:bg-slate-800/50 transition-all flex-shrink-0 group"
             >
               {/* Event Icon */}
               <Icon className="w-3 h-3 flex-shrink-0" style={{ color }} />
 
               {/* Agent */}
               {event.agentName && (
-                <span className="text-[10px] font-mono text-gray-400 group-hover:text-[#00FF41] transition">
+                <span className="text-[10px] font-mono text-slate-400 group-hover:text-emerald-400 transition">
                   {event.agentName}
                 </span>
               )}
@@ -146,20 +146,20 @@ export function LiveRibbon() {
 
               {/* Timeline */}
               {event.timelineTitle && (
-                <span className="text-[10px] text-gray-500 truncate max-w-[80px]">
+                <span className="text-[10px] text-slate-500 truncate max-w-[80px]">
                   {event.timelineTitle}
                 </span>
               )}
 
               {/* Delta */}
               {delta && (
-                <span className="text-[10px] font-mono text-[#00FF41]">
+                <span className="text-[10px] font-mono text-emerald-400">
                   {delta}
                 </span>
               )}
 
               {/* Time Ago */}
-              <span className="text-[10px] text-gray-600 font-mono">
+              <span className="text-[10px] text-slate-600 font-mono">
                 {timeAgo}
               </span>
             </button>

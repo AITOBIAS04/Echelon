@@ -1,6 +1,172 @@
 import { useTimelines } from '../../hooks/useWingFlaps';
-import { Clock, AlertTriangle, TrendingDown, Activity } from 'lucide-react';
+import { useUserPosition } from '../../hooks/useUserPositions';
+import { AlertTriangle, TrendingDown, Activity, TrendingUp, TrendingDown as TrendingDownIcon } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useNavigate } from 'react-router-dom';
+
+function TimelineCard({ timeline }: { timeline: any }) {
+  const navigate = useNavigate();
+  const { position } = useUserPosition(timeline.id);
+
+  const stability = timeline.stability || 0;
+  const osintAlignment = timeline.osint_alignment || 50;
+  const decayRate = timeline.decay_rate_per_hour || 1;
+  const logicGap = timeline.logic_gap || 0;
+
+  const isUnstable = stability > 40 && stability <= 70;
+  const isCritical = stability <= 40;
+
+  const sabotageLevel = logicGap > 0.6 ? 'CRITICAL' :
+                       logicGap > 0.4 ? 'HIGH' :
+                       logicGap > 0.2 ? 'MEDIUM' : 'LOW';
+
+  const getStabilityColor = (value: number) => {
+    if (value <= 40) return 'text-red-400';
+    if (value <= 70) return 'text-amber-400';
+    return 'text-emerald-400';
+  };
+
+  return (
+    <div
+      key={timeline.id}
+      className={clsx(
+        'bg-slate-900/50 border border-slate-700/50 rounded-md p-3 transition-all hover:border-slate-600 cursor-pointer',
+        isCritical ? 'border-red-500/30' :
+        isUnstable ? 'border-amber-500/30' :
+        'border-slate-700/50'
+      )}
+      onClick={() => navigate(`/timeline/${timeline.id}`)}
+    >
+      {/* Main Content */}
+      <div className="flex-1 min-w-0">
+        {/* Header Row */}
+        <div className="flex justify-between items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-slate-200 text-sm truncate leading-tight">{timeline.name}</h3>
+            <span className="text-[10px] text-slate-500 font-mono">{timeline.id}</span>
+          </div>
+          <span className={clsx(
+            'px-2 py-0.5 text-[10px] rounded flex items-center gap-1 flex-shrink-0',
+            isCritical ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+            isUnstable ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+            'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+          )}>
+            {isCritical && <AlertTriangle className="w-3 h-3" />}
+            {isCritical ? 'Critical' : isUnstable ? 'Unstable' : 'Stable'}
+          </span>
+        </div>
+
+        {/* Stability and Stats Row */}
+        <div className="flex items-center gap-3 mt-2">
+          {/* Mini Stability Gauge */}
+          <div className="relative w-8 h-8 flex-shrink-0">
+            <svg className="w-8 h-8 -rotate-90">
+              <circle
+                cx="16" cy="16" r="14"
+                stroke="currentColor"
+                strokeWidth="3"
+                fill="none"
+                className="text-slate-700"
+              />
+              <circle
+                cx="16" cy="16" r="14"
+                stroke="currentColor"
+                strokeWidth="3"
+                fill="none"
+                strokeDasharray={`${Math.min(stability, 100) * 0.88} 88`}
+                strokeLinecap="round"
+                className={clsx(
+                  'transition-all duration-300',
+                  isCritical ? 'text-red-500' : isUnstable ? 'text-amber-500' : 'text-emerald-500'
+                )}
+              />
+            </svg>
+            <span className={clsx(
+              'absolute inset-0 flex items-center justify-center text-[10px] font-bold font-mono',
+              getStabilityColor(stability)
+            )}>
+              {stability.toFixed(0)}
+            </span>
+          </div>
+
+          {/* Compact Stats */}
+          <div className="flex-1 flex items-center gap-3 text-xs">
+            {/* Reality Match */}
+            <div className="flex-1">
+              <div className="flex justify-between items-center mb-0.5">
+                <span className="text-slate-500 text-[10px]">Reality</span>
+                <span className={clsx(
+                  'font-mono font-medium text-[10px]',
+                  osintAlignment > 70 ? 'text-emerald-400' : osintAlignment > 40 ? 'text-amber-400' : 'text-red-400'
+                )}>
+                  {osintAlignment.toFixed(0)}%
+                </span>
+              </div>
+              <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className={clsx(
+                    'h-full rounded-full transition-all',
+                    osintAlignment > 70 ? 'bg-emerald-500' : osintAlignment > 40 ? 'bg-amber-500' : 'bg-red-500'
+                  )}
+                  style={{ width: `${osintAlignment}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Decay Rate */}
+            <div className="flex items-center gap-1.5">
+              <TrendingDown className={clsx(
+                'w-3 h-3',
+                decayRate > 3 ? 'text-red-400' : 'text-slate-500'
+              )} />
+              <span className={clsx(
+                'font-mono text-[10px]',
+                decayRate > 3 ? 'text-red-400 animate-pulse' : 'text-slate-400'
+              )}>
+                {decayRate.toFixed(1)}/hr
+              </span>
+            </div>
+
+            {/* Sabotage Risk */}
+            <span className={clsx(
+              'px-1.5 py-0.5 text-[10px] rounded font-medium flex-shrink-0',
+              sabotageLevel === 'CRITICAL' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+              sabotageLevel === 'HIGH' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+              sabotageLevel === 'MEDIUM' ? 'bg-amber-500/5 text-amber-400 border border-amber-500/10' :
+              'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+            )}>
+              {sabotageLevel}
+            </span>
+          </div>
+        </div>
+
+        {/* User Position Badge */}
+        {position && position.totalNotional > 0 && (
+          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-700/30">
+            <span className={clsx(
+              'px-2 py-0.5 text-[10px] rounded flex items-center gap-1',
+              position.netDirection === 'YES' && 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+              position.netDirection === 'NO' && 'bg-red-500/10 text-red-400 border border-red-500/20',
+              position.netDirection === 'NEUTRAL' && 'bg-slate-800/50 border border-slate-700/50 text-slate-400'
+            )}>
+              {position.netDirection === 'YES' ? 'LONG' : position.netDirection === 'NO' ? 'SHORT' : 'NEUTRAL'}
+            </span>
+            <span className="text-[10px] text-slate-500">
+              ${position.totalNotional.toLocaleString()}
+            </span>
+            <span className={clsx(
+              'text-[10px] font-mono flex items-center gap-0.5',
+              position.pnlValue >= 0 ? 'text-emerald-400' : 'text-red-400'
+            )}>
+              {position.pnlValue >= 0 ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDownIcon className="w-2.5 h-2.5" />}
+              {position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent.toFixed(1)}%
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function TimelineHealthPanel() {
   const { data: timelinesData, isLoading } = useTimelines();
@@ -8,176 +174,31 @@ export function TimelineHealthPanel() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <span className="text-[#00FF41] animate-pulse">SCANNING REALITY MATRIX...</span>
+      <div className="flex items-center justify-center h-32">
+        <div className="flex items-center gap-2">
+          <Activity className="w-4 h-4 text-blue-400 animate-pulse" />
+          <span className="text-slate-400 text-xs">Loading timelines...</span>
+        </div>
       </div>
     );
   }
 
   if (timelines.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <Activity className="w-12 h-12 mb-4 opacity-50" />
-        <span>No active timelines detected</span>
+      <div className="flex flex-col items-center justify-center h-48 text-slate-400">
+        <Activity className="w-8 h-8 mb-2 text-slate-600 opacity-50" />
+        <span className="text-xs">No active timelines</span>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {timelines.map((timeline) => {
-        const stability = timeline.stability || 0;
-        const osintAlignment = timeline.osint_alignment || 50;
-        const decayRate = timeline.decay_rate_per_hour || 1;
-        const logicGap = timeline.logic_gap || 0;
-        
-        const isUnstable = stability > 40 && stability <= 70;
-        const isCritical = stability <= 40;
-        
-        // Determine sabotage level based on logic gap
-        const sabotageLevel = logicGap > 0.6 ? 'CRITICAL' : 
-                             logicGap > 0.4 ? 'HIGH' : 
-                             logicGap > 0.2 ? 'MEDIUM' : 'LOW';
-        
-        return (
-          <div
-            key={timeline.id}
-            className={clsx(
-              'bg-[#0a0a0a] border rounded-lg p-4 transition-all hover:border-opacity-100',
-              isCritical ? 'border-red-600 border-opacity-70' : 
-              isUnstable ? 'border-yellow-600 border-opacity-70' : 
-              'border-[#1a3a1a]'
-            )}
-          >
-            {/* Header */}
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="font-bold text-white text-sm">{timeline.name}</h3>
-                <span className="text-xs text-gray-500">{timeline.id}</span>
-              </div>
-              <span className={clsx(
-                'px-2 py-1 text-xs rounded flex items-center gap-1',
-                isCritical ? 'bg-red-900/30 text-red-400' :
-                isUnstable ? 'bg-yellow-900/30 text-yellow-400' :
-                'bg-green-900/30 text-green-400'
-              )}>
-                {isCritical && <AlertTriangle className="w-3 h-3" />}
-                {isCritical ? 'CRITICAL' : isUnstable ? 'UNSTABLE' : 'STABLE'}
-              </span>
-            </div>
-
-            {/* Stability Gauge + Stats */}
-            <div className="flex items-center gap-4 mb-4">
-              {/* Circular Gauge */}
-              <div className="relative w-20 h-20 flex-shrink-0">
-                <svg className="w-20 h-20 -rotate-90">
-                  <circle 
-                    cx="40" cy="40" r="35" 
-                    stroke="#1a3a1a" 
-                    strokeWidth="6" 
-                    fill="none"
-                  />
-                  <circle 
-                    cx="40" cy="40" r="35" 
-                    stroke={isCritical ? '#EF4444' : isUnstable ? '#EAB308' : '#22C55E'}
-                    strokeWidth="6" 
-                    fill="none"
-                    strokeDasharray={`${stability * 2.2} 220`}
-                    strokeLinecap="round"
-                    className="transition-all duration-500"
-                  />
-                </svg>
-                <span className={clsx(
-                  'absolute inset-0 flex items-center justify-center text-lg font-bold font-mono',
-                  isCritical ? 'text-red-400' : isUnstable ? 'text-yellow-400' : 'text-green-400'
-                )}>
-                  {stability.toFixed(0)}%
-                </span>
-              </div>
-
-              {/* Stats */}
-              <div className="flex-1 space-y-2 text-xs">
-                {/* OSINT Alignment */}
-                <div>
-                  <div className="flex justify-between text-gray-500 mb-1">
-                    <span>REALITY MATCH</span>
-                    <span className={osintAlignment > 70 ? 'text-green-400' : osintAlignment > 40 ? 'text-yellow-400' : 'text-red-400'}>
-                      {osintAlignment.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-[#1a3a1a] rounded-full overflow-hidden">
-                    <div 
-                      className={clsx(
-                        'h-full rounded-full transition-all duration-500',
-                        osintAlignment > 70 ? 'bg-green-500' : osintAlignment > 40 ? 'bg-yellow-500' : 'bg-red-500'
-                      )}
-                      style={{ width: `${osintAlignment}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Decay Rate */}
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500 flex items-center gap-1">
-                    <TrendingDown className="w-3 h-3" />
-                    DECAY RATE
-                  </span>
-                  <span className={clsx(
-                    'font-mono',
-                    decayRate > 3 ? 'text-red-400 animate-pulse' : 'text-gray-300'
-                  )}>
-                    {decayRate.toFixed(1)}%/hr
-                    {decayRate > 3 && ' ⚠️'}
-                  </span>
-                </div>
-
-                {/* Sabotage Level */}
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-500">SABOTAGE</span>
-                  <span className={clsx(
-                    'px-1.5 py-0.5 rounded text-xs',
-                    sabotageLevel === 'CRITICAL' ? 'bg-red-900/50 text-red-400 animate-pulse' :
-                    sabotageLevel === 'HIGH' ? 'bg-orange-900/50 text-orange-400' :
-                    sabotageLevel === 'MEDIUM' ? 'bg-yellow-900/50 text-yellow-400' :
-                    'bg-green-900/50 text-green-400'
-                  )}>
-                    {sabotageLevel}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Gravity Wells */}
-            {timeline.gravity_factors && Object.keys(timeline.gravity_factors).length > 0 && (
-              <div className="mb-3">
-                <span className="text-xs text-gray-500 block mb-1">GRAVITY WELLS</span>
-                <div className="flex flex-wrap gap-1">
-                  {Object.keys(timeline.gravity_factors).slice(0, 3).map((key: string, i: number) => (
-                    <span key={i} className="text-xs px-2 py-0.5 bg-[#1a3a1a] text-gray-400 rounded">
-                      • {key}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Paradox Warning */}
-            {timeline.has_active_paradox && (
-              <div className="bg-red-900/20 border border-red-600 rounded p-2 mt-2">
-                <div className="flex items-center justify-center gap-2 text-red-400">
-                  <Clock className="w-4 h-4 animate-pulse" />
-                  <span className="font-mono font-bold text-sm animate-pulse">
-                    REALITY REAPER ACTIVE
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      })}
+    <div className="space-y-2">
+      {timelines.map((timeline) => (
+        <TimelineCard key={timeline.id} timeline={timeline} />
+      ))}
     </div>
   );
 }
 
 export default TimelineHealthPanel;
-
