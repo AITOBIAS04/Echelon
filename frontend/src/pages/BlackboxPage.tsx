@@ -38,6 +38,15 @@ export function BlackboxPage() {
   const warChest = useWarChest();
   const intercepts = useIntercepts();
   const ribbonEvents = useBlackboxRibbon();
+  
+  // Transform blackbox ribbon events to marketplace format
+  const ribbonEventsForComponent = ribbonEvents.map(event => ({
+    type: event.type === 'market' ? 'fork' as const : event.type === 'shield' ? 'wing' as const : event.type,
+    title: `${event.agent}: ${event.action}`,
+    time: event.timestamp.toLocaleTimeString('en-US', { hour12: false }),
+    theatre: event.theatre,
+  }));
+
   const { latency } = useSystemStatus();
 
   const tabs: { id: TabType; label: string }[] = [
@@ -50,7 +59,7 @@ export function BlackboxPage() {
   return (
     <div className="container" style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)' }}>
       {/* Live Intel Ribbon */}
-      <LiveRibbon events={ribbonEvents} />
+      <LiveRibbon events={ribbonEventsForComponent} />
 
       {/* Tab Navigation */}
       <div className="tab-nav" style={{ flexShrink: 0, display: 'flex', gap: 8, padding: '12px 24px', background: 'var(--bg-app)', borderBottom: '1px solid var(--border-outer)' }}>
