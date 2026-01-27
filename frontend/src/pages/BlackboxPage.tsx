@@ -7,7 +7,7 @@ import { OrderBookPanel } from '../components/blackbox/OrderBookPanel';
 import { TimeSalesPanel } from '../components/blackbox/TimeSalesPanel';
 import { AgentLeaderboard } from '../components/blackbox/AgentLeaderboard';
 import { SignalInterceptsPanel } from '../components/blackbox/SignalInterceptsPanel';
-import { LiveRibbon } from '../components/blackbox/LiveRibbon';
+import { LiveRibbon } from '../components/marketplace/LiveRibbon';
 import { TimelineGrid } from '../components/blackbox/TimelineGrid';
 import { WarChestGrid } from '../components/blackbox/WarChestGrid';
 import {
