@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Echelon Blackbox — Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Core Slate Palette */
+      --slate-950: #0B0C0E;
+      --slate-900: #121417;
+      --slate-850: #151719;
+      --slate-800: #1A1D21;
+      --slate-750: #26292E;
+      --slate-700: #363A40;
+
+      /* Terminal Semantic Mappings */
+      --bg-app: var(--slate-950);
+      --bg-panel: var(--slate-850);
+      --bg-card: var(--slate-900);
+      --bg-card-hover: var(--slate-800);
+      --border-outer: var(--slate-750);
+      --border-inner: rgba(54, 58, 64, 0.5);
+      
+      /* Typography */
+      --text-primary: #F1F5F9;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --font-sans: 'Inter', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      /* Status Colors (Marketplace Standard) */
+      --status-success: #4ADE80;
+      --status-success-bg: rgba(74, 222, 128, 0.1);
+      --status-success-border: rgba(74, 222, 128, 0.2);
+      
+      --status-warning: #FACC15;
+      --status-warning-bg: rgba(250, 204, 21, 0.1);
+      
+      --status-danger: #FB7185;
+      --status-danger-bg: rgba(251, 113, 133, 0.1);
+      
+      --status-info: #3B82F6;
+      --status-info-bg: rgba(59, 130, 246, 0.1);
+      
+      --status-paradox: #8B5CF6;
+      --status-paradox-bg: rgba(139, 92, 246, 0.1);
+
+      /* Layout Spacing */
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 12px;
+      --space-lg: 16px;
+      --space-xl: 24px;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-app);
+      color: var(--text-primary);
+      font-size: 13px;
+      line-height: 1.4;
+      min-height: 100vh;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-app); }
+    ::-webkit-scrollbar-thumb { background: var(--border-outer); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--slate-700); }
+
+    .container { height: 100vh; display: flex; flex-direction: column; background: var(--bg-app); }
+    
+    /* Utility */
+    .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+    .numeric { font-family: var(--font-mono); text-align: right; }
+    .positive { color: var(--status-success); }
+    .negative { color: var(--status-danger); }
+    .neutral { color: var(--text-secondary); }
+    .warning { color: var(--status-warning); }
+    .info { color: var(--status-info); }
+    .flex-center { display: flex; align-items: center; }
+
+    /* --- LIVE INTEL RIBBON --- */
+    .ribbon-section {
+      flex-shrink: 0;
+      padding: var(--space-sm) var(--space-xl);
+      background: var(--bg-app);
+      border-bottom: 1px solid var(--border-outer);
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+    
+    .ribbon-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--status-danger);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .ribbon-content { 
+      display: flex; 
+      gap: var(--space-md); 
+      overflow-x: auto; 
+      padding-bottom: 4px;
+    }
+    .ribbon-content::-webkit-scrollbar { display: none; }
+
+    .ribbon-event {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-outer);
+      border-radius: 20px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+    .ribbon-event:hover { 
+        background: var(--bg-card-hover); 
+        border-color: var(--text-muted); 
+        transform: translateY(-1px);
+    }
+
+    .ribbon-tag {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #000;
+    }
+    .ribbon-tag.market { background: var(--status-info); color: white; }
+    .ribbon-tag.sabotage { background: var(--status-danger); color: white; }
+    .ribbon-tag.shield { background: var(--status-success); color: #000; }
+    .ribbon-tag.fork { background: var(--status-paradox); color: white; }
+
+    .ribbon-text { font-size: 11px; color: var(--text-secondary); white-space: nowrap; }
+    .ribbon-text b { color: var(--text-primary); }
+    .ribbon-delta { font-family: var(--font-mono); font-size: 11px; margin-left: auto; }
+    .ribbon-time { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); border-left: 1px solid var(--border-inner); padding-left: 8px; margin-left: 4px; }
+
+    /* --- TAB NAVIGATION --- */
+    .tab-nav {
+      flex-shrink: 0;
+      display: flex;
+      gap: var(--space-sm);
+      padding: var(--space-md) var(--space-xl);
+      background: var(--bg-app);
+      border-bottom: 1px solid var(--border-outer);
+    }
+
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 20px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .tab-btn:hover { 
+        color: var(--text-primary); 
+        background: var(--bg-card); 
+    }
+    .tab-btn.active { 
+        color: var(--text-primary); 
+        background: var(--bg-panel); 
+        border-color: var(--border-outer);
+        font-weight: 600;
+    }
+
+    /* --- MAIN LAYOUT --- */
+    .tab-content { 
+        flex: 1; 
+        min-height: 0; 
+        overflow-y: hidden;
+        background: var(--bg-app);
+        display: none; 
+    }
+    .tab-content.active { display: flex; flex-direction: column; }
+
+    .grid-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: var(--space-lg);
+        height: 100%;
+        padding: var(--space-lg);
+        overflow: hidden;
+    }
+
+    /* Panels & Cards */
+    .panel {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-outer);
+        border-radius: var(--radius-lg);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    .panel-header {
+        flex-shrink: 0;
+        padding: var(--space-md) var(--space-lg);
+        border-bottom: 1px solid var(--border-outer);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(18, 20, 23, 0.5);
+    }
+    .panel-title {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .panel-controls { display: flex; gap: var(--space-sm); align-items: center; }
+
+    /* --- CHART SECTION --- */
+    .chart-section { display: flex; flex-direction: column; gap: var(--space-lg); min-width: 0; overflow: hidden; height: 100%; }
+    
+    .chart-container { flex: 0 0 45%; min-height: 250px; }
+    .chart-main { position: relative; flex: 1; background: var(--bg-panel); padding: var(--space-sm) 0; }
+    
+    .timeframe-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 11px;
+        font-weight: 500;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    .timeframe-btn:hover { color: var(--text-secondary); }
+    .timeframe-btn.active { background: var(--bg-card); color: var(--text-primary); }
+
+    /* Chart SVG elements */
+    .chart-grid line { stroke: var(--border-inner); stroke-dasharray: 2 4; }
+    .candle { transition: transform 0.1s; }
+    .candle.up .candle-body, .candle.up .candle-wick { background: var(--status-success); }
+    .candle.down .candle-body, .candle.down .candle-wick { background: var(--status-danger); }
+    
+    .current-price-line { border-top: 1px dashed var(--status-info); opacity: 0.8; }
+    .current-price-label { background: var(--status-info); color: white; padding: 2px 6px; border-radius: 2px; font-size: 10px; }
+
+    .volume-bars { height: 40px; border-top: 1px solid var(--border-inner); display: flex; align-items: flex-end; padding-top: 4px; gap: 1px; }
+    .volume-bar { flex: 1; opacity: 0.3; }
+    .volume-bar.up { background: var(--status-success); }
+    .volume-bar.down { background: var(--status-danger); }
+
+    .chart-indicators {
+        border-top: 1px solid var(--border-outer);
+        padding: var(--space-xs) var(--space-lg);
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        background: var(--bg-card);
+    }
+    .indicator-item { display: flex; gap: 6px; align-items: center; }
+    .indicator-label { color: var(--text-muted); font-weight: 600; }
+    .indicator-val { font-family: var(--font-mono); color: var(--text-secondary); }
+
+    /* --- BOTTOM SPLIT --- */
+    .bottom-split {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-lg);
+        min-height: 0;
+    }
+    
+    .leaderboard-container {
+        background: var(--bg-panel);
+        border: 1px solid var(--border-outer);
+        border-radius: var(--radius-lg);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    /* --- TIME & SALES --- */
+    .data-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 4px 0;
+    }
+    
+    .data-row {
+        display: flex;
+        align-items: center;
+        padding: 4px var(--space-lg);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        cursor: pointer;
+    }
+    .data-row:hover { background: var(--bg-card-hover); }
+    .data-row.header {
+        font-size: 10px;
+        color: var(--text-muted);
+        font-weight: 600;
+        padding: 6px var(--space-lg);
+        border-bottom: 1px solid var(--border-outer);
+        background: var(--bg-card);
+    }
+    
+    .col-time { width: 60px; color: var(--text-muted); }
+    .col-price { width: 70px; text-align: right; font-weight: 600; }
+    .col-size { width: 60px; text-align: right; color: var(--text-secondary); }
+    .col-side { width: 50px; text-align: center; }
+    .col-agent { flex: 1; }
+    
+    .side-badge {
+        display: inline-block;
+        padding: 1px 6px;
+        border-radius: 3px;
+        font-size: 9px;
+        font-weight: 700;
+    }
+    .side-badge.buy { background: var(--status-success-bg); color: var(--status-success); }
+    .side-badge.sell { background: var(--status-danger-bg); color: var(--status-danger); }
+
+    /* --- LEADERBOARD --- */
+    .leaderboard-list {
+        flex: 1;
+        overflow-y: auto;
+    }
+    
+    .leaderboard-row {
+        display: flex;
+        align-items: center;
+        padding: 6px var(--space-lg);
+        font-size: 11px;
+        border-bottom: 1px solid var(--border-inner);
+        cursor: pointer;
+    }
+    .leaderboard-row:hover { background: var(--bg-card-hover); }
+    .leaderboard-row.header {
+        font-size: 10px;
+        color: var(--text-muted);
+        font-weight: 600;
+        padding: 8px var(--space-lg);
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--border-outer);
+        position: sticky;
+        top: 0;
+    }
+    
+    .rank-col { width: 30px; }
+    .agent-col { flex: 1; display: flex; align-items: center; gap: 8px; }
+    .metric-col { width: 70px; text-align: right; font-family: var(--font-mono); }
+
+    .agent-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    /* --- RIGHT SIDEBAR --- */
+    .sidebar-section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-lg);
+        min-width: 0;
+        overflow: hidden;
+    }
+    
+    .order-book-container {
+        flex: 1;
+        min-height: 0;
+    }
+
+    .book-sides {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    .book-header-info { display: flex; justify-content: space-between; padding: var(--space-sm) var(--space-lg); font-size: 11px; background: var(--bg-card); border-bottom: 1px solid var(--border-inner); }
+    
+    .book-row {
+        display: flex;
+        align-items: center;
+        padding: 4px var(--space-lg);
+        position: relative;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        cursor: pointer;
+    }
+    .book-row:hover { background: var(--bg-card-hover); }
+    .depth-bar { position: absolute; top: 0; bottom: 0; opacity: 0.15; z-index: 0; }
+    .depth-bar.bid { background: var(--status-success); right: 0; }
+    .depth-bar.ask { background: var(--status-danger); right: 0; }
+    
+    .book-price { width: 60px; text-align: right; font-weight: 600; z-index: 1; }
+    .book-size { margin-left: auto; color: var(--text-secondary); z-index: 1; }
+
+    .spread-indicator {
+        padding: 6px var(--space-lg);
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        color: var(--text-muted);
+        background: var(--bg-card);
+        border-top: 1px solid var(--border-inner);
+        border-bottom: 1px solid var(--border-inner);
+    }
+
+    /* --- INTERCEPTS PANEL --- */
+    .intercepts-panel {
+        flex: 1;
+        overflow-y: auto;
+        padding: var(--space-sm);
+    }
+    
+    .intercept-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px;
+        border-radius: var(--radius-md);
+        margin-bottom: 4px;
+        border-left: 3px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .intercept-item:hover { background: var(--bg-card-hover); }
+    
+    .intercept-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+    
+    .intercept-content { flex: 1; min-width: 0; }
+    .intercept-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+    .intercept-title { font-size: 11px; font-weight: 600; color: var(--text-primary); }
+    .intercept-time { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+    .intercept-details { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+    .intercept-meta { display: flex; gap: 8px; margin-top: 4px; font-size: 9px; color: var(--text-muted); }
+    .intercept-tag { padding: 1px 5px; background: var(--bg-app); border-radius: 3px; }
+
+    /* --- FOOTER --- */
+    .app-footer {
+        flex-shrink: 0;
+        background: var(--bg-panel);
+        border-top: 1px solid var(--border-outer);
+        padding: 4px var(--space-xl);
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        color: var(--text-muted);
+    }
+
+    /* Helper Animations */
+    @keyframes flash-green { 0% { background: var(--status-success-bg); } 100% { background: transparent; } }
+    .flash-new { animation: flash-green 1s ease-out; }
+
+    /* Form Elements */
+    input[type="text"], select {
+        background: var(--bg-app);
+        border: 1px solid var(--border-outer);
+        color: var(--text-primary);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-family: var(--font-sans);
+        font-size: 11px;
+        outline: none;
+    }
+    input[type="text"]:focus, select:focus { border-color: var(--status-info); }
+    
+    button.action-btn {
+        background: var(--bg-card);
+        border: 1px solid var(--border-outer);
+        color: var(--text-secondary);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        cursor: pointer;
+    }
+    button.action-btn:hover { border-color: var(--text-muted); color: var(--text-primary); }
+
+    /* Leaderboard table styling */
+    .leaderboard-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .leaderboard-table th {
+        text-align: left;
+        padding: 8px var(--space-lg);
+        font-size: 10px;
+        color: var(--text-muted);
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-outer);
+        background: var(--bg-card);
+    }
+    .leaderboard-table th.numeric { text-align: right; }
+    .leaderboard-table td {
+        padding: 8px var(--space-lg);
+        border-bottom: 1px solid var(--border-inner);
+    }
+    .leaderboard-table td:first-child { padding-left: var(--space-lg); }
+    .leaderboard-table td:last-child { padding-right: var(--space-lg); }
+    .leaderboard-table tr:hover { background: var(--bg-card-hover); }
+    
+    .rank-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        background: var(--bg-card);
+        color: var(--text-muted);
+    }
+    .rank-badge.rank-1 { background: var(--status-warning-bg); color: #854d0e; }
+    .rank-badge.rank-2 { background: var(--slate-700); color: var(--text-secondary); }
+    .rank-badge.rank-3 { background: #92400e; color: #fef3c7; }
+    
+    .agent-pill {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Live Intel Ribbon -->
+    <div class="ribbon-section">
+        <div class="ribbon-title">LIVE INTEL</div>
+        <div class="ribbon-content" id="ribbonContent">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="markets">Market Terminal</button>
+      <button class="tab-btn" data-tab="intercepts">Signal Intercepts</button>
+      <button class="tab-btn" data-tab="timeline">Timeline Health</button>
+      <button class="tab-btn" data-tab="warchest">War Chest</button>
+    </div>
+
+    <!-- Main Tab Content -->
+    <main class="tab-content active" id="markets">
+        <div class="grid-layout">
+            
+            <!-- Left Column: Chart + Bottom Split -->
+            <div class="chart-section">
+                <!-- Chart -->
+                <div class="panel chart-container">
+                    <div class="panel-header">
+                        <span class="panel-title">PRICE ACTION</span>
+                        <div class="panel-controls">
+                            <button class="timeframe-btn">1m</button>
+                            <button class="timeframe-btn">5m</button>
+                            <button class="timeframe-btn active">15m</button>
+                            <button class="timeframe-btn">1H</button>
+                        </div>
+                    </div>
+                    <div class="chart-main">
+                        <svg class="chart-grid" id="chartGrid" style="position: absolute; width:100%; height:100%;" preserveAspectRatio="none"></svg>
+                        <div id="candlesContainer" style="position: absolute; width:100%; height:100%;"></div>
+                        <div class="current-price-line" id="currentPriceLine" style="position: absolute; left:0; right:0; bottom: 35%; display:flex; align-items:center;">
+                             <span class="current-price-label" style="margin-left: auto;">$3.82</span>
+                        </div>
+                    </div>
+                    <div class="volume-bars" id="volumeBars"></div>
+                    <div class="chart-indicators">
+                        <div class="indicator-item">
+                            <span class="indicator-label">RSI</span> <span class="indicator-val">58.3</span>
+                        </div>
+                        <div class="indicator-item">
+                            <span class="indicator-label">MACD</span> <span class="indicator-val positive">+0.12</span>
+                        </div>
+                        <div class="indicator-item">
+                            <span class="indicator-label">VOL</span> <span class="indicator-val">142K</span>
+                        </div>
+                        <div class="indicator-item">
+                            <span class="indicator-label">H</span> <span class="indicator-val">$4.02</span>
+                            <span class="indicator-label" style="margin-left:4px;">L</span> <span class="indicator-val">$3.58</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Split -->
+                <div class="bottom-split">
+                    <!-- Time & Sales -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">TIME & SALES</span>
+                            <span class="mono neutral" style="font-size:10px;">LIVE FEED</span>
+                        </div>
+                        <div class="data-list">
+                            <div class="data-row header">
+                                <span class="col-time">TIME</span>
+                                <span class="col-price">PRICE</span>
+                                <span class="col-size">SIZE</span>
+                                <span class="col-side">SIDE</span>
+                                <span class="col-agent">AGENT</span>
+                            </div>
+                            <div id="tsList"></div>
+                        </div>
+                    </div>
+
+                    <!-- Agent Leaderboard -->
+                    <div class="panel">
+                        <div class="panel-header">
+                            <span class="panel-title">AGENT PERFORMANCE</span>
+                            <div class="panel-controls">
+                                <input type="text" id="leaderboardSearch" placeholder="Filter agents..." style="width: 100px;">
+                            </div>
+                        </div>
+                        <div class="data-list">
+                            <table class="leaderboard-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:30px">#</th>
+                                        <th>AGENT</th>
+                                        <th class="numeric">P&L</th>
+                                        <th class="numeric">VOL</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="leaderboardBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar: Order Book + Intercepts -->
+            <div class="sidebar-section">
+                <!-- Order Book -->
+                <div class="panel order-book-container">
+                    <div class="panel-header">
+                        <span class="panel-title">ORDER BOOK</span>
+                        <span class="panel-title neutral mono" style="font-size:11px;">$3.82</span>
+                    </div>
+                    <div class="book-sides">
+                        <div class="book-header-info">
+                            <span>ASKS</span>
+                            <span>Total: $1.2M</span>
+                        </div>
+                        <div id="asksContainer" style="display:flex; flex-direction:column-reverse;"></div>
+                        
+                        <div class="spread-indicator">
+                            <span>SPREAD: 0.04</span>
+                            <span>0.52%</span>
+                        </div>
+                        
+                        <div id="bidsContainer"></div>
+                        <div class="book-header-info" style="border-top:1px solid var(--border-inner); border-bottom:none;">
+                            <span>BIDS</span>
+                            <span>Total: $1.4M</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Signal Intercepts -->
+                <div class="panel" style="flex: 1; min-height: 0;">
+                    <div class="panel-header">
+                        <span class="panel-title">SIGNAL INTERCEPTS</span>
+<span style="font-size: 9px; padding: 2px 6px; background: var(--status-danger-bg); color: var(--status-danger); border-radius: 4px; font-weight: 600;">LIVE</span>
+                    </div>
+                    <div class="intercepts-panel" id="interceptsList"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <main class="tab-content" id="intercepts">
+        <div style="padding: var(--space-xl);">
+            <div class="panel" style="padding:0;">
+                <div class="panel-header">
+                    <span class="panel-title">SIGNAL LOGS</span>
+                </div>
+                <div class="data-list" style="height: 100%;">
+                    <table class="leaderboard-table" style="width:100%;">
+                         <thead>
+                            <tr>
+                                <th>TIME</th>
+                                <th>TYPE</th>
+                                <th>THEATRE</th>
+                                <th>AGENT</th>
+                                <th>ACTION</th>
+                                <th class="numeric">VOLUME</th>
+                            </tr>
+                        </thead>
+                        <tbody id="eventsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <main class="tab-content" id="timeline">
+        <div style="padding: var(--space-lg); overflow-y: auto;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-lg);" id="timelineGrid"></div>
+        </div>
+    </main>
+    
+    <main class="tab-content" id="warchest">
+        <div style="padding: var(--space-lg); overflow-y: auto;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-lg);" id="warGrid"></div>
+        </div>
+    </main>
+
+    <footer class="app-footer">
+        <div class="flex-center" style="gap:16px;">
+            <span><span class="live-dot"></span> System Optimal</span>
+            <span>Latency: 12ms</span>
+        </div>
+        <div class="flex-center" style="gap:16px;">
+            <span>Echelon Protocol Inc.</span>
+            <span>Restricted Access</span>
+        </div>
+    </footer>
+
+  </div>
+
+  <script>
+    /* ------------------------------------------------------------------
+       DATA & CONFIGURATION
+       ------------------------------------------------------------------ */
+    const agentsData = [
+      { name: 'LEVIATHAN', archetype: 'whale', pnl: '+24,560', winRate: '72.4%', sharpe: '2.34', trades: 87, volume: '$1.2M', status: 'Active' },
+      { name: 'TITAN', archetype: 'shark', pnl: '+18,420', winRate: '68.2%', sharpe: '1.92', trades: 124, volume: '$890K', status: 'Active' },
+      { name: 'AMBASSADOR', archetype: 'diplomat', pnl: '+15,870', winRate: '74.8%', sharpe: '2.15', trades: 62, volume: '$650K', status: 'Active' },
+      { name: 'CARDINAL', archetype: 'spy', pnl: '+12,340', winRate: '81.2%', sharpe: '2.48', trades: 45, volume: '$420K', status: 'Active' },
+      { name: 'DEPTH', archetype: 'whale', pnl: '+9,850', winRate: '65.4%', sharpe: '1.67', trades: 73, volume: '$380K', status: 'Active' },
+      { name: 'STRIKER', archetype: 'shark', pnl: '+7,230', winRate: '58.9%', sharpe: '1.34', trades: 156, volume: '$920K', status: 'Active' },
+      { name: 'HARBOR', archetype: 'diplomat', pnl: '+5,120', winRate: '69.7%', sharpe: '1.78', trades: 51, volume: '$280K', status: 'Active' },
+      { name: 'CHAOS', archetype: 'saboteur', pnl: '-3,450', winRate: '42.1%', sharpe: '0.85', trades: 89, volume: '$540K', status: 'Active' },
+    ];
+
+    const archetypeColors = {
+      whale: { text: 'var(--status-success)', icon: '🐋' },
+      shark: { text: 'var(--status-info)', icon: '🦈' },
+      diplomat: { text: 'var(--status-paradox)', icon: '🎭' },
+      spy: { text: 'var(--status-warning)', icon: '🕵️' },
+      saboteur: { text: 'var(--status-danger)', icon: '💣' },
+    };
+
+    const timelineData = [
+      { id: 'TL-2847', title: 'ORBITAL SALVAGE F7', prob: 0.72, time: '48h', status: 'active', forks: 7, type: 'fork' },
+      { id: 'TL-2846', title: 'FED RATE DECISION', prob: 0.58, time: '5d', status: 'active', forks: 3, type: 'market' },
+      { id: 'TL-2845', title: 'VENUS OIL TANKER', prob: 0.45, time: '12d', status: 'warning', forks: 12, type: 'sabotage' },
+      { id: 'TL-2844', title: 'TAIWAN STRAIT', prob: 0.62, time: '18d', status: 'active', forks: 5, type: 'shield' },
+      { id: 'TL-2843', title: 'SPACEX LAUNCH', prob: 0.51, time: '26d', status: 'active', forks: 8, type: 'market' },
+      { id: 'TL-2842', title: 'PUTIN HEALTH RUMORS', prob: 0.38, time: '1mo', status: 'collapsed', forks: 15, type: 'paradox' },
+    ];
+
+    /* ------------------------------------------------------------------
+       UTILITY FUNCTIONS
+       ------------------------------------------------------------------ */
+    function generateId() { return Math.random().toString(36).substr(2, 9); }
+    
+    function formatTime() {
+        const now = new Date();
+        return now.toISOString().substr(11, 8) + ' UTC';
+    }
+    
+    function updateClock() {
+        document.getElementById('clock').textContent = formatTime();
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+    function getRandomFloat(min, max, decimals = 2) { return (Math.random() * (max - min) + min).toFixed(decimals); }
+
+    /* ------------------------------------------------------------------
+       RIBBON EVENTS
+       ------------------------------------------------------------------ */
+    function initRibbon() {
+        const events = [
+            { type: 'market', theatre: 'ORB_SALVAGE_F7', agent: 'MEGALODON', action: 'Opened large position', delta: '+42K' },
+            { type: 'shield', theatre: 'ORB_SALVAGE_F7', agent: 'AEGIS', action: 'Hedge placed', delta: '+28K' },
+            { type: 'sabotage', theatre: 'FED_RATE_DECISION', agent: 'LEECH', action: 'Spread attack detected', delta: '-15K' },
+            { type: 'fork', theatre: 'TL-2847', agent: 'GHOST', action: 'New fork detected', delta: '7 forks' },
+        ];
+        
+        const container = document.getElementById('ribbonContent');
+        container.innerHTML = events.map(e => `
+            <div class="ribbon-event">
+                <span class="ribbon-tag ${e.type}">${e.type.toUpperCase()}</span>
+                <span class="ribbon-text"><b>${e.theatre}</b> · ${e.agent} · ${e.action}</span>
+                <span class="ribbon-delta positive">${e.delta}</span>
+                <span class="ribbon-time">${formatTime()}</span>
+            </div>
+        `).join('');
+    }
+
+    /* ------------------------------------------------------------------
+       ORDER BOOK
+       ------------------------------------------------------------------ */
+    function initOrderBook() {
+        const asksContainer = document.getElementById('asksContainer');
+        const bidsContainer = document.getElementById('bidsContainer');
+        
+        let asksHtml = '';
+        let bidsHtml = '';
+        
+        for (let i = 0; i < 12; i++) {
+            const askPrice = (3.82 + 0.01 * (i + 1) + Math.random() * 0.005).toFixed(2);
+            const askSize = getRandomInt(1000, 50000);
+            const askDepth = Math.random() * 100;
+            
+            // Fixed: Added proper spacing between price and size
+            asksHtml += `
+                <div class="book-row">
+                    <div class="depth-bar ask" style="width: ${askDepth}%"></div>
+                    <span class="book-price negative">$${askPrice}</span>
+                    <span class="book-size mono">${(askSize/1000).toFixed(1)}K</span>
+                </div>
+            `;
+            
+            const bidPrice = (3.82 - 0.01 * (i + 1) - Math.random() * 0.005).toFixed(2);
+            const bidSize = getRandomInt(1000, 50000);
+            const bidDepth = Math.random() * 100;
+            
+            // Fixed: Added proper spacing between price and size
+            bidsHtml += `
+                <div class="book-row">
+                    <div class="depth-bar bid" style="width: ${bidDepth}%"></div>
+                    <span class="book-price positive">$${bidPrice}</span>
+                    <span class="book-size mono">${(bidSize/1000).toFixed(1)}K</span>
+                </div>
+            `;
+        }
+        
+        asksContainer.innerHTML = asksHtml;
+        bidsContainer.innerHTML = bidsHtml;
+    }
+
+    /* ------------------------------------------------------------------
+       TIME & SALES
+       ------------------------------------------------------------------ */
+    function initTimeSales() {
+        const container = document.getElementById('tsList');
+        const agents = ['LEVIATHAN', 'TITAN', 'AMBASSADOR', 'CARDINAL', 'DEPTH', 'STRIKER'];
+        
+        let html = '';
+        for (let i = 0; i < 20; i++) {
+            const time = new Date(Date.now() - i * getRandomInt(5000, 30000)).toISOString().substr(11, 8);
+            const price = (3.80 + Math.random() * 0.05).toFixed(2);
+            const size = getRandomInt(1000, 25000);
+            const side = Math.random() > 0.45 ? 'buy' : 'sell';
+            const agent = agents[getRandomInt(0, agents.length - 1)];
+            const colorClass = side === 'buy' ? 'positive' : 'negative';
+            
+            html += `
+                <div class="data-row">
+                    <span class="col-time">${time}</span>
+                    <span class="col-price ${colorClass}">$${price}</span>
+                    <span class="col-size">${(size/1000).toFixed(1)}K</span>
+                    <span class="col-side"><span class="side-badge ${side}">${side.toUpperCase()}</span></span>
+                    <span class="col-agent">${agent}</span>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    /* ------------------------------------------------------------------
+       LEADERBOARD
+       ------------------------------------------------------------------ */
+    function initLeaderboard() {
+        const container = document.getElementById('leaderboardBody');
+        const searchInput = document.getElementById('leaderboardSearch');
+        
+        function render(filter = '') {
+            const filtered = agentsData.filter(a => 
+                a.name.toLowerCase().includes(filter.toLowerCase())
+            ).sort((a, b) => parseFloat(b.pnl.replace(/[^0-9.-]/g, '')) - parseFloat(a.pnl.replace(/[^0-9.-]/g, '')));
+            
+            container.innerHTML = filtered.map((a, i) => `
+                <tr>
+                    <td><span class="rank-badge rank-${i + 1}">${i + 1}</span></td>
+                    <td>
+                        <span class="agent-pill">
+                            <span class="agent-avatar" style="background: ${archetypeColors[a.archetype]?.text || '#666'}">${a.name[0]}</span>
+                            ${a.name}
+                        </span>
+                    </td>
+                    <td class="numeric ${parseFloat(a.pnl) >= 0 ? 'positive' : 'negative'}">${a.pnl}</td>
+                    <td class="numeric mono">${a.volume}</td>
+                </tr>
+            `).join('');
+        }
+        
+        searchInput.addEventListener('input', (e) => render(e.target.value));
+        render();
+    }
+
+    /* ------------------------------------------------------------------
+       INTERCEPTS
+       ------------------------------------------------------------------ */
+    function initIntercepts() {
+        const intercepts = [
+            { icon: '🎯', iconBg: 'var(--status-info-bg)', title: 'Large Buy Order', time: '14:32:45', details: 'WHALE agent accumulated 50K shares at $3.78', source: 'Order Flow', severity: 'info' },
+            { icon: '⚠️', iconBg: 'var(--status-warning-bg)', title: 'Unusual Volume', time: '14:31:22', details: 'Volume spike 3x average on TL-2847', source: 'Volume Analyzer', severity: 'warning' },
+            { icon: '💀', iconBg: 'var(--status-danger-bg)', title: 'Spread Manipulation', time: '14:30:18', details: 'SABOTEUR agent spreading asks to move price', source: 'Market Monitor', severity: 'critical' },
+            { icon: '🔀', iconBg: 'var(--status-paradox-bg)', title: 'Fork Detected', time: '14:28:55', details: 'New timeline fork: TL-2847-fork-7', source: 'Fork Scanner', severity: 'info' },
+            { icon: '🛡️', iconBg: 'var(--status-success-bg)', title: 'Hedge Placed', time: '14:27:12', details: 'DIPLOMAT agent opened protective position', source: 'Position Tracker', severity: 'success' },
+        ];
+        
+        const container = document.getElementById('interceptsList');
+        container.innerHTML = intercepts.map(i => `
+            <div class="intercept-item" style="border-left-color: ${i.severity === 'critical' ? 'var(--status-danger)' : i.severity === 'warning' ? 'var(--status-warning)' : i.severity === 'success' ? 'var(--status-success)' : 'var(--status-info)'}">
+                <div class="intercept-icon" style="background: ${i.iconBg}">${i.icon}</div>
+                <div class="intercept-content">
+                    <div class="intercept-header">
+                        <span class="intercept-title">${i.title}</span>
+                        <span class="intercept-time">${i.time}</span>
+                    </div>
+                    <div class="intercept-details">${i.details}</div>
+                    <div class="intercept-meta">
+                        <span>Source: ${i.source}</span>
+                        <span class="intercept-tag">${i.severity.toUpperCase()}</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    /* ------------------------------------------------------------------
+       CHART
+       ------------------------------------------------------------------ */
+    function initChart() {
+        const svg = document.getElementById('chartGrid');
+        const candlesContainer = document.getElementById('candlesContainer');
+        const volumeBars = document.getElementById('volumeBars');
+        
+        const width = 1000;
+        const height = 300;
+        const volumeHeight = 40;
+        
+        // Generate candles
+        let currentPrice = 3.80;
+        const candles = [];
+        const numCandles = 60;
+        
+        for (let i = 0; i < numCandles; i++) {
+            const open = currentPrice;
+            const close = open + (Math.random() - 0.48) * 0.05;
+            const high = Math.max(open, close) + Math.random() * 0.02;
+            const low = Math.min(open, close) - Math.random() * 0.02;
+            const volume = getRandomInt(10000, 50000);
+            
+            candles.push({ open, close, high, low, volume });
+            currentPrice = close;
+        }
+        
+        // Draw grid
+        const gridLines = [];
+        for (let i = 0; i <= 4; i++) {
+            const y = (i / 4) * height;
+            gridLines.push(`<line x1="0" y1="${y}" x2="${width}" y2="${y}" />`);
+        }
+        svg.innerHTML = gridLines.join('');
+        
+        // Draw candles - Fixed: Proper spacing and alignment
+        const candleWidth = width / numCandles - 2;
+        const priceRange = Math.max(...candles.map(c => c.high)) - Math.min(...candles.map(c => c.low));
+        const priceScale = height / priceRange;
+        const minPrice = Math.min(...candles.map(c => c.low));
+        
+        let candlesHtml = '';
+        let volumesHtml = '';
+        
+        candles.forEach((candle, i) => {
+            const x = i * (width / numCandles) + 1;
+            const candleTop = height - (candle.high - minPrice) * priceScale;
+            const candleBottom = height - (candle.low - minPrice) * priceScale;
+            const candleHeight = Math.max(1, candleBottom - candleTop);
+            const bodyTop = height - (Math.max(candle.open, candle.close) - minPrice) * priceScale;
+            const bodyHeight = Math.max(1, Math.abs(candle.close - candle.open) * priceScale);
+            const isUp = candle.close > candle.open;
+            
+            candlesHtml += `
+                <div class="candle ${isUp ? 'up' : 'down'}" style="position: absolute; left: ${x}px; top: ${candleTop}px; width: ${candleWidth}px;">
+                    <div class="candle-wick" style="position: absolute; left: 50%; transform: translateX(-50%); width: 1px; height: ${candleHeight}px;"></div>
+                    <div class="candle-body" style="position: absolute; left: 50%; transform: translateX(-50%); width: ${candleWidth}px; height: ${bodyHeight}px; top: ${bodyTop - candleTop}px;"></div>
+                </div>
+            `;
+            
+            const volHeight = (candle.volume / 50000) * volumeHeight;
+            const volColor = isUp ? 'up' : 'down';
+            volumesHtml += `<div class="volume-bar ${volColor}" style="height: ${volHeight}px; width: ${width / numCandles - 1}px;"></div>`;
+        });
+        
+        candlesContainer.innerHTML = candlesHtml;
+        volumeBars.innerHTML = volumesHtml;
+    }
+
+    /* ------------------------------------------------------------------
+       TIMELINE & WAR CHEST GRIDS
+       ------------------------------------------------------------------ */
+    function initGrids() {
+        const timelineGrid = document.getElementById('timelineGrid');
+        const warGrid = document.getElementById('warGrid');
+        
+        const typeColors = {
+            fork: { bg: 'var(--status-paradox-bg)', text: 'var(--status-paradox)', icon: '🔀' },
+            market: { bg: 'var(--status-info-bg)', text: 'var(--status-info)', icon: '📈' },
+            sabotage: { bg: 'var(--status-danger-bg)', text: 'var(--status-danger)', icon: '💀' },
+            shield: { bg: 'var(--status-success-bg)', text: 'var(--status-success)', icon: '🛡️' }
+        };
+        
+        const statusColors = {
+            active: { bg: 'var(--status-success-bg)', text: 'var(--status-success)' },
+            warning: { bg: 'var(--status-warning-bg)', text: '#854d0e' },
+            collapsed: { bg: 'var(--status-danger-bg)', text: 'var(--status-danger)' }
+        };
+        
+        timelineGrid.innerHTML = timelineData.map(t => {
+            const type = typeColors[t.type] || typeColors.market;
+            const status = statusColors[t.status] || statusColors.active;
+            return `
+                <div class="panel" style="cursor: pointer;">
+                    <div class="panel-header" style="padding: 12px 16px;">
+                        <span class="panel-title" style="font-size: 11px;">${t.id}</span>
+                        <span style="font-size: 9px; padding: 2px 6px; background: ${status.bg}; color: ${status.text}; border-radius: 4px; font-weight: 600; text-transform: uppercase;">${t.status}</span>
+                    </div>
+                    <div style="padding: 16px;">
+                        <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">${t.title}</div>
+                        <div style="display: flex; gap: 16px; font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;">
+                            <span>Prob: <span style="color: ${t.prob > 0.5 ? 'var(--status-success)' : 'var(--text-secondary)'}">${(t.prob * 100).toFixed(0)}%</span></span>
+                            <span>ETA: ${t.time}</span>
+                            <span>${t.forks} forks</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 20px;">${type.icon}</span>
+                            <span style="font-size: 10px; padding: 3px 8px; background: ${type.bg}; color: ${type.text}; border-radius: 4px; font-weight: 600; text-transform: uppercase;">${t.type}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        warGrid.innerHTML = timelineData.filter(t => t.type === 'fork' || t.status === 'warning').map(t => `
+            <div class="panel" style="cursor: pointer;">
+                <div class="panel-header" style="padding: 12px 16px;">
+                    <span class="panel-title" style="font-size: 11px;">${t.id}</span>
+                    <span style="font-size: 9px; padding: 2px 6px; background: var(--status-warning-bg); color: #854d0e; border-radius: 4px; font-weight: 600;">⚠️ ALERT</span>
+                </div>
+                <div style="padding: 16px;">
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 8px;">${t.title}</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;">
+                        <div>Risk Score: <span style="color: var(--status-warning); font-weight: 600;">${getRandomInt(40, 75)}</span></div>
+                        <div style="margin-top: 4px;">Exposure: <span style="font-family: var(--font-mono);">$${(getRandomInt(10, 100) * 1000).toLocaleString()}</span></div>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="action-btn">HEDGE</button>
+                        <button class="action-btn">CLOSE</button>
+                        <button class="action-btn" style="border-color: var(--status-info); color: var(--status-info);">DETAILS</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    /* ------------------------------------------------------------------
+       EVENTS TABLE
+       ------------------------------------------------------------------ */
+    function initEventsTable() {
+        const tbody = document.getElementById('eventsTableBody');
+        const events = [
+            { time: '14:32:45', type: 'market', theatre: 'ORB_SALVAGE_F7', agent: 'MEGALODON', action: 'Position opened', volume: 42000 },
+            { time: '14:32:12', type: 'shield', theatre: 'ORB_SALVAGE_F7', agent: 'AEGIS', action: 'Hedge placed', volume: 28000 },
+            { time: '14:31:58', type: 'sabotage', theatre: 'FED_RATE_DECISION', agent: 'SABOTEUR', action: 'Spread attack', volume: 15000 },
+            { time: '14:31:34', type: 'market', theatre: 'VEN_OIL_TANKER', agent: 'DART', action: 'Quick flip', volume: 8500 },
+            { time: '14:30:45', type: 'shield', theatre: 'TAIWAN_STRAIT', agent: 'BULL', action: 'Leverage up', volume: 52000 },
+        ];
+        
+        tbody.innerHTML = events.map(e => `
+            <tr>
+                <td class="mono">${e.time}</td>
+                <td><span class="ribbon-tag ${e.type}">${e.type.toUpperCase()}</span></td>
+                <td>${e.theatre}</td>
+                <td>${e.agent}</td>
+                <td>${e.action}</td>
+                <td class="numeric mono">${e.volume.toLocaleString()}</td>
+            </tr>
+        `).join('');
+    }
+
+    /* ------------------------------------------------------------------
+       TAB SWITCHING
+       ------------------------------------------------------------------ */
+    document.querySelectorAll('.tab-btn, .tab-button').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tabId = this.dataset.tab;
+            
+            // Update buttons
+            const container = this.closest('.tab-nav, .tab-nav');
+            container.querySelectorAll('.tab-btn, .tab-button').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(c => {
+                c.classList.remove('active');
+                if (c.id === tabId) c.classList.add('active');
+            });
+        });
+    });
+
+    /* ------------------------------------------------------------------
+       INITIALIZATION
+       ------------------------------------------------------------------ */
+    initRibbon();
+    initOrderBook();
+    initTimeSales();
+    initLeaderboard();
+    initIntercepts();
+    initChart();
+    initGrids();
+    initEventsTable();
+
+  </script>
+</body>
+</html>
