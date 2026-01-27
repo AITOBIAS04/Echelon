@@ -43,6 +43,9 @@ export default {
           'danger': '#FB7185',    // Rose red - breaches, negative
           'info': '#3B82F6',      // Blue - neutral info
           'paradox': '#8B5CF6',   // Soft purple - paradox events
+          'vrf': '#8B5CF6',       // VRF verification - purple
+          'entropy': '#06B6D4',   // Entropy quality - cyan
+          'cyan': '#22D3EE',      // Cyan for RLMF
         },
         // Agent archetype colours (more refined)
         'agent': {

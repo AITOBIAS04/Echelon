@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, AlertTriangle, User, Briefcase, Wallet, X, ExternalLink, Zap, ChevronDown, Menu, BarChart3, Activity } from 'lucide-react';
+import { Shield, AlertTriangle, User, Briefcase, Wallet, X, ExternalLink, Zap, ChevronDown, Menu, BarChart3, Activity, Cpu, ShieldCheck } from 'lucide-react';
 import { useParadoxes } from '../../hooks/useParadoxes';
 import { ButlerWidget } from '../ButlerWidget';
 import { clsx } from 'clsx';
@@ -59,7 +59,8 @@ export function AppLayout() {
     { path: '/', label: 'Markets', icon: BarChart3 },
     { path: '/fieldkit', label: 'Portfolio', icon: Briefcase },
     { path: '/blackbox', label: 'Analytics', icon: Activity },
-    { path: '/breaches', label: 'Alerts', icon: AlertTriangle },
+    { path: '/vrf', label: 'VRF', icon: ShieldCheck },
+    { path: '/rlmf', label: 'RLMF', icon: Cpu },
     { path: '/agents', label: 'Agents', icon: User },
   ];
 
