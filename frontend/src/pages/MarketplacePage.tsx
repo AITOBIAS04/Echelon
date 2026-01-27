@@ -212,7 +212,7 @@ export function MarketplacePage() {
     setAlerts(prev => prev.map(a => {
       if (a.id === alertId) {
         return {
-...a,
+          ...a,
           status: a.status === 'active' ? 'paused' : 'active'
         };
       }
@@ -763,7 +763,7 @@ export function MarketplacePage() {
               </div>
 
               {/* Alerts List */}
-              <div className="flex flex-col gap-2">
+<div className="flex flex-col gap-2">
                 {filteredAlerts.map(alert => (
                   <div 
                     key={alert.id}
