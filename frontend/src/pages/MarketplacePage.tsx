@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { Search, Bell, GitCompare, BarChart3, X, ChevronDown } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Search, Bell, GitCompare, BarChart3, X, ChevronDown, Cpu, Truck, DollarSign, FlaskConical, Zap } from 'lucide-react';
 import { clsx } from 'clsx';
 import { MarketCard } from '../components/marketplace/MarketCard';
 import { LiveRibbon } from '../components/marketplace/LiveRibbon';
@@ -12,21 +12,29 @@ import type { Alert, CompareSlot } from '../types/marketplace';
 // Market categories with icons
 const CATEGORIES = [
   { id: 'all', label: 'All Markets', icon: null },
-  { id: 'robotics', label: 'Robotics', icon: '🦾' },
-  { id: 'logistics', label: 'Logistics', icon: '🚛' },
-  { id: 'defi', label: 'DeFi / Econ', icon: '💸' },
-  { id: 'physics', label: 'Physics', icon: '🧪' },
-  { id: 'soceng', label: 'SocEng', icon: '🎭' },
+  { id: 'robotics', label: 'Robotics', icon: Cpu },
+  { id: 'logistics', label: 'Logistics', icon: Truck },
+  { id: 'defi', label: 'DeFi / Econ', icon: DollarSign },
+  { id: 'physics', label: 'Physics', icon: FlaskConical },
+  { id: 'soceng', label: 'SocEng', icon: Zap },
 ] as const;
 
 type CategoryId = typeof CATEGORIES[number]['id'];
+
+// Alert type to icon mapping
+const ALERT_ICONS: Record<Alert['type'], React.ComponentType<{ className?: string }>> = {
+  price: DollarSign,
+  stability: BarChart3,
+  gap: Zap,
+  volume: BarChart3,
+  paradox: Zap,
+};
 
 // Mock data for alerts
 const mockAlerts: Alert[] = [
   {
     id: '1',
     type: 'price',
-    icon: '💰',
     title: 'Price Target Hit',
     description: 'ORB_SALVAGE_F7 crossed $4.00',
     theatre: 'ORB_SALVAGE_F7',
@@ -39,7 +47,6 @@ const mockAlerts: Alert[] = [
   {
     id: '2',
     type: 'stability',
-    icon: '📊',
     title: 'Stability Threshold',
     description: 'Stability dropped below 50%',
     theatre: 'VEN_OIL_TANKER',
@@ -52,7 +59,6 @@ const mockAlerts: Alert[] = [
   {
     id: '3',
     type: 'gap',
-    icon: '📐',
     title: 'Logic Gap Alert',
     description: 'Gap exceeded 20% margin',
     theatre: 'FED_RATE_DECISION',
@@ -65,7 +71,6 @@ const mockAlerts: Alert[] = [
   {
     id: '4',
     type: 'volume',
-    icon: '📈',
     title: 'Volume Spike',
     description: 'Trading volume increased 3x',
     theatre: 'TAIWAN_STRAIT',
@@ -78,7 +83,6 @@ const mockAlerts: Alert[] = [
   {
     id: '5',
     type: 'paradox',
-    icon: '🔮',
     title: 'Paradox Detected',
     description: 'Contradictory agent signals',
     theatre: 'PUTIN_HEALTH_RUMORS',
@@ -91,7 +95,6 @@ const mockAlerts: Alert[] = [
   {
     id: '6',
     type: 'price',
-    icon: '💰',
     title: 'Price Target Hit',
     description: 'SPACEX_LAUNCH crossed $3.00',
     theatre: 'SPACEX_LAUNCH',
@@ -377,7 +380,7 @@ export function MarketplacePage() {
                 color: selectedCategory === cat.id ? '#F1F5F9' : '#94A3B8'
               }}
             >
-              {cat.icon && <span>{cat.icon}</span>}
+              {cat.icon && React.createElement(cat.icon, { className: "w-4 h-4" })}
               {cat.label}
             </button>
           ))}
@@ -544,7 +547,7 @@ export function MarketplacePage() {
                                  alert.type === 'volume' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(139, 92, 246, 0.1)'
                     }}
                   >
-                    {alert.icon}
+                    {React.createElement(ALERT_ICONS[alert.type] || DollarSign, { className: "w-4 h-4" })}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
@@ -717,7 +720,7 @@ export function MarketplacePage() {
                                    alert.type === 'volume' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(139, 92, 246, 0.1)'
                       }}
                     >
-                      {alert.icon}
+                      {React.createElement(ALERT_ICONS[alert.type] || DollarSign, { className: "w-4 h-4" })}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
