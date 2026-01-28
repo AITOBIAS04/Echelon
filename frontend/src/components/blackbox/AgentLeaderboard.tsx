@@ -22,87 +22,67 @@ const RANK_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32', '#6B7280'];
 
 export function AgentLeaderboard({ agents, searchQuery, onSearchChange }: AgentLeaderboardProps) {
   return (
-    <div className="panel">
-      <div className="panel-header">
-        <span className="panel-title">AGENT PERFORMANCE</span>
-        <div className="panel-controls">
-          <input
-            type="text"
-            placeholder="Filter agents..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            style={{
-              width: 120,
-              background: 'var(--bg-app)',
-              border: '1px solid var(--border-outer)',
-              color: 'var(--text-primary)',
-              padding: '4px 8px',
-              borderRadius: 4,
-              fontSize: 11,
-              outline: 'none',
-            }}
-          />
-        </div>
+    <div className="rounded-2xl border border-[#26292E] bg-[#0F1113] flex flex-col min-h-0">
+      {/* Card Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#26292E]">
+        <span className="text-sm font-semibold text-[#F1F5F9]">AGENT PERFORMANCE</span>
+        <input
+          type="text"
+          placeholder="Filter agents..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-28 px-2 py-1 text-xs bg-[#0B0C0E] border border-[#26292E] text-[#F1F5F9] rounded outline-none"
+        />
       </div>
-      <div className="data-list" style={{ flex: 1, overflow: 'auto', maxHeight: 280 }}>
-        <div className="data-row header" style={{ position: 'sticky', top: 0 }}>
-          <span className="rank-col">#</span>
-          <span className="agent-col">AGENT</span>
-          <span className="metric-col">P&L</span>
-          <span className="metric-col">VOL</span>
-        </div>
-        {agents.map((agent, index) => {
-          const archetypeStyle = ARCHETYPE_COLORS[agent.archetype] || ARCHETYPE_COLORS.degen;
-          const rankColor = index < 4 ? RANK_COLORS[index] : 'transparent';
 
-          return (
-            <div key={agent.id} className="leaderboard-row">
-              <span
-                className="rank-col mono"
-                style={{
-                  fontWeight: 600,
-                  color: rankColor !== 'transparent' ? rankColor : 'var(--text-muted)',
-                }}
-              >
-                {index + 1}
-              </span>
-              <span className="agent-col" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span
-                  className="agent-avatar"
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: '#fff',
-                    background: archetypeStyle.text,
-                  }}
-                >
-                  {agent.name[0]}
-                </span>
-                <div>
-                  <div style={{ fontWeight: 500, fontSize: 11 }}>{agent.name}</div>
-                  <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 1 }}>
-                    {agent.winRate}% WR · {agent.sharpe} SR
-                  </div>
-                </div>
-              </span>
-              <span
-                className={`metric-col mono ${agent.pnl >= 0 ? 'positive' : 'negative'}`}
-                style={{ fontWeight: 600 }}
-              >
-                {agent.pnlDisplay}
-              </span>
-              <span className="metric-col mono" style={{ color: 'var(--text-secondary)' }}>
-                {agent.volumeDisplay}
-              </span>
-            </div>
-          );
-        })}
+      {/* Table */}
+<div className="flex-1 min-h-0 overflow-y-auto pr-1">
+        <table className="w-full table-fixed">
+          <thead className="sticky top-0 bg-[#0F1113] z-10">
+            <tr>
+              <th className="w-[28px] px-2 py-2 text-left text-xs font-medium text-[#64748B]">#</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-[#64748B]">AGENT</th>
+              <th className="w-[96px] px-3 py-2 text-left text-xs font-medium text-[#64748B]">P&L</th>
+              <th className="w-[88px] px-3 py-2 text-left text-xs font-medium text-[#64748B]">VOL</th>
+            </tr>
+          </thead>
+          <tbody>
+            {agents.map((agent, index) => {
+              const archetypeStyle = ARCHETYPE_COLORS[agent.archetype] || ARCHETYPE_COLORS.degen;
+              const rankColor = index < 4 ? RANK_COLORS[index] : 'transparent';
+
+              return (
+                <tr key={agent.id} className="hover:bg-[#1A1D23] transition-colors">
+                  <td className="px-2 py-1.5 text-xs font-mono font-medium text-[#94A3B8]">
+                    <span style={{ color: rankColor !== 'transparent' ? rankColor : undefined }}>
+                      {index + 1}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-6 h-6 rounded flex items-center justify-center text-xs font-bold text-white"
+                        style={{ background: archetypeStyle.text }}
+                      >
+                        {agent.name[0]}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-[#F1F5F9] truncate">{agent.name}</div>
+                        <div className="text-[10px] text-[#64748B]">{agent.winRate}% WR · {agent.sharpe} SR</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className={`px-3 py-1.5 text-xs font-mono font-medium ${agent.pnl >= 0 ? 'text-[#4ADE80]' : 'text-[#FB7185]'}`}>
+                    {agent.pnlDisplay}
+                  </td>
+                  <td className="px-3 py-1.5 text-xs font-mono text-[#94A3B8]">
+                    {agent.volumeDisplay}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
