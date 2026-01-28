@@ -1,9 +1,9 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { FieldKit } from './components/fieldkit/FieldKit';
-import { Blackbox } from './components/blackbox/Blackbox';
 import { TimelineDetailPage } from './pages/TimelineDetailPage';
 import { MarketplacePage } from './pages/MarketplacePage';
+import { BlackboxPage } from './pages/BlackboxPage';
 import { LaunchpadPage } from './pages/LaunchpadPage';
 import { LaunchpadDetailPage } from './pages/LaunchpadDetailPage';
 import { LaunchpadNewPage } from './pages/LaunchpadNewPage';
@@ -37,7 +37,7 @@ export const router = createBrowserRouter([
         path: 'analytics',
         element: (
           <ErrorBoundary>
-            <Blackbox />
+            <BlackboxPage />
           </ErrorBoundary>
         ),
       },
