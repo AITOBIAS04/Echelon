@@ -1,9 +1,23 @@
+import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
+import { 
+  Radio, 
+  Bell, 
+  GitCompare, 
+  Plus, 
+  BarChart3, 
+  Cpu, 
+  RefreshCw, 
+  Users, 
+  Globe, 
+  Search,
+  Settings
+} from 'lucide-react';
 
 interface ActionButton {
   label: string;
-  icon?: string;
+  icon?: React.ComponentType<{ className?: string }>;
   kind?: 'primary' | 'warn' | 'pill';
   action?: string;
 }
@@ -17,48 +31,48 @@ const TOP_ACTIONS: Record<string, PageConfig> = {
   '/marketplace': {
     name: 'Marketplace',
     buttons: [
-      { label: 'Live', icon: '🟢', kind: 'primary', action: 'onLive' },
-      { label: 'Alert', icon: '🔔', action: 'onAlert' },
-      { label: 'Compare', icon: '⚖️', action: 'onCompare' },
-      { label: 'New Timeline', icon: '➕', kind: 'primary', action: 'onNewTimeline' },
+      { label: 'Live', icon: Radio, kind: 'primary', action: 'onLive' },
+      { label: 'Alert', icon: Bell, action: 'onAlert' },
+      { label: 'Compare', icon: GitCompare, action: 'onCompare' },
+      { label: 'New Timeline', icon: Plus, kind: 'primary', action: 'onNewTimeline' },
     ],
   },
   '/analytics': {
     name: 'Analytics',
     buttons: [
-      { label: 'Alert', icon: '🔔', action: 'onAlert' },
-      { label: 'Compare', icon: '⚖️', action: 'onCompare' },
-      { label: 'Settings', icon: '⚙️', action: 'openShellSettings' },
+      { label: 'Alert', icon: Bell, action: 'onAlert' },
+      { label: 'Compare', icon: GitCompare, action: 'onCompare' },
+      { label: 'Settings', icon: Settings, action: 'openShellSettings' },
     ],
   },
   '/portfolio': {
     name: 'Portfolio',
     buttons: [
-      { label: 'New Position', icon: '➕', kind: 'primary', action: 'newPosition' },
+      { label: 'New Position', icon: Plus, kind: 'primary', action: 'newPosition' },
     ],
   },
   '/rlmf': {
     name: 'RLMF',
     buttons: [
-      { label: 'Market View', icon: '📈', action: 'marketView' },
-      { label: 'Robotics View', icon: '🤖', action: 'roboticsView' },
+      { label: 'Market View', icon: BarChart3, action: 'marketView' },
+      { label: 'Robotics View', icon: Cpu, action: 'roboticsView' },
       { label: 'Mode 0: Deterministic | Conf: 0.98', kind: 'pill' },
     ],
   },
   '/vrf': {
     name: 'VRF',
     buttons: [
-      { label: 'Live', icon: '🟢', kind: 'primary', action: 'onLive' },
-      { label: 'Refresh', icon: '⟳', kind: 'primary', action: 'onRefresh' },
+      { label: 'Live', icon: Radio, kind: 'primary', action: 'onLive' },
+      { label: 'Refresh', icon: RefreshCw, kind: 'primary', action: 'onRefresh' },
     ],
   },
   '/agents': {
     name: 'Agents',
     buttons: [
-      { label: 'Agent Roster', icon: '🧬', action: 'agentRoster' },
-      { label: 'Global Intelligence', icon: '🌐', action: 'globalIntel' },
-      { label: 'Search', icon: '🔎', action: 'agentSearch' },
-      { label: '+ Deploy Agent', icon: '➕', kind: 'primary', action: 'deployAgent' },
+      { label: 'Agent Roster', icon: Users, action: 'agentRoster' },
+      { label: 'Global Intelligence', icon: Globe, action: 'globalIntel' },
+      { label: 'Search', icon: Search, action: 'agentSearch' },
+      { label: 'Deploy Agent', icon: Plus, kind: 'primary', action: 'deployAgent' },
     ],
   },
   '/agents/breach': {
@@ -137,13 +151,13 @@ export function TopActionBar() {
               className={`flex items-center gap-2 px-2.5 py-[7px] rounded-[10px] border text-[11px] font-semibold transition-all duration-150 whitespace-nowrap
                 ${
                   btn.kind === 'primary'
-                    ? 'border-[rgba(59,130,246,0.35)] bg-[rgba(59,130,246,0.1)] text-status-info hover:bg-[rgba(59,130,246,0.18)] hover:-translate-y-px'
+                    ? 'border-[rgba(59,130,246,0.35)] bg-[rgba(59,130,246,0.1)] text-[#3B82F6] hover:bg-[rgba(59,130,246,0.18)] hover:-translate-y-px'
                     : btn.kind === 'warn'
-                    ? 'border-[rgba(250,204,21,0.35)] bg-[rgba(250,204,21,0.1)] text-status-warning hover:bg-[rgba(250,204,21,0.18)] hover:-translate-y-px'
-                    : 'border-terminal-border bg-terminal-card text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-text-muted hover:bg-[#1A1D21] hover:-translate-y-px'
+                    ? 'border-[rgba(250,204,21,0.35)] bg-[rgba(250,204,21,0.1)] text-[#FACC15] hover:bg-[rgba(250,204,21,0.18)] hover:-translate-y-px'
+                    : 'border-[#26292E] bg-[#151719] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#64748B] hover:bg-[#1A1D21] hover:-translate-y-px'
                 }`}
             >
-              {btn.icon && <span>{btn.icon}</span>}
+              {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
               <span>{btn.label}</span>
             </button>
           );
