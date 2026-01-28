@@ -6,6 +6,7 @@ import { LiveRibbon } from '../components/marketplace/LiveRibbon';
 import { SignalIntercepts } from '../components/marketplace/SignalIntercepts';
 import { ActiveBreaches } from '../components/marketplace/ActiveBreaches';
 import { useMarketData, useRibbonEvents, useIntercepts, useBreaches } from '../hooks/useMarketplace';
+import { useRegisterTopActionBarActions } from '../contexts/TopActionBarActionsContext';
 import type { Alert, CompareSlot } from '../types/marketplace';
 
 // Market categories with icons
@@ -137,6 +138,20 @@ export function MarketplacePage() {
   const { data: ribbonEvents } = useRibbonEvents();
   const { data: intercepts } = useIntercepts();
   const { data: breaches } = useBreaches();
+
+  // Register TopActionBar button handlers
+  useRegisterTopActionBarActions({
+    onAlert: () => setAlertsPanelOpen(true),
+    onCompare: () => setCompareSidebarOpen(true),
+    onLive: () => {
+      // TODO: Implement live toggle functionality if needed
+      console.log('Live button clicked - TODO: implement live mode');
+    },
+    onNewTimeline: () => {
+      // TODO: Implement new timeline creation
+      console.log('New Timeline button clicked - TODO: implement timeline creation');
+    },
+  });
 
   // Filter and sort markets
   const filteredMarkets = useCallback(() => {
@@ -368,71 +383,74 @@ export function MarketplacePage() {
           ))}
         </div>
 
-        {/* Primary Content */}
-        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          {/* Live Ribbon */}
-          <div className="flex-shrink-0">
-            <LiveRibbon events={ribbonEvents || []} />
-          </div>
-
-          {/* Market Grid */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>
-                Active Theatres
-              </h2>
-              <span className="px-2 py-1 rounded border text-xs font-mono" style={{ 
-                background: '#151719', 
-                borderColor: '#26292E',
-                color: '#94A3B8'
-              }}>
-                {filteredMarkets().length}
-              </span>
+        {/* Primary Content Area */}
+        <div className="flex-1 min-w-0 flex overflow-hidden">
+          {/* Main Content - Left Column */}
+          <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+            {/* Live Ribbon */}
+            <div className="flex-shrink-0">
+              <LiveRibbon events={ribbonEvents || []} />
             </div>
 
-            {marketsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {[1, 2, 3, 4, 5, 6].map(i => (
-                  <div key={i} className="rounded-xl p-4 animate-pulse" style={{ background: '#151719', border: '1px solid #26292E' }}>
-                    <div className="h-4 rounded w-1/3 mb-3" style={{ background: '#121417' }} />
-                    <div className="h-5 rounded w-3/4 mb-4" style={{ background: '#121417' }} />
-                    <div className="flex gap-2 mb-4">
-                      <div className="h-12 rounded flex-1" style={{ background: '#121417' }} />
-                      <div className="h-12 rounded flex-1" style={{ background: '#121417' }} />
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
-                      <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
-                      <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
-                    </div>
-                  </div>
-                ))}
+            {/* Market Grid */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>
+                  Active Theatres
+                </h2>
+                <span className="px-2 py-1 rounded border text-xs font-mono" style={{ 
+                  background: '#151719', 
+                  borderColor: '#26292E',
+                  color: '#94A3B8'
+                }}>
+                  {filteredMarkets().length}
+                </span>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredMarkets().map(market => (
-                  <MarketCard key={market.id} market={market} />
-                ))}
-              </div>
-            )}
 
-            {filteredMarkets().length === 0 && !marketsLoading && (
-              <div className="flex flex-col items-center justify-center py-12">
-                <BarChart3 className="w-12 h-12 mb-4" style={{ color: '#64748B', opacity: 0.5 }} />
-                <p className="text-sm" style={{ color: '#64748B' }}>No markets found</p>
-                <p className="text-xs mt-1" style={{ color: '#64748B' }}>Try adjusting your search or filters</p>
-              </div>
-            )}
+              {marketsLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {[1, 2, 3, 4, 5, 6].map(i => (
+                    <div key={i} className="rounded-xl p-4 animate-pulse" style={{ background: '#151719', border: '1px solid #26292E' }}>
+                      <div className="h-4 rounded w-1/3 mb-3" style={{ background: '#121417' }} />
+                      <div className="h-5 rounded w-3/4 mb-4" style={{ background: '#121417' }} />
+                      <div className="flex gap-2 mb-4">
+                        <div className="h-12 rounded flex-1" style={{ background: '#121417' }} />
+                        <div className="h-12 rounded flex-1" style={{ background: '#121417' }} />
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
+                        <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
+                        <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredMarkets().map(market => (
+                    <MarketCard key={market.id} market={market} />
+                  ))}
+                </div>
+              )}
+
+              {filteredMarkets().length === 0 && !marketsLoading && (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <BarChart3 className="w-12 h-12 mb-4" style={{ color: '#64748B', opacity: 0.5 }} />
+                  <p className="text-sm" style={{ color: '#64748B' }}>No markets found</p>
+                  <p className="text-xs mt-1" style={{ color: '#64748B' }}>Try adjusting your search or filters</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Sidebar */}
-        <div className="w-[360px] flex-shrink-0 flex flex-col" style={{ background: '#151719', borderLeft: '1px solid #26292E' }}>
-          {/* Signal Intercepts */}
-          <SignalIntercepts intercepts={intercepts || []} />
+          {/* Right Rail / Aside */}
+          <aside className="w-[360px] flex-shrink-0 flex flex-col overflow-y-auto" style={{ background: '#151719', borderLeft: '1px solid #26292E' }}>
+            {/* Signal Intercepts - Right Rail */}
+            <SignalIntercepts intercepts={intercepts || []} />
 
-          {/* Active Breaches */}
-          <ActiveBreaches breaches={breaches || []} />
+            {/* Active Breaches */}
+            <ActiveBreaches breaches={breaches || []} />
+          </aside>
         </div>
       </div>
 
