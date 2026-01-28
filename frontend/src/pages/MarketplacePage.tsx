@@ -1,40 +1,31 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Search, Bell, GitCompare, BarChart3, X, ChevronDown, Cpu, Truck, DollarSign, FlaskConical, Zap } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { Search, Bell, GitCompare, BarChart3, X, ChevronDown } from 'lucide-react';
 import { clsx } from 'clsx';
 import { MarketCard } from '../components/marketplace/MarketCard';
 import { LiveRibbon } from '../components/marketplace/LiveRibbon';
 import { SignalIntercepts } from '../components/marketplace/SignalIntercepts';
 import { ActiveBreaches } from '../components/marketplace/ActiveBreaches';
 import { useMarketData, useRibbonEvents, useIntercepts, useBreaches } from '../hooks/useMarketplace';
-import { useRegisterTopActionBarActions } from '../contexts/TopActionBarActionsContext';
 import type { Alert, CompareSlot } from '../types/marketplace';
 
 // Market categories with icons
 const CATEGORIES = [
   { id: 'all', label: 'All Markets', icon: null },
-  { id: 'robotics', label: 'Robotics', icon: Cpu },
-  { id: 'logistics', label: 'Logistics', icon: Truck },
-  { id: 'defi', label: 'DeFi / Econ', icon: DollarSign },
-  { id: 'physics', label: 'Physics', icon: FlaskConical },
-  { id: 'soceng', label: 'SocEng', icon: Zap },
+  { id: 'robotics', label: 'Robotics', icon: '🦾' },
+  { id: 'logistics', label: 'Logistics', icon: '🚛' },
+  { id: 'defi', label: 'DeFi / Econ', icon: '💸' },
+  { id: 'physics', label: 'Physics', icon: '🧪' },
+  { id: 'soceng', label: 'SocEng', icon: '🎭' },
 ] as const;
 
 type CategoryId = typeof CATEGORIES[number]['id'];
-
-// Alert type to icon mapping
-const ALERT_ICONS: Record<Alert['type'], React.ComponentType<{ className?: string }>> = {
-  price: DollarSign,
-  stability: BarChart3,
-  gap: Zap,
-  volume: BarChart3,
-  paradox: Zap,
-};
 
 // Mock data for alerts
 const mockAlerts: Alert[] = [
   {
     id: '1',
     type: 'price',
+    icon: '💰',
     title: 'Price Target Hit',
     description: 'ORB_SALVAGE_F7 crossed $4.00',
     theatre: 'ORB_SALVAGE_F7',
@@ -47,6 +38,7 @@ const mockAlerts: Alert[] = [
   {
     id: '2',
     type: 'stability',
+    icon: '📊',
     title: 'Stability Threshold',
     description: 'Stability dropped below 50%',
     theatre: 'VEN_OIL_TANKER',
@@ -59,6 +51,7 @@ const mockAlerts: Alert[] = [
   {
     id: '3',
     type: 'gap',
+    icon: '📐',
     title: 'Logic Gap Alert',
     description: 'Gap exceeded 20% margin',
     theatre: 'FED_RATE_DECISION',
@@ -71,6 +64,7 @@ const mockAlerts: Alert[] = [
   {
     id: '4',
     type: 'volume',
+    icon: '📈',
     title: 'Volume Spike',
     description: 'Trading volume increased 3x',
     theatre: 'TAIWAN_STRAIT',
@@ -83,6 +77,7 @@ const mockAlerts: Alert[] = [
   {
     id: '5',
     type: 'paradox',
+    icon: '🔮',
     title: 'Paradox Detected',
     description: 'Contradictory agent signals',
     theatre: 'PUTIN_HEALTH_RUMORS',
@@ -95,6 +90,7 @@ const mockAlerts: Alert[] = [
   {
     id: '6',
     type: 'price',
+    icon: '💰',
     title: 'Price Target Hit',
     description: 'SPACEX_LAUNCH crossed $3.00',
     theatre: 'SPACEX_LAUNCH',
@@ -141,20 +137,6 @@ export function MarketplacePage() {
   const { data: ribbonEvents } = useRibbonEvents();
   const { data: intercepts } = useIntercepts();
   const { data: breaches } = useBreaches();
-
-  // Register TopActionBar button handlers - called at top level since it uses useRef (no re-renders)
-  useRegisterTopActionBarActions({
-    onAlert: () => setAlertsPanelOpen(true),
-    onCompare: () => setCompareSidebarOpen(true),
-    onLive: () => {
-      // TODO: Implement live toggle functionality if needed
-      console.log('Live button clicked - TODO: implement live mode');
-    },
-    onNewTimeline: () => {
-      // TODO: Implement new timeline creation
-      console.log('New Timeline button clicked - TODO: implement timeline creation');
-    },
-  });
 
   // Filter and sort markets
   const filteredMarkets = useCallback(() => {
@@ -206,7 +188,15 @@ export function MarketplacePage() {
 
   // Alert helpers
   const unreadAlertsCount = alerts.filter(a => a.unread).length;
-
+  
+  const toggleAlertsPanel = () => {
+    setAlertsPanelOpen(!alertsPanelOpen);
+  };
+  
+  const toggleCompareSidebar = () => {
+    setCompareSidebarOpen(!compareSidebarOpen);
+  };
+  
   const handleAlertClick = (alertId: string) => {
     setAlerts(prev => prev.map(a => 
       a.id === alertId ? { ...a, unread: false } : a
@@ -264,23 +254,7 @@ export function MarketplacePage() {
     setCompareSlots([null, null, null, null]);
   };
   
-  // Close panels when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        alertsPanelOpen &&
-        alertPanelRef.current &&
-        !alertPanelRef.current.contains(event.target as Node) &&
-        alertBadgeRef.current &&
-        !alertBadgeRef.current.contains(event.target as Node)
-      ) {
-        setAlertsPanelOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [alertsPanelOpen]);
+undefined
 
   // Filtered alerts for modal
   const filteredAlerts = alerts.filter(alert => {
@@ -303,6 +277,82 @@ export function MarketplacePage() {
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: '#0B0C0E', color: '#F1F5F9', fontFamily: "'Inter', system-ui, sans-serif" }}>
+      {/* Top Navigation */}
+      <div className="flex-shrink-0" style={{ backgroundColor: '#151719', borderBottom: '1px solid #26292E' }}>
+        <div className="flex items-center justify-between px-6 h-[60px]">
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <span style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '0.1em' }}>ECHELON</span>
+            <span style={{ 
+              fontSize: '10px', 
+              background: '#121417', 
+              border: '1px solid #26292E', 
+              padding: '2px 6px', 
+              borderRadius: '4px',
+              color: '#64748B',
+              fontWeight: 500
+            }}>
+              MARKETS
+            </span>
+          </div>
+
+          {/* Nav Links */}
+          <div className="flex items-center gap-1" style={{ background: '#121417', padding: '4px', borderRadius: '20px', border: '1px solid #26292E' }}>
+            <button className="px-4 py-2 rounded-2xl text-xs font-medium" style={{ color: '#94A3B8', background: 'transparent' }}>Markets</button>
+            <button className="px-4 py-2 rounded-2xl text-xs font-medium" style={{ color: '#94A3B8', background: 'transparent' }}>Portfolio</button>
+            <button className="px-4 py-2 rounded-2xl text-xs font-medium" style={{ color: '#94A3B8', background: 'transparent' }}>Analytics</button>
+            <button className="px-4 py-2 rounded-2xl text-xs font-medium" style={{ color: '#94A3B8', background: 'transparent' }}>Alerts</button>
+            <button className="px-4 py-2 rounded-2xl text-xs font-medium" style={{ color: '#94A3B8', background: 'transparent' }}>Agents</button>
+          </div>
+
+          {/* Nav Controls */}
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col items-end leading-none">
+              <span className="text-[9px]" style={{ color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Available</span>
+              <span className="font-mono font-semibold" style={{ color: '#4ADE80' }}>$127,500.00</span>
+            </div>
+
+            {/* Alert Badge Button */}
+            <button
+              ref={alertBadgeRef}
+              onClick={toggleAlertsPanel}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+              style={{ 
+                background: '#151719', 
+                border: '1px solid #26292E',
+                color: unreadAlertsCount > 0 ? '#FACC15' : '#94A3B8',
+                borderColor: unreadAlertsCount > 0 ? '#FACC15' : '#26292E'
+              }}
+            >
+              <Bell className="w-4 h-4" />
+              {unreadAlertsCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{ background: '#FB7185', color: 'white' }}>
+                  {unreadAlertsCount}
+                </span>
+              )}
+            </button>
+
+            {/* Compare Button */}
+            <button
+              onClick={toggleCompareSidebar}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+              style={{ 
+                background: compareSlots.some(s => s) ? 'rgba(59, 130, 246, 0.1)' : '#151719',
+                border: `1px solid ${compareSlots.some(s => s) ? '#3B82F6' : '#26292E'}`,
+                color: '#94A3B8'
+              }}
+            >
+              <GitCompare className="w-4 h-4" />
+              Compare
+            </button>
+
+            <button className="px-4 py-2 rounded-lg text-xs font-medium" style={{ background: '#121417', border: '1px solid #26292E', color: '#94A3B8' }}>
+              Connect
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content Area */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Controls Bar */}
@@ -380,121 +430,82 @@ export function MarketplacePage() {
                 color: selectedCategory === cat.id ? '#F1F5F9' : '#94A3B8'
               }}
             >
-              {cat.icon && React.createElement(cat.icon, { className: "w-4 h-4" })}
+              {cat.icon && <span>{cat.icon}</span>}
               {cat.label}
             </button>
           ))}
         </div>
 
-        {/* Primary Content Area */}
-        <div className="flex-1 min-w-0 flex overflow-hidden">
-          {/* Main Content - Left Column */}
-          <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-            {/* Live Ribbon */}
-            <div className="flex-shrink-0">
-              <LiveRibbon events={ribbonEvents || []} />
-            </div>
-
-            {/* Market Grid */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>
-                  Active Theatres
-                </h2>
-                <span className="px-2 py-1 rounded border text-xs font-mono" style={{ 
-                  background: '#151719', 
-                  borderColor: '#26292E',
-                  color: '#94A3B8'
-                }}>
-                  {filteredMarkets().length}
-                </span>
-              </div>
-
-              {marketsLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {[1, 2, 3, 4, 5, 6].map(i => (
-                    <div key={i} className="rounded-xl p-4 animate-pulse" style={{ background: '#151719', border: '1px solid #26292E' }}>
-                      <div className="h-4 rounded w-1/3 mb-3" style={{ background: '#121417' }} />
-                      <div className="h-5 rounded w-3/4 mb-4" style={{ background: '#121417' }} />
-                      <div className="flex gap-2 mb-4">
-                        <div className="h-12 rounded flex-1" style={{ background: '#121417' }} />
-                        <div className="h-12 rounded flex-1" style={{ background: '#121417' }} />
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
-                        <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
-                        <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  {filteredMarkets().map(market => (
-                    <MarketCard key={market.id} market={market} />
-                  ))}
-                </div>
-              )}
-
-              {filteredMarkets().length === 0 && !marketsLoading && (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <BarChart3 className="w-12 h-12 mb-4" style={{ color: '#64748B', opacity: 0.5 }} />
-                  <p className="text-sm" style={{ color: '#64748B' }}>No markets found</p>
-                  <p className="text-xs mt-1" style={{ color: '#64748B' }}>Try adjusting your search or filters</p>
-                </div>
-              )}
-            </div>
+        {/* Primary Content */}
+        <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+          {/* Live Ribbon */}
+          <div className="flex-shrink-0">
+            <LiveRibbon events={ribbonEvents || []} />
           </div>
 
-          {/* Right Rail / Aside */}
-          <aside className="w-[360px] flex-shrink-0 flex flex-col overflow-y-auto" style={{ background: '#151719', borderLeft: '1px solid #26292E' }}>
-            {/* Signal Intercepts - Right Rail */}
-            <SignalIntercepts intercepts={intercepts || []} />
+          {/* Market Grid */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>
+                Active Theatres
+              </h2>
+              <span className="px-2 py-1 rounded border text-xs font-mono" style={{ 
+                background: '#151719', 
+                borderColor: '#26292E',
+                color: '#94A3B8'
+              }}>
+                {filteredMarkets().length}
+              </span>
+            </div>
 
-            {/* Active Breaches */}
-            <ActiveBreaches breaches={breaches || []} />
-          </aside>
+            {marketsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="rounded-xl p-4 animate-pulse" style={{ background: '#151719', border: '1px solid #26292E' }}>
+                    <div className="h-4 rounded w-1/3 mb-3" style={{ background: '#121417' }} />
+                    <div className="h-5 rounded w-3/4 mb-4" style={{ background: '#121417' }} />
+                    <div className="flex gap-2 mb-4">
+                      <div className="h-12 rounded flex-1" style={{ background: '#121417' }} />
+                      <div className="h-12 rounded flex-1" style={{ background: '#121417' }} />
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
+                      <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
+                      <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filteredMarkets().map(market => (
+                  <MarketCard key={market.id} market={market} />
+                ))}
+              </div>
+            )}
+
+            {filteredMarkets().length === 0 && !marketsLoading && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <BarChart3 className="w-12 h-12 mb-4" style={{ color: '#64748B', opacity: 0.5 }} />
+                <p className="text-sm" style={{ color: '#64748B' }}>No markets found</p>
+                <p className="text-xs mt-1" style={{ color: '#64748B' }}>Try adjusting your search or filters</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="w-[360px] flex-shrink-0 flex flex-col" style={{ background: '#151719', borderLeft: '1px solid #26292E' }}>
+          {/* Signal Intercepts */}
+          <SignalIntercepts intercepts={intercepts || []} />
+
+          {/* Active Breaches */}
+          <ActiveBreaches breaches={breaches || []} />
         </div>
       </div>
 
-      {/* Alert Notification Panel */}
-      {alertsPanelOpen && (
-        <div 
-          ref={alertPanelRef}
-          className="fixed top-[60px] right-6 w-[380px] max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl"
-          style={{ 
-            background: '#151719', 
-            border: '1px solid #26292E',
-            display: 'flex'
-          }}
-        >
-          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
-            <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#F1F5F9' }}>
-              <Bell className="w-4 h-4" />
-              Notifications
-              {unreadAlertsCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{ background: '#FB7185', color: 'white' }}>
-                  {unreadAlertsCount}
-                </span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button 
-                onClick={openAlertsModal}
-                className="px-2 py-1 rounded text-[11px] transition-colors"
-                style={{ color: '#3B82F6' }}
-              >
-                Manage All
-              </button>
-              <button 
-                onClick={markAllAlertsRead}
-                className="px-2 py-1 rounded text-[11px] transition-colors"
-                style={{ color: '#3B82F6' }}
-              >
-                Mark Read
-              </button>
-            </div>
-          </div>
+undefined
+undefined
           <div className="flex-1 overflow-y-auto p-2">
             {alerts.map(alert => {
               let severityClass = '';
@@ -547,7 +558,7 @@ export function MarketplacePage() {
                                  alert.type === 'volume' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(139, 92, 246, 0.1)'
                     }}
                   >
-                    {React.createElement(ALERT_ICONS[alert.type] || DollarSign, { className: "w-4 h-4" })}
+                    {alert.icon}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
@@ -590,10 +601,7 @@ export function MarketplacePage() {
                   </div>
                 </div>
               );
-            })}
-          </div>
-        </div>
-      )}
+undefined
 
       {/* Alert Management Modal */}
       {alertsModalOpen && (
@@ -720,7 +728,7 @@ export function MarketplacePage() {
                                    alert.type === 'volume' ? 'rgba(74, 222, 128, 0.1)' : 'rgba(139, 92, 246, 0.1)'
                       }}
                     >
-                      {React.createElement(ALERT_ICONS[alert.type] || DollarSign, { className: "w-4 h-4" })}
+                      {alert.icon}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
@@ -768,15 +776,7 @@ export function MarketplacePage() {
         </div>
       )}
 
-      {/* Compare Sidebar */}
-      <div 
-        className={`fixed top-0 h-full shadow-xl z-[1500] flex flex-col transition-all duration-300 ease-out ${compareSidebarOpen ? 'right-0' : 'right-[-480px]'}`}
-        style={{ 
-          width: '480px',
-          background: '#151719', 
-          borderLeft: '1px solid #26292E'
-        }}
-      >
+undefined
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
           <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#F1F5F9' }}>
             <GitCompare className="w-4 h-4" />
@@ -955,6 +955,7 @@ export function MarketplacePage() {
         </div>
       </div>
 
+      </>
       {/* Global styles for mini bar charts */}
       <style>{`
         .mini-bar {
