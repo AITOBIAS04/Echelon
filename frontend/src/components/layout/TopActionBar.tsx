@@ -1,4 +1,5 @@
 import { useLocation } from 'react-router-dom';
+import { useTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 
 interface ActionButton {
   label: string;
@@ -16,17 +17,17 @@ const TOP_ACTIONS: Record<string, PageConfig> = {
   '/marketplace': {
     name: 'Marketplace',
     buttons: [
-      { label: 'Live', icon: '🟢', kind: 'primary', action: 'noop' },
-      { label: 'Alert', icon: '🔔', action: 'openAlert' },
-      { label: 'Compare', icon: '⚖️', action: 'openCompare' },
-      { label: 'New Timeline', icon: '➕', kind: 'primary', action: 'newTimeline' },
+      { label: 'Live', icon: '🟢', kind: 'primary', action: 'onLive' },
+      { label: 'Alert', icon: '🔔', action: 'onAlert' },
+      { label: 'Compare', icon: '⚖️', action: 'onCompare' },
+      { label: 'New Timeline', icon: '➕', kind: 'primary', action: 'onNewTimeline' },
     ],
   },
   '/analytics': {
     name: 'Analytics',
     buttons: [
-      { label: 'Alert', icon: '🔔', action: 'openAlert' },
-      { label: 'Compare', icon: '⚖️', action: 'openCompare' },
+      { label: 'Alert', icon: '🔔', action: 'onAlert' },
+      { label: 'Compare', icon: '⚖️', action: 'onCompare' },
       { label: 'Settings', icon: '⚙️', action: 'openShellSettings' },
     ],
   },
@@ -47,8 +48,8 @@ const TOP_ACTIONS: Record<string, PageConfig> = {
   '/vrf': {
     name: 'VRF',
     buttons: [
-      { label: 'Live', icon: '🟢', kind: 'primary', action: 'noop' },
-      { label: 'Refresh', icon: '⟳', kind: 'primary', action: 'refresh' },
+      { label: 'Live', icon: '🟢', kind: 'primary', action: 'onLive' },
+      { label: 'Refresh', icon: '⟳', kind: 'primary', action: 'onRefresh' },
     ],
   },
   '/agents': {
@@ -84,9 +85,17 @@ function resolveConfig(pathname: string): PageConfig {
   return TOP_ACTIONS['/marketplace'];
 }
 
+/**
+ * Get action handler from registered actions
+ */
+function getActionHandler(action: string, registeredActions: ReturnType<typeof useTopActionBarActions>['actions']): (() => void) | undefined {
+  return registeredActions[action];
+}
+
 export function TopActionBar() {
   const location = useLocation();
   const config = resolveConfig(location.pathname);
+  const { actions } = useTopActionBarActions();
 
   return (
     <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-[rgba(18,20,23,0.65)] backdrop-blur-sm">
@@ -114,7 +123,18 @@ export function TopActionBar() {
           return (
             <button
               key={btn.label}
-              className={`flex items-center gap-2 px-2.5 py-[7px] rounded-[10px] border text-[11px] font-semibold transition-all duration-150 whitespace-nowrap cursor-default
+              onClick={() => {
+                const handler = btn.action ? getActionHandler(btn.action, actions) : undefined;
+                if (handler) {
+                  handler();
+                } else if (btn.action === 'noop') {
+                  // No-op action, do nothing
+                } else {
+                  // Fallback for actions without handlers
+                  console.warn(`TopActionBar: No handler registered for action "${btn.action}" on page "${config.name}"`);
+                }
+              }}
+              className={`flex items-center gap-2 px-2.5 py-[7px] rounded-[10px] border text-[11px] font-semibold transition-all duration-150 whitespace-nowrap
                 ${
                   btn.kind === 'primary'
                     ? 'border-[rgba(59,130,246,0.35)] bg-[rgba(59,130,246,0.1)] text-status-info hover:bg-[rgba(59,130,246,0.18)] hover:-translate-y-px'
