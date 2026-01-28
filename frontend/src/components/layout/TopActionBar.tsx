@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { useTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
+import { useTopActionBarActions, type TopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { 
   Radio, 
   Bell, 
@@ -102,14 +102,14 @@ function resolveConfig(pathname: string): PageConfig {
 /**
  * Get action handler from registered actions
  */
-function getActionHandler(action: string, registeredActions: ReturnType<typeof useTopActionBarActions>['actions']): (() => void) | undefined {
-  return registeredActions[action];
+function getActionHandler(action: string, actionsRef: React.MutableRefObject<TopActionBarActions>): (() => void) | undefined {
+  return actionsRef.current[action];
 }
 
 export function TopActionBar() {
   const location = useLocation();
   const config = resolveConfig(location.pathname);
-  const { actions } = useTopActionBarActions();
+  const { actionsRef } = useTopActionBarActions();
 
   return (
     <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-[rgba(18,20,23,0.65)] backdrop-blur-sm">
@@ -138,7 +138,7 @@ export function TopActionBar() {
             <button
               key={btn.label}
               onClick={() => {
-                const handler = btn.action ? getActionHandler(btn.action, actions) : undefined;
+                const handler = btn.action ? getActionHandler(btn.action, actionsRef) : undefined;
                 if (handler) {
                   handler();
                 } else if (btn.action === 'noop') {
