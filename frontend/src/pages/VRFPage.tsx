@@ -27,7 +27,7 @@ export function VRFPage() {
     avgResponseTime: 2.3,
     entropyQuality: 9.8
   });
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // TODO: wire TopActionBar "Refresh" button to call refreshDashboard
 
   const generateHash = useCallback(() => {
     const chars = '0123456789abcdef';
@@ -89,13 +89,12 @@ export function VRFPage() {
     });
   }, [generateRequest]);
 
-  const refreshDashboard = useCallback(() => {
-    setIsRefreshing(true);
+  const _refreshDashboard = useCallback(() => {
     setCurrentHash(generateHash());
     addAuditEntry();
     updateHistory();
-    setTimeout(() => setIsRefreshing(false), 500);
   }, [generateHash, addAuditEntry, updateHistory]);
+  void _refreshDashboard; // suppress unused warning until TopActionBar wiring
 
   useEffect(() => {
     const initialHash = generateHash();

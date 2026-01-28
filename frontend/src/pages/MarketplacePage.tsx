@@ -188,15 +188,7 @@ export function MarketplacePage() {
 
   // Alert helpers
   const unreadAlertsCount = alerts.filter(a => a.unread).length;
-  
-  const toggleAlertsPanel = () => {
-    setAlertsPanelOpen(!alertsPanelOpen);
-  };
-  
-  const toggleCompareSidebar = () => {
-    setCompareSidebarOpen(!compareSidebarOpen);
-  };
-  
+
   const handleAlertClick = (alertId: string) => {
     setAlerts(prev => prev.map(a => 
       a.id === alertId ? { ...a, unread: false } : a

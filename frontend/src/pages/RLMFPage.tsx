@@ -40,7 +40,8 @@ export function RLMFPage() {
     { option: 'A', size: 400, timestamp: '14:25:42', pnl: 14 }
   ]);
   const [contribution, setContribution] = useState({ episodes: 47, vectors: 184, partners: 2 });
-  const [viewMode, setViewMode] = useState<'market' | 'robotics'>('market');
+  // TODO: wire TopActionBar "Market View" / "Robotics View" buttons to toggle this
+  const [viewMode] = useState<'market' | 'robotics'>('market');
   const [agentThoughts, setAgentThoughts] = useState('Analyzing fork point options...');
 
   const forkOptions: ForkOption[] = [
