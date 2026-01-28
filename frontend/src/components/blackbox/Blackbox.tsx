@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Radio, Activity, Shield, Database, Target, Eye, Layers } from 'lucide-react';
+import { Radio, Activity, Shield, Target, Eye, Layers } from 'lucide-react';
 import { WhaleWatch } from './WhaleWatch';
 import { TimelineHealthPanel } from './TimelineHealthPanel';
 import { WarChest } from './WarChest';
@@ -18,13 +18,6 @@ export function Blackbox() {
   const urlParams = new URLSearchParams(window.location.search);
   const initialTab = (urlParams.get('tab') as TabType) || 'intercepts';
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
-  const [timestamp, setTimestamp] = useState(new Date());
-
-  // Update timestamp every second
-  useEffect(() => {
-    const interval = setInterval(() => setTimestamp(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const tabs = [
     { id: 'intercepts' as TabType, label: 'Intercepts', icon: Radio },
@@ -49,40 +42,19 @@ export function Blackbox() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col p-2 sm:p-4 md:p-6 overflow-hidden bg-slate-800">
-      {/* Header */}
-      <div className="flex-shrink-0 bg-slate-700 border border-slate-600 rounded-lg px-4 py-3 mb-3">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Database className="w-5 h-5 text-blue-400" />
-            <h1 className="text-lg font-semibold text-slate-100">
-              Signal Intelligence
-            </h1>
-          </div>
-          <div className="flex items-center gap-4 text-sm text-slate-300">
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Live
-            </span>
-            <span className="font-mono">
-              {timestamp.toLocaleTimeString('en-GB', { hour12: false })}
-            </span>
-          </div>
-        </div>
-      </div>
-
+    <div className="h-full flex flex-col overflow-hidden bg-[#0B0C0E]">
       {/* Your Positions Panel */}
-      <div className="flex-shrink-0 mb-3">
+      <div className="flex-shrink-0 p-4 pb-0">
         <PositionsPanel />
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col min-h-0 bg-slate-700 border border-slate-600 rounded-lg overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 m-4 mt-3 bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
         {/* Live Ribbon - directly beneath header */}
         <LiveRibbon />
 
         {/* Tabs */}
-        <div className="flex-shrink-0 px-2 sm:px-4 py-3 border-b border-slate-600 overflow-x-auto scrollbar-hide">
+        <div className="flex-shrink-0 px-2 sm:px-4 py-3 border-b border-terminal-border overflow-x-auto scrollbar-hide">
           <div className="flex items-center gap-4 sm:gap-8 min-w-max">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -100,10 +72,10 @@ export function Blackbox() {
                 className={clsx(
                   'flex items-center gap-2 pb-2 uppercase tracking-wider text-sm transition-all whitespace-nowrap flex-shrink-0',
                   activeTab === tab.id
-                    ? 'text-blue-400 border-b-2 border-blue-400'
+                    ? 'text-status-info border-b-2 border-status-info'
                     : isDeEmphasized
-                    ? 'text-slate-400 hover:text-slate-200 opacity-60'
-                    : 'text-slate-300 hover:text-blue-400'
+                    ? 'text-terminal-text-muted hover:text-terminal-text-secondary opacity-60'
+                    : 'text-terminal-text-secondary hover:text-status-info'
                 )}
               >
                 <Icon className="w-4 h-4" />
@@ -115,7 +87,7 @@ export function Blackbox() {
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-slate-500 scrollbar-track-transparent">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 scrollbar-thin">
           {activeTab === 'intercepts' && <WhaleWatch />}
           {activeTab === 'live_tape' && <LiveTape />}
           {activeTab === 'health' && <TimelineHealthPanel />}

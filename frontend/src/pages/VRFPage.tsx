@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, RefreshCw, Activity, CheckCircle, Clock, ExternalLink, Zap } from 'lucide-react';
+import { Activity, CheckCircle, Clock, ExternalLink, Zap } from 'lucide-react';
 
 interface VRFRequest {
   id: string;
@@ -27,7 +27,7 @@ export function VRFPage() {
     avgResponseTime: 2.3,
     entropyQuality: 9.8
   });
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // TODO: wire TopActionBar "Refresh" button to call refreshDashboard
 
   const generateHash = useCallback(() => {
     const chars = '0123456789abcdef';
@@ -89,13 +89,12 @@ export function VRFPage() {
     });
   }, [generateRequest]);
 
-  const refreshDashboard = useCallback(() => {
-    setIsRefreshing(true);
+  const _refreshDashboard = useCallback(() => {
     setCurrentHash(generateHash());
     addAuditEntry();
     updateHistory();
-    setTimeout(() => setIsRefreshing(false), 500);
   }, [generateHash, addAuditEntry, updateHistory]);
+  void _refreshDashboard; // suppress unused warning until TopActionBar wiring
 
   useEffect(() => {
     const initialHash = generateHash();
@@ -140,34 +139,7 @@ export function VRFPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-terminal-text flex items-center gap-2">
-            <Shield className="w-5 h-5 text-status-vrf" />
-            VRF Verification Dashboard
-          </h1>
-          <p className="text-terminal-muted text-sm mt-1">Chainlink VRF V2 integration for verifiable randomness</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-status-success/10 border border-status-success/20 rounded-lg">
-            <span className="w-2 h-2 bg-status-success rounded-full animate-pulse" />
-            <span className="text-status-success text-xs font-semibold uppercase">Live</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-terminal-bg border border-terminal-border rounded-lg">
-            <span className="w-2 h-2 bg-status-success rounded-full shadow-[0_0_6px_rgba(74,222,128,0.4)]" />
-            <span className="text-terminal-text-secondary text-xs font-mono">Base Mainnet</span>
-          </div>
-          <button
-            onClick={refreshDashboard}
-            disabled={isRefreshing}
-            className="flex items-center gap-2 px-3 py-1.5 bg-status-vrf/10 border border-status-vrf/30 rounded-lg text-status-vrf text-xs font-semibold hover:bg-status-vrf/20 transition-colors"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
+    <div className="max-w-7xl mx-auto space-y-6 p-6">
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
