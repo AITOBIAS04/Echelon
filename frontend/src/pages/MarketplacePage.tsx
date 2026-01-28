@@ -7,6 +7,7 @@ import { SignalIntercepts } from '../components/marketplace/SignalIntercepts';
 import { ActiveBreaches } from '../components/marketplace/ActiveBreaches';
 import { useMarketData, useRibbonEvents, useIntercepts, useBreaches } from '../hooks/useMarketplace';
 import type { Alert, CompareSlot } from '../types/marketplace';
+import { useRegisterTopActionBarActions } from '../contexts/TopActionBarActionsContext';
 
 // Market categories with icons (no emojis)
 const CATEGORIES = [
@@ -137,6 +138,18 @@ export function MarketplacePage() {
   const { data: ribbonEvents } = useRibbonEvents();
   const { data: intercepts } = useIntercepts();
   const { data: breaches } = useBreaches();
+
+  // Register TopActionBar actions
+  useRegisterTopActionBarActions({
+    onAlert: () => {
+      setAlertsPanelOpen(prev => !prev);
+      setCompareSidebarOpen(false);
+    },
+    onCompare: () => {
+      setCompareSidebarOpen(prev => !prev);
+      setAlertsPanelOpen(false);
+    },
+  });
 
   // Filter and sort markets
   const filteredMarkets = useCallback(() => {
