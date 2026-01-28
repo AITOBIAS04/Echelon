@@ -7,6 +7,9 @@ import { OrderBookPanel } from '../components/blackbox/OrderBookPanel';
 import { TimeSalesPanel } from '../components/blackbox/TimeSalesPanel';
 import { AgentLeaderboard } from '../components/blackbox/AgentLeaderboard';
 import { SignalInterceptsPanel } from '../components/blackbox/SignalInterceptsPanel';
+import { DepthChartPlaceholder } from '../components/blackbox/DepthChartPlaceholder';
+import { VolumeProfilePlaceholder } from '../components/blackbox/VolumeProfilePlaceholder';
+import { HeatmapPlaceholder } from '../components/blackbox/HeatmapPlaceholder';
 import {
   useBlackboxChart,
   useOrderBook,
@@ -17,14 +20,26 @@ import {
 import { useRegisterTopActionBarActions } from '../contexts/TopActionBarActionsContext';
 import type { Timeframe } from '../types/blackbox';
 
+// Chart mode type for tabs
+type ChartMode = 'price' | 'depth' | 'vol' | 'heatmap';
+
+// Chart mode display labels
+const CHART_MODE_LABELS: Record<ChartMode, string> = {
+  price: 'PRICE ACTION',
+  depth: 'DEPTH CHART',
+  vol: 'VOL PROFILE',
+  heatmap: 'HEATMAP',
+};
+
 export function BlackboxPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>('15m');
-  
+  const [chartMode, setChartMode] = useState<ChartMode>('price');
+
   // Panel state
   const [alertPanelOpen, setAlertPanelOpen] = useState(false);
   const [comparePanelOpen, setComparePanelOpen] = useState(false);
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
-  
+
   // Refs for backdrop click handling
   const alertPanelRef = useRef<HTMLDivElement>(null);
   const comparePanelRef = useRef<HTMLDivElement>(null);
@@ -68,47 +83,80 @@ export function BlackboxPage() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Render chart content based on chartMode
+  const renderChartContent = () => {
+    switch (chartMode) {
+      case 'price':
+        return (
+          <PriceChart
+            candles={candles}
+            currentPrice={currentPrice}
+            indicators={indicators}
+            timeframe={timeframe}
+            onTimeframeChange={setTimeframe}
+          />
+        );
+      case 'depth':
+        return <DepthChartPlaceholder />;
+      case 'vol':
+        return <VolumeProfilePlaceholder />;
+      case 'heatmap':
+        return <HeatmapPlaceholder />;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: '#0B0C0E', color: '#F1F5F9' }}>
-      
-      {/* Market Terminal Grid */}
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <div className="flex-1 min-h-0 flex flex-col p-4 overflow-hidden">
-          
-          {/* Main Grid Layout */}
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            
-            {/* Top Section: Price Chart */}
-            <div className="flex-shrink-0" style={{ height: '40%', minHeight: 200 }}>
-              <PriceChart
-                candles={candles}
-                currentPrice={currentPrice}
-                indicators={indicators}
-                timeframe={timeframe}
-                onTimeframeChange={setTimeframe}
-              />
+    <div className="h-full w-full flex flex-col min-h-0" style={{ backgroundColor: '#0B0C0E', color: '#F1F5F9' }}>
+
+      {/* Tabs Row */}
+      <div className="flex items-center gap-2 px-6 py-3 border-b border-[#26292E]">
+        {(Object.keys(CHART_MODE_LABELS) as ChartMode[]).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setChartMode(mode)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              chartMode === mode
+                ? 'bg-[#1A1D23] text-[#F1F5F9]'
+                : 'text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1A1D23]'
+            }`}
+          >
+            {CHART_MODE_LABELS[mode]}
+          </button>
+        ))}
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 min-h-0 p-6 overflow-hidden">
+        <div className="h-full flex flex-col min-h-0">
+          <div className="grid grid-cols-12 gap-4 min-h-0" style={{ minHeight: 0 }}>
+
+            {/* Price Action - col-span-9 */}
+            <div className="col-span-9 flex flex-col min-h-0">
+              {renderChartContent()}
             </div>
-            
-            {/* Bottom Section: Split Grid */}
-            <div className="flex-1 min-h-0 flex flex-row gap-4 mt-4 overflow-hidden">
-              
-              {/* Left: Time & Sales */}
-              <div className="flex-1 min-w-0 overflow-hidden" style={{ minWidth: 0 }}>
-                <TimeSalesPanel trades={trades} />
-              </div>
-              
-              {/* Center: Agent Performance */}
-              <div className="flex-1 min-w-0 overflow-hidden" style={{ minWidth: 0 }}>
-                <AgentLeaderboard agents={agents} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
-              </div>
-              
-              {/* Right Sidebar: Order Book + Signal Intercepts */}
-              <div className="w-80 flex-shrink-0 flex flex-col gap-4 overflow-hidden">
-                <OrderBookPanel orderBook={orderBook} currentPrice={currentPrice} />
-                <SignalInterceptsPanel intercepts={intercepts} />
-              </div>
-              
+
+            {/* Order Book - col-span-3 */}
+            <div className="col-span-3 flex flex-col min-h-0">
+              <OrderBookPanel orderBook={orderBook} currentPrice={currentPrice} />
             </div>
+
+            {/* Time & Sales - col-span-6 */}
+            <div className="col-span-6 flex flex-col min-h-0">
+              <TimeSalesPanel trades={trades} />
+            </div>
+
+            {/* Agent Performance - col-span-3 */}
+            <div className="col-span-3 flex flex-col min-h-0">
+              <AgentLeaderboard agents={agents} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+            </div>
+
+            {/* Signal Intercepts - col-span-3 */}
+            <div className="col-span-3 flex flex-col min-h-0">
+              <SignalInterceptsPanel intercepts={intercepts} />
+            </div>
+
           </div>
         </div>
       </div>
