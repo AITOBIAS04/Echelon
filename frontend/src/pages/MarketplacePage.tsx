@@ -142,19 +142,21 @@ export function MarketplacePage() {
   const { data: intercepts } = useIntercepts();
   const { data: breaches } = useBreaches();
 
-  // Register TopActionBar button handlers
-  useRegisterTopActionBarActions({
-    onAlert: () => setAlertsPanelOpen(true),
-    onCompare: () => setCompareSidebarOpen(true),
-    onLive: () => {
-      // TODO: Implement live toggle functionality if needed
-      console.log('Live button clicked - TODO: implement live mode');
-    },
-    onNewTimeline: () => {
-      // TODO: Implement new timeline creation
-      console.log('New Timeline button clicked - TODO: implement timeline creation');
-    },
-  });
+  // Register TopActionBar button handlers - use useEffect to avoid render-time side effects
+  useEffect(() => {
+    useRegisterTopActionBarActions({
+      onAlert: () => setAlertsPanelOpen(true),
+      onCompare: () => setCompareSidebarOpen(true),
+      onLive: () => {
+        // TODO: Implement live toggle functionality if needed
+        console.log('Live button clicked - TODO: implement live mode');
+      },
+      onNewTimeline: () => {
+        // TODO: Implement new timeline creation
+        console.log('New Timeline button clicked - TODO: implement timeline creation');
+      },
+    });
+  }, []); // Empty deps - only run once on mount
 
   // Filter and sort markets
   const filteredMarkets = useCallback(() => {
