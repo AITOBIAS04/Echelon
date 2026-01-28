@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Search, Bell, GitCompare, BarChart3, X, ChevronDown } from 'lucide-react';
+import { Search, Bell, GitCompare, BarChart3, X, ChevronDown, Cpu, Truck, Zap, Beaker, Users } from 'lucide-react';
 import { clsx } from 'clsx';
 import { MarketCard } from '../components/marketplace/MarketCard';
 import { LiveRibbon } from '../components/marketplace/LiveRibbon';
@@ -8,14 +8,14 @@ import { ActiveBreaches } from '../components/marketplace/ActiveBreaches';
 import { useMarketData, useRibbonEvents, useIntercepts, useBreaches } from '../hooks/useMarketplace';
 import type { Alert, CompareSlot } from '../types/marketplace';
 
-// Market categories with icons
+// Market categories with icons (no emojis)
 const CATEGORIES = [
   { id: 'all', label: 'All Markets', icon: null },
-  { id: 'robotics', label: 'Robotics', icon: '🦾' },
-  { id: 'logistics', label: 'Logistics', icon: '🚛' },
-  { id: 'defi', label: 'DeFi / Econ', icon: '💸' },
-  { id: 'physics', label: 'Physics', icon: '🧪' },
-  { id: 'soceng', label: 'SocEng', icon: '🎭' },
+  { id: 'robotics', label: 'Robotics', icon: 'Cpu' },
+  { id: 'logistics', label: 'Logistics', icon: 'Truck' },
+  { id: 'defi', label: 'DeFi / Econ', icon: 'Zap' },
+  { id: 'physics', label: 'Physics', icon: 'Beaker' },
+  { id: 'soceng', label: 'SocEng', icon: 'Users' },
 ] as const;
 
 type CategoryId = typeof CATEGORIES[number]['id'];
@@ -189,14 +189,6 @@ export function MarketplacePage() {
   // Alert helpers
   const unreadAlertsCount = alerts.filter(a => a.unread).length;
   
-  const toggleAlertsPanel = () => {
-    setAlertsPanelOpen(!alertsPanelOpen);
-  };
-  
-  const toggleCompareSidebar = () => {
-    setCompareSidebarOpen(!compareSidebarOpen);
-  };
-  
   const handleAlertClick = (alertId: string) => {
     setAlerts(prev => prev.map(a => 
       a.id === alertId ? { ...a, unread: false } : a
@@ -306,166 +298,98 @@ export function MarketplacePage() {
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: '#0B0C0E', color: '#F1F5F9', fontFamily: "'Inter', system-ui, sans-serif" }}>
-      {/* Top Navigation */}
-      <div className="flex-shrink-0" style={{ backgroundColor: '#151719', borderBottom: '1px solid #26292E' }}>
-        <div className="flex items-center justify-between px-6 h-[60px]">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <span style={{ fontSize: '18px', fontWeight: 700, letterSpacing: '0.1em' }}>ECHELON</span>
-            <span style={{ 
-              fontSize: '10px', 
-              background: '#121417', 
+      {/* Controls Bar */}
+      <div className="flex-shrink-0 flex items-center gap-4 px-6 py-3" style={{ background: '#0B0C0E', borderBottom: '1px solid #26292E' }}>
+        {/* Search */}
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748B' }} />
+          <input
+            type="text"
+            placeholder="Search theatres, agents, events..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 rounded-lg text-xs"
+            style={{ 
+              background: '#151719', 
               border: '1px solid #26292E', 
-              padding: '2px 6px', 
-              borderRadius: '4px',
-              color: '#64748B',
-              fontWeight: 500
-            }}>
-              MARKETS
-            </span>
+              color: '#F1F5F9',
+              outline: 'none'
+            }}
+          />
+        </div>
+
+        {/* Sort Select */}
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="px-3 py-2 pr-8 rounded-lg text-xs appearance-none cursor-pointer"
+            style={{ 
+              background: '#151719', 
+              border: '1px solid #26292E', 
+              color: '#F1F5F9'
+            }}
+          >
+            <option value="activity">Most Active</option>
+            <option value="volume">Highest Volume</option>
+            <option value="newest">Newest</option>
+            <option value="instability">Highest Instability</option>
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#94A3B8' }} />
+        </div>
+
+        {/* Stats Bar */}
+        <div className="flex items-center gap-6 ml-auto">
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-wider" style={{ color: '#64748B' }}>Markets</div>
+            <div className="font-mono text-xs" style={{ color: '#94A3B8' }}>{totalMarkets}</div>
           </div>
-
-          {/* Nav Links */}
-          <div className="flex items-center gap-1" style={{ background: '#121417', padding: '4px', borderRadius: '20px', border: '1px solid #26292E' }}>
-            <button className="px-4 py-2 rounded-2xl text-xs font-medium" style={{ color: '#94A3B8', background: 'transparent' }}>Markets</button>
-            <button className="px-4 py-2 rounded-2xl text-xs font-medium" style={{ color: '#94A3B8', background: 'transparent' }}>Portfolio</button>
-            <button className="px-4 py-2 rounded-2xl text-xs font-medium" style={{ color: '#94A3B8', background: 'transparent' }}>Analytics</button>
-            <button className="px-4 py-2 rounded-2xl text-xs font-medium" style={{ color: '#94A3B8', background: 'transparent' }}>Alerts</button>
-            <button className="px-4 py-2 rounded-2xl text-xs font-medium" style={{ color: '#94A3B8', background: 'transparent' }}>Agents</button>
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-wider" style={{ color: '#64748B' }}>24h Vol</div>
+            <div className="font-mono text-xs" style={{ color: '#94A3B8' }}>${(totalVolume24h / 1e6).toFixed(1)}M</div>
           </div>
-
-          {/* Nav Controls */}
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-end leading-none">
-              <span className="text-[9px]" style={{ color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Available</span>
-              <span className="font-mono font-semibold" style={{ color: '#4ADE80' }}>$127,500.00</span>
-            </div>
-
-            {/* Alert Badge Button */}
-            <button
-              ref={alertBadgeRef}
-              onClick={toggleAlertsPanel}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all"
-              style={{ 
-                background: '#151719', 
-                border: '1px solid #26292E',
-                color: unreadAlertsCount > 0 ? '#FACC15' : '#94A3B8',
-                borderColor: unreadAlertsCount > 0 ? '#FACC15' : '#26292E'
-              }}
-            >
-              <Bell className="w-4 h-4" />
-              {unreadAlertsCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{ background: '#FB7185', color: 'white' }}>
-                  {unreadAlertsCount}
-                </span>
-              )}
-            </button>
-
-            {/* Compare Button */}
-            <button
-              onClick={toggleCompareSidebar}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all"
-              style={{ 
-                background: compareSlots.some(s => s) ? 'rgba(59, 130, 246, 0.1)' : '#151719',
-                border: `1px solid ${compareSlots.some(s => s) ? '#3B82F6' : '#26292E'}`,
-                color: '#94A3B8'
-              }}
-            >
-              <GitCompare className="w-4 h-4" />
-              Compare
-            </button>
-
-            <button className="px-4 py-2 rounded-lg text-xs font-medium" style={{ background: '#121417', border: '1px solid #26292E', color: '#94A3B8' }}>
-              Connect
-            </button>
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-wider" style={{ color: '#64748B' }}>Forks</div>
+            <div className="font-mono text-xs" style={{ color: '#4ADE80' }}>{activeForks}</div>
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        {/* Controls Bar */}
-        <div className="flex-shrink-0 flex items-center gap-4 px-6 py-3" style={{ background: '#0B0C0E', borderBottom: '1px solid #26292E' }}>
-          {/* Search */}
-          <div className="relative flex-1 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748B' }} />
-            <input
-              type="text"
-              placeholder="Search theatres, agents, events..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-lg text-xs"
-              style={{ 
-                background: '#151719', 
-                border: '1px solid #26292E', 
-                color: '#F1F5F9',
-                outline: 'none'
-              }}
-            />
-          </div>
+      {/* Category Navigation */}
+      <div className="flex-shrink-0 flex items-center gap-1 px-6 py-3 overflow-x-auto" style={{ background: '#0B0C0E', borderBottom: '1px solid #26292E' }}>
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => setSelectedCategory(cat.id)}
+            className={clsx(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all',
+              selectedCategory === cat.id
+                ? 'bg-[#151719] border border-[#26292E]'
+                : 'text-[#94A3B8] hover:text-[#F1F5F9]'
+            )}
+            style={{ 
+              background: selectedCategory === cat.id ? '#151719' : 'transparent',
+              border: selectedCategory === cat.id ? '1px solid #26292E' : '1px solid transparent',
+              color: selectedCategory === cat.id ? '#F1F5F9' : '#94A3B8'
+            }}
+          >
+            {cat.icon && (
+              <span className="flex items-center justify-center w-4 h-4">
+                {cat.icon === 'Cpu' && <Cpu className="w-3.5 h-3.5" />}
+                {cat.icon === 'Truck' && <Truck className="w-3.5 h-3.5" />}
+                {cat.icon === 'Zap' && <Zap className="w-3.5 h-3.5" />}
+                {cat.icon === 'Beaker' && <Beaker className="w-3.5 h-3.5" />}
+                {cat.icon === 'Users' && <Users className="w-3.5 h-3.5" />}
+              </span>
+            )}
+            {cat.label}
+          </button>
+        ))}
+      </div>
 
-          {/* Sort Select */}
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="px-3 py-2 pr-8 rounded-lg text-xs appearance-none cursor-pointer"
-              style={{ 
-                background: '#151719', 
-                border: '1px solid #26292E', 
-                color: '#F1F5F9'
-              }}
-            >
-              <option value="activity">Most Active</option>
-              <option value="volume">Highest Volume</option>
-              <option value="newest">Newest</option>
-              <option value="instability">Highest Instability</option>
-            </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#94A3B8' }} />
-          </div>
-
-          {/* Stats Bar */}
-          <div className="flex items-center gap-6 ml-auto">
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wider" style={{ color: '#64748B' }}>Markets</div>
-              <div className="font-mono text-xs" style={{ color: '#94A3B8' }}>{totalMarkets}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wider" style={{ color: '#64748B' }}>24h Vol</div>
-              <div className="font-mono text-xs" style={{ color: '#94A3B8' }}>${(totalVolume24h / 1e6).toFixed(1)}M</div>
-            </div>
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wider" style={{ color: '#64748B' }}>Forks</div>
-              <div className="font-mono text-xs" style={{ color: '#4ADE80' }}>{activeForks}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Category Navigation */}
-        <div className="flex-shrink-0 flex items-center gap-1 px-6 py-3 overflow-x-auto" style={{ background: '#0B0C0E', borderBottom: '1px solid #26292E' }}>
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={clsx(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all',
-                selectedCategory === cat.id
-                  ? 'bg-[#151719] border border-[#26292E]'
-                  : 'text-[#94A3B8] hover:text-[#F1F5F9]'
-              )}
-              style={{ 
-                background: selectedCategory === cat.id ? '#151719' : 'transparent',
-                border: selectedCategory === cat.id ? '1px solid #26292E' : '1px solid transparent',
-                color: selectedCategory === cat.id ? '#F1F5F9' : '#94A3B8'
-              }}
-            >
-              {cat.icon && <span>{cat.icon}</span>}
-              {cat.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Primary Content */}
+      {/* Primary Content Area */}
+      <div className="flex-1 min-w-0 flex overflow-hidden">
+        {/* Market Content */}
         <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
           {/* Live Ribbon */}
           <div className="flex-shrink-0">
@@ -523,8 +447,8 @@ export function MarketplacePage() {
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="w-[360px] flex-shrink-0 flex flex-col" style={{ background: '#151719', borderLeft: '1px solid #26292E' }}>
+        {/* Right Rail - Signal Intercepts and Active Breaches */}
+        <div className="w-[360px] flex-shrink-0 flex flex-col hidden lg:flex" style={{ background: '#151719', borderLeft: '1px solid #26292E' }}>
           {/* Signal Intercepts */}
           <SignalIntercepts intercepts={intercepts || []} />
 
@@ -564,6 +488,13 @@ export function MarketplacePage() {
                 </span>
               )}
             </div>
+            <button
+              onClick={() => setAlertsPanelOpen(false)}
+              className="p-1 rounded transition-colors"
+              style={{ color: '#64748B' }}
+            >
+              <X className="w-4 h-4" />
+            </button>
             <div className="flex gap-2">
               <button 
                 onClick={openAlertsModal}
@@ -786,7 +717,7 @@ export function MarketplacePage() {
               </div>
 
               {/* Alerts List */}
-<div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2">
                 {filteredAlerts.map(alert => (
                   <div 
                     key={alert.id}
