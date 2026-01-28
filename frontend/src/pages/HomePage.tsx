@@ -1,72 +1,21 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
 import { OpsBoard } from '../components/home/OpsBoard';
 import { QuickActionsToolbar } from '../components/home/QuickActionsToolbar';
 import { LiveRibbon } from '../components/home/LiveRibbon';
-import { getHomePreference, setHomePreference, type HomePreference } from '../lib/userPrefs';
 
 /**
  * HomePage Component
- * 
+ *
  * High-density 3-column BullX-style grid layout:
  * - LEFT: New Creations (Sandbox and Pilot)
  * - CENTER: Active Alpha (Fork Soon < 10m, Disclosure Active)
  * - RIGHT: Risk & Results (At Risk on top, Recently Graduated on bottom)
  */
 export function HomePage() {
-  const navigate = useNavigate();
-  const [homePref, setHomePref] = useState<HomePreference>(getHomePreference());
-
-  const handleCreateTimeline = () => {
-    setHomePreference('launchpad');
-    setHomePref('launchpad');
-    navigate('/launchpad/new');
-  };
-
-  const handleToggleHomePref = () => {
-    const newPref: HomePreference = homePref === 'launchpad' ? 'markets' : 'launchpad';
-    setHomePreference(newPref);
-    setHomePref(newPref);
-  };
-
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden">
-      {/* Header area always visible */}
-      <div className="flex-shrink-0 px-4 pt-2 pb-2 flex flex-col gap-2">
-        {/* Slim Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg md:text-xl font-semibold text-terminal-text uppercase tracking-wide">
-            Markets
-          </h1>
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Home Preference Toggle - Hide on very small screens */}
-            <button
-              onClick={handleToggleHomePref}
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-status-info/30 transition"
-              title="Toggle default start page"
-            >
-              <span className="text-terminal-text-secondary">Default:</span>
-              <span className="text-terminal-text font-medium">
-                {homePref === 'launchpad' ? 'Launches' : 'Markets'}
-              </span>
-            </button>
-            <button
-              onClick={handleCreateTimeline}
-              className="flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm bg-status-info/10 border border-status-info/20 rounded hover:bg-status-info/20 transition whitespace-nowrap"
-            >
-              <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="hidden sm:inline">Create Timeline</span>
-              <span className="sm:hidden">Create</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Quick Actions Toolbar - Slim horizontal toolbar */}
-        {/* Live tape ribbon: keeps the Ops Board feeling alive */}
+      {/* Quick actions + live tape */}
+      <div className="flex-shrink-0 px-4 pt-3 pb-2 flex flex-col gap-2">
         <LiveRibbon />
-
-        {/* Quick actions */}
         <QuickActionsToolbar />
       </div>
 

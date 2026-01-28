@@ -9,47 +9,44 @@ const mockPerformance = [
 ];
 
 export function AgentPerformance() {
+  const sorted = [...mockPerformance].sort((a, b) => b.pnl - a.pnl);
+
   return (
     <div className="h-full overflow-y-auto">
-      <div className="space-y-3">
-        {mockPerformance
-          .sort((a, b) => b.pnl - a.pnl)
-          .map((agent, index) => (
-            <div key={agent.name} className="terminal-panel p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl font-bold text-terminal-muted">#{index + 1}</span>
-                  <div>
-                    <h3 className="font-bold text-terminal-text">{agent.name}</h3>
-                    <span className="text-xs text-terminal-muted">{agent.archetype}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-6">
-                  <div className="text-center">
-                    <div className="text-xs text-terminal-muted">Trades</div>
-                    <div className="font-mono">{agent.trades}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs text-terminal-muted">Win Rate</div>
-                    <div className="font-mono">{(agent.winRate * 100).toFixed(0)}%</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs text-terminal-muted">P&L</div>
-                    <div
-                      className={clsx(
-                        'font-mono font-bold',
-                        agent.pnl >= 0 ? 'text-echelon-green' : 'text-echelon-red'
-                      )}
-                    >
-                      {agent.pnl >= 0 ? '+' : ''}${agent.pnl.toLocaleString()}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-terminal-border bg-terminal-bg">
+            <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px] w-12">#</th>
+            <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Agent</th>
+            <th className="text-right px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px] w-24">P&amp;L</th>
+            <th className="text-right px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px] w-20">VOL</th>
+            <th className="text-right px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px] w-20">Win %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((agent, index) => (
+            <tr key={agent.name} className="border-b border-terminal-border/50 hover:bg-terminal-bg/50 transition-colors">
+              <td className="px-4 py-2.5 font-mono text-terminal-text-muted">{index + 1}</td>
+              <td className="px-4 py-2.5">
+                <span className="font-bold text-terminal-text">{agent.name}</span>
+                <span className="ml-2 text-terminal-text-muted">{agent.archetype}</span>
+              </td>
+              <td className={clsx(
+                'px-4 py-2.5 font-mono font-bold text-right',
+                agent.pnl >= 0 ? 'text-status-success' : 'text-status-danger'
+              )}>
+                {agent.pnl >= 0 ? '+' : ''}${agent.pnl.toLocaleString()}
+              </td>
+              <td className="px-4 py-2.5 font-mono text-terminal-text-secondary text-right">
+                {agent.trades}
+              </td>
+              <td className="px-4 py-2.5 font-mono text-terminal-text-secondary text-right">
+                {(agent.winRate * 100).toFixed(0)}%
+              </td>
+            </tr>
           ))}
-      </div>
+        </tbody>
+      </table>
     </div>
   );
 }
-

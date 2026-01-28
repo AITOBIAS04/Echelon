@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  Activity, 
-  TrendingUp, 
-  AlertTriangle, 
-  Zap, 
-  Download, 
-  Play, 
-  ChevronRight,
-  Brain
+import {
+  Activity,
+  TrendingUp,
+  AlertTriangle,
+  Zap,
+  Download,
+  Play,
+  ChevronRight
 } from 'lucide-react';
 
 interface Position {
@@ -142,47 +141,7 @@ export function RLMFPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-terminal-text flex items-center gap-2">
-            <Brain className="w-5 h-5 text-status-paradox" />
-            RLMF Interface
-          </h1>
-          <p className="text-terminal-muted text-sm mt-1">Robotics Training V3 - Reward Learning Market Framework</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex bg-terminal-bg border border-terminal-border rounded-lg p-1">
-            <button
-              onClick={() => setViewMode('market')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                viewMode === 'market' 
-                  ? 'bg-terminal-panel text-terminal-text border border-terminal-border' 
-                  : 'text-terminal-muted hover:text-terminal-text'
-              }`}
-            >
-              Market View
-            </button>
-            <button
-              onClick={() => setViewMode('robotics')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                viewMode === 'robotics' 
-                  ? 'bg-terminal-panel text-terminal-text border border-terminal-border' 
-                  : 'text-terminal-muted hover:text-terminal-text'
-              }`}
-            >
-              Robotics View
-            </button>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-terminal-bg border border-terminal-border rounded-lg">
-            <span className="w-2 h-2 bg-status-success rounded-full shadow-[0_0_8px_rgba(74,222,128,0.4)]" />
-            <span className="text-terminal-text-secondary text-xs font-mono">Mode 0: Deterministic</span>
-            <span className="text-terminal-muted mx-1">|</span>
-            <span className="text-status-success text-xs font-mono">Conf: 0.98</span>
-          </div>
-        </div>
-      </div>
+    <div className="max-w-7xl mx-auto space-y-4 p-6">
 
       {/* Theatre Meta */}
       <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
