@@ -85,7 +85,7 @@ export interface Breach {
 export interface Alert {
   id: string;
   type: 'price' | 'stability' | 'gap' | 'volume' | 'paradox';
-  icon: string;
+  icon?: string;
   title: string;
   description: string;
   theatre: string;
