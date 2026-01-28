@@ -19,12 +19,12 @@ import type { Timeframe } from '../types/blackbox';
 
 export function BlackboxPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>('15m');
-  
+
   // Panel state
   const [alertPanelOpen, setAlertPanelOpen] = useState(false);
   const [comparePanelOpen, setComparePanelOpen] = useState(false);
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
-  
+
   // Refs for backdrop click handling
   const alertPanelRef = useRef<HTMLDivElement>(null);
   const comparePanelRef = useRef<HTMLDivElement>(null);
@@ -69,17 +69,31 @@ export function BlackboxPage() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: '#0B0C0E', color: '#F1F5F9' }}>
-      
-      {/* Market Terminal Grid */}
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        <div className="flex-1 min-h-0 flex flex-col p-4 overflow-hidden">
-          
-          {/* Main Grid Layout */}
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            
-            {/* Top Section: Price Chart */}
-            <div className="flex-shrink-0" style={{ height: '40%', minHeight: 200 }}>
+    <div className="h-full w-full flex flex-col min-h-0" style={{ backgroundColor: '#0B0C0E', color: '#F1F5F9' }}>
+
+      {/* Tabs Row */}
+      <div className="flex items-center gap-2 px-6 py-3 border-b border-[#26292E]">
+        <button className="px-4 py-2 rounded-full text-sm font-medium bg-[#1A1D23] text-[#F1F5F9]">
+          PRICE ACTION
+        </button>
+        <button className="px-4 py-2 rounded-full text-sm font-medium text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1A1D23] transition-colors">
+          DEPTH CHART
+        </button>
+        <button className="px-4 py-2 rounded-full text-sm font-medium text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1A1D23] transition-colors">
+          VOL PROFILE
+        </button>
+        <button className="px-4 py-2 rounded-full text-sm font-medium text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1A1D23] transition-colors">
+          HEATMAP
+        </button>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 min-h-0 p-6 overflow-hidden">
+        <div className="h-full flex flex-col min-h-0">
+          <div className="grid grid-cols-12 gap-4 min-h-0" style={{ minHeight: 0 }}>
+
+            {/* Price Action - col-span-9 */}
+            <div className="col-span-9 flex flex-col min-h-0">
               <PriceChart
                 candles={candles}
                 currentPrice={currentPrice}
@@ -88,27 +102,27 @@ export function BlackboxPage() {
                 onTimeframeChange={setTimeframe}
               />
             </div>
-            
-            {/* Bottom Section: Split Grid */}
-            <div className="flex-1 min-h-0 flex flex-row gap-4 mt-4 overflow-hidden">
-              
-              {/* Left: Time & Sales */}
-              <div className="flex-1 min-w-0 overflow-hidden" style={{ minWidth: 0 }}>
-                <TimeSalesPanel trades={trades} />
-              </div>
-              
-              {/* Center: Agent Performance */}
-              <div className="flex-1 min-w-0 overflow-hidden" style={{ minWidth: 0 }}>
-                <AgentLeaderboard agents={agents} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
-              </div>
-              
-              {/* Right Sidebar: Order Book + Signal Intercepts */}
-              <div className="w-80 flex-shrink-0 flex flex-col gap-4 overflow-hidden">
-                <OrderBookPanel orderBook={orderBook} currentPrice={currentPrice} />
-                <SignalInterceptsPanel intercepts={intercepts} />
-              </div>
-              
+
+            {/* Order Book - col-span-3 */}
+            <div className="col-span-3 flex flex-col min-h-0">
+              <OrderBookPanel orderBook={orderBook} currentPrice={currentPrice} />
             </div>
+
+            {/* Time & Sales - col-span-6 */}
+            <div className="col-span-6 flex flex-col min-h-0">
+              <TimeSalesPanel trades={trades} />
+            </div>
+
+            {/* Agent Performance - col-span-3 */}
+            <div className="col-span-3 flex flex-col min-h-0">
+              <AgentLeaderboard agents={agents} searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+            </div>
+
+            {/* Signal Intercepts - col-span-3 */}
+            <div className="col-span-3 flex flex-col min-h-0">
+              <SignalInterceptsPanel intercepts={intercepts} />
+            </div>
+
           </div>
         </div>
       </div>
@@ -131,7 +145,7 @@ export function BlackboxPage() {
           style={{
             background: '#151719',
             border: '1px solid #26292E',
-          }}
+}}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
             <span className="text-sm font-semibold" style={{ color: '#F1F5F9' }}>Analytics Alerts</span>

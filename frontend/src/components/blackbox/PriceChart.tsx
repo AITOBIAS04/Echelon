@@ -140,15 +140,20 @@ export function PriceChart({
   const isPositive = currentPrice >= 3.74;
 
   return (
-    <div className="panel chart-container" style={{ flex: '0 0 45%', minHeight: 250 }}>
-      <div className="panel-header">
-        <span className="panel-title">PRICE ACTION</span>
-        <div className="panel-controls">
+    <div className="rounded-2xl border border-[#26292E] bg-[#0F1113] flex flex-col min-h-0">
+      {/* Card Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#26292E]">
+        <span className="text-sm font-semibold text-[#F1F5F9]">PRICE ACTION</span>
+        <div className="flex items-center gap-1">
           {(Object.keys(TIMEFRAME_LABELS) as Timeframe[]).map((tf) => (
             <button
               key={tf}
-              className={`timeframe-btn ${timeframe === tf ? 'active' : ''}`}
               onClick={() => onTimeframeChange(tf)}
+              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                timeframe === tf
+                  ? 'bg-[#1A1D23] text-[#F1F5F9]'
+                  : 'text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1A1D23]'
+              }`}
             >
               {TIMEFRAME_LABELS[tf]}
             </button>
@@ -156,14 +161,15 @@ export function PriceChart({
         </div>
       </div>
 
+      {/* Chart Body */}
       <div
         ref={containerRef}
-        className="chart-main"
-        style={{ position: 'relative', height: containerSize.height - 60, minHeight: 200 }}
+        className="flex-1 min-h-0 relative"
+        style={{ minHeight: 200 }}
       >
         {/* Grid lines */}
         <svg
-          style={{ position: 'absolute', width: '100%', height: containerSize.height - 60 }}
+          className="absolute inset-0 w-full h-full"
           preserveAspectRatio="none"
         >
           {gridLines.map((line, i) => (
@@ -173,7 +179,7 @@ export function PriceChart({
               y1={line.y}
               x2="100%"
               y2={line.y}
-stroke="rgba(54, 58, 64, 0.5)"
+              stroke="rgba(54, 58, 64, 0.5)"
               strokeDasharray="2 4"
             />
           ))}
@@ -194,7 +200,7 @@ stroke="rgba(54, 58, 64, 0.5)"
 
         {/* Candles */}
         <svg
-          style={{ position: 'absolute', width: '100%', height: containerSize.height - 60 }}
+          className="absolute inset-0 w-full h-full"
           preserveAspectRatio="none"
         >
           {candlesSvg}
@@ -202,26 +208,16 @@ stroke="rgba(54, 58, 64, 0.5)"
 
         {/* Current price line */}
         <div
-          className="current-price-line"
+          className="absolute left-0 right-0 border-t border-dashed flex items-center"
           style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
             top: priceLineY,
-            borderTop: `1px dashed ${isPositive ? '#4ADE80' : '#FB7185'}`,
-            display: 'flex',
-            alignItems: 'center',
+            borderColor: isPositive ? '#4ADE80' : '#FB7185',
           }}
         >
           <span
-            className="current-price-label"
+            className="ml-auto px-2 py-0.5 text-xs text-white rounded"
             style={{
-              marginLeft: 'auto',
               background: isPositive ? '#4ADE80' : '#FB7185',
-              color: 'white',
-              padding: '2px 6px',
-              borderRadius: 2,
-              fontSize: 10,
             }}
           >
             ${currentPrice.toFixed(2)}
@@ -231,14 +227,9 @@ stroke="rgba(54, 58, 64, 0.5)"
 
       {/* Volume bars */}
       <div
-        className="volume-bars"
+        className="h-10 flex items-end gap-0.5 pt-1"
         style={{
-          height: 40,
           borderTop: '1px solid rgba(54, 58, 64, 0.5)',
-          display: 'flex',
-          alignItems: 'flex-end',
-          paddingTop: 4,
-          gap: 1,
         }}
       >
         <svg width="100%" height="40" preserveAspectRatio="none">
@@ -246,40 +237,34 @@ stroke="rgba(54, 58, 64, 0.5)"
         </svg>
       </div>
 
-      {/* Indicators */}
+      {/* Indicators Footer */}
       <div
-        className="chart-indicators"
+        className="flex items-center justify-between px-4 py-2 text-xs"
         style={{
-          borderTop: '1px solid var(--border-outer)',
-          padding: '4px 16px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontSize: 10,
+          borderTop: '1px solid #26292E',
           background: 'rgba(18, 20, 23, 0.5)',
         }}
       >
-        <div className="indicator-item">
-          <span className="indicator-label">RSI</span>{' '}
-          <span className="indicator-val">{indicators.rsi.toFixed(1)}</span>
-        </div>
-        <div className="indicator-item">
-          <span className="indicator-label">MACD</span>{' '}
-          <span className={`indicator-val ${indicators.macd >= 0 ? 'positive' : 'negative'}`}>
-            {indicators.macd >= 0 ? '+' : ''}
-            {indicators.macd.toFixed(2)}
+        <div className="flex items-center gap-4">
+          <span className="text-[#64748B]">
+            RSI <span className="text-[#F1F5F9]">{indicators.rsi.toFixed(1)}</span>
+          </span>
+          <span className="text-[#64748B]">
+            MACD <span className={indicators.macd >= 0 ? 'text-[#4ADE80]' : 'text-[#FB7185]'}>
+              {indicators.macd >= 0 ? '+' : ''}{indicators.macd.toFixed(2)}
+            </span>
+          </span>
+          <span className="text-[#64748B]">
+            VOL <span className="text-[#F1F5F9]">{(indicators.volume / 1000).toFixed(0)}K</span>
           </span>
         </div>
-        <div className="indicator-item">
-          <span className="indicator-label">VOL</span>{' '}
-          <span className="indicator-val">{(indicators.volume / 1000).toFixed(0)}K</span>
-        </div>
-        <div className="indicator-item">
-          <span className="indicator-label">H</span>{' '}
-          <span className="indicator-val">${indicators.high.toFixed(2)}</span>
-          <span className="indicator-label" style={{ marginLeft: 4 }}>
-            L
-          </span>{' '}
-          <span className="indicator-val">${indicators.low.toFixed(2)}</span>
+        <div className="flex items-center gap-4">
+          <span className="text-[#64748B]">
+            H <span className="text-[#F1F5F9]">${indicators.high.toFixed(2)}</span>
+          </span>
+          <span className="text-[#64748B]">
+            L <span className="text-[#F1F5F9]">${indicators.low.toFixed(2)}</span>
+          </span>
         </div>
       </div>
     </div>
