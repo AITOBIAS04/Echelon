@@ -254,7 +254,36 @@ export function MarketplacePage() {
     setCompareSlots([null, null, null, null]);
   };
   
-undefined
+  // Close panels when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        alertsPanelOpen &&
+        alertPanelRef.current &&
+        !alertPanelRef.current.contains(event.target as Node) &&
+        alertBadgeRef.current &&
+        !alertBadgeRef.current.contains(event.target as Node)
+      ) {
+        setAlertsPanelOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [alertsPanelOpen]);
+
+  // Close panels on Escape key
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (alertsPanelOpen) setAlertsPanelOpen(false);
+        if (compareSidebarOpen) setCompareSidebarOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [alertsPanelOpen, compareSidebarOpen]);
 
   // Filtered alerts for modal
   const filteredAlerts = alerts.filter(alert => {
@@ -504,8 +533,54 @@ undefined
         </div>
       </div>
 
-undefined
-undefined
+      {/* Alert Notification Panel Backdrop */}
+      {alertsPanelOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          style={{ background: 'rgba(0,0,0,0.3)' }}
+          onClick={() => setAlertsPanelOpen(false)}
+        />
+      )}
+
+      {/* Alert Notification Panel */}
+      {alertsPanelOpen && (
+        <div
+          ref={alertPanelRef}
+          className="fixed top-[60px] right-6 w-[380px] max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: '#151719',
+            border: '1px solid #26292E',
+            display: 'flex'
+          }}
+        >
+          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
+            <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#F1F5F9' }}>
+              <Bell className="w-4 h-4" />
+              Notifications
+              {unreadAlertsCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{ background: '#FB7185', color: 'white' }}>
+                  {unreadAlertsCount}
+                </span>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={openAlertsModal}
+                className="px-2 py-1 rounded text-[11px] transition-colors"
+                style={{ color: '#3B82F6' }}
+              >
+                Manage All
+              </button>
+              <button 
+                onClick={markAllAlertsRead}
+                className="px-2 py-1 rounded text-[11px] transition-colors"
+                style={{ color: '#3B82F6' }}
+              >
+                Mark Read
+              </button>
+            </div>
+          </div>
           <div className="flex-1 overflow-y-auto p-2">
             {alerts.map(alert => {
               let severityClass = '';
@@ -601,7 +676,10 @@ undefined
                   </div>
                 </div>
               );
-undefined
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Alert Management Modal */}
       {alertsModalOpen && (
@@ -776,7 +854,22 @@ undefined
         </div>
       )}
 
-undefined
+      {/* Compare Sidebar Backdrop */}
+      <div
+        className={`fixed inset-0 z-40 transition-opacity duration-300 ${compareSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        style={{ background: 'rgba(0,0,0,0.3)' }}
+        onClick={() => setCompareSidebarOpen(false)}
+      />
+
+      {/* Compare Sidebar */}
+      <div
+        className={`fixed top-0 h-full shadow-xl z-[1500] flex flex-col transition-all duration-300 ease-out ${compareSidebarOpen ? 'right-0' : 'right-[-480px]'}`}
+        style={{
+          width: '480px',
+          background: '#151719',
+          borderLeft: '1px solid #26292E'
+        }}
+      >
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
           <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#F1F5F9' }}>
             <GitCompare className="w-4 h-4" />
@@ -955,7 +1048,6 @@ undefined
         </div>
       </div>
 
-      </>
       {/* Global styles for mini bar charts */}
       <style>{`
         .mini-bar {
