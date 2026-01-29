@@ -82,101 +82,101 @@ export function PortfolioPage() {
   };
 
   return (
-    <div className="app-layout" style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-app)', position: 'relative' }}>
+    <div className="min-h-screen flex flex-col bg-[#0F1113] text-white">
       {/* Main Content */}
-      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="header" style={{ height: 64, background: 'var(--bg-panel)', borderBottom: '1px solid var(--border-outer)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', flexShrink: 0 }}>
-          <div className="page-title" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '0.02em' }}>
+        <header className="h-16 border-b border-[#26292E] flex items-center justify-between px-6 flex-shrink-0">
+          <div className="text-base font-semibold tracking-wide">
             Portfolio
           </div>
-          <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <button className="header-btn" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-card)', border: '1px solid var(--border-outer)', borderRadius: 6, color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}>
+          <div className="flex items-center gap-4">
+            <button className="flex items-center gap-2 px-3 py-2 bg-[#0F1113] border border-[#26292E] rounded-lg text-xs font-medium text-gray-400 hover:border-cyan-500/50 hover:text-cyan-400 transition-all cursor-pointer">
               <Plus size={14} />
               New Position
             </button>
-            <div className="connection-status" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: 'var(--status-success)', background: 'rgba(74, 222, 128, 0.1)', padding: '4px 10px', borderRadius: 20, border: '1px solid rgba(74, 222, 128, 0.2)' }}>
-              <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--status-success)', animation: 'pulse 2s infinite' }}></span>
+            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-full border border-emerald-400/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               Connected
             </div>
-            <span className="clock mono" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{clock}</span>
+            <span className="mono text-xs text-gray-400">{clock}</span>
           </div>
         </header>
 
         {/* Content */}
-        <div className="content-area" style={{ flex: 1, padding: 16, display: 'flex', gap: 16, overflow: 'hidden' }}>
+        <div className="flex-1 p-4 flex gap-4 overflow-hidden">
           {/* Main Panel */}
-          <div className="main-panel" style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border-outer)', borderRadius: 8, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div className="flex-1 bg-[#0F1113] border border-[#26292E] rounded-2xl flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="main-panel-header" style={{ padding: 16, borderBottom: '1px solid var(--border-outer)' }}>
-              <div className="main-panel-title" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
+            <div className="px-4 py-4 border-b border-[#26292E]">
+              <div className="text-sm font-semibold text-white mb-1">
                 Portfolio Overview
               </div>
-              <div className="main-panel-subtitle" style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              <div className="text-xs text-gray-500">
                 Portfolio risk metrics, positions, and performance data
               </div>
             </div>
 
             {/* Top Metrics */}
-            <div className="metrics-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, padding: 16 }}>
-              <div className="metric-card" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 6, padding: 12 }}>
-                <div className="metric-label" style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+            <div className="grid grid-cols-3 gap-3 p-4">
+              <div className="bg-[#0F1113] border border-[#26292E] rounded-xl p-3">
+                <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">
                   Total P/L
                 </div>
-                <div className="metric-value positive mono" style={{ fontSize: 24, fontWeight: 700, color: 'var(--status-success)' }}>
+                <div className="text-2xl font-bold text-emerald-400 mono">
                   +${totals.totalPL.toLocaleString()}
                 </div>
               </div>
-              <div className="metric-card" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 6, padding: 12 }}>
-                <div className="metric-label" style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+              <div className="bg-[#0F1113] border border-[#26292E] rounded-xl p-3">
+                <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">
                   Win Rate
                 </div>
-                <div className="metric-value neutral mono" style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>
+                <div className="text-2xl font-bold text-white mono">
                   {totals.winRate.toFixed(0)}%
                 </div>
               </div>
-              <div className="metric-card" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 6, padding: 12 }}>
-                <div className="metric-label" style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+              <div className="bg-[#0F1113] border border-[#26292E] rounded-xl p-3">
+                <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">
                   Positions
                 </div>
-                <div className="metric-value neutral mono" style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)' }}>
+                <div className="text-2xl font-bold text-white mono">
                   {positions.length}
                 </div>
               </div>
             </div>
 
             {/* Scrollable Content */}
-            <div className="main-scroll" style={{ flex: 1, overflow: 'auto', padding: '0 16px 16px' }}>
+            <div className="flex-1 overflow-auto px-4 pb-4">
               {/* KPI Tiles */}
-              <div className="kpi-section" style={{ marginTop: 16 }}>
-                <div className="kpi-title" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              <div className="mt-4">
+                <div className="text-[11px] font-semibold text-white uppercase tracking-wider mb-3">
                   Risk Metrics
                 </div>
-                <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                <div className="grid grid-cols-4 gap-3">
                   {riskMetrics.map((metric, i) => (
-                    <div key={i} className="kpi-tile" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 8, padding: 12 }}>
-                      <div className="kpi-label-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <span className="kpi-label" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{metric.label}</span>
-                        <span className="kpi-icon" style={{ fontSize: 14, color: metric.level === 'low' ? 'var(--status-success)' : metric.level === 'medium' ? 'var(--status-warning)' : 'var(--status-danger)' }}>
+                    <div key={i} className="bg-[#0F1113] border border-[#26292E] rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] text-gray-400">{metric.label}</span>
+                        <span className="text-sm" style={{ color: metric.level === 'low' ? 'var(--status-success)' : metric.level === 'medium' ? '#F59E0B' : 'var(--status-danger)' }}>
                           {metric.icon === 'ri-dashboard-3-line' && <BarChart3 size={14} />}
                           {metric.icon === 'ri-bar-chart-box-line' && <Activity size={14} />}
                           {metric.icon === 'ri-trending-up-line' && <TrendingUp size={14} />}
                           {metric.icon === 'ri-error-warning-line' && <AlertTriangle size={14}/>}
                         </span>
                       </div>
-                      <div className="kpi-value mono" style={{ fontSize: 28, fontWeight: 700, color: metric.level === 'low' ? 'var(--status-success)' : metric.level === 'medium' ? '#F59E0B' : 'var(--status-danger)', lineHeight: 1.2 }}>
+                      <div className="text-[28px] font-bold leading-tight" style={{ color: metric.level === 'low' ? 'var(--status-success)' : metric.level === 'medium' ? '#F59E0B' : 'var(--status-danger)' }}>
                         {metric.value}
                       </div>
-                      <div className="kpi-max mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>/ {metric.max}</div>
-                      <div className="risk-indicator" style={{ marginTop: 8 }}>
-                        <div className="risk-bar-container" style={{ height: 4, background: 'var(--bg-card)', borderRadius: 2, overflow: 'hidden', marginBottom: 4 }}>
-                          <div className={`risk-bar ${metric.level}`} style={{ height: '100%', width: `${metric.value}%`, borderRadius: 2, transition: 'width 0.3s', background: metric.level === 'low' ? 'var(--status-success)' : metric.level === 'medium' ? 'var(--status-warning)' : 'var(--status-danger)' }}></div>
+                      <div className="text-[11px] text-gray-500 mono">/ {metric.max}</div>
+                      <div className="mt-2">
+                        <div className="h-1 bg-[#0F1113] rounded overflow-hidden mb-1">
+                          <div className="h-full rounded transition-all" style={{ width: `${metric.value}%`, background: metric.level === 'low' ? 'var(--status-success)' : metric.level === 'medium' ? 'var(--status-warning)' : 'var(--status-danger)' }}></div>
                         </div>
-                        <div className="risk-status-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span className={`risk-status ${metric.level}`} style={{ fontSize: 9, fontWeight: 600, padding: '2px 6px', borderRadius: 3, textTransform: 'uppercase', background: metric.level === 'low' ? 'var(--status-success-bg)' : metric.level === 'medium' ? 'var(--status-warning-bg)' : 'var(--status-danger-bg)', color: metric.level === 'low' ? 'var(--status-success)' : metric.level === 'medium' ? 'var(--status-warning)' : 'var(--status-danger)' }}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded" style={{ background: metric.level === 'low' ? 'var(--status-success-bg)' : metric.level === 'medium' ? 'var(--status-warning-bg)' : 'var(--status-danger-bg)', color: metric.level === 'low' ? 'var(--status-success)' : metric.level === 'medium' ? 'var(--status-warning)' : 'var(--status-danger)' }}>
                             {metric.level.toUpperCase()}
                           </span>
-                          <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{metric.value}%</span>
+                          <span className="text-[9px] text-gray-500">{metric.value}%</span>
                         </div>
                       </div>
                     </div>
@@ -185,71 +185,71 @@ export function PortfolioPage() {
               </div>
 
               {/* Exposure Summary */}
-              <div className="exposure-section" style={{ marginTop: 16, padding: 12, background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 8 }}>
-                <div className="exposure-title" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              <div className="mt-4 p-3 bg-[#0F1113] border border-[#26292E] rounded-xl">
+                <div className="text-[11px] font-semibold text-white uppercase tracking-wider mb-3">
                   Exposure Summary
                 </div>
-                <div className="exposure-row" style={{ marginBottom: 12 }}>
-                  <div className="exposure-label-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span className="exposure-label" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Total Notional</span>
-                    <span className="exposure-value mono" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>${totals.totalNotional.toLocaleString()}.00</span>
+                <div className="mb-3">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[11px] text-gray-400">Total Notional</span>
+                    <span className="text-xs font-semibold text-white mono">${totals.totalNotional.toLocaleString()}.00</span>
                   </div>
                 </div>
-                <div className="exposure-row" style={{ marginBottom: 12 }}>
-                  <div className="exposure-label-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span className="exposure-label" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Net YES Notional</span>
-                    <span className="exposure-value text-green mono" style={{ fontSize: 12, fontWeight: 600, color: 'var(--status-success)' }}>${totals.yesNotional.toLocaleString()}.00</span>
+                <div className="mb-3">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[11px] text-gray-400">Net YES Notional</span>
+                    <span className="text-xs font-semibold text-emerald-400 mono">${totals.yesNotional.toLocaleString()}.00</span>
                   </div>
-                  <div className="progress-bar" style={{ height: 6, background: 'var(--bg-card)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div className="progress-fill green" style={{ height: '100%', width: `${allocationTotals.yesTotal}%`, background: 'var(--status-success)' }}></div>
+                  <div className="h-1.5 bg-[#0F1113] rounded overflow-hidden">
+                    <div className="h-full bg-emerald-500" style={{ width: `${allocationTotals.yesTotal}%` }}></div>
                   </div>
                 </div>
-                <div className="exposure-row">
-                  <div className="exposure-label-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span className="exposure-label" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Net NO Notional</span>
-                    <span className="exposure-value text-red mono" style={{ fontSize: 12, fontWeight: 600, color: 'var(--status-danger)' }}>${totals.noNotional.toLocaleString()}.00</span>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[11px] text-gray-400">Net NO Notional</span>
+                    <span className="text-xs font-semibold text-red-400 mono">${totals.noNotional.toLocaleString()}.00</span>
                   </div>
-                  <div className="progress-bar" style={{ height: 6, background: 'var(--bg-card)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div className="progress-fill red" style={{ height: '100%', width: `${allocationTotals.noTotal}%`, background: 'var(--status-danger)' }}></div>
+                  <div className="h-1.5 bg-[#0F1113] rounded overflow-hidden">
+                    <div className="h-full bg-red-500" style={{ width: `${allocationTotals.noTotal}%` }}></div>
                   </div>
                 </div>
               </div>
 
               {/* Portfolio Allocation */}
-              <div className="allocation-section" style={{ marginTop: 16, padding: 12, background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 8 }}>
-                <div className="allocation-title" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              <div className="mt-4 p-3 bg-[#0F1113] border border-[#26292E] rounded-xl">
+                <div className="text-[11px] font-semibold text-white uppercase tracking-wider mb-3">
                   Portfolio Allocation
                 </div>
                 {allocations.map((allocation, i) => (
-                  <div key={i} className="allocation-item" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                    <span className="allocation-asset mono" style={{ fontSize: 11, color: 'var(--text-primary)', width: 90 }}>{allocation.timelineId} ({allocation.direction})</span>
-                    <div className="allocation-bar" style={{ flex: 1, height: 8, background: 'var(--bg-card)', borderRadius: 4, overflow: 'hidden' }}>
-                      <div className={`allocation-fill ${allocation.direction === 'YES' ? 'yes' : 'no'}`} style={{ height: '100%', width: `${allocation.percent}%`, borderRadius: 4, background: allocation.direction === 'YES' ? 'var(--status-success)' : 'var(--status-danger)' }}></div>
+                  <div key={i} className="flex items-center gap-3 mb-2">
+                    <span className="text-[11px] text-white mono w-20">{allocation.timelineId} ({allocation.direction})</span>
+                    <div className="flex-1 h-2 bg-[#0F1113] rounded overflow-hidden">
+                      <div className="h-full rounded" style={{ width: `${allocation.percent}%`, background: allocation.direction === 'YES' ? 'var(--status-success)' : 'var(--status-danger)' }}></div>
                     </div>
-                    <span className="allocation-percent mono" style={{ fontSize: 11, color: 'var(--text-muted)', width: 45, textAlign: 'right' }}>{allocation.percent}%</span>
+                    <span className="text-[11px] text-gray-500 mono w-10 text-right">{allocation.percent}%</span>
                   </div>
                 ))}
               </div>
 
               {/* Equity Curve */}
-              <div className="equity-section" style={{ marginTop: 16, padding: 12, background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 8 }}>
-                <div className="equity-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div className="equity-title" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Equity Curve (30D)</div>
-                  <div className="chart-controls" style={{ display: 'flex', gap: 4 }}>
+              <div className="mt-4 p-3 bg-[#0F1113] border border-[#26292E] rounded-xl">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="text-[11px] font-semibold text-white uppercase tracking-wider">Equity Curve (30D)</div>
+                  <div className="flex gap-1">
                     {(['1D', '7D', '30D', 'ALL'] as ChartTimeframe[]).map((tf) => (
                       <button
                         key={tf}
-                        className={`chart-btn ${chartTimeframe === tf ? 'active' : ''}`}
                         onClick={() => setChartTimeframe(tf)}
-                        style={{ padding: '4px 10px', background: chartTimeframe === tf ? 'var(--echelon-cyan-bg)' : 'transparent', border: '1px solid var(--border-outer)', borderRadius: 6, color: chartTimeframe === tf ? 'var(--echelon-cyan)' : 'var(--text-muted)', fontSize: 10, cursor: 'pointer', transition: 'all 0.2s' }}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] cursor-pointer transition-all ${chartTimeframe === tf ? 'bg-cyan-500/10 border border-cyan-500/50 text-cyan-400' : 'text-gray-500 hover:text-gray-300'}`}
+                        style={{ background: chartTimeframe === tf ? 'var(--echelon-cyan-bg)' : 'transparent', border: '1px solid var(--border-outer)', color: chartTimeframe === tf ? 'var(--echelon-cyan)' : 'var(--text-muted)' }}
                       >
                         {tf}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="equity-chart" style={{ position: 'relative', height: 120, background: 'var(--bg-card)', borderRadius: 6, overflow: 'hidden' }}>
-                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
+                <div className="relative h-[120px] bg-[#0F1113] rounded-lg overflow-hidden">
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
                     <defs>
                       <linearGradient id="equityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                         <stop offset="0%" stopColor="var(--status-success)" stopOpacity="0.4"/>
@@ -259,60 +259,60 @@ export function PortfolioPage() {
                     <path d={equityAreaPath} fill="url(#equityGradient)"/>
                     <path d={equityLinePath} fill="none" stroke="var(--status-success)" strokeWidth="1" strokeLinecap="round"/>
                   </svg>
-                  <div className="chart-grid" style={{ position: 'absolute', inset: 0 }}>
+                  <div className="absolute inset-0">
                     {[0, 25, 50, 75].map((pct) => (
-                      <div key={pct} className="chart-grid-line" style={{ position: 'absolute', left: 0, right: 0, height: 1, background: 'var(--border-outer)', top: `${pct}%` }}></div>
+                      <div key={pct} className="absolute left-0 right-0 h-px" style={{ top: `${pct}%`, background: 'var(--border-outer)' }}></div>
                     ))}
                   </div>
-                  <div className="chart-labels" style={{ position: 'absolute', bottom: 8, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
+                  <div className="absolute bottom-2 left-4 right-4 flex justify-between text-[10px] text-gray-500">
                     <span>Dec 28</span>
                     <span>Jan 7</span>
                     <span>Jan 17</span>
                     <span>Jan 27</span>
                   </div>
                 </div>
-                <div className="chart-summary" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-outer)' }}>
-                  <div className="chart-stat" style={{ textAlign: 'center' }}>
-                    <div className="chart-stat-value positive mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--status-success)' }}>{formatPL(equityStats.totalPL)}</div>
-                    <div className="chart-stat-label" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Total P/L</div>
+                <div className="grid grid-cols-4 gap-3 mt-3 pt-3 border-t border-[#26292E]">
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-emerald-400 mono">{formatPL(equityStats.totalPL)}</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Total P/L</div>
                   </div>
-                  <div className="chart-stat" style={{ textAlign: 'center' }}>
-                    <div className="chart-stat-value mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{equityStats.returnPercent >= 0 ? '+' : ''}{equityStats.returnPercent}%</div>
-                    <div className="chart-stat-label" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Return</div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-white mono">{equityStats.returnPercent >= 0 ? '+' : ''}{equityStats.returnPercent}%</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Return</div>
                   </div>
-                  <div className="chart-stat" style={{ textAlign: 'center' }}>
-                    <div className="chart-stat-value mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{equityStats.sharpeRatio}x</div>
-                    <div className="chart-stat-label" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Sharpe Ratio</div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-white mono">{equityStats.sharpeRatio}x</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Sharpe Ratio</div>
                   </div>
-                  <div className="chart-stat" style={{ textAlign: 'center' }}>
-                    <div className="chart-stat-value negative mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--status-danger)' }}>{formatPL(Math.abs(equityStats.maxDrawdown))}</div>
-                    <div className="chart-stat-label" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Max Drawdown</div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-red-400 mono">{formatPL(Math.abs(equityStats.maxDrawdown))}</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">Max Drawdown</div>
                   </div>
                 </div>
               </div>
 
               {/* Correlation Matrix */}
-              <div className="correlation-section" style={{ marginTop: 16, padding: 12, background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 8 }}>
-                <div className="correlation-title" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              <div className="mt-4 p-3 bg-[#0F1113] border border-[#26292E] rounded-xl">
+                <div className="text-[11px] font-semibold text-white uppercase tracking-wider mb-3">
                   Position Correlations
                 </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                <table className="w-full border-collapse text-[11px]">
                   <thead>
                     <tr>
-                      <th style={{ padding: 8, textAlign: 'center', border: '1px solid var(--border-outer)', background: 'var(--bg-card)', fontWeight: 600, color: 'var(--text-muted)' }}></th>
+                      <th className="p-2 text-center border border-[#26292E] bg-[#0F1113] font-semibold text-gray-500"></th>
                       {['TL-2847', 'TL-2846', 'TL-2845', 'TL-2844'].map((tl) => (
-                        <th key={tl} style={{ padding: 8, textAlign: 'center', border: '1px solid var(--border-outer)', background: 'var(--bg-card)', fontWeight: 600, color: 'var(--text-muted)' }}>{tl}</th>
+                        <th key={tl} className="p-2 text-center border border-[#26292E] bg-[#0F1113] font-semibold text-gray-500">{tl}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {['TL-2847', 'TL-2846', 'TL-2845', 'TL-2844'].map((tl1) => (
                       <tr key={tl1}>
-                        <td style={{ padding: 8, textAlign: 'center', border: '1px solid var(--border-outer)', background: 'var(--bg-card)', fontWeight: 600, color: 'var(--text-muted)' }}>{tl1}</td>
+                        <td className="p-2 text-center border border-[#26292E] bg-[#0F1113] font-semibold text-gray-500">{tl1}</td>
                         {['TL-2847', 'TL-2846', 'TL-2845', 'TL-2844'].map((tl2) => {
                           const corr = getCorrelation(tl1, tl2);
                           return (
-                            <td key={tl2} style={{ padding: 8, textAlign: 'center', border: '1px solid var(--border-outer)', color: corr >= 0.7 ? 'var(--status-danger)' : corr >= 0.4 ? 'var(--status-warning)' : 'var(--status-success)' }}>
+                            <td key={tl2} className="p-2 text-center border border-[#26292E]" style={{ color: corr >= 0.7 ? 'var(--status-danger)' : corr >= 0.4 ? 'var(--status-warning)' : 'var(--status-success)' }}>
                               {corr.toFixed(2)}
                             </td>
                           );
@@ -324,33 +324,33 @@ export function PortfolioPage() {
               </div>
 
               {/* Top Risks Table */}
-              <div className="risks-section" style={{ marginTop: 16 }}>
-                <div className="risks-title" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              <div className="mt-4">
+                <div className="text-[11px] font-semibold text-white uppercase tracking-wider mb-3">
                   Top Risks
                 </div>
-                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 8, overflow: 'hidden' }}>
+                <table className="w-full border-collapse bg-[#0F1113] border border-[#26292E] rounded-xl overflow-hidden">
                   <thead>
                     <tr>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-outer)' }}>Timeline</th>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-outer)' }}>Risk Score</th>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-outer)' }}>Drivers</th>
-                      <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-outer)' }}>Burn at Collapse</th>
-                      <th style={{ padding: '8px 12px', textAlign: 'right', fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-card)', borderBottom: '1px solid var(--border-outer)' }}>Actions</th>
+                      <th className="p-2 text-left text-[9px] font-semibold text-gray-500 uppercase tracking-wider bg-[#0F1113] border-b border-[#26292E]">Timeline</th>
+                      <th className="p-2 text-left text-[9px] font-semibold text-gray-500 uppercase tracking-wider bg-[#0F1113] border-b border-[#26292E]">Risk Score</th>
+                      <th className="p-2 text-left text-[9px] font-semibold text-gray-500 uppercase tracking-wider bg-[#0F1113] border-b border-[#26292E]">Drivers</th>
+                      <th className="p-2 text-left text-[9px] font-semibold text-gray-500 uppercase tracking-wider bg-[#0F1113] border-b border-[#26292E]">Burn at Collapse</th>
+                      <th className="p-2 text-right text-[9px] font-semibold text-gray-500 uppercase tracking-wider bg-[#0F1113] border-b border-[#26292E]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {riskItems.map((item, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid var(--border-outer)' }}>
-                        <td style={{ padding: '8px 12px' }}><span className="timeline-id mono" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{item.timelineId}</span></td>
-                        <td style={{ padding: '8px 12px' }}><span className="risk-score mono" style={{ fontSize: 12, fontWeight: 600, color: item.riskScore >= 70 ? 'var(--status-danger)' : item.riskScore >= 50 ? '#F59E0B' : 'var(--status-success)' }}>{item.riskScore}</span></td>
-                        <td style={{ padding: '8px 12px' }}><span className="risk-drivers" style={{ fontSize: 10, color: 'var(--text-muted)' }}>{item.drivers}</span></td>
-                        <td style={{ padding: '8px 12px' }}><span className="burn-value mono" style={{ fontSize: 11, color: 'var(--status-danger)' }}>${item.burnAtCollapse.toLocaleString()}</span></td>
-                        <td style={{ padding: '8px 12px' }}>
-                          <div className="action-btns" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                            <button className="action-btn" style={{ padding: '4px 8px', background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 10, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}>OPEN</button>
-                            <button className="action-btn" style={{ padding: '4px 8px', background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 10, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}>REPLAY</button>
+                      <tr key={i} className="border-b border-[#26292E]">
+                        <td className="p-2"><span className="text-xs font-semibold text-white mono">{item.timelineId}</span></td>
+                        <td className="p-2"><span className="text-xs font-semibold mono" style={{ color: item.riskScore >= 70 ? 'var(--status-danger)' : item.riskScore >= 50 ? '#F59E0B' : 'var(--status-success)' }}>{item.riskScore}</span></td>
+                        <td className="p-2"><span className="text-[10px] text-gray-500">{item.drivers}</span></td>
+                        <td className="p-2"><span className="text-xs text-red-400 mono">${item.burnAtCollapse.toLocaleString()}</span></td>
+                        <td className="p-2">
+                          <div className="flex gap-1 justify-end">
+                            <button className="px-2 py-1 bg-[#0F1113] border border-[#26292E] rounded text-[10px] font-medium text-gray-400 hover:border-cyan-500/50 hover:text-cyan-400 transition-all cursor-pointer">OPEN</button>
+                            <button className="px-2 py-1 bg-[#0F1113] border border-[#26292E] rounded text-[10px] font-medium text-gray-400 hover:border-cyan-500/50 hover:text-cyan-400 transition-all cursor-pointer">REPLAY</button>
                           </div>
-</td>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -358,14 +358,14 @@ export function PortfolioPage() {
               </div>
 
               {/* Recommendations */}
-              <div className="recommendations-section" style={{ padding: '16px 0' }}>
-                <div className="rec-title" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+              <div className="py-4">
+                <div className="text-[11px] font-semibold text-white uppercase tracking-wider mb-3">
                   Recommendations
                 </div>
-                <ul style={{ listStyle: 'none' }}>
+                <ul className="list-none">
                   {recommendations.map((rec, i) => (
-                    <li key={i} className="rec-item" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, color: 'var(--text-primary)', marginBottom: 8 }}>
-                      <ChevronRight size={14} style={{ color: 'var(--echelon-cyan)', marginTop: 1, flexShrink: 0 }} />
+                    <li key={i} className="flex items-start gap-2 text-xs text-white mb-2">
+                      <ChevronRight size={14} className="text-cyan-400 mt-0.5 flex-shrink-0" />
                       {rec.text}
                     </li>
                   ))}
@@ -373,57 +373,57 @@ export function PortfolioPage() {
               </div>
 
               {/* Positions Panel */}
-              <div className="positions-panel" style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border-outer)', borderRadius: 8, display: 'flex', flexDirection: 'column', marginTop: 16, overflow: 'hidden' }}>
-                <div className="positions-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border-outer)' }}>
-                  <div className="positions-tabs" style={{ display: 'flex', gap: 12 }}>
+              <div className="flex-1 bg-[#0F1113] border border-[#26292E] rounded-xl flex flex-col mt-4 overflow-hidden">
+                <div className="flex items-center justify-between p-3 border-b border-[#26292E]">
+                  <div className="flex gap-3">
                     {(['positions', 'foldovers'] as PositionTab[]).map((tab) => (
                       <button
                         key={tab}
-                        className={`positions-tab ${positionTab === tab ? 'active' : ''}`}
                         onClick={() => setPositionTab(tab)}
-                        style={{ padding: '4px 12px', background: positionTab === tab ? 'var(--echelon-cyan-bg)' : 'transparent', border: 'none', color: positionTab === tab ? 'var(--echelon-cyan)' : 'var(--text-muted)', fontSize: 11, fontWeight: 500, cursor: 'pointer', borderRadius: 6, textTransform: 'capitalize', transition: 'all 0.2s' }}
+                        className={`px-3 py-1 rounded-lg text-[11px] font-medium capitalize cursor-pointer transition-all ${positionTab === tab ? 'bg-cyan-500/10 text-cyan-400' : 'text-gray-500 hover:text-gray-300'}`}
+                        style={{ background: positionTab === tab ? 'var(--echelon-cyan-bg)' : 'transparent', color: positionTab === tab ? 'var(--echelon-cyan)' : 'var(--text-muted)' }}
                       >
                         {tab}
                       </button>
                     ))}
                   </div>
-                  <button className="header-btn" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 6, color: 'var(--text-secondary)', fontSize: 11, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}>
+                  <button className="flex items-center gap-2 px-3 py-2 bg-[#0F1113] border border-[#26292E] rounded-lg text-[11px] font-medium text-gray-400 hover:border-cyan-500/50 hover:text-cyan-400 transition-all cursor-pointer">
                     <Filter size={12} />
                     Filter
                   </button>
                 </div>
-                <div className="positions-table-container" style={{ flex: 1, overflow: 'auto' }}>
-                  <table className="positions-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div className="flex-1 overflow-auto">
+                  <table className="w-full border-collapse">
                     <thead>
                       <tr>
-                        <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-app)', borderBottom: '1px solid var(--border-outer)', position: 'sticky', top: 0 }}>Timeline</th>
-                        <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-app)', borderBottom: '1px solid var(--border-outer)', position: 'sticky', top: 0 }}>Direction</th>
-                        <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-app)', borderBottom: '1px solid var(--border-outer)', position: 'sticky', top: 0 }}>Entry Price</th>
-                        <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-app)', borderBottom: '1px solid var(--border-outer)', position: 'sticky', top: 0 }}>Current Price</th>
-                        <th style={{ textAlign: 'left', padding: '8px 12px', fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-app)', borderBottom: '1px solid var(--border-outer)', position: 'sticky', top: 0 }}>P/L</th>
-                        <th style={{ textAlign: 'right', padding: '8px 12px', fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--bg-app)', borderBottom: '1px solid var(--border-outer)', position: 'sticky', top: 0 }}>Actions</th>
+                        <th className="text-left p-2 text-[9px] font-semibold text-gray-500 uppercase tracking-wider bg-[#0F1113] border-b border-[#26292E] sticky top-0">Timeline</th>
+                        <th className="text-left p-2 text-[9px] font-semibold text-gray-500 uppercase tracking-wider bg-[#0F1113] border-b border-[#26292E] sticky top-0">Direction</th>
+                        <th className="text-left p-2 text-[9px] font-semibold text-gray-500 uppercase tracking-wider bg-[#0F1113] border-b border-[#26292E] sticky top-0">Entry Price</th>
+                        <th className="text-left p-2 text-[9px] font-semibold text-gray-500 uppercase tracking-wider bg-[#0F1113] border-b border-[#26292E] sticky top-0">Current Price</th>
+                        <th className="text-left p-2 text-[9px] font-semibold text-gray-500 uppercase tracking-wider bg-[#0F1113] border-b border-[#26292E] sticky top-0">P/L</th>
+                        <th className="text-right p-2 text-[9px] font-semibold text-gray-500 uppercase tracking-wider bg-[#0F1113] border-b border-[#26292E] sticky top-0">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {positions.map((position) => (
-                        <tr key={position.id} style={{ borderBottom: '1px solid var(--border-outer)' }}>
-                          <td style={{ padding: '8px 12px' }}><span className="timeline-id mono" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{position.timelineId}</span></td>
-                          <td style={{ padding: '8px 12px' }}>
-                            <span className={`direction-badge ${position.direction.toLowerCase()}`} style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 3, fontSize: 10, fontWeight: 600, background: position.direction === 'YES' ? 'var(--status-success-bg)' : 'var(--status-danger-bg)', color: position.direction === 'YES' ? 'var(--status-success)' : 'var(--status-danger)' }}>
+                        <tr key={position.id} className="border-b border-[#26292E]">
+                          <td className="p-2"><span className="text-xs font-semibold text-white mono">{position.timelineId}</span></td>
+                          <td className="p-2">
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: position.direction === 'YES' ? 'var(--status-success-bg)' : 'var(--status-danger-bg)', color: position.direction === 'YES' ? 'var(--status-success)' : 'var(--status-danger)' }}>
                               {position.direction}
                             </span>
                           </td>
-                          <td style={{ padding: '8px 12px' }}><span className="price mono" style={{ fontSize: 12, color: 'var(--text-primary)' }}>${position.entryPrice.toFixed(2)}</span></td>
-                          <td style={{ padding: '8px 12px' }}><span className="price mono" style={{ fontSize: 12, color: 'var(--text-primary)' }}>${position.currentPrice.toFixed(2)}</span></td>
-                          <td style={{ padding: '8px 12px' }}>
-                            <span className={`pl-value mono ${position.pnl >= 0 ? 'positive' : 'negative'}`} style={{ fontSize: 12, fontWeight: 600, color: position.pnl >= 0 ? 'var(--status-success)' : 'var(--status-danger)' }}>
+                          <td className="p-2"><span className="text-xs text-white mono">${position.entryPrice.toFixed(2)}</span></td>
+                          <td className="p-2"><span className="text-xs text-white mono">${position.currentPrice.toFixed(2)}</span></td>
+                          <td className="p-2">
+                            <span className="text-xs font-semibold mono" style={{ color: position.pnl >= 0 ? 'var(--status-success)' : 'var(--status-danger)' }}>
                               {position.pnl >= 0 ? '+' : ''}{formatPL(position.pnl)}
                             </span>
                           </td>
-                          <td style={{ padding: '8px 12px' }}>
-                            <div className="action-btns" style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                              <button className="action-btn" style={{ padding: '4px 8px', background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 10, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}>OPEN</button>
-                              <button className="action-btn" style={{ padding: '4px 8px', background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 10, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}>REPLAY</button>
+                          <td className="p-2">
+                            <div className="flex gap-1 justify-end">
+                              <button className="px-2 py-1 bg-[#0F1113] border border-[#26292E] rounded text-[10px] font-medium text-gray-400 hover:border-cyan-500/50 hover:text-cyan-400 transition-all cursor-pointer">OPEN</button>
+                              <button className="px-2 py-1 bg-[#0F1113] border border-[#26292E] rounded text-[10px] font-medium text-gray-400 hover:border-cyan-500/50 hover:text-cyan-400 transition-all cursor-pointer">REPLAY</button>
                             </div>
                           </td>
                         </tr>
@@ -436,50 +436,50 @@ export function PortfolioPage() {
           </div>
 
           {/* Right Sidebar */}
-          <aside className="right-sidebar" style={{ width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <aside className="w-72 flex-shrink-0 flex flex-col gap-4">
             {/* Ghost Forks Widget */}
-            <div className="widget" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-outer)', borderRadius: 8 }}>
-              <div className="widget-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderBottom: '1px solid var(--border-outer)' }}>
-                <span className="widget-title" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ghost Forks</span>
-                <button className="action-btn" onClick={() => setShowForksPanel(true)} style={{ padding: '4px 8px', background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 10, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}>VIEW ALL</button>
+            <div className="bg-[#0F1113] border border-[#26292E] rounded-xl">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-[#26292E]">
+                <span className="text-[11px] font-semibold text-white uppercase tracking-wider">Ghost Forks</span>
+                <button onClick={() => setShowForksPanel(true)} className="px-2 py-1 bg-[#0F1113] border border-[#26292E] rounded text-[10px] font-medium text-gray-400 hover:border-cyan-500/50 hover:text-cyan-400 transition-all cursor-pointer">VIEW ALL</button>
               </div>
-              <div className="widget-body" style={{ padding: 12 }}>
+              <div className="p-3">
                 {ghostForks.map((fork, i) => (
-                  <div key={i} className="ghost-fork-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < ghostForks.length - 1 ? '1px solid var(--border-outer)' : 'none' }}>
-                    <span className="ghost-fork-id mono" style={{ fontSize: 11, color: 'var(--text-primary)' }}>{fork.id}</span>
-                    <span className="ghost-fork-time" style={{ fontSize: 10, color: 'var(--text-muted)' }}>{fork.timeAgo}</span>
+                  <div key={i} className="flex items-center justify-between py-2" style={{ borderBottom: i < ghostForks.length - 1 ? '1px solid var(--border-outer)' : 'none' }}>
+                    <span className="text-[11px] text-white mono">{fork.id}</span>
+                    <span className="text-[10px] text-gray-500">{fork.timeAgo}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* My Agents Widget */}
-            <div className="widget" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-outer)', borderRadius: 8 }}>
-              <div className="widget-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderBottom: '1px solid var(--border-outer)' }}>
-                <span className="widget-title" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>My Agents</span>
-                <button className="action-btn" onClick={() => setShowAgentsPanel(true)} style={{ padding: '4px 8px', background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 10, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s' }}>MANAGE</button>
+            <div className="bg-[#0F1113] border border-[#26292E] rounded-xl">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-[#26292E]">
+                <span className="text-[11px] font-semibold text-white uppercase tracking-wider">My Agents</span>
+                <button onClick={() => setShowAgentsPanel(true)} className="px-2 py-1 bg-[#0F1113] border border-[#26292E] rounded text-[10px] font-medium text-gray-400 hover:border-cyan-500/50 hover:text-cyan-400 transition-all cursor-pointer">MANAGE</button>
               </div>
-              <div className="widget-body" style={{ padding: 12 }}>
+              <div className="p-3">
                 {agents.slice(0, 4).map((agent, i) => (
-                  <div key={i} className="agent-item" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: i < 3 ? '1px solid var(--border-outer)' : 'none' }}>
-                    <div className="agent-avatar" style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'white', background: agent.color }}>{agent.name.charAt(6)}</div>
-                    <span className="agent-name" style={{ fontSize: 12, color: 'var(--text-primary)', flex: 1 }}>{agent.name}</span>
-                    <span className="agent-archetype" style={{ fontSize: 9, color: 'var(--text-muted)', padding: '2px 6px', background: 'var(--bg-app)', borderRadius: 3 }}>{agent.archetype}</span>
-                    <span className={`agent-pnl mono ${agent.pnl >= 0 ? 'positive' : 'negative'}`} style={{ fontSize: 11, fontWeight: 600, color: agent.pnl >= 0 ? 'var(--status-success)' : 'var(--status-danger)' }}>{agent.pnl >= 0 ? '+' : ''}${Math.abs(agent.pnl / 1000).toFixed(1)}K</span>
+                  <div key={i} className="flex items-center gap-2 py-2" style={{ borderBottom: i < 3 ? '1px solid var(--border-outer)' : 'none' }}>
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: agent.color }}>{agent.name.charAt(6)}</div>
+                    <span className="text-xs text-white flex-1">{agent.name}</span>
+                    <span className="text-[9px] text-gray-500 px-1.5 py-0.5 bg-[#0F1113] rounded">{agent.archetype}</span>
+                    <span className="text-xs font-semibold mono" style={{ color: agent.pnl >= 0 ? 'var(--status-success)' : 'var(--status-danger)' }}>{agent.pnl >= 0 ? '+' : ''}${Math.abs(agent.pnl / 1000).toFixed(1)}K</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Stats Row */}
-            <div className="stats-row" style={{ display: 'flex', gap: 12 }}>
-              <div className="stat-item" style={{ flex: 1, textAlign: 'center', padding: 12, background: 'var(--bg-card)', border: '1px solid var(--border-outer)', borderRadius: 8 }}>
-                <div className="stat-value mono" style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{agents.length}</div>
-                <div className="stat-label" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Live Agents</div>
+            <div className="flex gap-3">
+              <div className="flex-1 text-center p-3 bg-[#0F1113] border border-[#26292E] rounded-xl">
+                <div className="text-xl font-bold text-white mono">{agents.length}</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">Live Agents</div>
               </div>
-              <div className="stat-item" style={{ flex: 1, textAlign: 'center', padding: 12, background: 'var(--bg-card)', border: '1px solid var(--border-outer)', borderRadius: 8 }}>
-                <div className="stat-value mono" style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>{agents.reduce((sum, a) => sum + a.actions, 0).toLocaleString()}</div>
-                <div className="stat-label" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Active Ops</div>
+              <div className="flex-1 text-center p-3 bg-[#0F1113] border border-[#26292E] rounded-xl">
+                <div className="text-xl font-bold text-white mono">{agents.reduce((sum, a) => sum + a.actions, 0).toLocaleString()}</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">Active Ops</div>
               </div>
             </div>
           </aside>
@@ -496,35 +496,35 @@ export function PortfolioPage() {
       )}
 
       {/* AGENTS PANEL */}
-      <div 
+      <div
         className={`side-panel ${showAgentsPanel ? 'active' : ''}`}
         style={{ position: 'fixed', top: 0, right: showAgentsPanel ? 0 : -420, bottom: 0, width: 420, background: 'var(--bg-panel)', borderLeft: '1px solid var(--border-outer)', zIndex: 1500, transition: 'right 0.3s ease', display: 'flex', flexDirection: 'column' }}
       >
-        <div className="side-panel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottom: '1px solid var(--border-outer)', flexShrink: 0 }}>
-          <div className="side-panel-title" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Bot size={18} style={{ color: 'var(--echelon-cyan)' }} />
+        <div className="flex items-center justify-between p-4 border-b border-[#26292E] flex-shrink-0">
+          <div className="text-sm font-semibold text-white flex items-center gap-2">
+            <Bot size={18} className="text-cyan-400" />
             Manage Agents
           </div>
-          <button className="side-panel-close" onClick={() => setShowAgentsPanel(false)} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 6, color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}>
+          <button onClick={() => setShowAgentsPanel(false)} className="w-8 h-8 flex items-center justify-center bg-[#0F1113] border border-[#26292E] rounded-lg text-gray-500 cursor-pointer transition-all hover:text-white">
             <X size={14} />
           </button>
         </div>
-        <div className="side-panel-body" style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+        <div className="flex-1 overflow-auto p-4">
+          <div className="grid grid-cols-2 gap-3">
             {agents.map((agent, i) => (
-              <div key={i} className="agent-card-mini" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 8, padding: 12 }}>
-                <div className="agent-card-header-mini" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div className="agent-avatar-mini" style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'white', background: agent.color }}>{agent.name.charAt(6)}</div>
-                  <div className="agent-info-mini" style={{ flex: 1 }}>
-                    <div className="agent-name-mini" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{agent.name}</div>
-                    <div className="agent-archetype-mini" style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{agent.archetype}</div>
+              <div key={i} className="bg-[#0F1113] border border-[#26292E] rounded-xl p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: agent.color }}>{agent.name.charAt(6)}</div>
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold text-white">{agent.name}</div>
+                    <div className="text-[10px] text-gray-500 uppercase">{agent.archetype}</div>
                   </div>
-                  <span className={`agent-pnl-mini mono ${agent.pnl >= 0 ? 'positive' : 'negative'}`} style={{ fontSize: 14, fontWeight: 600, color: agent.pnl >= 0 ? 'var(--status-success)' : 'var(--status-danger)' }}>{agent.pnl >= 0 ? '+' : ''}${Math.abs(agent.pnl).toLocaleString()}</span>
+                  <span className="text-sm font-semibold mono" style={{ color: agent.pnl >= 0 ? 'var(--status-success)' : 'var(--status-danger)' }}>{agent.pnl >= 0 ? '+' : ''}${Math.abs(agent.pnl).toLocaleString()}</span>
                 </div>
-                <div className="agent-chart-mini" style={{ height: 40, marginTop: 8, position: 'relative' }}>
-                  <svg viewBox="0 0 100 40" style={{ width: '100%', height: '100%' }}>
-                    <path 
-                      d={agent.pnl >= 0 
+                <div className="h-10 mt-2 relative">
+                  <svg viewBox="0 0 100 40" className="w-full h-full">
+                    <path
+                      d={agent.pnl >= 0
                         ? "M0,30 L10,28 L20,25 L30,22 L40,20 L50,18 L60,15 L70,12 L80,10 L90,8 L100,5"
                         : "M0,15 L10,18 L20,22 L30,20 L40,25 L50,22 L60,28 L70,25 L80,30 L90,28 L100,32"
                       }
@@ -535,7 +535,7 @@ export function PortfolioPage() {
                     />
                   </svg>
                 </div>
-                <div className="agent-stats-mini" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: 'var(--text-muted)' }}>
+                <div className="flex justify-between mt-2 text-[10px] text-gray-500">
                   <span>Actions: {agent.actions.toLocaleString()}</span>
                   <span>Win: {agent.winRate}%</span>
                   <span>Sanity: {agent.sanity}</span>
@@ -547,39 +547,39 @@ export function PortfolioPage() {
       </div>
 
       {/* FORKS PANEL */}
-      <div 
+      <div
         className={`side-panel ${showForksPanel ? 'active' : ''}`}
         style={{ position: 'fixed', top: 0, right: showForksPanel ? 0 : -420, bottom: 0, width: 420, background: 'var(--bg-panel)', borderLeft: '1px solid var(--border-outer)', zIndex: 1500, transition: 'right 0.3s ease', display: 'flex', flexDirection: 'column' }}
       >
-        <div className="side-panel-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottom: '1px solid var(--border-outer)', flexShrink: 0 }}>
-          <div className="side-panel-title" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <GitBranch size={18} style={{ color: 'var(--echelon-cyan)' }} />
+        <div className="flex items-center justify-between p-4 border-b border-[#26292E] flex-shrink-0">
+          <div className="text-sm font-semibold text-white flex items-center gap-2">
+            <GitBranch size={18} className="text-cyan-400" />
             Ghost Forks
           </div>
-          <button className="side-panel-close" onClick={() => setShowForksPanel(false)} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 6, color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}>
+          <button onClick={() => setShowForksPanel(false)} className="w-8 h-8 flex items-center justify-center bg-[#0F1113] border border-[#26292E] rounded-lg text-gray-500 cursor-pointer transition-all hover:text-white">
             <X size={14} />
           </button>
         </div>
-        <div className="side-panel-body" style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="flex-1 overflow-auto p-4">
+          <div className="flex flex-col gap-2">
             {forkDetails.map((fork, i) => (
-              <div key={i} className="fork-item-detail" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 8, padding: 12 }}>
-                <div className="fork-header-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span className="fork-id mono" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{fork.id}</span>
-                  <span className="fork-time" style={{ fontSize: 10, color: 'var(--text-muted)' }}>{fork.timeAgo}</span>
+              <div key={i} className="bg-[#0F1113] border border-[#26292E] rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-white mono">{fork.id}</span>
+                  <span className="text-[10px] text-gray-500">{fork.timeAgo}</span>
                 </div>
-                <div className="fork-details" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 8 }}>
-                  <div className="fork-detail" style={{ textAlign: 'center' }}>
-                    <div className="fork-detail-value mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{fork.probability}%</div>
-                    <div className="fork-detail-label" style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Probability</div>
+                <div className="grid grid-cols-3 gap-3 mt-2">
+                  <div className="text-center">
+                    <div className="text-sm font-semibold text-white mono">{fork.probability}%</div>
+                    <div className="text-[9px] text-gray-500 uppercase tracking-wider">Probability</div>
                   </div>
-                  <div className="fork-detail" style={{ textAlign: 'center' }}>
-                    <div className="fork-detail-value mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{fork.forks}</div>
-                    <div className="fork-detail-label" style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Forks</div>
+                  <div className="text-center">
+                    <div className="text-sm font-semibold text-white mono">{fork.forks}</div>
+                    <div className="text-[9px] text-gray-500 uppercase tracking-wider">Forks</div>
                   </div>
-                  <div className="fork-detail" style={{ textAlign: 'center' }}>
-                    <div className="fork-detail-value mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>${(fork.volume / 1000).toFixed(0)}K</div>
-                    <div className="fork-detail-label" style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Volume</div>
+                  <div className="text-center">
+                    <div className="text-sm font-semibold text-white mono">${(fork.volume / 1000).toFixed(0)}K</div>
+                    <div className="text-[9px] text-gray-500 uppercase tracking-wider">Volume</div>
                   </div>
                 </div>
               </div>
@@ -587,30 +587,30 @@ export function PortfolioPage() {
           </div>
 
           {/* Founders Yield */}
-          <div className="founders-yield-section" style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--border-outer)' }}>
-            <div className="yield-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div className="yield-title" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Star size={14} style={{ color: 'var(--echelon-cyan)' }} />
+          <div className="mt-6 pt-6 border-t border-[#26292E]">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs font-semibold text-white uppercase tracking-wider flex items-center gap-2">
+                <Star size={14} className="text-cyan-400" />
                 Founders Yield
               </div>
-              <div className="yield-value mono" style={{ fontSize: 20, fontWeight: 700, color: 'var(--status-success)' }}>+${yieldBreakdown.total.toLocaleString()}</div>
+              <div className="text-xl font-bold text-emerald-400 mono">+${yieldBreakdown.total.toLocaleString()}</div>
             </div>
-            <div className="yield-breakdown" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-              <div className="yield-item" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 6, padding: 8, textAlign: 'center' }}>
-                <div className="yield-item-value mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>${yieldBreakdown.trading.toLocaleString()}</div>
-                <div className="yield-item-label" style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 2 }}>Trading</div>
+            <div className="grid grid-cols-4 gap-2">
+              <div className="bg-[#0F1113] border border-[#26292E] rounded-lg p-2 text-center">
+                <div className="text-sm font-semibold text-white mono">${yieldBreakdown.trading.toLocaleString()}</div>
+                <div className="text-[9px] text-gray-500 uppercase mt-1">Trading</div>
               </div>
-              <div className="yield-item" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 6, padding: 8, textAlign: 'center' }}>
-                <div className="yield-item-value mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>${yieldBreakdown.MEV.toLocaleString()}</div>
-                <div className="yield-item-label" style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 2 }}>MEV</div>
+              <div className="bg-[#0F1113] border border-[#26292E] rounded-lg p-2 text-center">
+                <div className="text-sm font-semibold text-white mono">${yieldBreakdown.MEV.toLocaleString()}</div>
+                <div className="text-[9px] text-gray-500 uppercase mt-1">MEV</div>
               </div>
-              <div className="yield-item" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 6, padding: 8, textAlign: 'center' }}>
-                <div className="yield-item-value mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>${yieldBreakdown.bribes.toLocaleString()}</div>
-                <div className="yield-item-label" style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 2 }}>Bribes</div>
+              <div className="bg-[#0F1113] border border-[#26292E] rounded-lg p-2 text-center">
+                <div className="text-sm font-semibold text-white mono">${yieldBreakdown.bribes.toLocaleString()}</div>
+                <div className="text-[9px] text-gray-500 uppercase mt-1">Bribes</div>
               </div>
-              <div className="yield-item" style={{ background: 'var(--bg-app)', border: '1px solid var(--border-outer)', borderRadius: 6, padding: 8, textAlign: 'center' }}>
-                <div className="yield-item-value mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>${yieldBreakdown.total.toLocaleString()}</div>
-                <div className="yield-item-label" style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 2 }}>Total</div>
+              <div className="bg-[#0F1113] border border-[#26292E] rounded-lg p-2 text-center">
+                <div className="text-sm font-semibold text-white mono">${yieldBreakdown.total.toLocaleString()}</div>
+                <div className="text-[9px] text-gray-500 uppercase mt-1">Total</div>
               </div>
             </div>
           </div>
@@ -624,18 +624,6 @@ export function PortfolioPage() {
           50% { opacity: 0.5; }
           100% { opacity: 1; }
         }
-        .header-btn:hover {
-          border-color: var(--echelon-cyan) !important;
-          color: var(--echelon-cyan) !important;
-        }
-        .action-btn:hover {
-          border-color: var(--echelon-cyan) !important;
-          color: var(--echelon-cyan) !important;
-        }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg-app); }
-        ::-webkit-scrollbar-thumb { background: var(--border-outer); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--slate-700); }
       `}</style>
     </div>
   );

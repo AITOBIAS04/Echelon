@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
-import { FieldKit } from './components/fieldkit/FieldKit';
+import { PortfolioPage } from './pages/PortfolioPage';
 import { TimelineDetailPage } from './pages/TimelineDetailPage';
 import { MarketplacePage } from './pages/MarketplacePage';
 import { BlackboxPage } from './pages/BlackboxPage';
@@ -45,7 +45,7 @@ export const router = createBrowserRouter([
         path: 'portfolio',
         element: (
           <ErrorBoundary>
-            <FieldKit />
+            <PortfolioPage />
           </ErrorBoundary>
         ),
       },
