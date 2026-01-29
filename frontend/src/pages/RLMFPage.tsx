@@ -142,7 +142,7 @@ export function RLMFPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 p-6">
+    <div className="h-full flex flex-col min-h-0">
 
       {/* Theatre Meta */}
       <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
@@ -170,12 +170,13 @@ export function RLMFPage() {
         </div>
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Left Column - Telemetry & Decisions */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* Live Telemetry Feed */}
-          <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
+      {/* Main Grid - Independent Scrolling Columns */}
+      <div className="flex-1 min-h-0 flex overflow-hidden gap-4">
+        {/* Left Column Scroll Region */}
+        <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-4 pb-2">
+            {/* Live Telemetry Feed */}
+            <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
             <div className="px-4 py-3 bg-terminal-bg/50 border-b border-terminal-border flex justify-between items-center">
               <span className="text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider flex items-center gap-2">
                 <Activity className="w-3.5 h-3.5" />
@@ -208,22 +209,29 @@ export function RLMFPage() {
                 🤖
               </div>
 
-              {/* HUD Overlay */}
-              <div className="absolute top-3 left-3 bg-terminal-bg/70 border border-terminal-border rounded-lg p-3 backdrop-blur-sm w-44">
-                <div className="flex justify-between text-xs mb-2">
-                  <span className="text-terminal-muted uppercase tracking-wider text-[10px]">STABILITY</span>
-                  <span className="font-mono text-status-success">{stability.toFixed(1)}%</span>
-                </div>
-                <div className="h-1 bg-terminal-bg rounded-full overflow-hidden border border-terminal-border">
-                  <div className="h-full bg-status-success shadow-[0_0_8px_rgba(74,222,128,0.5)] transition-all" style={{ width: `${stability}%` }} />
-                </div>
-                <div className="flex justify-between text-xs mt-2 mb-1">
-                  <span className="text-terminal-muted uppercase tracking-wider text-[10px]">LOGIC GAP</span>
-                  <span className="font-mono text-status-warning">12.4%</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-terminal-muted uppercase tracking-wider text-[10px]">ENTROPY</span>
-                  <span className="font-mono text-status-info">0.34</span>
+              {/* HUD Overlay - Professional Telemetry Panel */}
+              <div className="absolute top-3 left-3 bg-terminal-bg/80 border border-terminal-border rounded-lg p-3 backdrop-blur-sm w-44">
+                <div className="space-y-2.5">
+                  {/* Stability Row */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-medium text-terminal-muted uppercase tracking-wider">STABILITY</span>
+                      <span className="text-xs font-mono font-semibold text-status-success">{stability.toFixed(1)}%</span>
+                    </div>
+                    <div className="h-1 bg-terminal-bg rounded-full overflow-hidden border border-terminal-border/50">
+                      <div className="h-full bg-status-success shadow-[0_0_8px_rgba(74,222,128,0.5)] transition-all" style={{ width: `${stability}%` }} />
+                    </div>
+                  </div>
+                  {/* Logic Gap Row */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-medium text-terminal-muted uppercase tracking-wider">LOGIC GAP</span>
+                    <span className="text-xs font-mono font-semibold text-status-warning">12.4%</span>
+                  </div>
+                  {/* Entropy Row */}
+                  <div className="flex justify-between items-center pt-1.5 border-t border-terminal-border/30">
+                    <span className="text-[10px] font-medium text-terminal-muted uppercase tracking-wider">ENTROPY</span>
+                    <span className="text-xs font-mono font-semibold text-status-info">0.34</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -275,6 +283,8 @@ export function RLMFPage() {
               </div>
             </div>
           </div>
+          {/* End Live Telemetry Feed */}
+        </div>
 
           {/* Betting Panel */}
           <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
@@ -403,9 +413,10 @@ export function RLMFPage() {
             </div>
           </div>
         </div>
+        {/* End Left Scroll Region */}
 
-        {/* Right Column - Metrics */}
-        <div className="space-y-4">
+        {/* Right Column Scroll Region */}
+        <div className="w-[360px] flex-shrink-0 min-h-0 overflow-y-auto pr-2 custom-scrollbar pb-2">
           {/* Reward Vector */}
           <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
             <div className="px-4 py-3 bg-terminal-bg/50 border-b border-terminal-border flex justify-between items-center">
@@ -569,6 +580,7 @@ export function RLMFPage() {
             </div>
           </div>
         </div>
+        {/* End Right Scroll Region */}
       </div>
     </div>
   );
