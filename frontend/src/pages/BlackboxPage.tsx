@@ -7,6 +7,9 @@ import { OrderBookPanel } from '../components/blackbox/OrderBookPanel';
 import { TimeSalesPanel } from '../components/blackbox/TimeSalesPanel';
 import { AgentLeaderboard } from '../components/blackbox/AgentLeaderboard';
 import { SignalInterceptsPanel } from '../components/blackbox/SignalInterceptsPanel';
+import { DepthChartPlaceholder } from '../components/blackbox/DepthChartPlaceholder';
+import { VolumeProfilePlaceholder } from '../components/blackbox/VolumeProfilePlaceholder';
+import { HeatmapPlaceholder } from '../components/blackbox/HeatmapPlaceholder';
 import {
   useBlackboxChart,
   useOrderBook,
@@ -17,8 +20,20 @@ import {
 import { useRegisterTopActionBarActions } from '../contexts/TopActionBarActionsContext';
 import type { Timeframe } from '../types/blackbox';
 
+// Chart mode type for tabs
+type ChartMode = 'price' | 'depth' | 'vol' | 'heatmap';
+
+// Chart mode display labels
+const CHART_MODE_LABELS: Record<ChartMode, string> = {
+  price: 'PRICE ACTION',
+  depth: 'DEPTH CHART',
+  vol: 'VOL PROFILE',
+  heatmap: 'HEATMAP',
+};
+
 export function BlackboxPage() {
   const [timeframe, setTimeframe] = useState<Timeframe>('15m');
+  const [chartMode, setChartMode] = useState<ChartMode>('price');
 
   // Panel state
   const [alertPanelOpen, setAlertPanelOpen] = useState(false);
@@ -68,23 +83,48 @@ export function BlackboxPage() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Render chart content based on chartMode
+  const renderChartContent = () => {
+    switch (chartMode) {
+      case 'price':
+        return (
+          <PriceChart
+            candles={candles}
+            currentPrice={currentPrice}
+            indicators={indicators}
+            timeframe={timeframe}
+            onTimeframeChange={setTimeframe}
+          />
+        );
+      case 'depth':
+        return <DepthChartPlaceholder />;
+      case 'vol':
+        return <VolumeProfilePlaceholder />;
+      case 'heatmap':
+        return <HeatmapPlaceholder />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="h-full w-full flex flex-col min-h-0" style={{ backgroundColor: '#0B0C0E', color: '#F1F5F9' }}>
 
       {/* Tabs Row */}
       <div className="flex items-center gap-2 px-6 py-3 border-b border-[#26292E]">
-        <button className="px-4 py-2 rounded-full text-sm font-medium bg-[#1A1D23] text-[#F1F5F9]">
-          PRICE ACTION
-        </button>
-        <button className="px-4 py-2 rounded-full text-sm font-medium text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1A1D23] transition-colors">
-          DEPTH CHART
-        </button>
-        <button className="px-4 py-2 rounded-full text-sm font-medium text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1A1D23] transition-colors">
-          VOL PROFILE
-        </button>
-        <button className="px-4 py-2 rounded-full text-sm font-medium text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1A1D23] transition-colors">
-          HEATMAP
-        </button>
+        {(Object.keys(CHART_MODE_LABELS) as ChartMode[]).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setChartMode(mode)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              chartMode === mode
+                ? 'bg-[#1A1D23] text-[#F1F5F9]'
+                : 'text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1A1D23]'
+            }`}
+          >
+            {CHART_MODE_LABELS[mode]}
+          </button>
+        ))}
       </div>
 
       {/* Main Content */}
@@ -94,13 +134,7 @@ export function BlackboxPage() {
 
             {/* Price Action - col-span-9 */}
             <div className="col-span-9 flex flex-col min-h-0">
-              <PriceChart
-                candles={candles}
-                currentPrice={currentPrice}
-                indicators={indicators}
-                timeframe={timeframe}
-                onTimeframeChange={setTimeframe}
-              />
+              {renderChartContent()}
             </div>
 
             {/* Order Book - col-span-3 */}
@@ -145,7 +179,7 @@ export function BlackboxPage() {
           style={{
             background: '#151719',
             border: '1px solid #26292E',
-}}
+          }}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
             <span className="text-sm font-semibold" style={{ color: '#F1F5F9' }}>Analytics Alerts</span>
