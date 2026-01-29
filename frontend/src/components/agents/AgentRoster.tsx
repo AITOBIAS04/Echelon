@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { User, TrendingUp, Activity, Search, Copy, Briefcase, Globe, LayoutGrid, BarChart3, PieChart, Brain } from 'lucide-react';
+import { User, TrendingUp, Activity, Search, Copy, Briefcase, Globe, BarChart3, PieChart, Brain } from 'lucide-react';
 import { useAgents } from '../../hooks/useAgents';
 import { AgentSanityIndicator } from './AgentSanityIndicator';
 import { TaskAgentModal } from './TaskAgentModal';
+import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { clsx } from 'clsx';
 import { useState } from 'react';
 
@@ -37,6 +38,12 @@ export function AgentRoster() {
   const agents = agentsData?.agents || [];
   const [activeView, setActiveView] = useState<AgentView>('roster');
   const [taskingAgent, setTaskingAgent] = useState<any | null>(null);
+
+  // Register TopActionBar button handlers
+  useRegisterTopActionBarActions({
+    agentRoster: () => setActiveView('roster'),
+    globalIntel: () => setActiveView('intel'),
+  });
 
   // Mock lineage data for demo
   const getMockLineage = (agentName: string) => {
@@ -90,48 +97,6 @@ export function AgentRoster() {
 
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden">
-      {/* Header with Tabs */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-terminal-border bg-terminal-panel">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-echelon-cyan flex items-center gap-3">
-              <User className="w-5 h-5" />
-              AGENTS
-            </h1>
-            {/* Tab Switcher */}
-            <div className="flex items-center gap-1 ml-6 bg-terminal-bg border border-terminal-border rounded-lg p-1">
-              <button
-                onClick={() => setActiveView('roster')}
-                className={clsx(
-                  'px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2',
-                  activeView === 'roster'
-                    ? 'bg-echelon-cyan/20 text-echelon-cyan border border-echelon-cyan/30'
-                    : 'text-terminal-muted hover:text-terminal-text'
-                )}
-              >
-                <LayoutGrid className="w-4 h-4" />
-                Agent Roster
-              </button>
-              <button
-                onClick={() => setActiveView('intel')}
-                className={clsx(
-                  'px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2',
-                  activeView === 'intel'
-                    ? 'bg-echelon-cyan/20 text-echelon-cyan border border-echelon-cyan/30'
-                    : 'text-terminal-muted hover:text-terminal-text'
-                )}
-              >
-                <Globe className="w-4 h-4" />
-                Global Intelligence
-              </button>
-            </div>
-          </div>
-          <span className="text-terminal-muted text-sm">
-            {agents.length} agents active
-          </span>
-        </div>
-      </div>
-
       {/* Main Content Area - Independent Scrolling */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* Left Column - Main Content */}
@@ -140,6 +105,16 @@ export function AgentRoster() {
             /* ROSTER VIEW */
             <div className="h-full overflow-y-auto p-6 custom-scrollbar">
               <div className="max-w-5xl mx-auto">
+                <div className="mb-6">
+                  <h1 className="text-xl font-bold text-echelon-cyan flex items-center gap-3">
+                    <User className="w-5 h-5" />
+                    AGENT ROSTER
+                  </h1>
+                  <span className="text-terminal-muted text-sm mt-1 block">
+                    {agents.length} agents active
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {agents.map((agent) => {
                     const sanity = agent.sanity || 75;
@@ -252,7 +227,7 @@ export function AgentRoster() {
                           )}
 
                           <button
-                            onClick={(e) =>handleCopyAgent(agent, e)}
+                            onClick={(e) => handleCopyAgent(agent, e)}
                             className="flex-1 px-3 py-2 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all flex items-center justify-center gap-2"
                           >
                             <Copy className="w-4 h-4" />
@@ -277,11 +252,11 @@ export function AgentRoster() {
             <div className="h-full overflow-y-auto p-6 custom-scrollbar">
               <div className="max-w-5xl mx-auto">
                 <div className="mb-6">
-                  <h2 className="text-lg font-bold text-echelon-cyan flex items-center gap-2 mb-2">
+                  <h1 className="text-xl font-bold text-echelon-cyan flex items-center gap-3">
                     <Globe className="w-5 h-5" />
-                    Global Intelligence
-                  </h2>
-                  <p className="text-terminal-muted text-sm">
+                    GLOBAL INTELLIGENCE
+                  </h1>
+                  <p className="text-terminal-muted text-sm mt-1">
                     System-wide metrics and agent network analytics
                   </p>
                 </div>
