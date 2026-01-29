@@ -108,11 +108,10 @@ export function PortfolioPage() {
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Content */}
         <div className="flex-1 flex gap-4 p-4 overflow-hidden">
-          {/* Left Column - Scrollable */}
-          <div className="flex-1 min-h-0 overflow-y-auto pr-4"></div>
-
-          {/* Main Panel */}
-          <div className="flex-1 bg-[#0F1113] border border-[#26292E] rounded-2xl flex flex-col overflow-hidden">
+          {/* Left Column - Scrollable with Main Panel Inside */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-6">
+            {/* Main Panel */}
+            <div className="bg-[#0F1113] border border-[#26292E] rounded-2xl flex flex-col overflow-hidden">
             {/* Header */}
             <div className="px-4 py-4 border-b border-[#26292E]">
               <div className="text-sm font-semibold text-white mb-1">
@@ -258,12 +257,12 @@ export function PortfolioPage() {
                   <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
                     <defs>
                       <linearGradient id="equityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="var(--status-success)" stopOpacity="0.4"/>
-                        <stop offset="100%" stopColor="var(--status-success)" stopOpacity="0"/>
+                        <stop offset="0%" stopColor="#10B981" stopOpacity="0.4"/>
+                        <stop offset="100%" stopColor="#10B981" stopOpacity="0"/>
                       </linearGradient>
                     </defs>
                     <path d={equityAreaPath} fill="url(#equityGradient)"/>
-                    <path d={equityLinePath} fill="none" stroke="var(--status-success)" strokeWidth="1" strokeLinecap="round"/>
+                    <path d={equityLinePath} fill="none" stroke="#10B981" strokeWidth="1" strokeLinecap="round"/>
                   </svg>
                   <div className="absolute inset-0">
                     {[0, 25, 50, 75].map((pct) => (
@@ -439,11 +438,12 @@ export function PortfolioPage() {
                 </div>
               </div>
             </div>
+            </div>
+            {/* End Main Panel and Left Scrollable Column */}
           </div>
-          {/* End Left Scrollable Column */}
 
           {/* Right Fixed Sidebar */}
-          <aside className="w-[280px] flex-shrink-0 flex flex-col gap-4 self-start sticky top-4">
+          <aside className="w-[360px] flex-shrink-0 flex flex-col gap-4 self-start sticky top-6">
             {/* Ghost Forks Widget */}
             <div className="bg-[#0F1113] border border-[#26292E] rounded-xl">
               <div className="flex items-center justify-between px-3 py-2 border-b border-[#26292E]">
