@@ -2,11 +2,10 @@
 // Portfolio overview with risk metrics, positions, and performance
 
 import { useState } from 'react';
-import { 
-  Plus, 
-  BarChart3, 
-  TrendingUp, 
-  AlertTriangle, 
+import {
+  BarChart3,
+  TrendingUp,
+  AlertTriangle,
   Activity,
   GitBranch,
   Bot,
@@ -28,7 +27,7 @@ export function PortfolioPage() {
   const recommendations = useRecommendations();
   const ghostForks = useGhostForks();
   const agents = usePortfolioAgents();
-  const { clock } = usePortfolioStatus();
+  usePortfolioStatus();
   const forkDetails = useForkDetails();
   const yieldBreakdown = useYieldBreakdown();
 
@@ -52,7 +51,29 @@ export function PortfolioPage() {
 
   // Generate equity chart path
   const generateEquityPath = (): { area: string; line: string } => {
-    if (equityData.length === 0) return { area: '', line: '' };
+    if (!equityData || equityData.length === 0) {
+      // Fallback mock data for visualization
+      const fallbackData = Array.from({ length: 30 }, (_, i) => ({
+        value: 100000 + (i * 500) + (Math.random() - 0.4) * 3000,
+      }));
+      const minValue = Math.min(...fallbackData.map(d => d.value));
+      const maxValue = Math.max(...fallbackData.map(d => d.value));
+      const range = maxValue - minValue || 1;
+      const width = 100;
+      const height = 80;
+      const padding = 10;
+
+      const points = fallbackData.map((d, i) => {
+        const x = (i / (fallbackData.length - 1)) * width;
+        const y = height - padding - ((d.value - minValue) / range) * (height - padding * 2);
+        return { x, y };
+      });
+
+      const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+      const areaPath = `${linePath} L ${width} ${height} L 0 ${height} Z`;
+
+      return { area: areaPath, line: linePath };
+    }
 
     const minValue = Math.min(...equityData.map(d => d.value));
     const maxValue = Math.max(...equityData.map(d => d.value));
@@ -84,27 +105,12 @@ export function PortfolioPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#0F1113] text-white">
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="h-16 border-b border-[#26292E] flex items-center justify-between px-6 flex-shrink-0">
-          <div className="text-base font-semibold tracking-wide">
-            Portfolio
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="flex items-center gap-2 px-3 py-2 bg-[#0F1113] border border-[#26292E] rounded-lg text-xs font-medium text-gray-400 hover:border-cyan-500/50 hover:text-cyan-400 transition-all cursor-pointer">
-              <Plus size={14} />
-              New Position
-            </button>
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-400/10 px-3 py-1.5 rounded-full border border-emerald-400/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Connected
-            </div>
-            <span className="mono text-xs text-gray-400">{clock}</span>
-          </div>
-        </header>
-
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Content */}
-        <div className="flex-1 p-4 flex gap-4 overflow-hidden">
+        <div className="flex-1 flex gap-4 p-4 overflow-hidden">
+          {/* Left Column - Scrollable */}
+          <div className="flex-1 min-h-0 overflow-y-auto pr-4"></div>
+
           {/* Main Panel */}
           <div className="flex-1 bg-[#0F1113] border border-[#26292E] rounded-2xl flex flex-col overflow-hidden">
             {/* Header */}
@@ -434,9 +440,10 @@ export function PortfolioPage() {
               </div>
             </div>
           </div>
+          {/* End Left Scrollable Column */}
 
-          {/* Right Sidebar */}
-          <aside className="w-72 flex-shrink-0 flex flex-col gap-4">
+          {/* Right Fixed Sidebar */}
+          <aside className="w-[280px] flex-shrink-0 flex flex-col gap-4 self-start sticky top-4">
             {/* Ghost Forks Widget */}
             <div className="bg-[#0F1113] border border-[#26292E] rounded-xl">
               <div className="flex items-center justify-between px-3 py-2 border-b border-[#26292E]">
