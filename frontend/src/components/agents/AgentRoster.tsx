@@ -3,11 +3,9 @@ import { User, TrendingUp, Activity, Search, Copy, Briefcase, Globe, BarChart3, 
 import { useAgents } from '../../hooks/useAgents';
 import { AgentSanityIndicator } from './AgentSanityIndicator';
 import { TaskAgentModal } from './TaskAgentModal';
-import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
+import { useAgentsUi } from '../../contexts/AgentsUiContext';
 import { clsx } from 'clsx';
-import { useState } from 'react';
-
-type AgentView = 'roster' | 'intel';
+import { useState, type ReactEventHandler } from 'react';
 
 // Mock data for right panel widgets
 const mockArchetypeDistribution = [
@@ -33,58 +31,58 @@ const mockSanityDistribution = {
   breakdown: 0,
 };
 
+// Mock lineage data for demo
+function getMockLineage(agentName: string): { gen: number; parents: string } {
+  const lineages: Record<string, { gen: number; parents: string }> = {
+    'MEGALODON': { gen: 1, parents: 'GENESIS' },
+    'CARDINAL': { gen: 2, parents: 'MEGALODON × PHANTOM' },
+    'ENVOY': { gen: 1, parents: 'GENESIS' },
+    'VIPER': { gen: 3, parents: 'CARDINAL × SPECTER' },
+    'ORACLE': { gen: 2, parents: 'ENVOY × CARDINAL' },
+    'LEVIATHAN': { gen: 1, parents: 'GENESIS' },
+  };
+  return lineages[agentName] || { gen: 1, parents: 'GENESIS' };
+}
+
+function getArchetypeEmoji(archetype: string): string {
+  switch (archetype?.toUpperCase()) {
+    case 'SHARK': return '🦈';
+    case 'SPY': return '🕵️';
+    case 'DIPLOMAT': return '🤝';
+    case 'SABOTEUR': return '💣';
+    case 'WHALE': return '🐋';
+    default: return '🤖';
+  }
+}
+
 export function AgentRoster() {
   const { data: agentsData, isLoading } = useAgents();
   const agents = agentsData?.agents || [];
-  const [activeView, setActiveView] = useState<AgentView>('roster');
+  const { activeTab } = useAgentsUi();
   const [taskingAgent, setTaskingAgent] = useState<any | null>(null);
 
-  // Register TopActionBar button handlers
-  useRegisterTopActionBarActions({
-    agentRoster: () => setActiveView('roster'),
-    globalIntel: () => setActiveView('intel'),
-  });
-
-  // Mock lineage data for demo
-  const getMockLineage = (agentName: string) => {
-    const lineages: Record<string, { gen: number; parents: string }> = {
-      'MEGALODON': { gen: 1, parents: 'GENESIS' },
-      'CARDINAL': { gen: 2, parents: 'MEGALODON × PHANTOM' },
-      'ENVOY': { gen: 1, parents: 'GENESIS' },
-      'VIPER': { gen: 3, parents: 'CARDINAL × SPECTER' },
-      'ORACLE': { gen: 2, parents: 'ENVOY × CARDINAL' },
-      'LEVIATHAN': { gen: 1, parents: 'GENESIS' },
-    };
-    return lineages[agentName] || { gen: 1, parents: 'GENESIS' };
-  };
-
-  const handleTaskAgent = (agent: any, e: React.MouseEvent) => {
+  const handleTaskAgent: ReactEventHandler<HTMLButtonElement> = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setTaskingAgent(agent);
-  };
-
-  const handleCopyAgent = (agent: any, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Copy agent:', agent.name);
-  };
-
-  const handleHireAgent = (agent: any, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Hire agent:', agent.name);
-  };
-
-  const getArchetypeEmoji = (archetype: string) => {
-    switch (archetype?.toUpperCase()) {
-      case 'SHARK': return '🦈';
-      case 'SPY': return '🕵️';
-      case 'DIPLOMAT': return '🤝';
-      case 'SABOTEUR': return '💣';
-      case 'WHALE': return '🐋';
-      default: return '🤖';
+    // This is a bit of a hack - we need to find the agent from the click
+    // For now, we'll use a simpler approach
+    const agentName = (e.target as HTMLElement).closest('[data-agent-name]')?.getAttribute('data-agent-name');
+    if (agentName) {
+      const agent = agents.find(a => a.name === agentName);
+      if (agent) setTaskingAgent(agent);
     }
+  };
+
+  const handleCopyAgent: ReactEventHandler<HTMLButtonElement> = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Copy agent');
+  };
+
+  const handleHireAgent: ReactEventHandler<HTMLButtonElement> = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Hire agent');
   };
 
   if (isLoading) {
@@ -96,12 +94,15 @@ export function AgentRoster() {
   }
 
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden">
+    <div
+      className="h-full min-h-0 flex flex-col overflow-hidden"
+      data-testid={activeTab === 'roster' ? 'agents-tab-roster' : 'agents-tab-intel'}
+    >
       {/* Main Content Area - Independent Scrolling */}
       <div className="flex-1 min-h-0 flex overflow-hidden">
         {/* Left Column - Main Content */}
         <div className="flex-1 min-w-0 overflow-hidden">
-          {activeView === 'roster' ? (
+          {activeTab === 'roster' ? (
             /* ROSTER VIEW */
             <div className="h-full overflow-y-auto p-6 custom-scrollbar">
               <div className="max-w-5xl mx-auto">
@@ -125,6 +126,7 @@ export function AgentRoster() {
                     return (
                       <div
                         key={agent.id}
+                        data-agent-name={agent.name}
                         className={clsx(
                           'bg-terminal-panel border rounded-lg p-4 transition-all group relative overflow-hidden',
                           sanityPercent > 40
@@ -174,7 +176,7 @@ export function AgentRoster() {
                               'text-lg font-mono font-bold',
                               (agent.total_pnl_usd || 0) >= 0 ? 'text-echelon-green' : 'text-echelon-red'
                             )}>
-                              ${(agent.total_pnl_usd || 0).toLocaleString()}
+${(agent.total_pnl_usd || 0).toLocaleString()}
                             </span>
                           </div>
                         </Link>
@@ -218,7 +220,7 @@ export function AgentRoster() {
                         <div className="flex gap-2 mt-4 pt-3 border-t border-terminal-border relative z-10">
                           {(agent.archetype === 'SPY' || agent.archetype === 'SHARK') && (
                             <button
-                              onClick={(e) => handleTaskAgent(agent, e)}
+                              onClick={handleTaskAgent}
                               className="flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2 bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30"
                             >
                               <Search className="w-4 h-4" />
@@ -227,7 +229,7 @@ export function AgentRoster() {
                           )}
 
                           <button
-                            onClick={(e) => handleCopyAgent(agent, e)}
+                            onClick={handleCopyAgent}
                             className="flex-1 px-3 py-2 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all flex items-center justify-center gap-2"
                           >
                             <Copy className="w-4 h-4" />
@@ -235,7 +237,7 @@ export function AgentRoster() {
                           </button>
 
                           <button
-                            onClick={(e) => handleHireAgent(agent, e)}
+                            onClick={handleHireAgent}
                             className="px-3 py-2 bg-echelon-amber/20 border border-echelon-amber/50 text-echelon-amber rounded text-sm font-bold hover:bg-echelon-amber/30 transition-all"
                           >
                             <Briefcase className="w-4 h-4" />
@@ -297,7 +299,7 @@ export function AgentRoster() {
         </div>
 
         {/* Right Column - Insights Panels (Roster View Only) */}
-        {activeView === 'roster' && (
+        {activeTab === 'roster' && (
           <div className="w-72 flex-shrink-0 min-h-0 overflow-y-auto border-l border-terminal-border bg-terminal-panel/50 custom-scrollbar">
             <div className="p-4 space-y-4">
               {/* Archetype Distribution */}
