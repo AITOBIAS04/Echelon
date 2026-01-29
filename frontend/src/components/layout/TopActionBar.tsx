@@ -1,25 +1,29 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTopActionBarActions, type TopActionBarActions } from '../../contexts/TopActionBarActionsContext';
-import { 
-  Radio, 
-  Bell, 
-  GitCompare, 
-  Plus, 
-  BarChart3, 
-  Cpu, 
-  RefreshCw, 
-  Users, 
-  Globe, 
+import { useAgentsUi, type AgentsTab } from '../../contexts/AgentsUiContext';
+import {
+  Radio,
+  Bell,
+  GitCompare,
+  Plus,
+  BarChart3,
+  Cpu,
+  RefreshCw,
+  Users,
+  Globe,
   Search,
   Settings
 } from 'lucide-react';
+import { clsx } from 'clsx';
 
 interface ActionButton {
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
   kind?: 'primary' | 'warn' | 'pill';
   action?: string;
+  isTab?: boolean;
+  tabValue?: AgentsTab;
 }
 
 interface PageConfig {
@@ -69,8 +73,8 @@ const TOP_ACTIONS: Record<string, PageConfig> = {
   '/agents': {
     name: 'Agents',
     buttons: [
-      { label: 'Agent Roster', icon: Users, action: 'agentRoster' },
-      { label: 'Global Intelligence', icon: Globe, action: 'globalIntel' },
+      { label: 'Agent Roster', icon: Users, isTab: true, tabValue: 'roster' },
+      { label: 'Global Intelligence', icon: Globe, isTab: true, tabValue: 'intel' },
       { label: 'Search', icon: Search, action: 'agentSearch' },
       { label: 'Deploy Agent', icon: Plus, kind: 'primary', action: 'deployAgent' },
     ],
@@ -110,6 +114,10 @@ export function TopActionBar() {
   const location = useLocation();
   const config = resolveConfig(location.pathname);
   const { actionsRef } = useTopActionBarActions();
+  const { activeTab, setActiveTab } = useAgentsUi();
+
+  // Check if this is the agents page
+  const isAgentsPage = location.pathname === '/agents' || location.pathname.startsWith('/agents/');
 
   return (
     <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-[rgba(18,20,23,0.65)] backdrop-blur-sm">
@@ -123,6 +131,27 @@ export function TopActionBar() {
       {/* Action buttons */}
       <div className="flex items-center gap-2 flex-wrap">
         {config.buttons.map((btn) => {
+          // Tab buttons for agents page
+          if (btn.isTab && isAgentsPage) {
+            const isActive = activeTab === btn.tabValue;
+            return (
+              <button
+                key={btn.label}
+                onClick={() => btn.tabValue && setActiveTab(btn.tabValue)}
+                className={clsx(
+                  'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap',
+                  isActive
+                    ? 'border-[rgba(34,211,238,0.35)] bg-[rgba(34,211,238,0.1)] text-[#22D3EE]'
+                    : 'border-[#26292E] bg-[#151719] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#64748B] hover:bg-[#1A1D21]'
+                )}
+              >
+                {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
+                <span>{btn.label}</span>
+              </button>
+            );
+          }
+
+          // Pill-style buttons
           if (btn.kind === 'pill') {
             return (
               <span
@@ -134,6 +163,7 @@ export function TopActionBar() {
             );
           }
 
+          // Regular action buttons
           return (
             <button
               key={btn.label}
