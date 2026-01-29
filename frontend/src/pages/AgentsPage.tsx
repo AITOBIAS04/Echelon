@@ -240,13 +240,11 @@ export function AgentsPage() {
         </header>
 
         {/* Content Area */}
-        <div className="content-area" style={{ flex: 1, padding: 16, overflow: 'auto' }}>
-
-          {/* ==================== AGENT ROSTER VIEW ==================== */}
+        <div className="content-area" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {activeView === 'roster' && (
-            <div className="content-layout" style={{ display: 'flex', alignItems: 'flex-start' }}>
+            <div className="flex-1 min-h-0 flex overflow-hidden">
               {/* Main Panel - Agent Grid */}
-              <div className="main-panel" style={{ flex: 1, minWidth: 0 }}>
+              <div className="main-panel" style={{ flex: 1, minWidth: 0, padding: 4, overflowY: 'auto' }}>
                 <div className="agents-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
                   {agents.map((agent) => (
                     <div
@@ -339,8 +337,8 @@ export function AgentsPage() {
 </div>
               </div>
 
-              {/* Right Sidebar */}
-              <aside className="right-sidebar" style={{ width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, marginLeft: 16 }}>
+              {/* Right Sidebar - Independent Scroll Region */}
+              <aside className="right-sidebar" style={{ width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, marginLeft: 16, minHeight: 0, overflowY: 'auto', paddingRight: 4 }}>
                 {/* Archetype Distribution */}
                 <div className="widget" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-outer)', borderRadius: 8 }}>
                   <div className="widget-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderBottom: '1px solid var(--border-outer)' }}>
@@ -416,7 +414,7 @@ export function AgentsPage() {
 
           {/* ==================== GLOBAL INTELLIGENCE VIEW ==================== */}
           {activeView === 'intelligence' && (
-            <div>
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
               {/* Stats Row */}
               <div className="stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }}>
                 <div className="stat-card" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-outer)', borderRadius: 8, padding: 12 }}>
