@@ -14,15 +14,18 @@ import {
   ArrowRight,
   ArrowLeft,
   Zap,
+  PieChart,
+  BarChart3,
+  Brain,
+  Target,
+  Zap as ZapIcon,
 } from 'lucide-react';
 import { useAgents } from '../../hooks/useAgents';
 import { AgentSanityIndicator } from './AgentSanityIndicator';
 import { TaskAgentModal } from './TaskAgentModal';
+import { useAgentsUi } from '../../contexts/AgentsUiContext';
 import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { clsx } from 'clsx';
-
-// Tab type
-type AgentsTab = 'roster' | 'intel';
 
 // Mock data for Global Intelligence dashboard
 const mockStats = {
@@ -33,12 +36,12 @@ const mockStats = {
 };
 
 const mockTheatres = [
-  { name: 'ORB_SALVAGE_F7', agents: 12, activity: 'high', stability: 87, volume: '$142K', gap: 12 },
-  { name: 'VEN_OIL_TANKER', agents: 8, activity: 'medium', stability: 92, volume: '$89K', gap: 8 },
-  { name: 'FED_RATE_DECISION', agents: 15, activity: 'high', stability: 78, volume: '$215K', gap: 18 },
-  { name: 'TAIWAN_STRAIT', agents: 5, activity: 'low', stability: 95, volume: '$45K', gap: 5 },
-  { name: 'NVDA_EARNINGS', agents: 9, activity: 'medium', stability: 84, volume: '$128K', gap: 14 },
-  { name: 'BTC_HALVING', agents: 4, activity: 'low', stability: 97, volume: '$32K', gap: 3 },
+  { name: 'ORB_SALVAGE_F7', agents: 12, activity: 'high' as const, stability: 87, volume: '$142K', gap: 12 },
+  { name: 'VEN_OIL_TANKER', agents: 8, activity: 'medium' as const, stability: 92, volume: '$89K', gap: 8 },
+  { name: 'FED_RATE_DECISION', agents: 15, activity: 'high' as const, stability: 78, volume: '$215K', gap: 18 },
+  { name: 'TAIWAN_STRAIT', agents: 5, activity: 'low' as const, stability: 95, volume: '$45K', gap: 5 },
+  { name: 'NVDA_EARNINGS', agents: 9, activity: 'medium' as const, stability: 84, volume: '$128K', gap: 14 },
+  { name: 'BTC_HALVING', agents: 4, activity: 'low' as const, stability: 97, volume: '$32K', gap: 3 },
 ];
 
 const mockMovements = [
@@ -52,9 +55,9 @@ const mockMovements = [
 ];
 
 const mockClusters = [
-  { name: 'SHARK', emoji: '🦈', count: 12, focus: 'High-volatility', avgPosition: '$8,450', winRate: 68 },
-  { name: 'DIPLOMAT', emoji: '🤝', count: 8, focus: 'Stability', avgPosition: '$4,200', winRate: 72 },
-  { name: 'SABOTEUR', emoji: '💣', count: 6, focus: 'Adversarial', avgPosition: '$3,800', winRate: 42 },
+  { name: 'SHARK', icon: Target, count: 12, focus: 'High-volatility', avgPosition: '$8,450', winRate: 68 },
+  { name: 'DIPLOMAT', icon: Users, count: 8, focus: 'Stability', avgPosition: '$4,200', winRate: 72 },
+  { name: 'SABOTEUR', icon: ZapIcon, count: 6, focus: 'Adversarial', avgPosition: '$3,800', winRate: 42 },
 ];
 
 const mockConflicts = [
@@ -63,13 +66,39 @@ const mockConflicts = [
   { severity: 'low' as const, agents: ['AEGIS', 'SABOTEUR'], theatre: 'VEN_OIL_TANKER', positions: '$6,800 vs $5,200', impact: -5 },
 ];
 
+// Mock archetype data for sidebar
+const mockArchetypes = [
+  { name: 'WHALE', count: 3, color: 'text-echelon-cyan' },
+  { name: 'DIPLOMAT', count: 3, color: 'text-echelon-green' },
+  { name: 'SABOTEUR', count: 2, color: 'text-echelon-red' },
+  { name: 'SHARK', count: 2, color: 'text-echelon-amber' },
+  { name: 'SPY', count: 2, color: 'text-echelon-purple' },
+];
+
+const mockPerformanceSummary = {
+  totalPL: '$482,340',
+  winRate: '68%',
+  totalActions: '12,847',
+  avgSanity: '72/100',
+  genesisAgents: 4,
+};
+
+const mockSanityDistribution = {
+  stable: 7,
+  stressed: 3,
+  critical: 1,
+  breakdown: 1,
+};
+
 export function AgentRoster() {
   const { data: agentsData, isLoading } = useAgents();
   const agents = agentsData?.agents || [];
   const [taskingAgent, setTaskingAgent] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<AgentsTab>('roster');
   const [movementFilter, setMovementFilter] = useState<string>('all');
   const [movements, setMovements] = useState(mockMovements);
+
+  // Use context for tab state - THIS IS THE KEY FIX
+  const { activeTab, setActiveTab } = useAgentsUi();
 
   // Register TopActionBar action handlers
   useRegisterTopActionBarActions({
@@ -120,25 +149,23 @@ export function AgentRoster() {
   const handleCopyAgent = (agent: any, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // TODO: Copy agent strategy
     console.log('Copy agent:', agent.name);
   };
 
   const handleHireAgent = (agent: any, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // TODO: Open hire modal
     console.log('Hire agent:', agent.name);
   };
 
-  const getArchetypeEmoji = (archetype: string) => {
+  const getArchetypeInfo = (archetype: string) => {
     switch (archetype?.toUpperCase()) {
-      case 'SHARK': return '🦈';
-      case 'SPY': return '🕵️';
-      case 'DIPLOMAT': return '🤝';
-      case 'SABOTEUR': return '💣';
-      case 'WHALE': return '🐋';
-      default: return '🤖';
+      case 'SHARK': return { emoji: '🦈', color: 'text-echelon-amber' };
+      case 'SPY': return { emoji: '🕵️', color: 'text-echelon-purple' };
+      case 'DIPLOMAT': return { emoji: '🤝', color: 'text-echelon-green' };
+      case 'SABOTEUR': return { emoji: '💣', color: 'text-echelon-red' };
+      case 'WHALE': return { emoji: '🐋', color: 'text-echelon-cyan' };
+      default: return { emoji: '🤖', color: 'text-terminal-text' };
     }
   };
 
@@ -165,153 +192,230 @@ export function AgentRoster() {
     >
       {/* Agent Roster View */}
       {activeTab === 'roster' && (
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-echelon-cyan flex items-center gap-3">
-                <User className="w-6 h-6" />
-                AGENT ROSTER
-              </h1>
-              <span className="text-terminal-muted text-sm">
-                {agents.length} agents active
-              </span>
-            </div>
+        <div className="flex-1 flex min-h-0">
+          {/* Left Panel - Agent Grid */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-5xl mx-auto pr-4">
+              <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold text-echelon-cyan flex items-center gap-3">
+                  <User className="w-6 h-6" />
+                  AGENT ROSTER
+                </h1>
+                <span className="text-terminal-muted text-sm">
+                  {agents.length} agents active
+                </span>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {agents.map((agent) => {
-                const sanity = agent.sanity || 75;
-                const maxSanity = agent.max_sanity || 100;
-                const sanityPercent = (sanity / maxSanity) * 100;
-                const lineage = getMockLineage(agent.name);
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {agents.map((agent) => {
+                  const sanity = agent.sanity || 75;
+                  const maxSanity = agent.max_sanity || 100;
+                  const sanityPercent = (sanity / maxSanity) * 100;
+                  const lineage = getMockLineage(agent.name);
+                  const archetypeInfo = getArchetypeInfo(agent.archetype);
 
-                return (
-                  <div
-                    key={agent.id}
-                    className={clsx(
-                      'bg-terminal-panel border rounded-lg p-4 transition-all group relative overflow-hidden',
-                      sanityPercent > 40
-                        ? 'border-terminal-border hover:border-echelon-cyan/50'
-                        : sanityPercent > 20
-                          ? 'border-echelon-amber/30 hover:border-echelon-amber/50'
-                          : 'border-echelon-red/50 hover:border-echelon-red animate-pulse',
-                      // Glitch effect for critical sanity
-                      sanityPercent <= 20 && 'relative overflow-hidden'
-                    )}
-                  >
-                    {/* Glitch overlay for critical agents */}
-                    {sanityPercent <= 20 && (
-                      <div
-                        className="absolute inset-0 pointer-events-none opacity-20"
-                        style={{
-                          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,0,0.1) 2px, rgba(255,0,0,0.1) 4px)',
-                          animation: 'glitch 0.3s infinite'
-                        }}
-                      />
-                    )}
-
-                    <Link
-                      to={`/agent/${agent.id}`}
-                      className="block"
+                  return (
+                    <div
+                      key={agent.id}
+                      className={clsx(
+                        'bg-terminal-panel border rounded-lg p-4 transition-all group relative overflow-hidden',
+                        sanityPercent > 40
+                          ? 'border-terminal-border hover:border-echelon-cyan/50'
+                          : sanityPercent > 20
+                            ? 'border-echelon-amber/30 hover:border-echelon-amber/50'
+                            : 'border-echelon-red/50 hover:border-echelon-red animate-pulse',
+                        sanityPercent <= 20 && 'relative overflow-hidden'
+                      )}
                     >
-                      <div className="flex items-start justify-between mb-3 relative z-10">
-                        <div className="flex items-center gap-3">
-                          <span className={clsx(
-                            'text-2xl',
-                            sanityPercent <= 20 && 'animate-pulse'
-                          )}>
-                            {getArchetypeEmoji(agent.archetype)}
-                          </span>
-                          <div>
-                            <h3 className={clsx(
-                              'font-bold transition',
-                              sanityPercent <= 20 ? 'text-echelon-red' : 'text-terminal-text group-hover:text-echelon-cyan'
-                            )}>
-                              {agent.name}
-                            </h3>
-                            <span className="text-xs text-terminal-muted uppercase">
-                              {agent.archetype}
-                            </span>
-                          </div>
-                        </div>
-                        <span className={clsx(
-                          'text-lg font-mono font-bold',
-                          (agent.total_pnl_usd || 0) >= 0 ? 'text-echelon-green' : 'text-echelon-red'
-                        )}>
-                          ${(agent.total_pnl_usd || 0).toLocaleString()}
-                        </span>
-                      </div>
-                    </Link>
-
-                    {/* Genealogy Metadata */}
-                    <div className="flex items-center gap-2 mt-2 text-xs relative z-10">
-                      <span className="bg-echelon-purple/20 border border-echelon-purple/30 px-2 py-0.5 rounded text-echelon-purple font-mono">
-                        GEN {lineage.gen}
-                      </span>
-                      <span className="text-terminal-muted">•</span>
-                      <span className="text-terminal-muted">
-                        {lineage.parents === 'GENESIS' ? (
-                          <span className="text-echelon-cyan/60">GENESIS AGENT</span>
-                        ) : (
-                          <>LINEAGE: <span className="text-echelon-purple">{lineage.parents}</span></>
-                        )}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-terminal-muted mb-3 mt-2 relative z-10">
-                      <span className="flex items-center gap-1">
-                        <Activity className="w-3 h-3" />
-                        {agent.actions_count || 0} actions
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" />
-                        {((agent.win_rate || 0) * 100).toFixed(0)}% win rate
-                      </span>
-                    </div>
-
-                    {/* Sanity Indicator */}
-                    <div className="relative z-10">
-                      <AgentSanityIndicator
-                        sanity={sanity}
-                        maxSanity={maxSanity}
-                        name={agent.name}
-                      />
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 mt-4 pt-3 border-t border-terminal-border relative z-10">
-                      {/* Task Button - Primary for Spies and Sharks */}
-                      {(agent.archetype === 'SPY' || agent.archetype === 'SHARK') && (
-                        <button
-                          onClick={(e) => handleTaskAgent(agent, e)}
-                          className="flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2 bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30"
-                        >
-                          <Search className="w-4 h-4" />
-                          TASK
-                        </button>
+                      {sanityPercent <= 20 && (
+                        <div
+                          className="absolute inset-0 pointer-events-none opacity-20"
+                          style={{
+                            background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,0,0.1) 2px, rgba(255,0,0,0.1) 4px)',
+                            animation: 'glitch 0.3s infinite'
+                          }}
+                        />
                       )}
 
-                      {/* Copy Button - For social trading */}
-                      <button
-                        onClick={(e) => handleCopyAgent(agent, e)}
-                        className="flex-1 px-3 py-2 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all flex items-center justify-center gap-2"
+                      <Link
+                        to={`/agent/${agent.id}`}
+                        className="block"
                       >
-                        <Copy className="w-4 h-4" />
-                        COPY
-                      </button>
+                        <div className="flex items-start justify-between mb-3 relative z-10">
+                          <div className="flex items-center gap-3">
+                            <span className={clsx(
+                              'text-2xl',
+                              sanityPercent <= 20 && 'animate-pulse'
+                            )}>
+                              {archetypeInfo.emoji}
+                            </span>
+                            <div>
+                              <h3 className={clsx(
+                                'font-bold transition',
+                                sanityPercent <= 20 ? 'text-echelon-red' : 'text-terminal-text group-hover:text-echelon-cyan'
+                              )}>
+                                {agent.name}
+                              </h3>
+                              <span className="text-xs text-terminal-muted uppercase">
+                                {agent.archetype}
+                              </span>
+                            </div>
+                          </div>
+                          <span className={clsx(
+'text-lg font-mono font-bold',
+                            (agent.total_pnl_usd || 0) >= 0 ? 'text-echelon-green' : 'text-echelon-red'
+                          )}>
+                            ${(agent.total_pnl_usd || 0).toLocaleString()}
+                          </span>
+                        </div>
+                      </Link>
 
-                      {/* Hire Button */}
-                      <button
-                        onClick={(e) => handleHireAgent(agent, e)}
-                        className="px-3 py-2 bg-echelon-amber/20 border border-echelon-amber/50 text-echelon-amber rounded text-sm font-bold hover:bg-echelon-amber/30 transition-all"
-                      >
-                        <Briefcase className="w-4 h-4" />
-                      </button>
+                      {/* Genealogy Metadata */}
+                      <div className="flex items-center gap-2 mt-2 text-xs relative z-10">
+                        <span className="bg-echelon-purple/20 border border-echelon-purple/30 px-2 py-0.5 rounded text-echelon-purple font-mono">
+                          GEN {lineage.gen}
+                        </span>
+                        <span className="text-terminal-muted">•</span>
+                        <span className="text-terminal-muted">
+                          {lineage.parents === 'GENESIS' ? (
+                            <span className="text-echelon-cyan/60">GENESIS AGENT</span>
+                          ) : (
+                            <>LINEAGE: <span className="text-echelon-purple">{lineage.parents}</span></>
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-terminal-muted mb-3 mt-2 relative z-10">
+                        <span className="flex items-center gap-1">
+                          <Activity className="w-3 h-3" />
+                          {agent.actions_count || 0} actions
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <TrendingUp className="w-3 h-3" />
+                          {((agent.win_rate || 0) * 100).toFixed(0)}% win rate
+                        </span>
+                      </div>
+
+                      {/* Sanity Indicator */}
+                      <div className="relative z-10">
+                        <AgentSanityIndicator
+                          sanity={sanity}
+                          maxSanity={maxSanity}
+                          name={agent.name}
+                        />
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-2 mt-4 pt-3 border-t border-terminal-border relative z-10">
+                        {(agent.archetype === 'SPY' || agent.archetype === 'SHARK') && (
+                          <button
+                            onClick={(e) => handleTaskAgent(agent, e)}
+                            className="flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2 bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30"
+                          >
+                            <Search className="w-4 h-4" />
+                            TASK
+                          </button>
+                        )}
+
+                        <button
+                          onClick={(e) => handleCopyAgent(agent, e)}
+                          className="flex-1 px-3 py-2 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all flex items-center justify-center gap-2"
+                        >
+                          <Copy className="w-4 h-4" />
+                          COPY
+                        </button>
+
+                        <button
+                          onClick={(e) => handleHireAgent(agent, e)}
+                          className="px-3 py-2 bg-echelon-amber/20 border border-echelon-amber/50 text-echelon-amber rounded text-sm font-bold hover:bg-echelon-amber/30 transition-all"
+                        >
+                          <Briefcase className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
+
+          {/* Right Sidebar - Panels */}
+          <aside className="w-72 flex-shrink-0 overflow-y-auto border-l border-terminal-border bg-terminal-panel/50">
+            {/* Archetype Distribution */}
+            <div className="p-4 border-b border-terminal-border">
+              <div className="flex items-center gap-2 mb-3">
+                <PieChart className="w-4 h-4 text-echelon-cyan" />
+                <h3 className="font-semibold text-terminal-text">Archetype Distribution</h3>
+              </div>
+              <div className="space-y-2">
+                {mockArchetypes.map((archetype) => (
+                  <div key={archetype.name} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className={archetype.color}>{getArchetypeInfo(archetype.name).emoji}</span>
+                      <span className="text-terminal-muted">{archetype.name}</span>
+                    </div>
+                    <span className="font-mono text-terminal-text">{archetype.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Performance Summary */}
+            <div className="p-4 border-b border-terminal-border">
+              <div className="flex items-center gap-2 mb-3">
+                <BarChart3 className="w-4 h-4 text-echelon-green" />
+                <h3 className="font-semibold text-terminal-text">Performance Summary</h3>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-terminal-muted">Total P/L</span>
+                  <span className="font-mono font-bold text-echelon-green">{mockPerformanceSummary.totalPL}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-terminal-muted">Win Rate</span>
+                  <span className="font-mono text-terminal-text">{mockPerformanceSummary.winRate}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-terminal-muted">Total Actions</span>
+                  <span className="font-mono text-terminal-text">{mockPerformanceSummary.totalActions}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-terminal-muted">Avg Sanity</span>
+                  <span className="font-mono text-terminal-text">{mockPerformanceSummary.avgSanity}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-terminal-muted">Genesis Agents</span>
+                  <span className="font-mono text-terminal-text">{mockPerformanceSummary.genesisAgents}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Sanity Distribution */}
+            <div className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Brain className="w-4 h-4 text-echelon-purple" />
+                <h3 className="font-semibold text-terminal-text">Sanity Distribution</h3>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-terminal-muted">STABLE (70-100)</span>
+                  <span className="font-mono text-echelon-green">{mockSanityDistribution.stable} agents</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-terminal-muted">STRESSED (40-69)</span>
+                  <span className="font-mono text-echelon-amber">{mockSanityDistribution.stressed} agents</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-terminal-muted">CRITICAL (20-39)</span>
+                  <span className="font-mono text-echelon-red">{mockSanityDistribution.critical} agent</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-terminal-muted">BREAKDOWN (&lt;20)</span>
+                  <span className="font-mono text-echelon-red">{mockSanityDistribution.breakdown} agent</span>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       )}
 
@@ -375,12 +479,10 @@ export function AgentRoster() {
                     <MapPin className="w-4 h-4 text-echelon-cyan" />
                     <span className="font-semibold text-terminal-text">Deployment Heat Map</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-echelon-green animate-pulse"></span>
-                      <span className="text-xs text-terminal-muted">LIVE</span>
-                    </span>
-                  </div>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-echelon-green animate-pulse"></span>
+                    <span className="text-xs text-terminal-muted">LIVE</span>
+                  </span>
                 </div>
                 <div className="p-4">
                   <div className="grid grid-cols-2 gap-3">
@@ -395,7 +497,7 @@ export function AgentRoster() {
                         )}
                       >
                         <div className="flex items-center justify-between mb-2">
-<span className="font-mono text-xs text-terminal-text">{theatre.name}</span>
+                          <span className="font-mono text-xs text-terminal-text">{theatre.name}</span>
                           <span className={clsx(
                             'text-xs font-medium',
                             theatre.activity === 'high' && 'text-echelon-red',
@@ -513,7 +615,7 @@ export function AgentRoster() {
                 <div key={cluster.name} className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
                     <div className="flex items-center gap-2">
-                      <span>{cluster.emoji}</span>
+                      <cluster.icon className="w-4 h-4 text-echelon-cyan" />
                       <span className="font-semibold text-terminal-text">{cluster.name} Cluster</span>
                     </div>
                     <span className="text-xs text-terminal-muted">{cluster.count} agents</span>
