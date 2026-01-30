@@ -25,9 +25,21 @@ import { AgentSanityIndicator } from './AgentSanityIndicator';
 import { TaskAgentModal } from './TaskAgentModal';
 import { useAgentsUi } from '../../contexts/AgentsUiContext';
 import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
+import {
+  getArchetypeTheme,
+  getSanityTheme,
+  getTheatreTheme,
+  getMovementTheme,
+  getVelocityTheme,
+  getConflictTheme,
+  getClusterTheme,
+} from '../../theme/agentsTheme';
 import { clsx } from 'clsx';
 
-// Mock data for Global Intelligence dashboard
+// ============================================================================
+// Mock Data for Global Intelligence Dashboard
+// ============================================================================
+
 const mockStats = {
   totalAgents: 12,
   deployedAgents: 8,
@@ -68,11 +80,11 @@ const mockConflicts = [
 
 // Mock archetype data for sidebar
 const mockArchetypes = [
-  { name: 'WHALE', count: 3, color: 'text-echelon-cyan' },
-  { name: 'DIPLOMAT', count: 3, color: 'text-echelon-green' },
-  { name: 'SABOTEUR', count: 2, color: 'text-echelon-red' },
-  { name: 'SHARK', count: 2, color: 'text-echelon-amber' },
-  { name: 'SPY', count: 2, color: 'text-echelon-purple' },
+  { name: 'WHALE', count: 3 },
+  { name: 'DIPLOMAT', count: 3 },
+  { name: 'SABOTEUR', count: 2 },
+  { name: 'SHARK', count: 2 },
+  { name: 'SPY', count: 2 },
 ];
 
 const mockPerformanceSummary = {
@@ -90,12 +102,26 @@ const mockSanityDistribution = {
   breakdown: 1,
 };
 
+// ============================================================================
+// Agent Roster Component
+// ============================================================================
+
 export function AgentRoster() {
   const { data: agentsData, isLoading } = useAgents();
   const agents = agentsData?.agents || [];
   const [taskingAgent, setTaskingAgent] = useState<any | null>(null);
   const [movementFilter, setMovementFilter] = useState<string>('all');
   const [movements, setMovements] = useState(mockMovements);
+
+  // Helper function to get cluster icon
+  const getClusterIcon = (name: string) => {
+    switch (name) {
+      case 'SHARK': return Target;
+      case 'DIPLOMAT': return Users;
+      case 'SABOTEUR': return ZapIcon;
+      default: return Target;
+    }
+  };
 
   // Use context for tab state - THIS IS THE KEY FIX
   const { activeTab, setActiveTab } = useAgentsUi();
@@ -158,17 +184,6 @@ export function AgentRoster() {
     console.log('Hire agent:', agent.name);
   };
 
-  const getArchetypeInfo = (archetype: string) => {
-    switch (archetype?.toUpperCase()) {
-      case 'SHARK': return { emoji: '🦈', color: 'text-echelon-amber' };
-      case 'SPY': return { emoji: '🕵️', color: 'text-echelon-purple' };
-      case 'DIPLOMAT': return { emoji: '🤝', color: 'text-echelon-green' };
-      case 'SABOTEUR': return { emoji: '💣', color: 'text-echelon-red' };
-      case 'WHALE': return { emoji: '🐋', color: 'text-echelon-cyan' };
-      default: return { emoji: '🤖', color: 'text-terminal-text' };
-    }
-  };
-
   const filteredMovements = movements.filter(m => {
     if (movementFilter === 'all') return true;
     if (movementFilter === 'deploy') return m.type === 'deploy';
@@ -180,7 +195,7 @@ export function AgentRoster() {
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-echelon-cyan animate-pulse">Loading agents...</div>
+        <div className="text-cyan-400 animate-pulse">Loading agents...</div>
       </div>
     );
   }
@@ -197,11 +212,11 @@ export function AgentRoster() {
           <div className="flex-1 overflow-y-auto p-6">
             <div className="max-w-5xl mx-auto pr-4">
               <div className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold text-echelon-cyan flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-cyan-400 flex items-center gap-3">
                   <User className="w-6 h-6" />
                   AGENT ROSTER
                 </h1>
-                <span className="text-terminal-muted text-sm">
+                <span className="text-slate-500 text-sm">
                   {agents.length} agents active
                 </span>
               </div>
@@ -212,27 +227,26 @@ export function AgentRoster() {
                   const maxSanity = agent.max_sanity || 100;
                   const sanityPercent = (sanity / maxSanity) * 100;
                   const lineage = getMockLineage(agent.name);
-                  const archetypeInfo = getArchetypeInfo(agent.archetype);
+                  const archetypeTheme = getArchetypeTheme(agent.archetype);
+                  const sanityTheme = getSanityTheme(sanityPercent);
+                  const isPositivePL = (agent.total_pnl_usd || 0) >= 0;
 
                   return (
                     <div
                       key={agent.id}
                       className={clsx(
-                        'bg-terminal-panel border rounded-lg p-4 transition-all group relative overflow-hidden',
-                        sanityPercent > 40
-                          ? 'border-terminal-border hover:border-echelon-cyan/50'
-                          : sanityPercent > 20
-                            ? 'border-echelon-amber/30 hover:border-echelon-amber/50'
-                            : 'border-echelon-red/50 hover:border-echelon-red animate-pulse',
-                        sanityPercent <= 20 && 'relative overflow-hidden'
+                        'bg-slate-900 border rounded-lg p-4 transition-all group relative overflow-hidden',
+                        archetypeTheme.borderClass,
+                        sanityTheme.cardHoverClass,
+                        sanityTheme.glowClass
                       )}
                     >
+                      {/* Glitch overlay for breakdown state */}
                       {sanityPercent <= 20 && (
                         <div
                           className="absolute inset-0 pointer-events-none opacity-20"
                           style={{
                             background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,0,0.1) 2px, rgba(255,0,0,0.1) 4px)',
-                            animation: 'glitch 0.3s infinite'
                           }}
                         />
                       )}
@@ -247,23 +261,26 @@ export function AgentRoster() {
                               'text-2xl',
                               sanityPercent <= 20 && 'animate-pulse'
                             )}>
-                              {archetypeInfo.emoji}
+                              {archetypeTheme.emoji}
                             </span>
                             <div>
                               <h3 className={clsx(
                                 'font-bold transition',
-                                sanityPercent <= 20 ? 'text-echelon-red' : 'text-terminal-text group-hover:text-echelon-cyan'
+                                sanityPercent <= 20 ? 'text-rose-500' : 'text-slate-200 group-hover:text-cyan-400'
                               )}>
                                 {agent.name}
                               </h3>
-                              <span className="text-xs text-terminal-muted uppercase">
+                              <span className={clsx(
+                                'text-xs uppercase',
+                                archetypeTheme.textClass
+                              )}>
                                 {agent.archetype}
                               </span>
                             </div>
                           </div>
                           <span className={clsx(
-'text-lg font-mono font-bold',
-                            (agent.total_pnl_usd || 0) >= 0 ? 'text-echelon-green' : 'text-echelon-red'
+                            'text-lg font-mono font-bold',
+                            isPositivePL ? 'text-emerald-400' : 'text-rose-500'
                           )}>
                             ${(agent.total_pnl_usd || 0).toLocaleString()}
                           </span>
@@ -272,20 +289,25 @@ export function AgentRoster() {
 
                       {/* Genealogy Metadata */}
                       <div className="flex items-center gap-2 mt-2 text-xs relative z-10">
-                        <span className="bg-echelon-purple/20 border border-echelon-purple/30 px-2 py-0.5 rounded text-echelon-purple font-mono">
+                        <span className={clsx(
+                          'border px-2 py-0.5 rounded font-mono',
+                          archetypeTheme.bgClass,
+                          archetypeTheme.borderClass,
+                          archetypeTheme.textClass
+                        )}>
                           GEN {lineage.gen}
                         </span>
-                        <span className="text-terminal-muted">•</span>
-                        <span className="text-terminal-muted">
+                        <span className="text-slate-500">•</span>
+                        <span className="text-slate-500">
                           {lineage.parents === 'GENESIS' ? (
-                            <span className="text-echelon-cyan/60">GENESIS AGENT</span>
+                            <span className="text-cyan-400/60">GENESIS AGENT</span>
                           ) : (
-                            <>LINEAGE: <span className="text-echelon-purple">{lineage.parents}</span></>
+                            <>LINEAGE: <span className="text-purple-400">{lineage.parents}</span></>
                           )}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-terminal-muted mb-3 mt-2 relative z-10">
+                      <div className="flex items-center justify-between text-xs text-slate-500 mb-3 mt-2 relative z-10">
                         <span className="flex items-center gap-1">
                           <Activity className="w-3 h-3" />
                           {agent.actions_count || 0} actions
@@ -306,11 +328,17 @@ export function AgentRoster() {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex gap-2 mt-4 pt-3 border-t border-terminal-border relative z-10">
+                      <div className="flex gap-2 mt-4 pt-3 border-t border-slate-700 relative z-10">
                         {(agent.archetype === 'SPY' || agent.archetype === 'SHARK') && (
                           <button
                             onClick={(e) => handleTaskAgent(agent, e)}
-                            className="flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2 bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30"
+                            className={clsx(
+                              'flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2',
+                              archetypeTheme.bgClass,
+                              archetypeTheme.borderClass,
+                              archetypeTheme.textClass,
+                              `hover:${archetypeTheme.bgClass.replace('/10', '/20')}`
+                            )}
                           >
                             <Search className="w-4 h-4" />
                             TASK
@@ -319,7 +347,7 @@ export function AgentRoster() {
 
                         <button
                           onClick={(e) => handleCopyAgent(agent, e)}
-                          className="flex-1 px-3 py-2 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all flex items-center justify-center gap-2"
+                          className="flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2 bg-cyan-500/20 border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/30"
                         >
                           <Copy className="w-4 h-4" />
                           COPY
@@ -327,9 +355,9 @@ export function AgentRoster() {
 
                         <button
                           onClick={(e) => handleHireAgent(agent, e)}
-                          className="px-3 py-2 bg-echelon-amber/20 border border-echelon-amber/50 text-echelon-amber rounded text-sm font-bold hover:bg-echelon-amber/30 transition-all"
+                          className="px-3 py-2 border rounded text-sm font-bold transition-all bg-amber-500/20 border-amber-500/50 text-amber-400 hover:bg-amber-500/30"
                         >
-                          <Briefcase className="w-4 h-4" />
+<Briefcase className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -340,52 +368,55 @@ export function AgentRoster() {
           </div>
 
           {/* Right Sidebar - Panels */}
-          <aside className="w-72 flex-shrink-0 overflow-y-auto border-l border-terminal-border bg-terminal-panel/50">
+          <aside className="w-72 flex-shrink-0 overflow-y-auto border-l border-slate-700 bg-slate-900/50">
             {/* Archetype Distribution */}
-            <div className="p-4 border-b border-terminal-border">
+            <div className="p-4 border-b border-slate-700">
               <div className="flex items-center gap-2 mb-3">
-                <PieChart className="w-4 h-4 text-echelon-cyan" />
-                <h3 className="font-semibold text-terminal-text">Archetype Distribution</h3>
+                <PieChart className="w-4 h-4 text-cyan-400" />
+                <h3 className="font-semibold text-slate-200">Archetype Distribution</h3>
               </div>
               <div className="space-y-2">
-                {mockArchetypes.map((archetype) => (
-                  <div key={archetype.name} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className={archetype.color}>{getArchetypeInfo(archetype.name).emoji}</span>
-                      <span className="text-terminal-muted">{archetype.name}</span>
+                {mockArchetypes.map((archetype) => {
+                  const theme = getArchetypeTheme(archetype.name);
+                  return (
+                    <div key={archetype.name} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className={theme.textClass}>{theme.emoji}</span>
+                        <span className="text-slate-500">{archetype.name}</span>
+                      </div>
+                      <span className="font-mono text-slate-300">{archetype.count}</span>
                     </div>
-                    <span className="font-mono text-terminal-text">{archetype.count}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* Performance Summary */}
-            <div className="p-4 border-b border-terminal-border">
+            <div className="p-4 border-b border-slate-700">
               <div className="flex items-center gap-2 mb-3">
-                <BarChart3 className="w-4 h-4 text-echelon-green" />
-                <h3 className="font-semibold text-terminal-text">Performance Summary</h3>
+                <BarChart3 className="w-4 h-4 text-emerald-400" />
+                <h3 className="font-semibold text-slate-200">Performance Summary</h3>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-terminal-muted">Total P/L</span>
-                  <span className="font-mono font-bold text-echelon-green">{mockPerformanceSummary.totalPL}</span>
+                  <span className="text-slate-500">Total P/L</span>
+                  <span className="font-mono font-bold text-emerald-400">{mockPerformanceSummary.totalPL}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-terminal-muted">Win Rate</span>
-                  <span className="font-mono text-terminal-text">{mockPerformanceSummary.winRate}</span>
+                  <span className="text-slate-500">Win Rate</span>
+                  <span className="font-mono text-slate-300">{mockPerformanceSummary.winRate}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-terminal-muted">Total Actions</span>
-                  <span className="font-mono text-terminal-text">{mockPerformanceSummary.totalActions}</span>
+                  <span className="text-slate-500">Total Actions</span>
+                  <span className="font-mono text-slate-300">{mockPerformanceSummary.totalActions}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-terminal-muted">Avg Sanity</span>
-                  <span className="font-mono text-terminal-text">{mockPerformanceSummary.avgSanity}</span>
+                  <span className="text-slate-500">Avg Sanity</span>
+                  <span className="font-mono text-slate-300">{mockPerformanceSummary.avgSanity}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-terminal-muted">Genesis Agents</span>
-                  <span className="font-mono text-terminal-text">{mockPerformanceSummary.genesisAgents}</span>
+                  <span className="text-slate-500">Genesis Agents</span>
+                  <span className="font-mono text-slate-300">{mockPerformanceSummary.genesisAgents}</span>
                 </div>
               </div>
             </div>
@@ -393,25 +424,25 @@ export function AgentRoster() {
             {/* Sanity Distribution */}
             <div className="p-4">
               <div className="flex items-center gap-2 mb-3">
-                <Brain className="w-4 h-4 text-echelon-purple" />
-                <h3 className="font-semibold text-terminal-text">Sanity Distribution</h3>
+                <Brain className="w-4 h-4 text-purple-400" />
+                <h3 className="font-semibold text-slate-200">Sanity Distribution</h3>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-terminal-muted">STABLE (70-100)</span>
-                  <span className="font-mono text-echelon-green">{mockSanityDistribution.stable} agents</span>
+                  <span className="text-slate-500">STABLE (70-100)</span>
+                  <span className="font-mono text-emerald-400">{mockSanityDistribution.stable} agents</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-terminal-muted">STRESSED (40-69)</span>
-                  <span className="font-mono text-echelon-amber">{mockSanityDistribution.stressed} agents</span>
+                  <span className="text-slate-500">STRESSED (40-69)</span>
+                  <span className="font-mono text-amber-400">{mockSanityDistribution.stressed} agents</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-terminal-muted">CRITICAL (20-39)</span>
-                  <span className="font-mono text-echelon-red">{mockSanityDistribution.critical} agent</span>
+                  <span className="text-slate-500">CRITICAL (20-39)</span>
+                  <span className="font-mono text-rose-400">{mockSanityDistribution.critical} agent</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-terminal-muted">BREAKDOWN (&lt;20)</span>
-                  <span className="font-mono text-echelon-red">{mockSanityDistribution.breakdown} agent</span>
+                  <span className="text-slate-500">BREAKDOWN (&lt;20)</span>
+                  <span className="font-mono text-red-500">{mockSanityDistribution.breakdown} agent</span>
                 </div>
               </div>
             </div>
@@ -425,122 +456,117 @@ export function AgentRoster() {
           <div className="max-w-7xl mx-auto">
             {/* Stats Row - KPI Cards */}
             <div className="grid grid-cols-4 gap-4 mb-6">
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+              <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-cyan/20 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-echelon-cyan" />
+                  <div className="w-10 h-10 rounded bg-cyan-500/20 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-cyan-400" />
                   </div>
-                  <span className="text-xs text-echelon-green">+2 this week</span>
+                  <span className="text-xs text-emerald-400">+2 this week</span>
                 </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.totalAgents}</div>
-                <div className="text-sm text-terminal-muted">Total Agents</div>
+                <div className="text-2xl font-bold text-slate-200">{mockStats.totalAgents}</div>
+                <div className="text-sm text-slate-500">Total Agents</div>
               </div>
 
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+              <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-green/20 flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-echelon-green" />
+                  <div className="w-10 h-10 rounded bg-emerald-500/20 flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-emerald-400" />
                   </div>
-                  <span className="text-xs text-terminal-muted">67% utilization</span>
+                  <span className="text-xs text-slate-500">67% utilization</span>
                 </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.deployedAgents}</div>
-                <div className="text-sm text-terminal-muted">Deployed</div>
+                <div className="text-2xl font-bold text-slate-200">{mockStats.deployedAgents}</div>
+                <div className="text-sm text-slate-500">Deployed</div>
               </div>
 
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+              <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-purple/20 flex items-center justify-center">
-                    <History className="w-5 h-5 text-echelon-purple" />
+                  <div className="w-10 h-10 rounded bg-purple-500/20 flex items-center justify-center">
+                    <History className="w-5 h-5 text-purple-400" />
                   </div>
-                  <span className="text-xs text-echelon-green">+12 from yesterday</span>
+                  <span className="text-xs text-emerald-400">+12 from yesterday</span>
                 </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.movements24h}</div>
-                <div className="text-sm text-terminal-muted">Movements (24h)</div>
+                <div className="text-2xl font-bold text-slate-200">{mockStats.movements24h}</div>
+                <div className="text-sm text-slate-500">Movements (24h)</div>
               </div>
 
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+              <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-red/20 flex items-center justify-center">
-                    <AlertTriangle className="w-5 h-5 text-echelon-red" />
+                  <div className="w-10 h-10 rounded bg-rose-500/20 flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-rose-400" />
                   </div>
-                  <span className="text-xs text-echelon-green">-1 from yesterday</span>
+                  <span className="text-xs text-emerald-400">-1 from yesterday</span>
                 </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.activeConflicts}</div>
-                <div className="text-sm text-terminal-muted">Active Conflicts</div>
+                <div className="text-2xl font-bold text-slate-200">{mockStats.activeConflicts}</div>
+                <div className="text-sm text-slate-500">Active Conflicts</div>
               </div>
             </div>
 
             {/* Dashboard Grid */}
             <div className="grid grid-cols-2 gap-4 mb-4">
               {/* Deployment Heat Map */}
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
+              <div className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
                   <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-echelon-cyan" />
-                    <span className="font-semibold text-terminal-text">Deployment Heat Map</span>
+                    <MapPin className="w-4 h-4 text-cyan-400" />
+                    <span className="font-semibold text-slate-200">Deployment Heat Map</span>
                   </div>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-echelon-green animate-pulse"></span>
-                    <span className="text-xs text-terminal-muted">LIVE</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="text-xs text-slate-500">LIVE</span>
                   </span>
                 </div>
                 <div className="p-4">
                   <div className="grid grid-cols-2 gap-3">
-                    {mockTheatres.map((theatre) => (
-                      <div
-                        key={theatre.name}
-                        className={clsx(
-                          'rounded border p-3 transition-all',
-                          theatre.activity === 'high' && 'border-echelon-red/50 bg-echelon-red/10',
-                          theatre.activity === 'medium' && 'border-echelon-amber/50 bg-echelon-amber/10',
-                          theatre.activity === 'low' && 'border-echelon-green/50 bg-echelon-green/10'
-                        )}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-mono text-xs text-terminal-text">{theatre.name}</span>
-                          <span className={clsx(
-                            'text-xs font-medium',
-                            theatre.activity === 'high' && 'text-echelon-red',
-                            theatre.activity === 'medium' && 'text-echelon-amber',
-                            theatre.activity === 'low' && 'text-echelon-green'
-                          )}>
-                            {theatre.activity === 'high' && '🔥'}
-                            {theatre.activity === 'medium' && '🟡'}
-                            {theatre.activity === 'low' && '🟢'}
-                          </span>
+                    {mockTheatres.map((theatre) => {
+                      const theatreTheme = getTheatreTheme(theatre.activity);
+                      return (
+                        <div
+                          key={theatre.name}
+                          className={clsx(
+                            'rounded border p-3 transition-all',
+                            theatreTheme.borderClass,
+                            theatreTheme.bgClass
+                          )}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-mono text-xs text-slate-300">{theatre.name}</span>
+                            <span className={clsx('text-xs font-medium', theatreTheme.textClass)}>
+                              {theatreTheme.indicator}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-slate-500">
+                            <span>{theatre.agents} agents</span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-2 text-xs">
+                            <span><span className="text-slate-500">Stab</span> <span className="text-slate-300">{theatre.stability}%</span></span>
+                            <span><span className="text-slate-500">Vol</span> <span className="text-slate-300">{theatre.volume}</span></span>
+                            <span><span className="text-slate-500">Gap</span> <span className="text-slate-300">{theatre.gap}%</span></span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-terminal-muted">
-                          <span>{theatre.agents} agents</span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-2 text-xs">
-                          <span><span className="text-terminal-muted">Stab</span> <span className="text-terminal-text">{theatre.stability}%</span></span>
-                          <span><span className="text-terminal-muted">Vol</span> <span className="text-terminal-text">{theatre.volume}</span></span>
-                          <span><span className="text-terminal-muted">Gap</span> <span className="text-terminal-text">{theatre.gap}%</span></span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
 
               {/* Movement Feed */}
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
+              <div className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
                   <div className="flex items-center gap-2">
-                    <History className="w-4 h-4 text-echelon-purple" />
-                    <span className="font-semibold text-terminal-text">Movement Feed</span>
+                    <History className="w-4 h-4 text-purple-400" />
+                    <span className="font-semibold text-slate-200">Movement Feed</span>
                   </div>
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-echelon-green animate-pulse"></span>
-                    <span className="text-xs text-terminal-muted">LIVE</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="text-xs text-slate-500">LIVE</span>
                   </span>
                 </div>
-                <div className="flex items-center gap-1 px-4 py-2 border-b border-terminal-border">
+                <div className="flex items-center gap-1 px-4 py-2 border-b border-slate-700">
                   <button
                     onClick={() => setMovementFilter('all')}
                     className={clsx(
                       'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'all' ? 'bg-echelon-cyan/20 text-echelon-cyan' : 'text-terminal-muted hover:text-terminal-text'
+                      movementFilter === 'all' ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'
                     )}
                   >
                     All
@@ -549,7 +575,7 @@ export function AgentRoster() {
                     onClick={() => setMovementFilter('deploy')}
                     className={clsx(
                       'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'deploy' ? 'bg-echelon-green/20 text-echelon-green' : 'text-terminal-muted hover:text-terminal-text'
+                      movementFilter === 'deploy' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-500 hover:text-slate-300'
                     )}
                   >
                     Deploy
@@ -558,7 +584,7 @@ export function AgentRoster() {
                     onClick={() => setMovementFilter('withdraw')}
                     className={clsx(
                       'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'withdraw' ? 'bg-echelon-red/20 text-echelon-red' : 'text-terminal-muted hover:text-terminal-text'
+                      movementFilter === 'withdraw' ? 'bg-rose-500/20 text-rose-400' : 'text-slate-500 hover:text-slate-300'
                     )}
                   >
                     Withdraw
@@ -567,130 +593,128 @@ export function AgentRoster() {
                     onClick={() => setMovementFilter('strategy')}
                     className={clsx(
                       'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'strategy' ? 'bg-echelon-amber/20 text-echelon-amber' : 'text-terminal-muted hover:text-terminal-text'
+                      movementFilter === 'strategy' ? 'bg-amber-500/20 text-amber-400' : 'text-slate-500 hover:text-slate-300'
                     )}
                   >
                     Strategy
                   </button>
                 </div>
                 <div className="max-h-80 overflow-y-auto">
-                  {filteredMovements.map((movement, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-3 px-4 py-2 border-b border-terminal-border/50 hover:bg-terminal-card/50 transition-colors"
-                    >
-                      <span className="font-mono text-xs text-terminal-muted w-16">{movement.time}</span>
-                      <div className={clsx(
-                        'w-6 h-6 rounded flex items-center justify-center text-xs font-bold',
-                        movement.type === 'deploy' && 'bg-echelon-green/20 text-echelon-green',
-                        movement.type === 'withdraw' && 'bg-echelon-red/20 text-echelon-red',
-                        movement.type === 'strategy' && 'bg-echelon-amber/20 text-echelon-amber'
-                      )}>
-                        {movement.type === 'deploy' && <ArrowRight className="w-3 h-3" />}
-                        {movement.type === 'withdraw' && <ArrowLeft className="w-3 h-3" />}
-                        {movement.type === 'strategy' && <Zap className="w-3 h-3" />}
+                  {filteredMovements.map((movement, idx) => {
+                    const movementTheme = getMovementTheme(movement.type);
+                    const velocityTheme = getVelocityTheme(movement.velocity);
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 px-4 py-2 border-b border-slate-800 hover:bg-slate-800/50 transition-colors"
+                      >
+                        <span className="font-mono text-xs text-slate-500 w-16">{movement.time}</span>
+                        <div className={clsx(
+                          'w-6 h-6 rounded flex items-center justify-center text-xs font-bold',
+                          movementTheme.bgClass,
+                          movementTheme.textClass
+                        )}>
+                          {movement.type === 'deploy' && <ArrowRight className="w-3 h-3" />}
+                          {movement.type === 'withdraw' && <ArrowLeft className="w-3 h-3" />}
+                          {movement.type === 'strategy' && <Zap className="w-3 h-3" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-slate-300">{movement.agent}</span>
+                          <span className="text-slate-500 text-xs"> {movement.action} </span>
+                          <span className="text-cyan-400 text-xs">{movement.theatre}</span>
+                        </div>
+                        <span className={clsx('text-xs font-mono font-bold', velocityTheme.colorClass)}>
+                          {movement.velocity}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium text-terminal-text">{movement.agent}</span>
-                        <span className="text-terminal-muted text-xs"> {movement.action} </span>
-                        <span className="text-echelon-cyan text-xs">{movement.theatre}</span>
-                      </div>
-                      <span className={clsx(
-                        'text-xs font-mono font-bold',
-                        movement.velocity.includes('+') && 'text-echelon-green',
-                        movement.velocity.includes('-') && 'text-echelon-red',
-                        movement.velocity === '~0' && 'text-terminal-muted'
-                      )}>
-                        {movement.velocity}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
             {/* Strategy Clusters */}
             <div className="grid grid-cols-3 gap-4 mb-4">
-              {mockClusters.map((cluster) => (
-                <div key={cluster.name} className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
-                    <div className="flex items-center gap-2">
-                      <cluster.icon className="w-4 h-4 text-echelon-cyan" />
-                      <span className="font-semibold text-terminal-text">{cluster.name} Cluster</span>
+              {mockClusters.map((cluster) => {
+                const clusterTheme = getClusterTheme(cluster.winRate);
+                const ClusterIcon = getClusterIcon(cluster.name);
+                return (
+                  <div key={cluster.name} className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+                      <div className="flex items-center gap-2">
+                        <ClusterIcon className="w-4 h-4 text-cyan-400" />
+                        <span className="font-semibold text-slate-200">{cluster.name} Cluster</span>
+                      </div>
+                      <span className="text-xs text-slate-500">{cluster.count} agents</span>
                     </div>
-                    <span className="text-xs text-terminal-muted">{cluster.count} agents</span>
+                    <div className="p-4 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Focus</span>
+                        <span className="text-slate-300">{cluster.focus}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Avg Position</span>
+                        <span className="text-slate-300">{cluster.avgPosition}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Win Rate</span>
+                        <span className={clsx(
+                          'font-bold',
+                          cluster.winRate >= 60 ? clusterTheme.winRateGoodClass : cluster.winRate >= 40 ? clusterTheme.winRateWarningClass : clusterTheme.winRateDangerClass
+                        )}>
+                          {cluster.winRate}%
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-terminal-muted">Focus</span>
-                      <span className="text-terminal-text">{cluster.focus}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-terminal-muted">Avg Position</span>
-                      <span className="text-terminal-text">{cluster.avgPosition}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-terminal-muted">Win Rate</span>
-                      <span className={clsx(
-                        'font-bold',
-                        cluster.winRate >= 60 ? 'text-echelon-green' : cluster.winRate >= 40 ? 'text-echelon-amber' : 'text-echelon-red'
-                      )}>
-                        {cluster.winRate}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Agent Conflicts & Interactions */}
-            <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-terminal-border">
-                <AlertTriangle className="w-4 h-4 text-echelon-red" />
-                <span className="font-semibold text-terminal-text">Agent Conflicts & Interactions</span>
+            <div className="bg-slate-900 border border-slate-700 rounded-lg overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-700">
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+                <span className="font-semibold text-slate-200">Agent Conflicts & Interactions</span>
               </div>
               <div className="p-4 space-y-3">
-                {mockConflicts.map((conflict, idx) => (
-                  <div
-                    key={idx}
-                    className={clsx(
-                      'rounded border p-4',
-                      conflict.severity === 'high' && 'border-echelon-red/50 bg-echelon-red/5',
-                      conflict.severity === 'medium' && 'border-echelon-amber/50 bg-echelon-amber/5',
-                      conflict.severity === 'low' && 'border-echelon-green/50 bg-echelon-green/5'
-                    )}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={clsx(
-                        'text-xs font-bold px-2 py-0.5 rounded',
-                        conflict.severity === 'high' && 'bg-echelon-red/20 text-echelon-red',
-                        conflict.severity === 'medium' && 'bg-echelon-amber/20 text-echelon-amber',
-                        conflict.severity === 'low' && 'bg-echelon-green/20 text-echelon-green'
-                      )}>
-                        {conflict.severity === 'high' && '⚠️ HIGH IMPACT'}
-                        {conflict.severity === 'medium' && '🟡 MEDIUM'}
-                        {conflict.severity === 'low' && '🟢 LOW'}
-                      </span>
+                {mockConflicts.map((conflict, idx) => {
+                  const conflictTheme = getConflictTheme(conflict.severity, conflict.impact);
+                  return (
+                    <div
+                      key={idx}
+                      className={clsx(
+                        'rounded border p-4',
+                        conflictTheme.borderClass,
+                        conflictTheme.bgClass
+                      )}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={clsx(
+                          'text-xs font-bold px-2 py-0.5 rounded',
+                          conflictTheme.badgeBgClass,
+                          conflictTheme.badgeTextClass
+                        )}>
+                          {conflictTheme.badge}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-slate-300">
+                          <span className="font-semibold">{conflict.agents[0]}</span>
+                          <span className="text-slate-500 mx-1">vs</span>
+                          <span className="font-semibold">{conflict.agents[1]}</span>
+                        </span>
+                        <span className="text-xs text-cyan-400">{conflict.theatre}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-slate-500">Opposing positions: <span className="text-slate-300">{conflict.positions}</span></span>
+                        <span className={clsx('font-medium', conflictTheme.impactClass)}>
+                          Stability impact: {conflict.impact > 0 ? '+' : ''}{conflict.impact}%
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-terminal-text">
-                        <span className="font-semibold">{conflict.agents[0]}</span>
-                        <span className="text-terminal-muted mx-1">vs</span>
-                        <span className="font-semibold">{conflict.agents[1]}</span>
-                      </span>
-                      <span className="text-xs text-echelon-cyan">{conflict.theatre}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-terminal-muted">Opposing positions: <span className="text-terminal-text">{conflict.positions}</span></span>
-                      <span className={clsx(
-                        'font-medium',
-                        conflict.impact > 0 ? 'text-echelon-green' : 'text-echelon-red'
-                      )}>
-                        Stability impact: {conflict.impact > 0 ? '+' : ''}{conflict.impact}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
