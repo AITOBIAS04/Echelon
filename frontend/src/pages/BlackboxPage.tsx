@@ -7,9 +7,9 @@ import { OrderBookPanel } from '../components/blackbox/OrderBookPanel';
 import { TimeSalesPanel } from '../components/blackbox/TimeSalesPanel';
 import { AgentLeaderboard } from '../components/blackbox/AgentLeaderboard';
 import { SignalInterceptsPanel } from '../components/blackbox/SignalInterceptsPanel';
-import { DepthChartPlaceholder } from '../components/blackbox/DepthChartPlaceholder';
-import { VolumeProfilePlaceholder } from '../components/blackbox/VolumeProfilePlaceholder';
-import { HeatmapPlaceholder } from '../components/blackbox/HeatmapPlaceholder';
+import { DepthChartPanel } from '../components/blackbox/DepthChartPanel';
+import { VolumeProfilePanel } from '../components/blackbox/VolumeProfilePanel';
+import { HeatmapPanel } from '../components/blackbox/HeatmapPanel';
 import {
   useBlackboxChart,
   useOrderBook,
@@ -97,11 +97,11 @@ export function BlackboxPage() {
           />
         );
       case 'depth':
-        return <DepthChartPlaceholder />;
+        return <DepthChartPanel />;
       case 'vol':
-        return <VolumeProfilePlaceholder />;
+        return <VolumeProfilePanel />;
       case 'heatmap':
-        return <HeatmapPlaceholder />;
+        return <HeatmapPanel />;
       default:
         return null;
     }
