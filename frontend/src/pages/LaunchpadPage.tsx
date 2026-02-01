@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { TrendingUp, Clock, Rocket, Flame, AlertTriangle, Shield } from 'lucide-react';
 import { listLaunches } from '../api/launchpad';
 import { LaunchCardMini } from '../components/home/LaunchCardMini';
-import { getHomePreference } from '../lib/userPrefs';
 import type { LaunchPhase, LaunchCard } from '../types/launchpad';
 import { useDemoEnabled, useDemoLaunchFeed } from '../demo/hooks';
 import { demoStore } from '../demo/demoStore';
