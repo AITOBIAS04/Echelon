@@ -30,7 +30,7 @@
 
 @layer components {
   .terminal-panel {
-    @apply bg-terminal-panel border border-terminal-border rounded-lg;
+    @apply bg-glass-card border border-glass-border rounded-lg backdrop-blur-[20px];
   }
   
   .terminal-header {
@@ -39,12 +39,12 @@
   
   /* Subtle card hover effect */
   .terminal-card {
-    @apply bg-terminal-panel border border-terminal-border rounded-md;
+    @apply bg-glass-card border border-glass-border rounded-md backdrop-blur-[20px];
     @apply transition-all duration-200 ease-out;
   }
   
   .terminal-card:hover {
-    @apply border-terminal-border-light bg-terminal-card;
+    @apply border-glass-border-light bg-glass-card;
   }
 
   /* Status pill styles */
