@@ -86,23 +86,8 @@ export function LaunchpadPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
-          {showGoToMarkets && (
-            <button
-              onClick={() => navigate('/home')}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-[#00D4FF] hover:text-[#00D4FF] transition"
-              title="Go to Markets"
-            >
-              <ArrowLeft className="w-3 h-3" />
-              Go to Markets
-            </button>
-          )}
           <div>
-            <h1 className="text-2xl font-bold text-terminal-text uppercase tracking-wide">
-              Launchpad
-            </h1>
-            <p className="text-sm text-terminal-muted mt-1">
-              Discover and launch new timeline markets
-            </p>
+            {/* Launchpad header removed - clean slate */}
           </div>
         </div>
       </div>
