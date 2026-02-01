@@ -1,5 +1,5 @@
 import { useRouteError, Link } from 'react-router-dom';
-import { Home, Users, RefreshCw } from 'lucide-react';
+import { Home, Users } from 'lucide-react';
 
 export function RouteErrorBoundary() {
   const error = useRouteError();
