@@ -81,6 +81,20 @@ const TOP_ACTIONS: Record<string, PageConfig> = {
   },
 };
 
+/** Routes where Live/Alert/Compare buttons should be hidden */
+const HIDE_LIVE_ALERT_COMPARE_ROUTES = [
+  '/agents/breach',
+  '/agents/export',
+  '/analytics',
+];
+
+/** Check if current route should hide Live/Alert/Compare buttons */
+function shouldHideLiveAlertCompare(pathname: string): boolean {
+  if (HIDE_LIVE_ALERT_COMPARE_ROUTES.includes(pathname)) return true;
+  if (pathname.startsWith('/launchpad')) return true;
+  return false;
+}
+
 /** Resolve a pathname to the best matching config key */
 function resolveConfig(pathname: string): PageConfig {
   // Exact match
@@ -111,6 +125,12 @@ export function TopActionBar() {
   // Check if this is the agents page
   const isAgentsPage = location.pathname === '/agents' || location.pathname.startsWith('/agents/');
 
+  // Filter out Live/Alert/Compare on specific routes
+  const hideLiveAlertCompare = shouldHideLiveAlertCompare(location.pathname);
+  const filteredButtons = hideLiveAlertCompare
+    ? config.buttons.filter(btn => btn.label !== 'Live' && btn.label !== 'Alert' && btn.label !== 'Compare')
+    : config.buttons;
+
   return (
     <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-[rgba(18,20,23,0.65)] backdrop-blur-sm">
       {/* Page name / breadcrumb */}
@@ -122,7 +142,7 @@ export function TopActionBar() {
 
       {/* Action buttons */}
       <div className="flex items-center gap-2 flex-wrap">
-        {config.buttons.map((btn) => {
+        {filteredButtons.map((btn) => {
           // Tab buttons for agents page
           if (btn.isTab && isAgentsPage) {
             const isActive = activeTab === btn.tabValue;
