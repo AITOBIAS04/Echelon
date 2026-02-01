@@ -274,7 +274,7 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
                 <div>
                   <label className="text-xs font-sans text-gray-500 uppercase tracking-wide block mb-2">Target URL (Optional)</label>
                   <input
-                    type=\"text\"
+                    type="text"
                     value={targetUrl}
                     onChange={(e) => setTargetUrl(e.target.value)}
                     placeholder="https://twitter.com/... or https://discord.gg/..."
