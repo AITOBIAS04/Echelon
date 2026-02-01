@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTopActionBarActions, type TopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { useAgentsUi, type AgentsTab } from '../../contexts/AgentsUiContext';
+import { useRlmfUi } from '../../contexts/RlmfUiContext';
 import {
   Radio,
   Bell,
@@ -24,6 +25,8 @@ interface ActionButton {
   action?: string;
   isTab?: boolean;
   tabValue?: AgentsTab;
+  isRlmfViewTab?: boolean;
+  rlmfViewValue?: 'market' | 'robotics';
 }
 
 interface PageConfig {
@@ -58,8 +61,8 @@ const TOP_ACTIONS: Record<string, PageConfig> = {
   '/rlmf': {
     name: 'RLMF',
     buttons: [
-      { label: 'Market View', icon: BarChart3, action: 'marketView' },
-      { label: 'Robotics View', icon: Cpu, action: 'roboticsView' },
+      { label: 'Market View', icon: BarChart3, isRlmfViewTab: true, rlmfViewValue: 'market' },
+      { label: 'Robotics View', icon: Cpu, isRlmfViewTab: true, rlmfViewValue: 'robotics' },
       { label: 'Mode 0: Deterministic | Conf: 0.98', kind: 'pill' },
     ],
   },
@@ -122,9 +125,13 @@ export function TopActionBar() {
   const config = resolveConfig(location.pathname);
   const { actionsRef } = useTopActionBarActions();
   const { activeTab, setActiveTab } = useAgentsUi();
+  const { viewMode, setViewMode } = useRlmfUi();
 
   // Check if this is the agents page
   const isAgentsPage = location.pathname === '/agents' || location.pathname.startsWith('/agents/');
+
+  // Check if this is the RLMF page
+  const isRlmfPage = location.pathname === '/rlmf';
 
   // Filter out Live/Alert/Compare on specific routes
   const hideLiveAlertCompare = shouldHideLiveAlertCompare(location.pathname);
@@ -151,6 +158,26 @@ export function TopActionBar() {
               <button
                 key={btn.label}
                 onClick={() => btn.tabValue && setActiveTab(btn.tabValue)}
+                className={clsx(
+                  'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap',
+                  isActive
+                    ? 'border-[rgba(34,211,238,0.35)] bg-[rgba(34,211,238,0.1)] text-[#22D3EE]'
+                    : 'border-[#26292E] bg-[#151719] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#64748B] hover:bg-[#1A1D21]'
+                )}
+              >
+                {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
+                <span>{btn.label}</span>
+              </button>
+            );
+          }
+
+          // View tabs for RLMF page
+          if (btn.isRlmfViewTab && isRlmfPage) {
+            const isActive = viewMode === btn.rlmfViewValue;
+            return (
+              <button
+                key={btn.label}
+                onClick={() => btn.rlmfViewValue && setViewMode(btn.rlmfViewValue)}
                 className={clsx(
                   'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap',
                   isActive

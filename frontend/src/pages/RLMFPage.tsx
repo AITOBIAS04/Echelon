@@ -8,6 +8,7 @@ import {
   Play,
   ChevronRight
 } from 'lucide-react';
+import { useRlmfUi } from '../contexts/RlmfUiContext';
 
 interface Position {
   option: string;
@@ -28,6 +29,7 @@ interface ForkOption {
 }
 
 export function RLMFPage() {
+  const { viewMode } = useRlmfUi();
   const [epoch] = useState(184);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [forkTimer, setForkTimer] = useState(45);
@@ -40,8 +42,6 @@ export function RLMFPage() {
     { option: 'A', size: 400, timestamp: '14:25:42', pnl: 14 }
   ]);
   const [contribution, setContribution] = useState({ episodes: 47, vectors: 184, partners: 2 });
-  // TODO: wire TopActionBar "Market View" / "Robotics View" buttons to toggle this
-  const [viewMode] = useState<'market' | 'robotics'>('market');
   const [agentThoughts, setAgentThoughts] = useState('Analyzing fork point options...');
 
   const forkOptions: ForkOption[] = [
@@ -314,7 +314,8 @@ export function RLMFPage() {
               </div>
             </div>
 
-            {/* Fork Options */}
+            {/* Fork Options - Market View only */}
+            {viewMode === 'market' && (
             <div className="p-4">
               <div className="text-xs font-semibold text-terminal-muted uppercase tracking-wider mb-3">🎯 FORK POINT #{epoch} DECISION</div>
               <div className="grid grid-cols-3 gap-3">
@@ -347,11 +348,13 @@ export function RLMFPage() {
                 ))}
               </div>
             </div>
+            )}
           </div>
           {/* End Live Telemetry Feed */}
         </div>
 
-          {/* Betting Panel */}
+          {/* Betting Panel - Market View only */}
+          {viewMode === 'market' && (
           <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
             <div className="px-4 py-3 bg-gradient-to-r from-status-info/10 to-transparent border-b border-status-info/20 flex justify-between items-center">
               <span className="text-xs font-semibold text-terminal-text uppercase tracking-wider flex items-center gap-2">
@@ -450,6 +453,7 @@ export function RLMFPage() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Fork Resolution Path */}
           <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
