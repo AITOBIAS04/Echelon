@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   User,
   TrendingUp,
@@ -10,11 +10,9 @@ import {
   Users,
   MapPin,
   History,
-  AlertTriangle,
   ArrowRight,
   ArrowLeft,
   Zap,
-  Upload,
 } from 'lucide-react';
 import { useAgents } from '../../hooks/useAgents';
 import { AgentSanityIndicator } from './AgentSanityIndicator';
@@ -95,7 +93,6 @@ const getMockLineage = (agentName: string) => {
 };
 
 export function AgentRoster() {
-  const location = useLocation();
   const { data: agentsData, isLoading } = useAgents();
   const agents = agentsData?.agents || [];
   const [taskingAgent, setTaskingAgent] = useState<any | null>(null);
@@ -169,46 +166,6 @@ export function AgentRoster() {
       className="h-full flex flex-col"
       data-testid={activeTab === 'roster' ? 'agents-tab-roster' : 'agents-tab-intel'}
     >
-      {/* Sub-navigation for Agent Console */}
-      <div className="flex items-center gap-1 px-6 py-4 border-b border-terminal-border">
-        <Link
-          to="/agents"
-          className={clsx(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
-            location.pathname === '/agents'
-              ? 'bg-echelon-cyan/20 text-echelon-cyan border border-echelon-cyan/30'
-              : 'text-terminal-muted hover:text-terminal-text hover:bg-terminal-card border border-transparent'
-          )}
-        >
-          <Users className="w-4 h-4" />
-          ROSTER
-        </Link>
-        <Link
-          to="/agents/breach"
-          className={clsx(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
-            location.pathname === '/agents/breach'
-              ? 'bg-echelon-red/20 text-echelon-red border border-echelon-red/30'
-              : 'text-terminal-muted hover:text-terminal-text hover:bg-terminal-card border border-transparent'
-          )}
-        >
-          <AlertTriangle className="w-4 h-4" />
-          BREACH
-        </Link>
-        <Link
-          to="/agents/export"
-          className={clsx(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all',
-            location.pathname === '/agents/export'
-              ? 'bg-echelon-amber/20 text-echelon-amber border border-echelon-amber/30'
-              : 'text-terminal-muted hover:text-terminal-text hover:bg-terminal-card border border-transparent'
-          )}
-        >
-          <Upload className="w-4 h-4" />
-          EXPORT
-        </Link>
-      </div>
-
       {/* Agent Roster View */}
       {activeTab === 'roster' && (
         <div className="flex-1 overflow-y-auto p-6">

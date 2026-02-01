@@ -66,15 +66,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'agents',
-        element: (
-          <ErrorBoundary>
-            <AgentRoster />
-          </ErrorBoundary>
-        ),
-      },
-      {
-        path: 'agents/breach',
+        path: 'breach',
         element: (
           <ErrorBoundary>
             <BreachConsolePage />
@@ -82,10 +74,18 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'agents/export',
+        path: 'export',
         element: (
           <ErrorBoundary>
             <ExportConsolePage />
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'agents',
+        element: (
+          <ErrorBoundary>
+            <AgentRoster />
           </ErrorBoundary>
         ),
       },
