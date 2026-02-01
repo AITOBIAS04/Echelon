@@ -14,7 +14,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Zap,
-  FileText,
   Upload,
 } from 'lucide-react';
 import { useAgents } from '../../hooks/useAgents';
