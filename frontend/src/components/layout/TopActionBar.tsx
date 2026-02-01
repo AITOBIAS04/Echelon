@@ -44,6 +44,12 @@ const TOP_ACTIONS: Record<string, PageConfig> = {
       { label: 'New Timeline', icon: Plus, kind: 'primary', action: 'onNewTimeline' },
     ],
   },
+  '/launchpad': {
+    name: 'Launchpad',
+    buttons: [
+      { label: 'New Timeline', icon: Plus, kind: 'primary', action: 'onNewTimeline' },
+    ],
+  },
   '/analytics': {
     name: 'Analytics',
     buttons: [
@@ -103,7 +109,8 @@ function resolveConfig(pathname: string): PageConfig {
   // Exact match
   if (TOP_ACTIONS[pathname]) return TOP_ACTIONS[pathname];
 
-  // Prefix match for detail routes (e.g. /agent/:id → Agents)
+  // Prefix match for detail routes
+  if (pathname.startsWith('/launchpad')) return TOP_ACTIONS['/launchpad'];
   if (pathname.startsWith('/agents')) return TOP_ACTIONS['/agents'];
   if (pathname.startsWith('/agent/')) return TOP_ACTIONS['/agents'];
   if (pathname.startsWith('/timeline/')) return { name: 'Timeline', buttons: [] };
