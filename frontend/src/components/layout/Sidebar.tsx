@@ -7,7 +7,8 @@ import {
   Briefcase, 
   Cpu, 
   Shield, 
-  Users
+  Users,
+  Rocket
 } from 'lucide-react';
 
 interface NavItem {
@@ -22,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
   { path: '/portfolio', label: 'Portfolio', icon: Briefcase },
   { path: '/rlmf', label: 'RLMF', icon: Cpu },
+  { path: '/launchpad', label: 'Launchpad', icon: Rocket },
   { path: '/vrf', label: 'VRF', icon: Shield },
   { path: '/agents', label: 'Agents', icon: Users, matchPrefixes: ['/agents', '/agent/'] },
 ];
