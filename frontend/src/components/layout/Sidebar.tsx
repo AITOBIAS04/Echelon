@@ -37,7 +37,6 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const AGENTS_SUBNAV: SubNavItem[] = [
-  { path: '/agents', label: 'Roster', icon: Users },
   { path: '/agents/breach', label: 'Breach Console', icon: AlertTriangle },
   { path: '/agents/export', label: 'Export Console', icon: Upload },
 ];
