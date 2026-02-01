@@ -25,6 +25,7 @@ import { AgentSanityIndicator } from './AgentSanityIndicator';
 import { TaskAgentModal } from './TaskAgentModal';
 import { useAgentsUi } from '../../contexts/AgentsUiContext';
 import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
+import { AgentActivityFeed } from '../../demo/AgentActivityFeed';
 import {
   getArchetypeTheme,
   getSanityTheme,
@@ -369,6 +370,9 @@ export function AgentRoster() {
 
           {/* Right Sidebar - Panels */}
           <aside className="w-72 flex-shrink-0 overflow-y-auto border-l border-slate-700 bg-slate-900/50">
+            {/* Demo Agent Activity Feed (demo-only) */}
+            <AgentActivityFeed />
+
             {/* Archetype Distribution */}
             <div className="p-4 border-b border-slate-700">
               <div className="flex items-center gap-2 mb-3">
