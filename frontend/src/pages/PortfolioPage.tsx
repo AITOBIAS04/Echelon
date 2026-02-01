@@ -103,13 +103,13 @@ export function PortfolioPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0F1113] text-white">
+    <div className="h-full flex flex-col min-h-0 bg-[#0F1113] text-white">
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Content */}
-        <div className="flex-1 flex gap-4 p-4 overflow-hidden">
+        <div className="flex-1 flex min-w-0 overflow-hidden gap-4 p-4">
           {/* Left Column - Scrollable with Main Panel Inside */}
-          <div className="flex-1 min-h-0 overflow-y-auto pr-6">
+          <div className="flex-1 min-w-0 overflow-y-auto pr-6 custom-scrollbar">
             {/* Main Panel */}
             <div className="bg-[#0F1113] border border-[#26292E] rounded-2xl flex flex-col overflow-hidden">
             {/* Header */}
