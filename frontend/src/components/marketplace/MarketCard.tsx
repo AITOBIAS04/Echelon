@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { Clock, AlertTriangle, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { Market } from '../../types/marketplace';
+import { useDemoEnabled, useDemoOutcome } from '../../demo/hooks';
+import { DemoBetModal } from '../../demo/DemoBetModal';
+import { demoActions } from '../../demo/actions';
 
 interface MarketCardProps {
   market: Market;
@@ -110,16 +113,47 @@ function formatCurrency(value: number): string {
  * - RLMF training data indicator
  */
 export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
+  const demoEnabled = useDemoEnabled();
+  const marketId = market.id;
+
+  // Demo mode hooks for live ticks
+  const yesSnap = useDemoOutcome(marketId, 'YES', {
+    price: market.yesPrice,
+    stability: market.stability,
+    volume: market.volume24h,
+  });
+
+  const noSnap = useDemoOutcome(marketId, 'NO', {
+    price: market.noPrice,
+    stability: market.stability,
+    volume: market.volume24h,
+  });
+
   const [betAmount, setBetAmount] = useState<number>(10);
   const [selectedOutcome, setSelectedOutcome] = useState<'YES' | 'NO' | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [demoBetOpen, setDemoBetOpen] = useState(false);
+  const [demoBetSide, setDemoBetSide] = useState<'YES' | 'NO'>('YES');
+
+  // Use demo prices when enabled, otherwise use market data
+  const displayYesPrice = demoEnabled ? yesSnap.price : market.yesPrice;
+  const displayNoPrice = demoEnabled ? noSnap.price : market.noPrice;
+  const displayStability = demoEnabled ? yesSnap.stability : market.stability;
+  const displayYesProb = displayYesPrice * 100;
+  const displayNoProb = displayNoPrice * 100;
 
   const categoryStyles = getCategoryStyles(market.category);
-  const stabilityColor = getStabilityColor(market.stability);
+  const stabilityColor = getStabilityColor(displayStability);
   const gapStyles = getGapStyles(market.gap);
-  const stabilityPercent = Math.max(0, Math.min(100, market.stability));
+  const stabilityPercent = Math.max(0, Math.min(100, displayStability));
 
   const handleBet = (outcome: 'YES' | 'NO') => {
+    if (demoEnabled) {
+      setDemoBetSide(outcome);
+      setDemoBetOpen(true);
+      return;
+    }
+
     if (onBet) {
       onBet(market, outcome);
     }
@@ -156,7 +190,9 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
 
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-terminal-muted uppercase tracking-wider">
-            {market.stabilityStatus}
+            {demoEnabled
+              ? displayStability >= 70 ? 'Stable' : displayStability >= 50 ? 'Degraded' : 'Critical'
+              : market.stabilityStatus}
           </span>
           <div className="w-10 h-1.5 bg-terminal-bg rounded-full overflow-hidden">
             <div
@@ -196,11 +232,11 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold text-terminal-muted uppercase">YES</span>
             <span className="text-[10px] font-mono text-terminal-secondary">
-              {market.yesProb}%
+              {displayYesProb.toFixed(0)}%
             </span>
           </div>
           <div className="text-lg font-bold font-mono text-status-success">
-            ${market.yesPrice.toFixed(2)}
+            ${displayYesPrice.toFixed(2)}
           </div>
         </button>
 
@@ -220,11 +256,11 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold text-terminal-muted uppercase">NO</span>
             <span className="text-[10px] font-mono text-terminal-secondary">
-              {market.noProb}%
+              {displayNoProb.toFixed(0)}%
             </span>
           </div>
           <div className="text-lg font-bold font-mono text-status-danger">
-            ${market.noPrice.toFixed(2)}
+            ${displayNoPrice.toFixed(2)}
           </div>
         </button>
       </div>
@@ -318,6 +354,25 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
       >
         <ChevronRight className="w-5 h-5 text-status-info" />
       </div>
+
+      {/* Demo Bet Modal */}
+      {demoEnabled && (
+        <DemoBetModal
+          open={demoBetOpen}
+          title={market.title}
+          side={demoBetSide}
+          onClose={() => setDemoBetOpen(false)}
+          onConfirm={(stake) => {
+            demoActions.placeBet({
+              marketId: market.id,
+              marketTitle: market.title,
+              outcomeId: demoBetSide,
+              stake,
+            });
+            setDemoBetOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
