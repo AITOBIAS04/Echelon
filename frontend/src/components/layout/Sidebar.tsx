@@ -7,9 +7,7 @@ import {
   Briefcase, 
   Cpu, 
   Shield, 
-  Users,
-  AlertTriangle,
-  Download
+  Users
 } from 'lucide-react';
 
 interface NavItem {
@@ -28,11 +26,6 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/agents', label: 'Agents', icon: Users, matchPrefixes: ['/agents', '/agent/'] },
 ];
 
-const AGENTS_SUBNAV: NavItem[] = [
-  { path: '/agents/breach', label: 'Breach Console', icon: AlertTriangle },
-  { path: '/agents/export', label: 'Export Console', icon: Download },
-];
-
 export function Sidebar() {
   const location = useLocation();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -45,8 +38,6 @@ export function Sidebar() {
     }
     return false;
   }, [location.pathname]);
-
-  const isAgentsSection = location.pathname.startsWith('/agents') || location.pathname.startsWith('/agent/');
 
   const handleMouseEnter = useCallback(() => {
     if (collapseTimeoutRef.current) {
@@ -135,45 +126,6 @@ export function Sidebar() {
             </NavLink>
           );
         })}
-
-        {/* Agents subnav — visible when Agents section is active */}
-        {isAgentsSection && (
-          <div className={clsx(
-            "flex flex-col gap-1 transition-all duration-300 overflow-hidden",
-            isExpanded ? "pl-3 mt-1" : "pl-0 mt-0"
-          )}>
-            {isExpanded && (
-              <span className="text-[10px] tracking-[0.08em] uppercase text-[#64748B] mt-2 mb-1">
-                Agents
-              </span>
-            )}
-            {AGENTS_SUBNAV.map((sub) => {
-              const subActive = location.pathname === sub.path;
-              return (
-                <NavLink
-                  key={sub.path}
-                  to={sub.path}
-                  className={clsx(
-                    'px-2.5 py-2 rounded-lg border text-[11px] font-semibold transition-all duration-200',
-                    subActive
-                      ? 'bg-[#151719] border-[#26292E] text-[#F1F5F9]'
-                      : 'border-transparent text-[#94A3B8] hover:bg-[#151719] hover:border-[#26292E] hover:text-[#F1F5F9]'
-                  )}
-                  style={{ justifyContent: isExpanded ? 'flex-start' : 'center' }}
-                >
-                  {isExpanded ? (
-                    <>
-                      <sub.icon className="w-3.5 h-3.5" />
-                      <span>{sub.label}</span>
-                    </>
-                  ) : (
-                    <sub.icon className="w-4 h-4" />
-                  )}
-                </NavLink>
-              );
-            })}
-          </div>
-        )}
       </nav>
     </aside>
   );

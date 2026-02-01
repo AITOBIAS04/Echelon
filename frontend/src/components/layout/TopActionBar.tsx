@@ -79,14 +79,6 @@ const TOP_ACTIONS: Record<string, PageConfig> = {
       { label: 'Deploy Agent', icon: Plus, kind: 'primary', action: 'deployAgent' },
     ],
   },
-  '/agents/breach': {
-    name: 'Breach Console',
-    buttons: [],
-  },
-  '/agents/export': {
-    name: 'Export Console',
-    buttons: [],
-  },
 };
 
 /** Resolve a pathname to the best matching config key */

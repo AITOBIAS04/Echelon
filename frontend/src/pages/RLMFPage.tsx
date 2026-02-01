@@ -188,51 +188,116 @@ export function RLMFPage() {
             </div>
             
             {/* Visualizer */}
-            <div className="relative h-[200px] bg-gradient-to-br from-[#13161a] to-[#08090a] overflow-hidden">
-              <div className="absolute inset-0 opacity-30" style={{
-                backgroundImage: `linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)`,
+            <div className="relative h-[240px] bg-[#050505] overflow-hidden">
+              {/* Grid Background */}
+              <div className="absolute inset-0 opacity-20" style={{
+                backgroundImage: `linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)`,
                 backgroundSize: '40px 40px'
               }} />
-              <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0),rgba(0,0,0,0.2)_50%,rgba(0,0,0,0.2))] bg-[length:100%_4px] opacity-60" />
-              
-              {/* Orbit Ring */}
-              <div className="absolute top-1/2 left-1/2 w-40 h-40 -translate-x-1/2 -translate-y-1/2 border border-dashed border-status-paradox/30 rounded-full animate-[spin_30s_linear_infinite]" />
-              
-              {/* Station Mockup */}
-              <div className="absolute top-1/2 left-1/2 w-20 h-12 -translate-x-1/2 -translate-y-1/2 border border-status-info/40 bg-status-info/5 rounded-lg">
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-1 h-2 bg-status-info/50" />
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-2 bg-status-info/50" />
-              </div>
-              
-              {/* Agent Avatar */}
-              <div className="absolute top-1/2 right-[20%] -translate-y-1/2 w-8 h-8 bg-terminal-bg border-2 border-status-info rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.5)] text-sm z-10">
-                🤖
+
+              {/* Radar sweep animation */}
+              <div className="absolute top-1/2 left-1/2 w-[300px] h-[300px] -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                <div className="absolute inset-0 rounded-full border border-status-info/10 animate-[spin_4s_linear_infinite]" />
+                <div className="absolute top-1/2 left-1/2 w-[150px] h-px bg-gradient-to-r from-status-info/30 to-transparent origin-left animate-[spin_4s_linear_infinite]" />
               </div>
 
-              {/* HUD Overlay - Professional Telemetry Panel */}
-              <div className="absolute top-3 left-3 bg-terminal-bg/80 border border-terminal-border rounded-lg p-3 backdrop-blur-sm w-44">
-                <div className="space-y-2.5">
-                  {/* Stability Row */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-medium text-terminal-muted uppercase tracking-wider">STABILITY</span>
-                      <span className="text-xs font-mono font-semibold text-status-success">{stability.toFixed(1)}%</span>
+              {/* Radial Gradient Glow */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-status-info/5 rounded-full blur-3xl" />
+
+              {/* Orbit Rings */}
+              <div className="absolute top-1/2 left-1/2 w-[180px] h-[180px] -translate-x-1/2 -translate-y-1/2 border border-dashed border-terminal-border/40 rounded-full animate-[spin_60s_linear_infinite]" />
+              <div className="absolute top-1/2 left-1/2 w-[240px] h-[240px] -translate-x-1/2 -translate-y-1/2 border border-terminal-border/20 rounded-full animate-[spin_40s_linear_infinite_reverse]" />
+
+              {/* Corner brackets for terminal feel */}
+              <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-status-info/30" />
+              <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-status-info/30" />
+              <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-status-info/30" />
+              <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-status-info/30" />
+
+              {/* Central Station (CSS Composite) */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                 <div className="relative">
+                    <div className="w-16 h-16 border-2 border-status-info/50 bg-status-info/10 rounded-full animate-pulse flex items-center justify-center">
+                       <div className="w-8 h-8 bg-status-info/20 rounded-full flex items-center justify-center">
+                          <div className="w-2 h-2 bg-status-info rounded-full shadow-[0_0_10px_currentColor]" />
+                       </div>
                     </div>
-                    <div className="h-1 bg-terminal-bg rounded-full overflow-hidden border border-terminal-border/50">
-                      <div className="h-full bg-status-success shadow-[0_0_8px_rgba(74,222,128,0.5)] transition-all" style={{ width: `${stability}%` }} />
-                    </div>
+                    {/* Crosshairs */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 w-0.5 h-3 bg-status-info/50" />
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-4 w-0.5 h-3 bg-status-info/50" />
+                    <div className="absolute left-0 top-1/2 -translate-x-4 -translate-y-1/2 w-3 h-0.5 bg-status-info/50" />
+                    <div className="absolute right-0 top-1/2 translate-x-4 -translate-y-1/2 w-3 h-0.5 bg-status-info/50" />
+                 </div>
+              </div>
+
+              {/* Agent Avatar (Floating) */}
+              <div className="absolute top-[30%] right-[20%] animate-bounce duration-[3000ms]">
+                <div className="relative">
+                  <div className="w-8 h-8 bg-terminal-bg border border-status-paradox text-status-paradox rounded flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.3)] z-10">
+                    <Zap className="w-4 h-4" />
                   </div>
-                  {/* Logic Gap Row */}
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-medium text-terminal-muted uppercase tracking-wider">LOGIC GAP</span>
-                    <span className="text-xs font-mono font-semibold text-status-warning">12.4%</span>
-                  </div>
-                  {/* Entropy Row */}
-                  <div className="flex justify-between items-center pt-1.5 border-t border-terminal-border/30">
-                    <span className="text-[10px] font-medium text-terminal-muted uppercase tracking-wider">ENTROPY</span>
-                    <span className="text-xs font-mono font-semibold text-status-info">0.34</span>
+                  <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-mono text-status-paradox bg-terminal-bg/80 px-1 rounded border border-status-paradox/30 whitespace-nowrap">
+                    AGENT: ACTIVE
                   </div>
                 </div>
+              </div>
+
+              {/* Right HUD Panel */}
+              <div className="absolute top-4 right-4 bg-terminal-bg/90 border border-terminal-border rounded p-3 backdrop-blur w-40">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] text-terminal-muted uppercase">Vector</span>
+                    <span className="text-[10px] font-mono text-status-info">47.3°</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] text-terminal-muted uppercase">Bearing</span>
+                    <span className="text-[10px] font-mono text-terminal-text">092°</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] text-terminal-muted uppercase">Range</span>
+                    <span className="text-[10px] font-mono text-terminal-text">2.4km</span>
+                  </div>
+                  <div className="pt-2 border-t border-terminal-border/50">
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse" />
+                      <span className="text-[9px] text-terminal-muted">TRACKING</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* HUD Overlay */}
+              <div className="absolute top-4 left-4 bg-terminal-bg/90 border border-terminal-border rounded p-3 backdrop-blur shadow-xl w-48">
+                <div className="space-y-3">
+                  {/* Stability */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-[9px] font-bold text-terminal-text-muted uppercase tracking-wider">Sys. Stability</span>
+                      <span className={`text-[10px] font-mono font-bold ${stability > 50 ? 'text-status-success' : 'text-status-danger'}`}>{stability.toFixed(1)}%</span>
+                    </div>
+                    <div className="h-1 bg-terminal-bg border border-terminal-border rounded-full overflow-hidden">
+                      <div className={`h-full ${stability > 50 ? 'bg-status-success' : 'bg-status-danger'} transition-all duration-500`} style={{ width: `${stability}%` }} />
+                    </div>
+                  </div>
+
+                   {/* Metrics Grid */}
+                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-terminal-border/50">
+                      <div>
+                        <div className="text-[8px] text-terminal-muted uppercase">Logic Gap</div>
+                        <div className="text-[10px] font-mono text-status-warning">12.4%</div>
+                      </div>
+                      <div>
+                         <div className="text-[8px] text-terminal-muted uppercase">Entropy</div>
+                         <div className="text-[10px] font-mono text-status-info">0.34</div>
+                      </div>
+                   </div>
+                </div>
+              </div>
+
+              {/* Bottom Status Bar inside visualizer */}
+              <div className="absolute bottom-0 left-0 right-0 h-8 bg-terminal-bg/80 border-t border-terminal-border backdrop-blur flex items-center px-4 justify-between text-[10px] font-mono">
+                 <span className="text-terminal-muted">COORDS: <span className="text-terminal-text">47.22.91</span></span>
+                 <span className="text-terminal-muted">STATUS: <span className="text-status-success animate-pulse">ONLINE</span></span>
               </div>
             </div>
 
