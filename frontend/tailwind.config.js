@@ -47,6 +47,15 @@ export default {
           'entropy': '#06B6D4',   // Entropy quality - cyan
           'cyan': '#22D3EE',      // Cyan for RLMF
         },
+        // Echelon accent colours (used across agents, analytics, etc.)
+        'echelon': {
+          'cyan': '#22D3EE',
+          'green': '#4ADE80',
+          'red': '#EF4444',
+          'amber': '#F59E0B',
+          'purple': '#A855F7',
+          'blue': '#3B82F6',
+        },
         // Agent archetype colours (more refined)
         'agent': {
           'shark': '#FB7185',     // Rose red - aggressive
