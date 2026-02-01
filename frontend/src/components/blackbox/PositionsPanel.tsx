@@ -3,8 +3,73 @@ import { DollarSign, PieChart, ExternalLink, ChevronDown, ChevronUp } from 'luci
 import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useDemoEnabled, useDemoPositions, useDemoOutcome } from '../../demo/hooks';
+
+function DemoPositionsPanel() {
+  const positions = useDemoPositions();
+
+  const rows = positions.map((p) => {
+    const snap = useDemoOutcome(p.marketId, p.outcomeId, { price: 0.5 });
+    const markPerShare = p.outcomeId === 'YES' ? snap.price : 1 - snap.price;
+    const markValue = p.shares * markPerShare;
+    const pnl = markValue - p.stake;
+    return { p, snap, markPerShare, pnl };
+  });
+
+  const totalPnl = rows.reduce((acc, r) => acc + r.pnl, 0);
+
+  return (
+    <div className="bg-[#0D0D0D] border border-purple-500/20 rounded-lg overflow-hidden">
+      <div className="px-3 py-2 border-b border-purple-500/20 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <DollarSign className="w-3.5 h-3.5 text-purple-400" />
+          <span className="text-xs font-medium text-slate-200">Demo Positions</span>
+          <span className="text-xs text-slate-500">({positions.length})</span>
+        </div>
+        <div className="text-xs text-slate-400">
+          <span className="text-slate-200 font-mono">£{rows.reduce((acc, r) => acc + r.p.stake, 0).toFixed(0)}</span>
+          <span className={clsx('ml-2 font-mono', totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+            {totalPnl >= 0 ? '+' : ''}£{totalPnl.toFixed(2)}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-3 space-y-2 max-h-48 overflow-y-auto">
+        {rows.map(({ p, pnl, markPerShare }) => (
+          <div
+            key={p.id}
+            className="rounded-lg border border-purple-500/20 bg-[#0D0D0D]/70 px-3 py-2"
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-slate-100">{p.marketTitle}</div>
+              <div className={clsx('text-sm tabular-nums', pnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+                £{pnl.toFixed(2)}
+              </div>
+            </div>
+
+            <div className="mt-1 flex items-center justify-between text-xs text-slate-400">
+              <div className="tabular-nums">
+                {p.outcomeId} Entry {(p.entryPrice * 100).toFixed(1)}% Mark {(markPerShare * 100).toFixed(1)}%
+              </div>
+              <div className="tabular-nums">Stake £{p.stake.toFixed(2)}</div>
+            </div>
+          </div>
+        ))}
+
+        {rows.length === 0 ? (
+          <div className="rounded-lg border border-purple-500/15 bg-[#0D0D0D]/40 px-3 py-3 text-xs text-slate-500 text-center">
+            No demo positions yet. Place a bet in demo mode!
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export function PositionsPanel() {
+  const demoEnabled = useDemoEnabled();
+  if (demoEnabled) return <DemoPositionsPanel />;
+
   const navigate = useNavigate();
   const { positions, loading, error, totals, refresh } = useUserPositions();
   const [isCollapsed, setIsCollapsed] = useState(true);
