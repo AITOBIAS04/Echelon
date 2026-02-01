@@ -20,6 +20,12 @@ interface NavItem {
   matchPrefixes?: string[];
 }
 
+interface SubNavItem {
+  path: string;
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+}
+
 const NAV_ITEMS: NavItem[] = [
   { path: '/marketplace', label: 'Marketplace', icon: LayoutDashboard },
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
@@ -27,9 +33,13 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/rlmf', label: 'RLMF', icon: Cpu },
   { path: '/launchpad', label: 'Launchpad', icon: Rocket },
   { path: '/vrf', label: 'VRF', icon: Shield },
-  { path: '/breach', label: 'Breach', icon: AlertTriangle },
-  { path: '/export', label: 'Export', icon: Upload },
   { path: '/agents', label: 'Agents', icon: Users, matchPrefixes: ['/agents', '/agent/'] },
+];
+
+const AGENTS_SUBNAV: SubNavItem[] = [
+  { path: '/agents', label: 'Roster', icon: Users },
+  { path: '/agents/breach', label: 'Breach Console', icon: AlertTriangle },
+  { path: '/agents/export', label: 'Export Console', icon: Upload },
 ];
 
 export function Sidebar() {
@@ -44,6 +54,9 @@ export function Sidebar() {
     }
     return false;
   }, [location.pathname]);
+
+  // Check if we're in the Agents section
+  const isAgentsSection = location.pathname.startsWith('/agents') || location.pathname.startsWith('/agent/');
 
   const handleMouseEnter = useCallback(() => {
     if (collapseTimeoutRef.current) {
@@ -132,6 +145,31 @@ export function Sidebar() {
             </NavLink>
           );
         })}
+
+        {/* Agents Subnav - shown when expanded and in Agents section */}
+        {isExpanded && isAgentsSection && (
+          <div className="mt-2 flex flex-col gap-1 pl-2 border-l border-[#26292E] ml-3">
+            {AGENTS_SUBNAV.map((item) => {
+              const active = location.pathname === item.path;
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={clsx(
+                    'flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-200',
+                    active
+                      ? 'text-[#3B82F6] bg-[rgba(59,130,246,0.1)]'
+                      : 'text-[#64748B] hover:text-[#94A3B8] hover:bg-[#151719]'
+                  )}
+                >
+                  {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0" />}
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </div>
+        )}
       </nav>
     </aside>
   );
