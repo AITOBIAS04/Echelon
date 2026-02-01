@@ -19,10 +19,9 @@ import { useAgents } from '../../hooks/useAgents';
 import { AgentSanityIndicator } from './AgentSanityIndicator';
 import { TaskAgentModal } from './TaskAgentModal';
 import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
+import { useAgentsUi } from '../../contexts/AgentsUiContext';
+import { LocalErrorBoundary } from '../common/LocalErrorBoundary';
 import { clsx } from 'clsx';
-
-// Tab type
-type AgentsTab = 'roster' | 'intel';
 
 // Mock data for Global Intelligence dashboard
 const mockStats = {
@@ -98,7 +97,7 @@ export function AgentRoster() {
   const { data: agentsData, isLoading } = useAgents();
   const agents = agentsData?.agents || [];
   const [taskingAgent, setTaskingAgent] = useState<any | null>(null);
-  const [activeTab, setActiveTab] = useState<AgentsTab>('roster');
+  const { activeTab, setActiveTab } = useAgentsUi();
   const [movementFilter, setMovementFilter] = useState<string>('all');
   const [movements, setMovements] = useState(mockMovements);
 
@@ -322,7 +321,8 @@ const sanityPercent = (sanity / maxSanity) * 100;
 
       {/* Global Intelligence View */}
       {activeTab === 'intel' && (
-        <div className="flex-1 overflow-y-auto p-6">
+        <LocalErrorBoundary name="Global Intelligence">
+          <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto">
             {/* Stats Row - KPI Cards */}
             <div className="grid grid-cols-4 gap-4 mb-6">
@@ -598,6 +598,7 @@ const sanityPercent = (sanity / maxSanity) * 100;
             </div>
           </div>
         </div>
+      </LocalErrorBoundary>
       )}
 
       {/* Task Agent Modal */}
