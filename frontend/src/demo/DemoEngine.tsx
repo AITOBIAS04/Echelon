@@ -174,8 +174,8 @@ export function DemoEngine({ children }: { children: React.ReactNode }) {
     const carriers = ["VIPER", "SENTINEL", "ARCHON", "AMBASSADOR", "LEVIATHAN"];
 
     const seedBreaches = () => {
-      const existing = demoStore.getBreaches();
-      if (existing.active.length > 0 || existing.history.length > 0) return;
+      const existing = demoStore.getBreachesActive();
+      if (existing.length > 0) return;
 
       const active = [
         {
@@ -211,7 +211,7 @@ export function DemoEngine({ children }: { children: React.ReactNode }) {
     };
 
     const tickBreaches = () => {
-      const { active } = demoStore.getBreaches();
+      const active = demoStore.getBreachesActive();
 
       // Mutate existing breaches
       for (const b of active) {
@@ -238,7 +238,7 @@ export function DemoEngine({ children }: { children: React.ReactNode }) {
           sanity: Math.floor(randBetween(r, 30, 70)),
           status: "ACTIVE" as const,
         };
-        const { active: currActive, history } = demoStore.getBreaches();
+        const { active: currActive, history } = { active: demoStore.getBreachesActive(), history: demoStore.getBreachesHistory() };
         demoStore.setBreaches([...currActive, newBreach], history);
       }
 
@@ -264,7 +264,7 @@ export function DemoEngine({ children }: { children: React.ReactNode }) {
     const formats: Array<"PyTorch (.pt)" | "ROS Bag (.bag)" | "TFRecord (.tfrecord)" | "JSON (Canonical)"> = ["PyTorch (.pt)", "ROS Bag (.bag)", "TFRecord (.tfrecord)", "JSON (Canonical)"];
 
     const seedExports = () => {
-      const { active } = demoStore.getExports();
+      const active = demoStore.getExportsActive();
       if (active.length > 0) return;
 
       const newActive = [
@@ -309,7 +309,7 @@ export function DemoEngine({ children }: { children: React.ReactNode }) {
     };
 
     const tickExports = () => {
-      const { active } = demoStore.getExports();
+      const active = demoStore.getExportsActive();
 
       for (const x of active) {
         if (x.status === "PROCESSING") {
