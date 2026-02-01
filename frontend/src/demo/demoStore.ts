@@ -279,8 +279,12 @@ export const demoStore = {
   },
 
   // --- Breaches ---
-  getBreaches() {
-    return { active: state.breachesActive, history: state.breachesHistory };
+  getBreachesActive() {
+    return state.breachesActive;
+  },
+
+  getBreachesHistory() {
+    return state.breachesHistory;
   },
 
   setBreaches(active: DemoBreach[], history: DemoBreachHistoryRow[]) {
@@ -312,8 +316,16 @@ export const demoStore = {
   },
 
   // --- Exports ---
-  getExports() {
-    return { active: state.exportsActive, partners: state.exportPartners, config: state.exportConfig };
+  getExportsActive() {
+    return state.exportsActive;
+  },
+
+  getExportPartners() {
+    return state.exportPartners;
+  },
+
+  getExportConfig() {
+    return state.exportConfig;
   },
 
   setExports(active: DemoExportJob[]) {
