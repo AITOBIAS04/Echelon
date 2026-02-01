@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, Clock, ArrowLeft, Rocket, Flame, AlertTriangle, Shield } from 'lucide-react';
+import { TrendingUp, Clock, Rocket, Flame, AlertTriangle, Shield } from 'lucide-react';
 import { listLaunches } from '../api/launchpad';
 import { LaunchCardMini } from '../components/home/LaunchCardMini';
 import { getHomePreference } from '../lib/userPrefs';
@@ -24,9 +24,6 @@ export function LaunchpadPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const homePref = getHomePreference();
-  const showGoToMarkets = homePref === 'launchpad';
-
   // Demo hooks
   const demoEnabled = useDemoEnabled();
   const liveFeed = useDemoLaunchFeed();
