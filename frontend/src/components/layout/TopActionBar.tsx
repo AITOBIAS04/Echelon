@@ -47,7 +47,7 @@ const TOP_ACTIONS: Record<string, PageConfig> = {
   '/launchpad': {
     name: 'Launchpad',
     buttons: [
-      { label: 'New Timeline', icon: Plus, kind: 'primary', action: 'onNewTimeline' },
+      // No buttons - CTAs are inside the page
     ],
   },
   '/analytics': {
