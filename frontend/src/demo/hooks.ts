@@ -8,10 +8,15 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { isDemoModeEnabled } from "./demoMode";
 import { demoStore } from "./demoStore";
+import type { DemoExportConfig } from "./demoStore";
 
 export function useDemoEnabled(): boolean {
   return isDemoModeEnabled();
 }
+
+// Constants for stable snapshots when demo is OFF
+const EMPTY_ARRAY: never[] = [];
+const EMPTY_CONFIG: DemoExportConfig = { samplingRate: 0.5, format: "PyTorch (.pt)", compression: "GZIP" };
 
 export function useDemoOutcome(
   marketId: string | number,
@@ -57,57 +62,119 @@ export function useDemoOutcome(
 export function useDemoPositions() {
   const enabled = useDemoEnabled();
 
-  const subscribe = useMemo(() => (l: () => void) => demoStore.subscribePositions(l), []);
-  const getSnapshot = useMemo(() => () => demoStore.getPositions(), []);
-  const positions = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const subscribe = useMemo(() => {
+    if (!enabled) return () => () => {};
+    return (listener: () => void) => demoStore.subscribePositions(listener);
+  }, [enabled]);
 
-  return enabled ? positions : [];
+  const getSnapshot = useMemo(() => {
+    if (!enabled) return () => EMPTY_ARRAY;
+    return () => demoStore.getPositions();
+  }, [enabled]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 export function useDemoAgentFeed() {
   const enabled = useDemoEnabled();
 
-  const subscribe = useMemo(() => (l: () => void) => demoStore.subscribeAgentFeed(l), []);
-  const getSnapshot = useMemo(() => () => demoStore.getAgentFeed(), []);
-  const feed = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const subscribe = useMemo(() => {
+    if (!enabled) return () => () => {};
+    return (listener: () => void) => demoStore.subscribeAgentFeed(listener);
+  }, [enabled]);
 
-  return enabled ? feed : [];
+  const getSnapshot = useMemo(() => {
+    if (!enabled) return () => EMPTY_ARRAY;
+    return () => demoStore.getAgentFeed();
+  }, [enabled]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 export function useDemoToasts() {
   const enabled = useDemoEnabled();
 
-  const subscribe = useMemo(() => (l: () => void) => demoStore.subscribeToasts(l), []);
-  const getSnapshot = useMemo(() => () => demoStore.getToasts(), []);
-  const toasts = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const subscribe = useMemo(() => {
+    if (!enabled) return () => () => {};
+    return (listener: () => void) => demoStore.subscribeToasts(listener);
+  }, [enabled]);
 
-  return enabled ? toasts : [];
+  const getSnapshot = useMemo(() => {
+    if (!enabled) return () => EMPTY_ARRAY;
+    return () => demoStore.getToasts();
+  }, [enabled]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 // --- New hooks for Launchpad, Breach Console, Export Console ---
 
 export function useDemoLaunchFeed() {
   const enabled = useDemoEnabled();
-  const subscribe = useMemo(() => (l: () => void) => demoStore.subscribeLaunchFeed(l), []);
-  const getSnapshot = useMemo(() => () => demoStore.getLaunchFeed(), []);
-  const feed = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  return enabled ? feed : [];
+
+  const subscribe = useMemo(() => {
+    if (!enabled) return () => () => {};
+    return (listener: () => void) => demoStore.subscribeLaunchFeed(listener);
+  }, [enabled]);
+
+  const getSnapshot = useMemo(() => {
+    if (!enabled) return () => EMPTY_ARRAY;
+    return () => demoStore.getLaunchFeed();
+  }, [enabled]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 export function useDemoBreaches() {
   const enabled = useDemoEnabled();
-  const subscribe = useMemo(() => (l: () => void) => demoStore.subscribeBreaches(l), []);
-  const getSnapshot = useMemo(() => () => demoStore.getBreaches(), []);
-  const data = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  return enabled ? data : { active: [], history: [] };
+
+  const subscribe = useMemo(() => {
+    if (!enabled) return () => () => {};
+return (listener: () => void) => demoStore.subscribeBreaches(listener);
+  }, [enabled]);
+
+  const getSnapshotActive = useMemo(() => {
+    if (!enabled) return () => EMPTY_ARRAY;
+    return () => demoStore.getBreachesActive();
+  }, [enabled]);
+
+  const getSnapshotHistory = useMemo(() => {
+    if (!enabled) return () => EMPTY_ARRAY;
+    return () => demoStore.getBreachesHistory();
+  }, [enabled]);
+
+  const active = useSyncExternalStore(subscribe, getSnapshotActive, getSnapshotActive);
+  const history = useSyncExternalStore(subscribe, getSnapshotHistory, getSnapshotHistory);
+
+  return { active, history };
 }
 
 export function useDemoExports() {
   const enabled = useDemoEnabled();
-  const subscribe = useMemo(() => (l: () => void) => demoStore.subscribeExports(l), []);
-  const getSnapshot = useMemo(() => () => demoStore.getExports(), []);
-  const data = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  return enabled
-    ? data
-    : { active: [], partners: [], config: { samplingRate: 0.5, format: "PyTorch (.pt)", compression: "GZIP" as const } };
+
+  const subscribe = useMemo(() => {
+    if (!enabled) return () => () => {};
+    return (listener: () => void) => demoStore.subscribeExports(listener);
+  }, [enabled]);
+
+  const getSnapshotActive = useMemo(() => {
+    if (!enabled) return () => EMPTY_ARRAY;
+    return () => demoStore.getExportsActive();
+  }, [enabled]);
+
+  const getSnapshotPartners = useMemo(() => {
+    if (!enabled) return () => EMPTY_ARRAY;
+    return () => demoStore.getExportPartners();
+  }, [enabled]);
+
+  const getSnapshotConfig = useMemo(() => {
+    if (!enabled) return () => EMPTY_CONFIG;
+    return () => demoStore.getExportConfig();
+  }, [enabled]);
+
+  const active = useSyncExternalStore(subscribe, getSnapshotActive, getSnapshotActive);
+  const partners = useSyncExternalStore(subscribe, getSnapshotPartners, getSnapshotPartners);
+  const config = useSyncExternalStore(subscribe, getSnapshotConfig, getSnapshotConfig);
+
+  return { active, partners, config };
 }
