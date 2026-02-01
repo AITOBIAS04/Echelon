@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTopActionBarActions, type TopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { useAgentsUi, type AgentsTab } from '../../contexts/AgentsUiContext';
 import {
@@ -118,6 +118,7 @@ function getActionHandler(action: string, actionsRef: React.MutableRefObject<Top
 
 export function TopActionBar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const config = resolveConfig(location.pathname);
   const { actionsRef } = useTopActionBarActions();
   const { activeTab, setActiveTab } = useAgentsUi();
@@ -180,6 +181,11 @@ export function TopActionBar() {
             <button
               key={btn.label}
               onClick={() => {
+                // Navigate to Launchpad for New Timeline
+                if (btn.action === 'onNewTimeline') {
+                  navigate('/launchpad');
+                  return;
+                }
                 const handler = btn.action ? getActionHandler(btn.action, actionsRef) : undefined;
                 if (handler) {
                   handler();
