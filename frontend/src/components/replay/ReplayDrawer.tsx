@@ -47,7 +47,7 @@ function getForkStatus(replay: ForkReplay): {
   return {
     status: 'open',
     label: 'Open',
-    color: '#00D4FF', // cyan
+    color: '#22D3EE', // cyan
   };
 }
 
@@ -82,7 +82,7 @@ function getDisclosureEventStyle(
     case 'paradox_spawn':
       return { icon: AlertTriangle, color: '#FF9500' }; // amber
     case 'evidence_flip':
-      return { icon: FileText, color: '#00D4FF' }; // cyan
+      return { icon: FileText, color: '#22D3EE' }; // cyan
   }
 }
 
@@ -93,7 +93,7 @@ function getDisclosureEventStyle(
  */
 function PriceSparkline({
   pricePath,
-  color = '#00D4FF',
+  color = '#22D3EE',
   width = 200,
   height = 40,
 }: {
@@ -104,7 +104,7 @@ function PriceSparkline({
 }) {
   if (pricePath.length === 0) {
     return (
-      <div className="flex items-center justify-center h-10 text-terminal-muted text-xs">
+      <div className="flex items-center justify-center h-10 text-terminal-text-muted text-xs">
         No data
       </div>
     );
@@ -221,7 +221,7 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 text-terminal-muted hover:text-terminal-text transition-colors"
+            className="p-1.5 text-terminal-text-muted hover:text-terminal-text transition-colors"
             aria-label="Close drawer"
           >
             <X className="w-5 h-5" />
@@ -232,14 +232,14 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
         <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           {loading && (
             <div className="flex items-center justify-center py-12">
-              <div className="text-terminal-muted">Loading replay...</div>
+              <div className="text-terminal-text-muted">Loading replay...</div>
             </div>
           )}
 
           {error && (
             <div className="bg-red-500/20 border border-red-500 rounded-lg p-4">
               <p className="text-sm text-red-500 font-semibold mb-1">Error</p>
-              <p className="text-xs text-terminal-muted">
+              <p className="text-xs text-terminal-text-muted">
                 {error === 'Replay not available for this timeline yet'
                   ? 'Replay not available for this timeline yet'
                   : error}
@@ -251,13 +251,13 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
             <>
               {/* Section 1: Fork Header */}
               <div>
-                <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-2">
+                <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-2">
                   Fork Question
                 </h3>
                 <p className="text-sm text-terminal-text font-medium mb-2">
                   {replay.forkQuestion}
                 </p>
-                <p className="text-xs text-terminal-muted font-mono">
+                <p className="text-xs text-terminal-text-muted font-mono">
                   Timeline: {replay.timelineId}
                 </p>
               </div>
@@ -265,7 +265,7 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
               {/* Section 2: Fork Status */}
               {forkStatus && (
                 <div>
-                  <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-2">
+                  <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-2">
                     Status
                   </h3>
                   <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
                       {forkStatus.label}
                     </span>
                     {replay.openedAt && (
-                      <span className="text-xs text-terminal-muted">
+                      <span className="text-xs text-terminal-text-muted">
                         Opened {formatRelativeTime(replay.openedAt, replay.openedAt)}
                       </span>
                     )}
@@ -290,13 +290,13 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
 
               {/* Section 3: Price Paths */}
               <div>
-                <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-3">
+                <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
                   Price Paths
                 </h3>
                 <div className="space-y-4">
                   {replay.options.map((option, index) => {
                     const isChosen = option.label === replay.chosenOption;
-                    const optionColor = isChosen ? '#00FF41' : '#00D4FF'; // green if chosen, cyan otherwise
+                    const optionColor = isChosen ? '#00FF41' : '#22D3EE'; // green if chosen, cyan otherwise
                     
                     return (
                       <div
@@ -311,7 +311,7 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
                             )}
                           </span>
                           {option.pricePath.length > 0 && (
-                            <span className="text-xs font-mono text-terminal-muted">
+                            <span className="text-xs font-mono text-terminal-text-muted">
                               {(option.pricePath[option.pricePath.length - 1].price * 100).toFixed(1)}%
                             </span>
                           )}
@@ -331,7 +331,7 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
               {/* Section 4: Disclosure Events */}
               {replay.disclosureEvents.length > 0 && (
                 <div>
-                  <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-3">
+                  <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
                     Disclosure Events
                   </h3>
                   <div className="space-y-2">
@@ -355,7 +355,7 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
                               >
                                 {event.type.replace('_', ' ')}
                               </span>
-                              <span className="text-xs text-terminal-muted font-mono">
+                              <span className="text-xs text-terminal-text-muted font-mono">
                                 +{formatRelativeTime(
                                   new Date(new Date(replay.openedAt).getTime() + event.tMs).toISOString(),
                                   replay.openedAt
@@ -374,13 +374,13 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
               {/* Section 5: Decision + Outcome */}
               {(replay.chosenOption || replay.outcomeLabel) && (
                 <div>
-                  <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-3">
+                  <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
                     Outcome
                   </h3>
                   <div className="bg-terminal-bg rounded border border-terminal-border p-4 space-y-2">
                     {replay.chosenOption && (
                       <div>
-                        <span className="text-xs text-terminal-muted">Chosen Option:</span>
+                        <span className="text-xs text-terminal-text-muted">Chosen Option:</span>
                         <span className="ml-2 text-sm font-semibold text-green-500">
                           {replay.chosenOption}
                         </span>
@@ -388,7 +388,7 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
                     )}
                     {replay.outcomeLabel && (
                       <div>
-                        <span className="text-xs text-terminal-muted">Outcome:</span>
+                        <span className="text-xs text-terminal-text-muted">Outcome:</span>
                         <p className="mt-1 text-sm text-terminal-text">
                           {replay.outcomeLabel}
                         </p>
@@ -396,7 +396,7 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
                     )}
                     {replay.settledAt && (
                       <div className="pt-2 border-t border-terminal-border">
-                        <span className="text-xs text-terminal-muted">
+                        <span className="text-xs text-terminal-text-muted">
                           Settled: {new Date(replay.settledAt).toLocaleString()}
                         </span>
                       </div>
@@ -408,10 +408,10 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
               {/* Notes */}
               {replay.notes && (
                 <div>
-                  <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-2">
+                  <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-2">
                     Notes
                   </h3>
-                  <p className="text-xs text-terminal-muted leading-relaxed">
+                  <p className="text-xs text-terminal-text-muted leading-relaxed">
                     {replay.notes}
                   </p>
                 </div>

@@ -67,7 +67,7 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
   };
 
   return (
-    <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-4 hover:border-[#333] transition">
+    <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4 hover:border-[#333] transition">
       {/* Header Row */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">

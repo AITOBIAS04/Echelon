@@ -16,7 +16,7 @@ function getPhaseBadge(phase: LaunchCard['phase']): { bg: string; text: string; 
     case 'sandbox':
       return { bg: '#FF9500', text: '#FFFFFF', label: 'SANDBOX' };
     case 'pilot':
-      return { bg: '#00D4FF', text: '#000000', label: 'PILOT' };
+      return { bg: '#22D3EE', text: '#000000', label: 'PILOT' };
     case 'graduated':
       return { bg: '#00FF41', text: '#000000', label: 'GRADUATED' };
     case 'failed':
@@ -30,7 +30,7 @@ function getPhaseBadge(phase: LaunchCard['phase']): { bg: string; text: string; 
 function getCategoryColor(category: LaunchCard['category']): string {
   switch (category) {
     case 'theatre':
-      return '#00D4FF';
+      return '#22D3EE';
     case 'osint':
       return '#9932CC';
   }
@@ -149,7 +149,7 @@ export function LaunchpadDetailPage() {
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-terminal-muted animate-pulse">Loading launch details...</div>
+        <div className="text-terminal-text-muted animate-pulse">Loading launch details...</div>
       </div>
     );
   }
@@ -201,7 +201,7 @@ export function LaunchpadDetailPage() {
               {launch.category.toUpperCase()}
             </span>
             {launch.exportEligible && (
-              <span className="flex items-center gap-1 text-xs text-[#00D4FF]">
+              <span className="flex items-center gap-1 text-xs text-[#22D3EE]">
                 <Database className="w-3 h-3" />
                 EXPORT ELIGIBLE
               </span>
@@ -211,7 +211,7 @@ export function LaunchpadDetailPage() {
             {launch.title}
           </h1>
           {launch.shortDescription && (
-            <p className="text-sm text-terminal-muted mt-2">{launch.shortDescription}</p>
+            <p className="text-sm text-terminal-text-muted mt-2">{launch.shortDescription}</p>
           )}
         </div>
       </div>
@@ -219,15 +219,15 @@ export function LaunchpadDetailPage() {
       {/* Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Quality Score */}
-        <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-4">
-          <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-3">
+        <div className="bg-slate-900 border border-terminal-border rounded-lg p-4">
+          <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
             Quality Score
           </h3>
           <div className="flex items-center justify-between mb-2">
             <span className="text-2xl font-mono font-bold" style={{ color: qualityColor }}>
               {launch.qualityScore}
             </span>
-            <span className="text-sm text-terminal-muted">/ 100</span>
+            <span className="text-sm text-terminal-text-muted">/ 100</span>
           </div>
           <div className="w-full h-2 bg-[#1A1A1A] rounded-full overflow-hidden">
             <div
@@ -241,21 +241,21 @@ export function LaunchpadDetailPage() {
         </div>
 
         {/* Fork Target Range */}
-        <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-4">
-          <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-3 flex items-center gap-2">
+        <div className="bg-slate-900 border border-terminal-border rounded-lg p-4">
+          <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3 flex items-center gap-2">
             <GitBranch className="w-4 h-4" />
             Fork Target Range
           </h3>
           <div className="text-2xl font-mono font-bold text-terminal-text">
             {launch.forkTargetRange[0]} - {launch.forkTargetRange[1]}
           </div>
-          <p className="text-xs text-terminal-muted mt-2">Expected forks per episode</p>
+          <p className="text-xs text-terminal-text-muted mt-2">Expected forks per episode</p>
         </div>
 
         {/* Episode Length */}
         {launch.episodeLengthSec && (
-          <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-4">
-            <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-3">
+          <div className="bg-slate-900 border border-terminal-border rounded-lg p-4">
+            <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
               Episode Length
             </h3>
             <div className="text-2xl font-mono font-bold text-terminal-text">
@@ -265,8 +265,8 @@ export function LaunchpadDetailPage() {
         )}
 
         {/* Tags */}
-        <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-4">
-          <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-3">
+        <div className="bg-slate-900 border border-terminal-border rounded-lg p-4">
+          <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
             Tags
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -283,23 +283,23 @@ export function LaunchpadDetailPage() {
       </div>
 
       {/* Metadata */}
-      <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-4">
+      <div className="bg-slate-900 border border-terminal-border rounded-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="text-terminal-muted">Created:</span>{' '}
+            <span className="text-terminal-text-muted">Created:</span>{' '}
             <span className="text-terminal-text font-mono">
               {new Date(launch.createdAt).toLocaleDateString()}
             </span>
           </div>
           <div>
-            <span className="text-terminal-muted">Updated:</span>{' '}
+            <span className="text-terminal-text-muted">Updated:</span>{' '}
             <span className="text-terminal-text font-mono">
               {new Date(launch.updatedAt).toLocaleDateString()}
             </span>
           </div>
           {launch.founderId && (
             <div>
-              <span className="text-terminal-muted">Founder:</span>{' '}
+              <span className="text-terminal-text-muted">Founder:</span>{' '}
               <span className="text-terminal-text font-mono">{launch.founderId}</span>
             </div>
           )}
@@ -313,8 +313,8 @@ export function LaunchpadDetailPage() {
           disabled={!canOpenMarket}
           className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded transition ${
             canOpenMarket
-              ? 'bg-[#00D4FF]/20 border border-[#00D4FF] text-[#00D4FF] hover:bg-[#00D4FF]/30'
-              : 'bg-terminal-bg border border-terminal-border text-terminal-muted cursor-not-allowed'
+              ? 'bg-[#22D3EE]/20 border border-[#22D3EE] text-[#22D3EE] hover:bg-[#22D3EE]/30'
+              : 'bg-terminal-bg border border-terminal-border text-terminal-text-muted cursor-not-allowed'
           }`}
         >
           <ExternalLink className="w-4 h-4" />
@@ -322,7 +322,7 @@ export function LaunchpadDetailPage() {
         </button>
         <button
           onClick={handleViewReplay}
-          className="flex items-center gap-2 px-6 py-3 text-sm font-semibold bg-terminal-bg border border-terminal-border rounded hover:border-[#00D4FF] hover:text-[#00D4FF] transition"
+          className="flex items-center gap-2 px-6 py-3 text-sm font-semibold bg-terminal-bg border border-terminal-border rounded hover:border-[#22D3EE] hover:text-[#22D3EE] transition"
         >
           <Play className="w-4 h-4" />
           VIEW REPLAY

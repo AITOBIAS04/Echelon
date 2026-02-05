@@ -247,7 +247,7 @@ export function OpsCard({ card, compact = false }: OpsCardProps) {
             </span>
           </div>
           {card.subtitle && (
-            <p className="text-xs text-terminal-muted truncate mt-0.5">{card.subtitle}</p>
+            <p className="text-xs text-terminal-text-muted truncate mt-0.5">{card.subtitle}</p>
           )}
         </div>
       </div>
@@ -279,7 +279,7 @@ export function OpsCard({ card, compact = false }: OpsCardProps) {
         <div className="grid grid-cols-2 gap-2 mb-3">
           {displayMetrics.map((metric, idx) => (
             <div key={idx} className="flex flex-col">
-              <span className="text-[10px] text-terminal-muted uppercase">{metric.label}</span>
+              <span className="text-[10px] text-terminal-text-muted uppercase">{metric.label}</span>
               <span
                 className="text-xs font-mono font-semibold"
                 style={{ color: metric.color || '#FFFFFF' }}

@@ -111,10 +111,10 @@ export function ActiveBreaches({ breaches, onViewAll, onBreachClick }: ActiveBre
                       boxShadow: severityStyles.shadow ? `0 0 6px ${severityStyles.shadow}` : 'none',
                     }}
                   />
-                  <span className="text-[10px] font-bold font-mono text-terminal-muted uppercase tracking-wider">
+                  <span className="text-[10px] font-bold font-mono text-terminal-text-muted uppercase tracking-wider">
                     {breach.category}
                   </span>
-                  <span className="text-[10px] font-mono text-terminal-muted ml-auto">
+                  <span className="text-[10px] font-mono text-terminal-text-muted ml-auto">
                     {formatBreachTime(breach.time)}
                   </span>
                 </div>
@@ -147,7 +147,7 @@ export function ActiveBreaches({ breaches, onViewAll, onBreachClick }: ActiveBre
       {/* Quick Actions Footer */}
       <div className="px-4 py-3 bg-terminal-bg border-t border-terminal-border">
         <div className="flex items-center justify-between text-[10px]">
-          <span className="text-terminal-muted">
+          <span className="text-terminal-text-muted">
             Last updated: Just now
           </span>
           <button className="text-status-warning hover:underline flex items-center gap-1">

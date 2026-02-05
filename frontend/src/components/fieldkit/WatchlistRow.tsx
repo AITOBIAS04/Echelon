@@ -68,7 +68,7 @@ export function WatchlistRow({
     <div
       onClick={handleCardClick}
       className="
-        bg-[#111111] border border-[#1A1A1A] rounded-lg p-3
+        bg-slate-900 border border-[#1A1A1A] rounded-lg p-3
         cursor-pointer transition-colors duration-150
         hover:border-[#333]
       "
@@ -118,7 +118,7 @@ export function WatchlistRow({
             onClick={handleBellClick}
             className="
               p-1.5 rounded hover:bg-terminal-panel/50
-              text-terminal-muted hover:text-terminal-text
+              text-terminal-text-muted hover:text-terminal-text
               transition-colors duration-150
             "
             aria-label="Toggle alerts"
@@ -129,7 +129,7 @@ export function WatchlistRow({
             onClick={handleRemoveClick}
             className="
               p-1.5 rounded hover:bg-red-500/20
-              text-terminal-muted hover:text-red-500
+              text-terminal-text-muted hover:text-red-500
               transition-colors duration-150
             "
             aria-label="Remove from watchlist"

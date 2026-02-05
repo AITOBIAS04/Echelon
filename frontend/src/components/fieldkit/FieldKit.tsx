@@ -46,11 +46,11 @@ export function FieldKit() {
             <Briefcase className="w-4 h-4 text-echelon-cyan" />
             <span className="terminal-header">Field Kit</span>
           </div>
-          <p className="text-xs text-terminal-muted">Personal Operations Centre</p>
+          <p className="text-xs text-terminal-text-muted">Personal Operations Centre</p>
         </div>
 
         <div className="terminal-panel p-3 sm:p-4">
-          <div className="text-xs text-terminal-muted mb-1">Total P&L</div>
+          <div className="text-xs text-terminal-text-muted mb-1">Total P&L</div>
           <div
             className={clsx(
               'text-xl sm:text-2xl font-mono font-bold leading-tight truncate',
@@ -63,14 +63,14 @@ export function FieldKit() {
         </div>
 
         <div className="terminal-panel p-3 sm:p-4">
-          <div className="text-xs text-terminal-muted mb-1">Active Positions</div>
+          <div className="text-xs text-terminal-text-muted mb-1">Active Positions</div>
           <div className="text-2xl font-mono font-bold text-terminal-text">
             {totalPositions}
           </div>
         </div>
 
         <div className="terminal-panel p-3 sm:p-4">
-          <div className="text-xs text-terminal-muted mb-1">Deployed Agents</div>
+          <div className="text-xs text-terminal-text-muted mb-1">Deployed Agents</div>
           <div className="text-2xl font-mono font-bold text-echelon-purple">
             {totalAgents}
           </div>
@@ -90,7 +90,7 @@ export function FieldKit() {
                   'flex items-center gap-2 px-3 sm:px-4 py-2 rounded-t transition-all whitespace-nowrap flex-shrink-0',
                   activeTab === tab.id
                     ? 'bg-terminal-panel text-echelon-cyan border border-terminal-border border-b-0'
-                    : 'text-terminal-muted hover:text-terminal-text'
+                    : 'text-terminal-text-muted hover:text-terminal-text'
                 )}
               >
                 <Icon className="w-4 h-4" />

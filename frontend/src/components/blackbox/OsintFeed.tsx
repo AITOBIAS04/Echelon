@@ -63,7 +63,7 @@ const sourceIcons: Record<string, React.ReactNode> = {
 };
 
 const severityColors: Record<number, string> = {
-  1: 'text-terminal-muted',
+  1: 'text-terminal-text-muted',
   2: 'text-echelon-blue',
   3: 'text-echelon-amber',
   4: 'text-echelon-red',
@@ -81,7 +81,7 @@ export function OsintFeed() {
     <div className="h-full flex flex-col">
       {/* Filter Bar */}
       <div className="flex items-center gap-2 mb-4">
-        <Filter className="w-4 h-4 text-terminal-muted" />
+        <Filter className="w-4 h-4 text-terminal-text-muted" />
         {categories.map((cat) => (
           <button
             key={cat}
@@ -90,13 +90,13 @@ export function OsintFeed() {
               'px-3 py-1 text-xs rounded transition',
               filter === cat
                 ? 'bg-echelon-purple/20 text-echelon-purple border border-echelon-purple/30'
-                : 'bg-terminal-bg text-terminal-muted hover:text-terminal-text'
+                : 'bg-terminal-bg text-terminal-text-muted hover:text-terminal-text'
             )}
           >
             {cat}
           </button>
         ))}
-        <div className="ml-auto text-xs text-terminal-muted">{filteredSignals.length} signals</div>
+        <div className="ml-auto text-xs text-terminal-text-muted">{filteredSignals.length} signals</div>
       </div>
 
       {/* Signal Stream */}
@@ -107,19 +107,19 @@ export function OsintFeed() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className={severityColors[signal.severity]}>{sourceIcons[signal.source]}</span>
-                <span className="text-xs text-terminal-muted uppercase">{signal.source}</span>
-                <span className="text-xs px-2 py-0.5 bg-terminal-bg rounded text-terminal-muted">{signal.category}</span>
+                <span className="text-xs text-terminal-text-muted uppercase">{signal.source}</span>
+                <span className="text-xs px-2 py-0.5 bg-terminal-bg rounded text-terminal-text-muted">{signal.category}</span>
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <span className={severityColors[signal.severity]}>SEV-{signal.severity}</span>
-                <span className="text-terminal-muted">{Math.round(signal.confidence * 100)}% conf</span>
-                <span className="text-terminal-muted">{formatTimeAgo(new Date(signal.timestamp))}</span>
+                <span className="text-terminal-text-muted">{Math.round(signal.confidence * 100)}% conf</span>
+                <span className="text-terminal-text-muted">{formatTimeAgo(new Date(signal.timestamp))}</span>
               </div>
             </div>
 
             {/* Content */}
             <h3 className="font-medium text-terminal-text mb-1">{signal.headline}</h3>
-            <p className="text-sm text-terminal-muted mb-2">{signal.content}</p>
+            <p className="text-sm text-terminal-text-muted mb-2">{signal.content}</p>
 
             {/* Footer */}
             <div className="flex items-center justify-between">

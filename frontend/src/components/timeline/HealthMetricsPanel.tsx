@@ -112,7 +112,7 @@ export function HealthMetricsPanel({
   const logicGapColor = currentLogicGap >= 50 ? '#FF3B3B' : '#FF9500';
   
   return (
-    <div className="bg-[#111111] rounded-lg p-4">
+    <div className="bg-slate-900 rounded-lg p-4">
       {/* Header with time range toggle */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">
@@ -124,7 +124,7 @@ export function HealthMetricsPanel({
             className={`px-3 py-1 text-xs rounded transition ${
               timeRange === '24H'
                 ? 'bg-terminal-panel border border-[#00FF41] text-[#00FF41]'
-                : 'bg-terminal-bg border border-[#333] text-terminal-muted hover:text-terminal-text'
+                : 'bg-terminal-bg border border-[#333] text-terminal-text-muted hover:text-terminal-text'
             }`}
           >
             24H
@@ -134,7 +134,7 @@ export function HealthMetricsPanel({
             className={`px-3 py-1 text-xs rounded transition ${
               timeRange === '7D'
                 ? 'bg-terminal-panel border border-[#00FF41] text-[#00FF41]'
-                : 'bg-terminal-bg border border-[#333] text-terminal-muted hover:text-terminal-text'
+                : 'bg-terminal-bg border border-[#333] text-terminal-text-muted hover:text-terminal-text'
             }`}
           >
             7D

@@ -48,7 +48,7 @@ export function ExportConsole() {
           <h1 className="text-2xl font-bold text-terminal-text uppercase tracking-wide">
             EXPORT CONSOLE
           </h1>
-          <p className="text-sm text-terminal-muted mt-1">
+          <p className="text-sm text-terminal-text-muted mt-1">
             Create and manage data exports for training and analysis
           </p>
         </div>
@@ -67,7 +67,7 @@ export function ExportConsole() {
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
           <div>
             <p className="text-sm font-semibold text-red-500">Error</p>
-            <p className="text-xs text-terminal-muted">{error}</p>
+            <p className="text-xs text-terminal-text-muted">{error}</p>
           </div>
         </div>
       )}

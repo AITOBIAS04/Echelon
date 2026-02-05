@@ -14,7 +14,7 @@ const GravityMeter = ({ gravity }: GravityMeterProps) => {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-terminal-muted">Gravity</span>
+        <span className="text-terminal-text-muted">Gravity</span>
         <span className="text-terminal-text">{gravity.toFixed(1)}</span>
       </div>
       <div className="h-1.5 bg-terminal-border rounded-full overflow-hidden">

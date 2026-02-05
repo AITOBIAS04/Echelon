@@ -120,7 +120,7 @@ export function LiveRibbon({ events, onEventClick }: LiveRibbonProps) {
                   {event.title}
                 </span>
 
-                <span className="text-[10px] font-mono text-terminal-muted border-l border-terminal-border pl-2">
+                <span className="text-[10px] font-mono text-terminal-text-muted border-l border-terminal-border pl-2">
                   {formatTime(event.time)}
                 </span>
               </button>

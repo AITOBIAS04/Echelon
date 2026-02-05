@@ -23,7 +23,7 @@ export function CorrelationMatrix() {
       {/* Info */}
       <div className="flex items-center gap-2 mb-4 p-3 bg-terminal-bg rounded">
         <Info className="w-4 h-4 text-echelon-cyan" />
-        <span className="text-xs text-terminal-muted">
+        <span className="text-xs text-terminal-text-muted">
           Correlation strength determines ripple magnitude when wing flaps exceed divergence threshold.
           High correlation (&gt;0.8) = 80% of stability impact transfers to connected timeline.
         </span>
@@ -34,9 +34,9 @@ export function CorrelationMatrix() {
         <table className="w-full">
           <thead>
             <tr>
-              <th className="p-2 text-xs text-terminal-muted"></th>
+              <th className="p-2 text-xs text-terminal-text-muted"></th>
               {timelines.map((tl) => (
-                <th key={tl} className="p-2 text-xs text-terminal-muted font-normal">
+                <th key={tl} className="p-2 text-xs text-terminal-text-muted font-normal">
                   {tl.replace('TL_', '')}
                 </th>
               ))}
@@ -45,7 +45,7 @@ export function CorrelationMatrix() {
           <tbody>
             {timelines.map((row) => (
               <tr key={row}>
-                <td className="p-2 text-xs text-terminal-muted">{row.replace('TL_', '')}</td>
+                <td className="p-2 text-xs text-terminal-text-muted">{row.replace('TL_', '')}</td>
                 {timelines.map((col) => {
                   const value = correlations[row][col];
                   return (
@@ -66,7 +66,7 @@ export function CorrelationMatrix() {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-4 mt-4 text-xs text-terminal-muted">
+      <div className="flex items-center justify-center gap-4 mt-4 text-xs text-terminal-text-muted">
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 bg-terminal-border rounded"></span> Weak
         </span>

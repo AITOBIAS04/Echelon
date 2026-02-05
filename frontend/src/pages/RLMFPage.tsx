@@ -153,17 +153,17 @@ export function RLMFPage() {
               <span className="text-xs bg-status-info/10 text-status-info px-2 py-0.5 rounded border border-status-info/20 font-semibold">3D SPATIAL</span>
               <span className="text-xs bg-status-paradox/10 text-status-paradox px-2 py-0.5 rounded border border-status-paradox/20 font-semibold">MANIPULATION</span>
             </h2>
-            <p className="text-terminal-muted text-xs mt-1">ID: orbital_salvage_v1 • Template: 3D-INERT • Diff: Standard</p>
+            <p className="text-terminal-text-muted text-xs mt-1">ID: orbital_salvage_v1 • Template: 3D-INERT • Diff: Standard</p>
           </div>
           <div className="flex items-center gap-6">
             <div className="text-right">
-              <div className="text-[10px] text-terminal-muted uppercase tracking-wider font-semibold">Epoch</div>
+              <div className="text-[10px] text-terminal-text-muted uppercase tracking-wider font-semibold">Epoch</div>
               <div className="text-lg font-mono font-bold text-terminal-text">
                 <span className="text-status-info">{epoch}</span>/250
               </div>
             </div>
             <div className="text-right">
-              <div className="text-[10px] text-terminal-muted uppercase tracking-wider font-semibold">Elapsed</div>
+              <div className="text-[10px] text-terminal-text-muted uppercase tracking-wider font-semibold">Elapsed</div>
               <div className="text-lg font-mono font-bold text-terminal-text">{formatTime(timeElapsed)}</div>
             </div>
           </div>
@@ -182,7 +182,7 @@ export function RLMFPage() {
                 <Activity className="w-3.5 h-3.5" />
                 Live Telemetry Feed
               </span>
-              <span className="text-xs font-mono text-terminal-muted">
+              <span className="text-xs font-mono text-terminal-text-muted">
                 Fork #{epoch} in: <span className="text-status-warning font-semibold">{forkTimer}s</span>
               </span>
             </div>
@@ -215,7 +215,7 @@ export function RLMFPage() {
                   {/* Stability Row */}
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-medium text-terminal-muted uppercase tracking-wider">STABILITY</span>
+                      <span className="text-[10px] font-medium text-terminal-text-muted uppercase tracking-wider">STABILITY</span>
                       <span className="text-xs font-mono font-semibold text-status-success">{stability.toFixed(1)}%</span>
                     </div>
                     <div className="h-1 bg-terminal-bg rounded-full overflow-hidden border border-terminal-border/50">
@@ -224,12 +224,12 @@ export function RLMFPage() {
                   </div>
                   {/* Logic Gap Row */}
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-medium text-terminal-muted uppercase tracking-wider">LOGIC GAP</span>
+                    <span className="text-[10px] font-medium text-terminal-text-muted uppercase tracking-wider">LOGIC GAP</span>
                     <span className="text-xs font-mono font-semibold text-status-warning">12.4%</span>
                   </div>
                   {/* Entropy Row */}
                   <div className="flex justify-between items-center pt-1.5 border-t border-terminal-border/30">
-                    <span className="text-[10px] font-medium text-terminal-muted uppercase tracking-wider">ENTROPY</span>
+                    <span className="text-[10px] font-medium text-terminal-text-muted uppercase tracking-wider">ENTROPY</span>
                     <span className="text-xs font-mono font-semibold text-status-info">0.34</span>
                   </div>
                 </div>
@@ -242,7 +242,7 @@ export function RLMFPage() {
                 <div className="w-5 h-5 bg-status-info/10 rounded flex items-center justify-center text-xs flex-shrink-0">🦈</div>
                 <div>
                   <div className="text-xs font-semibold text-terminal-text">
-                    MEGALODON <span className="text-terminal-muted font-normal text-[10px]">(SHARK ARCHETYPE)</span>
+                    MEGALODON <span className="text-terminal-text-muted font-normal text-[10px]">(SHARK ARCHETYPE)</span>
                   </div>
                   <div className="text-xs text-status-info mt-0.5" dangerouslySetInnerHTML={{ __html: agentThoughts }} />
                 </div>
@@ -251,7 +251,7 @@ export function RLMFPage() {
 
             {/* Fork Options */}
             <div className="p-4">
-              <div className="text-xs font-semibold text-terminal-muted uppercase tracking-wider mb-3">🎯 FORK POINT #{epoch} DECISION</div>
+              <div className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wider mb-3">🎯 FORK POINT #{epoch} DECISION</div>
               <div className="grid grid-cols-3 gap-3">
                 {forkOptions.map((option) => (
                   <button
@@ -262,7 +262,7 @@ export function RLMFPage() {
                         ? option.id === 'A' ? 'border-status-info bg-status-info/5' :
                           option.id === 'B' ? 'border-status-warning bg-status-warning/5' :
                           'border-status-paradox bg-status-paradox/5'
-                        : 'border-terminal-border hover:border-terminal-muted'
+                        : 'border-terminal-border hover:border-terminal-border-light'
                     }`}
                   >
                     <div className="flex justify-between items-center mb-2">
@@ -274,7 +274,7 @@ export function RLMFPage() {
                       <span className="text-sm font-mono font-bold text-status-success">${option.price}</span>
                     </div>
                     <div className="text-xs text-terminal-text-secondary mb-2">{option.description}</div>
-                    <div className="flex justify-between text-[10px] text-terminal-muted uppercase tracking-wider font-medium border-t border-terminal-border pt-2">
+                    <div className="flex justify-between text-[10px] text-terminal-text-muted uppercase tracking-wider font-medium border-t border-terminal-border pt-2">
                       <span>Risk: {option.risk}</span>
                       <span>{option.time}s</span>
                     </div>
@@ -293,7 +293,7 @@ export function RLMFPage() {
                 <TrendingUp className="w-3.5 h-3.5" />
                 Place Your Bet
               </span>
-              <span className="text-xs font-mono text-terminal-muted">Fork #{epoch}</span>
+              <span className="text-xs font-mono text-terminal-text-muted">Fork #{epoch}</span>
             </div>
             
             <div className="p-4 grid grid-cols-3 gap-3">
@@ -310,7 +310,7 @@ export function RLMFPage() {
                   }`}>{option.label}</div>
                   <div className="text-lg font-mono font-bold text-terminal-text mb-1">
                     ${option.price}
-                    <span className="text-xs text-terminal-muted font-normal ml-1">({option.probability}%)</span>
+                    <span className="text-xs text-terminal-text-muted font-normal ml-1">({option.probability}%)</span>
                   </div>
                   <input
                     type="range"
@@ -328,7 +328,7 @@ export function RLMFPage() {
                   <button
                     onClick={() => placeBet(option.id)}
                     disabled={betSizes[option.id] === 0}
-                    className="mt-auto px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded border border-terminal-border text-terminal-muted transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:border-terminal-text hover:text-terminal-text hover:bg-terminal-panel"
+                    className="mt-auto px-3 py-2 text-[10px] font-bold uppercase tracking-wider rounded border border-terminal-border text-terminal-text-muted transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:border-terminal-text hover:text-terminal-text hover:bg-terminal-panel"
                   >
                     {betSizes[option.id] > 0 ? `CONFIRM $${(betSizes[option.id] / 100).toFixed(0)} BET` : 'CONFIRM BET'}
                   </button>
@@ -337,28 +337,28 @@ export function RLMFPage() {
             </div>
 
             {/* RLMF Narrative */}
-            <div className="mx-4 mb-4 p-3 bg-gradient-to-br from-status-cyan/5 to-status-paradox/5 border border-status-cyan/15 rounded-lg flex items-center gap-3">
+            <div className="mx-4 mb-4 p-3 bg-gradient-to-br from-status-info/5 to-status-paradox/5 border border-status-info/15 rounded-lg flex items-center gap-3">
               <span className="text-lg">🤖</span>
               <span className="text-xs text-terminal-text-secondary">
-                <strong className="text-status-cyan">Your bets create market prices → Market prices become reward signals → Reward signals train robot policies</strong>
+                <strong className="text-status-info">Your bets create market prices → Market prices become reward signals → Reward signals train robot policies</strong>
               </span>
             </div>
 
             {/* Contribution Panel */}
             <div className="mx-4 mb-4 bg-terminal-bg border border-terminal-border rounded-lg p-3">
-              <div className="text-[10px] font-semibold text-terminal-muted uppercase tracking-wider mb-3">📊 YOUR RLMF CONTRIBUTION</div>
+              <div className="text-[10px] font-semibold text-terminal-text-muted uppercase tracking-wider mb-3">📊 YOUR RLMF CONTRIBUTION</div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-terminal-panel border border-terminal-border rounded p-2 text-center">
                   <div className="text-base font-mono font-bold text-terminal-text">{contribution.episodes}</div>
-                  <div className="text-[9px] text-terminal-muted uppercase tracking-wider">Episodes</div>
+                  <div className="text-[9px] text-terminal-text-muted uppercase tracking-wider">Episodes</div>
                 </div>
                 <div className="bg-terminal-panel border border-terminal-border rounded p-2 text-center">
                   <div className="text-base font-mono font-bold text-terminal-text">{contribution.vectors}</div>
-                  <div className="text-[9px] text-terminal-muted uppercase tracking-wider">Reward Vectors</div>
+                  <div className="text-[9px] text-terminal-text-muted uppercase tracking-wider">Reward Vectors</div>
                 </div>
                 <div className="bg-terminal-panel border border-terminal-border rounded p-2 text-center">
                   <div className="text-base font-mono font-bold text-terminal-text">{contribution.partners}</div>
-                  <div className="text-[9px] text-terminal-muted uppercase tracking-wider">Robot Partners</div>
+                  <div className="text-[9px] text-terminal-text-muted uppercase tracking-wider">Robot Partners</div>
                 </div>
               </div>
             </div>
@@ -366,7 +366,7 @@ export function RLMFPage() {
             {/* Positions */}
             <div className="mx-4 mb-4 bg-terminal-bg border border-terminal-border rounded-lg p-3">
               <div className="flex items-center justify-between mb-3">
-                <div className="text-[10px] font-semibold text-terminal-muted uppercase tracking-wider">🎯 MY POSITIONS</div>
+                <div className="text-[10px] font-semibold text-terminal-text-muted uppercase tracking-wider">🎯 MY POSITIONS</div>
                 <div className="text-xs font-mono text-status-info font-semibold">${totalExposure.toLocaleString()}</div>
 </div>
               <div className="space-y-1.5">
@@ -374,7 +374,7 @@ export function RLMFPage() {
                   <div key={index} className="flex justify-between items-center p-1.5 bg-terminal-panel border border-terminal-border rounded">
                     <div className="flex gap-2 items-center">
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getOptionColor(pos.option)}`}>{pos.option}</span>
-                      <span className="text-[10px] text-terminal-muted">{pos.timestamp}</span>
+                      <span className="text-[10px] text-terminal-text-muted">{pos.timestamp}</span>
                     </div>
                     <div className="flex gap-3 items-center">
                       <span className="text-xs font-mono font-semibold">${pos.size.toLocaleString()}</span>
@@ -406,7 +406,7 @@ export function RLMFPage() {
                       'bg-terminal-panel border-2 border-terminal-border'
                     }`} />
                     <div className="text-xs font-mono font-semibold text-terminal-text">{step.time} — {step.desc}</div>
-                    {step.detail && <div className="text-xs text-terminal-muted mt-0.5">{step.detail}</div>}
+                    {step.detail && <div className="text-xs text-terminal-text-muted mt-0.5">{step.detail}</div>}
                   </div>
                 ))}
               </div>
@@ -432,7 +432,7 @@ export function RLMFPage() {
                 { label: 'TRACE', value: 0.58, color: 'bg-status-paradox' }
               ].map((item) => (
                 <div key={item.label}>
-                  <div className="flex justify-between text-[10px] text-terminal-muted uppercase tracking-wider font-medium mb-1">
+                  <div className="flex justify-between text-[10px] text-terminal-text-muted uppercase tracking-wider font-medium mb-1">
                     <span>{item.label}</span>
                     <span className="font-mono">{item.value}</span>
                   </div>
@@ -450,7 +450,7 @@ export function RLMFPage() {
               <span className="text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider">Market Calibration</span>
             </div>
             <div className="p-4 space-y-2">
-              <div className="text-[10px] text-terminal-muted border border-terminal-border rounded p-2 bg-terminal-bg mb-3">
+              <div className="text-[10px] text-terminal-text-muted border border-terminal-border rounded p-2 bg-terminal-bg mb-3">
                 TARGETS: Brier &lt; 0.20 | ECE &lt; 0.10
               </div>
               <div className="flex justify-between items-center p-2 bg-terminal-bg border border-terminal-border rounded">
@@ -467,7 +467,7 @@ export function RLMFPage() {
               </div>
               <div className="flex justify-between items-center p-2 bg-terminal-bg border border-terminal-border rounded">
                 <span className="text-xs text-terminal-text-secondary font-medium">Sample Size</span>
-                <span className="text-xs font-mono text-terminal-muted">12,847</span>
+                <span className="text-xs font-mono text-terminal-text-muted">12,847</span>
               </div>
             </div>
           </div>
@@ -518,7 +518,7 @@ export function RLMFPage() {
                         option.id === 'B' ? 'text-status-warning' :
                         'text-status-paradox'
                       }`}>{option.probability}%</div>
-                      <div className="text-[9px] text-terminal-muted font-mono">${option.price}</div>
+                      <div className="text-[9px] text-terminal-text-muted font-mono">${option.price}</div>
                     </div>
                   </div>
                 ))}
@@ -549,7 +549,7 @@ export function RLMFPage() {
                   <Download className="w-3 h-3" /> Export Data
                 </button>
               </div>
-              <div className="bg-terminal-bg border border-terminal-border rounded p-2 font-mono text-[9px] text-terminal-muted leading-relaxed overflow-x-auto">
+              <div className="bg-terminal-bg border border-terminal-border rounded p-2 font-mono text-[9px] text-terminal-text-muted leading-relaxed overflow-x-auto">
 {`{
   "episode_id": "uuid-184",
   "reward": { "time": 0.72, "val": 0.88 },
@@ -565,10 +565,10 @@ export function RLMFPage() {
               <span className="text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider">Actions</span>
             </div>
             <div className="p-2 grid grid-cols-2 gap-2">
-              <button className="py-2 px-3 bg-terminal-bg border border-terminal-border rounded text-xs text-terminal-text-secondary font-medium hover:bg-terminal-panel hover:border-terminal-muted transition-colors flex items-center justify-center gap-1">
+              <button className="py-2 px-3 bg-terminal-bg border border-terminal-border rounded text-xs text-terminal-text-secondary font-medium hover:bg-terminal-panel hover:border-terminal-border-light transition-colors flex items-center justify-center gap-1">
                 <Play className="w-3 h-3" /> Override
               </button>
-              <button className="py-2 px-3 bg-terminal-bg border border-terminal-border rounded text-xs text-terminal-text-secondary font-medium hover:bg-terminal-panel hover:border-terminal-muted transition-colors flex items-center justify-center gap-1">
+              <button className="py-2 px-3 bg-terminal-bg border border-terminal-border rounded text-xs text-terminal-text-secondary font-medium hover:bg-terminal-panel hover:border-terminal-border-light transition-colors flex items-center justify-center gap-1">
                 <ChevronRight className="w-3 h-3" /> Skip Fork
               </button>
               <button onClick={triggerSaboteur} className="py-2 px-3 bg-terminal-bg border border-status-danger/30 rounded text-xs text-status-danger font-medium hover:bg-status-danger/10 transition-colors flex items-center justify-center gap-1">

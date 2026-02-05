@@ -17,7 +17,7 @@ export function ParadoxPanel() {
             Paradox Containment
           </h1>
         </div>
-        <div className="text-sm text-terminal-muted">
+        <div className="text-sm text-terminal-text-muted">
           {paradoxes.length} active breach{paradoxes.length !== 1 ? 'es' : ''}
         </div>
       </div>
@@ -25,10 +25,10 @@ export function ParadoxPanel() {
       {/* Active Paradoxes */}
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-terminal-muted">Loading paradoxes...</div>
+          <div className="text-terminal-text-muted">Loading paradoxes...</div>
         </div>
       ) : paradoxes.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-terminal-muted">
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-terminal-text-muted">
           <AlertTriangle className="w-16 h-16 text-echelon-green opacity-50" />
           <div className="text-lg">All timelines stable</div>
           <div className="text-sm text-center max-w-md">
@@ -51,19 +51,19 @@ export function ParadoxPanel() {
       {/* Stats Footer */}
       <div className="terminal-panel p-4 grid grid-cols-3 gap-4 text-center">
         <div>
-          <div className="text-xs text-terminal-muted mb-1">Total Detected</div>
+          <div className="text-xs text-terminal-text-muted mb-1">Total Detected</div>
           <div className="text-lg font-mono text-echelon-purple">
             {paradoxData?.total_active || 0}
           </div>
         </div>
         <div>
-          <div className="text-xs text-terminal-muted mb-1">Extracting</div>
+          <div className="text-xs text-terminal-text-muted mb-1">Extracting</div>
           <div className="text-lg font-mono text-echelon-amber">
             {paradoxes.filter((p: Paradox) => p.status === 'EXTRACTING').length}
           </div>
         </div>
         <div>
-          <div className="text-xs text-terminal-muted mb-1">Resolved</div>
+          <div className="text-xs text-terminal-text-muted mb-1">Resolved</div>
           <div className="text-lg font-mono text-echelon-green">
             {paradoxes.filter((p: Paradox) => p.status === 'RESOLVED').length}
           </div>

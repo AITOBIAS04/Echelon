@@ -189,7 +189,7 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
         </span>
 
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-terminal-muted uppercase tracking-wider">
+          <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">
             {demoEnabled
               ? displayStability >= 70 ? 'Stable' : displayStability >= 50 ? 'Degraded' : 'Critical'
               : market.stabilityStatus}
@@ -230,7 +230,7 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
           )}
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-terminal-muted uppercase">YES</span>
+            <span className="text-[10px] font-bold text-terminal-text-muted uppercase">YES</span>
             <span className="text-[10px] font-mono text-terminal-secondary">
               {displayYesProb.toFixed(0)}%
             </span>
@@ -254,7 +254,7 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
           )}
         >
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-terminal-muted uppercase">NO</span>
+            <span className="text-[10px] font-bold text-terminal-text-muted uppercase">NO</span>
             <span className="text-[10px] font-mono text-terminal-secondary">
               {displayNoProb.toFixed(0)}%
             </span>
@@ -269,7 +269,7 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
       {selectedOutcome && (
         <div className="mb-4 p-3 bg-terminal-bg rounded-lg border border-terminal-border">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-terminal-muted uppercase">Bet Amount</span>
+            <span className="text-[10px] text-terminal-text-muted uppercase">Bet Amount</span>
             <span className="text-sm font-mono text-terminal-text">${betAmount.toFixed(2)}</span>
           </div>
           <input
@@ -290,7 +290,7 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
                 e.stopPropagation();
                 setBetAmount(Math.max(1, betAmount - 10));
               }}
-              className="text-[10px] text-terminal-muted hover:text-terminal-text"
+              className="text-[10px] text-terminal-text-muted hover:text-terminal-text"
             >
               -10
             </button>
@@ -299,13 +299,13 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
                 e.stopPropagation();
                 setBetAmount(Math.min(100, betAmount + 10));
               }}
-              className="text-[10px] text-terminal-muted hover:text-terminal-text"
+              className="text-[10px] text-terminal-text-muted hover:text-terminal-text"
             >
               +10
             </button>
           </div>
           <div className="mt-2 text-center">
-            <span className="text-xs text-terminal-muted">
+            <span className="text-xs text-terminal-text-muted">
               Potential payout: <span className="text-status-success font-mono font-bold">${potentialPayout.toFixed(2)}</span>
             </span>
           </div>
@@ -315,14 +315,14 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
       {/* Footer Metrics */}
       <div className="grid grid-cols-3 gap-2 pt-3 border-t border-terminal-border">
         <div className="flex flex-col">
-          <span className="text-[10px] text-terminal-muted uppercase tracking-wider">Liquidity</span>
+          <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">Liquidity</span>
           <span className="text-xs font-mono font-medium text-terminal-secondary">
             {formatCurrency(market.liquidity)}
           </span>
         </div>
 
         <div className="flex flex-col">
-          <span className="text-[10px] text-terminal-muted uppercase tracking-wider">Fork In</span>
+          <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">Fork In</span>
           <span className="text-xs font-mono font-medium text-terminal-secondary flex items-center gap-1">
             <Clock className="w-3 h-3" />
             {formatTimeRemaining(market.nextForkEtaSec)}
@@ -330,7 +330,7 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
         </div>
 
         <div className="flex flex-col">
-          <span className="text-[10px] text-terminal-muted uppercase tracking-wider">Gap</span>
+          <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">Gap</span>
           <span
             className={clsx(
               'text-xs font-mono font-medium flex items-center gap-1',

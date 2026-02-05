@@ -310,24 +310,18 @@ export function MarketplacePage() {
   };
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: '#0B0C0E', color: '#F1F5F9', fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div className="h-full flex flex-col bg-slate-950 text-terminal-text">
       {/* Controls Bar */}
-      <div className="flex-shrink-0 flex items-center gap-4 px-6 py-3" style={{ background: '#0B0C0E', borderBottom: '1px solid #26292E' }}>
+      <div className="flex-shrink-0 flex items-center gap-4 px-6 py-3 bg-slate-950 border-b border-terminal-border">
         {/* Search */}
         <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748B' }} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-terminal-text-muted" />
           <input
             type="text"
             placeholder="Search theatres, agents, events..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-lg text-xs"
-            style={{ 
-              background: '#151719', 
-              border: '1px solid #26292E', 
-              color: '#F1F5F9',
-              outline: 'none'
-            }}
+            className="w-full pl-9 pr-4 py-2 rounded-lg text-xs bg-terminal-panel border border-terminal-border text-terminal-text outline-none"
           />
         </div>
 
@@ -336,55 +330,45 @@ export function MarketplacePage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="px-3 py-2 pr-8 rounded-lg text-xs appearance-none cursor-pointer"
-            style={{ 
-              background: '#151719', 
-              border: '1px solid #26292E', 
-              color: '#F1F5F9'
-            }}
+            className="px-3 py-2 pr-8 rounded-lg text-xs appearance-none cursor-pointer bg-terminal-panel border border-terminal-border text-terminal-text"
           >
             <option value="activity">Most Active</option>
             <option value="volume">Highest Volume</option>
             <option value="newest">Newest</option>
             <option value="instability">Highest Instability</option>
           </select>
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#94A3B8' }} />
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-terminal-text-secondary" />
         </div>
 
         {/* Stats Bar */}
         <div className="flex items-center gap-6 ml-auto">
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wider" style={{ color: '#64748B' }}>Markets</div>
-            <div className="font-mono text-xs" style={{ color: '#94A3B8' }}>{totalMarkets}</div>
+            <div className="text-[10px] uppercase tracking-wider text-terminal-text-muted">Markets</div>
+            <div className="font-mono text-xs text-terminal-text-secondary">{totalMarkets}</div>
           </div>
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wider" style={{ color: '#64748B' }}>24h Vol</div>
-            <div className="font-mono text-xs" style={{ color: '#94A3B8' }}>${(totalVolume24h / 1e6).toFixed(1)}M</div>
+            <div className="text-[10px] uppercase tracking-wider text-terminal-text-muted">24h Vol</div>
+            <div className="font-mono text-xs text-terminal-text-secondary">${(totalVolume24h / 1e6).toFixed(1)}M</div>
           </div>
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wider" style={{ color: '#64748B' }}>Forks</div>
-            <div className="font-mono text-xs" style={{ color: '#4ADE80' }}>{activeForks}</div>
+            <div className="text-[10px] uppercase tracking-wider text-terminal-text-muted">Forks</div>
+            <div className="font-mono text-xs text-status-success">{activeForks}</div>
           </div>
         </div>
       </div>
 
       {/* Category Navigation */}
-      <div className="flex-shrink-0 flex items-center gap-1 px-6 py-3 overflow-x-auto" style={{ background: '#0B0C0E', borderBottom: '1px solid #26292E' }}>
+      <div className="flex-shrink-0 flex items-center gap-1 px-6 py-3 overflow-x-auto bg-slate-950 border-b border-terminal-border">
         {CATEGORIES.map(cat => (
           <button
             key={cat.id}
             onClick={() => setSelectedCategory(cat.id)}
             className={clsx(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all border',
               selectedCategory === cat.id
-                ? 'bg-[#151719] border border-[#26292E]'
-                : 'text-[#94A3B8] hover:text-[#F1F5F9]'
+                ? 'bg-terminal-panel border-terminal-border text-terminal-text'
+                : 'bg-transparent border-transparent text-terminal-text-secondary hover:text-terminal-text'
             )}
-            style={{ 
-              background: selectedCategory === cat.id ? '#151719' : 'transparent',
-              border: selectedCategory === cat.id ? '1px solid #26292E' : '1px solid transparent',
-              color: selectedCategory === cat.id ? '#F1F5F9' : '#94A3B8'
-            }}
           >
             {cat.icon && (
               <span className="flex items-center justify-center w-4 h-4">
@@ -412,14 +396,10 @@ export function MarketplacePage() {
           {/* Market Grid */}
           <div className="flex-1 min-h-0 overflow-y-auto p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#64748B' }}>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-terminal-text-muted">
                 Active Theatres
               </h2>
-              <span className="px-2 py-1 rounded border text-xs font-mono" style={{ 
-                background: '#151719', 
-                borderColor: '#26292E',
-                color: '#94A3B8'
-              }}>
+              <span className="px-2 py-1 rounded border text-xs font-mono bg-terminal-panel border-terminal-border text-terminal-text-secondary">
                 {filteredMarkets().length}
               </span>
             </div>
@@ -427,17 +407,17 @@ export function MarketplacePage() {
             {marketsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {[1, 2, 3, 4, 5, 6].map(i => (
-                  <div key={i} className="rounded-xl p-4 animate-pulse" style={{ background: '#151719', border: '1px solid #26292E' }}>
-                    <div className="h-4 rounded w-1/3 mb-3" style={{ background: '#121417' }} />
-                    <div className="h-5 rounded w-3/4 mb-4" style={{ background: '#121417' }} />
+                  <div key={i} className="rounded-xl p-4 animate-pulse bg-terminal-panel border border-terminal-border">
+                    <div className="h-4 rounded w-1/3 mb-3 bg-terminal-card" />
+                    <div className="h-5 rounded w-3/4 mb-4 bg-terminal-card" />
                     <div className="flex gap-2 mb-4">
-                      <div className="h-12 rounded flex-1" style={{ background: '#121417' }} />
-                      <div className="h-12 rounded flex-1" style={{ background: '#121417' }} />
+                      <div className="h-12 rounded flex-1 bg-terminal-card" />
+                      <div className="h-12 rounded flex-1 bg-terminal-card" />
                     </div>
                     <div className="flex gap-2">
-                      <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
-                      <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
-                      <div className="h-3 rounded w-1/4" style={{ background: '#121417' }} />
+                      <div className="h-3 rounded w-1/4 bg-terminal-card" />
+                      <div className="h-3 rounded w-1/4 bg-terminal-card" />
+                      <div className="h-3 rounded w-1/4 bg-terminal-card" />
                     </div>
                   </div>
                 ))}
@@ -452,16 +432,16 @@ export function MarketplacePage() {
 
             {filteredMarkets().length === 0 && !marketsLoading && (
               <div className="flex flex-col items-center justify-center py-12">
-                <BarChart3 className="w-12 h-12 mb-4" style={{ color: '#64748B', opacity: 0.5 }} />
-                <p className="text-sm" style={{ color: '#64748B' }}>No markets found</p>
-                <p className="text-xs mt-1" style={{ color: '#64748B' }}>Try adjusting your search or filters</p>
+                <BarChart3 className="w-12 h-12 mb-4 text-terminal-text-muted opacity-50" />
+                <p className="text-sm text-terminal-text-muted">No markets found</p>
+                <p className="text-xs mt-1 text-terminal-text-muted">Try adjusting your search or filters</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Right Rail - Signal Intercepts and Active Breaches */}
-        <div className="w-[360px] flex-shrink-0 flex flex-col hidden lg:flex" style={{ background: '#151719', borderLeft: '1px solid #26292E' }}>
+        <div className="w-[360px] flex-shrink-0 flex flex-col hidden lg:flex bg-terminal-panel border-l border-terminal-border">
           {/* Signal Intercepts */}
           <SignalIntercepts intercepts={intercepts || []} />
 
@@ -483,43 +463,35 @@ export function MarketplacePage() {
       {alertsPanelOpen && (
         <div
           ref={alertPanelRef}
-          className="fixed top-[60px] right-6 w-[380px] max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl"
+          className="fixed top-[60px] right-6 w-[380px] max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl bg-terminal-panel border border-terminal-border"
           onClick={(e) => e.stopPropagation()}
-          style={{
-            background: '#151719',
-            border: '1px solid #26292E',
-            display: 'flex'
-          }}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
-            <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#F1F5F9' }}>
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-terminal-card border-terminal-border">
+            <div className="flex items-center gap-2 text-sm font-semibold text-terminal-text">
               <Bell className="w-4 h-4" />
               Notifications
               {unreadAlertsCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold" style={{ background: '#FB7185', color: 'white' }}>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-status-danger text-white">
                   {unreadAlertsCount}
                 </span>
               )}
             </div>
             <button
               onClick={() => setAlertsPanelOpen(false)}
-              className="p-1 rounded transition-colors"
-              style={{ color: '#64748B' }}
+              className="p-1 rounded transition-colors text-terminal-text-muted"
             >
               <X className="w-4 h-4" />
             </button>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={openAlertsModal}
-                className="px-2 py-1 rounded text-[11px] transition-colors"
-                style={{ color: '#3B82F6' }}
+                className="px-2 py-1 rounded text-[11px] transition-colors text-status-info"
               >
                 Manage All
               </button>
-              <button 
+              <button
                 onClick={markAllAlertsRead}
-                className="px-2 py-1 rounded text-[11px] transition-colors"
-                style={{ color: '#3B82F6' }}
+                className="px-2 py-1 rounded text-[11px] transition-colors text-status-info"
               >
                 Mark Read
               </button>
@@ -581,7 +553,7 @@ export function MarketplacePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-xs font-semibold" style={{ color: '#F1F5F9' }}>{alert.title}</span>
+                      <span className="text-xs font-semibold text-terminal-text">{alert.title}</span>
                       {severityLabel && (
                         <span 
                           className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
@@ -598,21 +570,19 @@ export function MarketplacePage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs mb-1" style={{ color: '#94A3B8' }}>{alert.description}</p>
-                    <div className="flex gap-2 text-[10px]" style={{ color: '#64748B' }}>
+                    <p className="text-xs mb-1 text-terminal-text-secondary">{alert.description}</p>
+                    <div className="flex gap-2 text-[10px] text-terminal-text-muted">
                       <span>{alert.theatre}</span>
                       <span>{alert.time}</span>
                     </div>
                     <div className="flex gap-2 mt-2">
-                      <span 
-                        className="px-2 py-0.5 rounded text-[10px] font-mono"
-                        style={{ background: '#121417', color: '#94A3B8' }}
+                      <span
+                        className="px-2 py-0.5 rounded text-[10px] font-mono bg-terminal-card text-terminal-text-secondary"
                       >
                         {alert.condition}
                       </span>
-                      <button 
-                        className="px-2 py-0.5 rounded text-[10px] transition-colors"
-                        style={{ background: 'transparent', border: '1px solid #26292E', color: '#94A3B8' }}
+                      <button
+                        className="px-2 py-0.5 rounded text-[10px] transition-colors bg-transparent border border-terminal-border text-terminal-text-secondary"
                       >
                         View Theatre
                       </button>
@@ -632,17 +602,15 @@ export function MarketplacePage() {
           style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
           onClick={() => setAlertsModalOpen(false)}
         >
-          <div 
-            className="rounded-xl w-[600px] max-w-[90vw] max-h-[85vh] flex flex-col shadow-xl"
-            style={{ background: '#151719', border: '1px solid #26292E' }}
+          <div
+            className="rounded-xl w-[600px] max-w-[90vw] max-h-[85vh] flex flex-col shadow-xl bg-terminal-panel border border-terminal-border"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
-              <span className="text-sm font-semibold" style={{ color: '#F1F5F9' }}>Alert Management</span>
-              <button 
+            <div className="flex items-center justify-between px-5 py-4 border-b bg-terminal-card border-terminal-border">
+              <span className="text-sm font-semibold text-terminal-text">Alert Management</span>
+              <button
                 onClick={() => setAlertsModalOpen(false)}
-                className="p-1 rounded transition-colors"
-                style={{ color: '#64748B' }}
+                className="p-1 rounded transition-colors text-terminal-text-muted"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -652,10 +620,9 @@ export function MarketplacePage() {
               <div className="flex flex-col gap-4">
                 <div className="flex gap-3">
                   <div className="flex-1 flex flex-col gap-1.5">
-                    <label className="text-[11px] font-semibold uppercase" style={{ color: '#64748B' }}>Theatre</label>
-                    <select 
-                      className="px-3 py-2 rounded-lg text-xs appearance-none"
-                      style={{ background: '#121417', border: '1px solid #26292E', color: '#F1F5F9' }}
+                    <label className="text-[11px] font-semibold uppercase text-terminal-text-muted">Theatre</label>
+                    <select
+                      className="px-3 py-2 rounded-lg text-xs appearance-none bg-terminal-card border border-terminal-border text-terminal-text"
                     >
                       <option value="">Select Theatre...</option>
                       <option value="ORB_SALVAGE_F7">ORB_SALVAGE_F7</option>
@@ -667,10 +634,9 @@ export function MarketplacePage() {
                     </select>
                   </div>
                   <div className="flex-1 flex flex-col gap-1.5">
-                    <label className="text-[11px] font-semibold uppercase" style={{ color: '#64748B' }}>Alert Type</label>
-                    <select 
-                      className="px-3 py-2 rounded-lg text-xs appearance-none"
-                      style={{ background: '#121417', border: '1px solid #26292E', color: '#F1F5F9' }}
+                    <label className="text-[11px] font-semibold uppercase text-terminal-text-muted">Alert Type</label>
+                    <select
+                      className="px-3 py-2 rounded-lg text-xs appearance-none bg-terminal-card border border-terminal-border text-terminal-text"
                     >
                       <option value="price">Price Target</option>
                       <option value="stability">Stability</option>
@@ -681,35 +647,32 @@ export function MarketplacePage() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-semibold uppercase" style={{ color: '#64748B' }}>Condition</label>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#121417', border: '1px solid #26292E' }}>
-                    <select 
-                      className="bg-transparent border-none text-xs outline-none"
-                      style={{ color: '#F1F5F9' }}
+                  <label className="text-[11px] font-semibold uppercase text-terminal-text-muted">Condition</label>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-terminal-card border border-terminal-border">
+                    <select
+                      className="bg-transparent border-none text-xs outline-none text-terminal-text"
                     >
                       <option value="Price">Price</option>
                       <option value="Probability">Probability</option>
                       <option value="Stability">Stability</option>
                       <option value="Volume">Volume</option>
                     </select>
-                    <span className="font-mono text-xs font-semibold" style={{ color: '#3B82F6' }}>≥</span>
-                    <input 
-                      type="text" 
+                    <span className="font-mono text-xs font-semibold text-status-info">≥</span>
+                    <input
+                      type="text"
                       placeholder="Value (e.g., 4.00 or 50%)"
-                      className="flex-1 bg-transparent border-none text-xs outline-none font-mono"
-                      style={{ color: '#F1F5F9' }}
+                      className="flex-1 bg-transparent border-none text-xs outline-none font-mono text-terminal-text"
                     />
                   </div>
                 </div>
-                <button 
-                  className="px-4 py-2 rounded-lg text-xs font-semibold self-start transition-colors"
-                  style={{ background: '#3B82F6', color: 'white' }}
+                <button
+                  className="px-4 py-2 rounded-lg text-xs font-semibold self-start transition-colors bg-status-info text-white"
                 >
                   Create Alert
                 </button>
               </div>
 
-              <hr className="my-5" style={{ border: 'none', borderTop: '1px solid #26292E' }} />
+              <hr className="my-5 border-0 border-t border-terminal-border" />
 
               {/* Filter Tabs */}
               <div className="flex gap-2 mb-4">
@@ -717,12 +680,12 @@ export function MarketplacePage() {
                   <button
                     key={filter}
                     onClick={() => setAlertFilter(filter)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                    style={{ 
-                      background: alertFilter === filter ? '#3B82F6' : 'transparent',
-                      border: `1px solid ${alertFilter === filter ? '#3B82F6' : '#26292E'}`,
-                      color: alertFilter === filter ? 'white' : '#94A3B8'
-                    }}
+                    className={clsx(
+                      'px-3 py-1.5 rounded-lg text-xs font-medium transition-all border',
+                      alertFilter === filter
+                        ? 'bg-status-info border-status-info text-white'
+                        : 'bg-transparent border-terminal-border text-terminal-text-secondary'
+                    )}
                   >
                     {filter.charAt(0).toUpperCase() + filter.slice(1)}
                   </button>
@@ -732,14 +695,12 @@ export function MarketplacePage() {
               {/* Alerts List */}
               <div className="flex flex-col gap-2">
                 {filteredAlerts.map(alert => (
-                  <div 
+                  <div
                     key={alert.id}
-                    className="flex gap-3 p-3 rounded-lg"
-                    style={{ 
-                      background: '#121417', 
-                      border: '1px solid #26292E',
-                      borderColor: alert.unread ? '#3B82F6' : '#26292E'
-                    }}
+                    className={clsx(
+                      'flex gap-3 p-3 rounded-lg bg-terminal-card border',
+                      alert.unread ? 'border-status-info' : 'border-terminal-border'
+                    )}
                   >
                     <div 
                       className="w-9 h-9 rounded-full flex items-center justify-center text-base flex-shrink-0"
@@ -754,29 +715,26 @@ export function MarketplacePage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs font-semibold" style={{ color: '#F1F5F9' }}>{alert.title}</span>
-                        <span className="text-[10px]" style={{ color: '#64748B' }}>{alert.time}</span>
+                        <span className="text-xs font-semibold text-terminal-text">{alert.title}</span>
+                        <span className="text-[10px] text-terminal-text-muted">{alert.time}</span>
                       </div>
-                      <p className="text-xs mb-1" style={{ color: '#94A3B8' }}>{alert.description}</p>
-                      <span 
-                        className="inline-block px-2 py-0.5 rounded text-[10px] font-mono mb-2"
-                        style={{ background: '#151719', color: '#94A3B8' }}
+                      <p className="text-xs mb-1 text-terminal-text-secondary">{alert.description}</p>
+                      <span
+                        className="inline-block px-2 py-0.5 rounded text-[10px] font-mono mb-2 bg-terminal-panel text-terminal-text-secondary"
                       >
                         {alert.condition}
                       </span>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <button 
+                      <button
                         onClick={() => toggleAlertStatus(alert.id)}
-                        className="px-2 py-1 rounded text-[10px] transition-colors"
-                        style={{ background: 'transparent', border: '1px solid #26292E', color: '#94A3B8' }}
+                        className="px-2 py-1 rounded text-[10px] transition-colors bg-transparent border border-terminal-border text-terminal-text-secondary"
                       >
                         {alert.status === 'active' ? 'Pause' : 'Enable'}
                       </button>
-                      <button 
+                      <button
                         onClick={() => deleteAlert(alert.id)}
-                        className="px-2 py-1 rounded text-[10px] transition-colors"
-                        style={{ background: 'transparent', border: '1px solid #26292E', color: '#FB7185' }}
+                        className="px-2 py-1 rounded text-[10px] transition-colors bg-transparent border border-terminal-border text-status-danger"
                       >
                         Delete
                       </button>
@@ -785,11 +743,10 @@ export function MarketplacePage() {
                 ))}
               </div>
             </div>
-            <div className="flex justify-end gap-3 px-5 py-4 border-t" style={{ background: '#121417', borderColor: '#26292E' }}>
-              <button 
+            <div className="flex justify-end gap-3 px-5 py-4 border-t bg-terminal-card border-terminal-border">
+              <button
                 onClick={() => setAlertsModalOpen(false)}
-                className="px-4 py-2 rounded-lg text-xs font-medium transition-colors"
-                style={{ background: '#121417', border: '1px solid #26292E', color: '#94A3B8' }}
+                className="px-4 py-2 rounded-lg text-xs font-medium transition-colors bg-terminal-card border border-terminal-border text-terminal-text-secondary"
               >
                 Close
               </button>
@@ -807,68 +764,61 @@ export function MarketplacePage() {
 
       {/* Compare Sidebar */}
       <div
-        className={`fixed top-0 h-full shadow-xl z-[1500] flex flex-col transition-all duration-300 ease-out ${compareSidebarOpen ? 'right-0' : 'right-[-480px]'}`}
-        style={{
-          width: '480px',
-          background: '#151719',
-          borderLeft: '1px solid #26292E'
-        }}
+        className={`fixed top-0 h-full shadow-xl z-[1500] flex flex-col transition-all duration-300 ease-out bg-terminal-panel border-l border-terminal-border ${compareSidebarOpen ? 'right-0' : 'right-[-480px]'}`}
+        style={{ width: '480px' }}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
-          <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#F1F5F9' }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b bg-terminal-card border-terminal-border">
+          <div className="flex items-center gap-2 text-sm font-semibold text-terminal-text">
             <GitCompare className="w-4 h-4" />
             Compare Theatres
           </div>
-          <button 
+          <button
             onClick={() => setCompareSidebarOpen(false)}
-            className="p-1 rounded transition-colors"
-            style={{ color: '#64748B' }}
+            className="p-1 rounded transition-colors text-terminal-text-muted"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Compare Grid */}
-        <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-px" style={{ background: '#26292E' }}>
+        <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-px bg-terminal-border">
           {compareSlots.map((slot, index) => (
             <div 
               key={index}
-              className={`p-4 flex flex-col gap-3 overflow-y-auto ${!slot ? 'items-center justify-center' : ''}`}
-              style={{ background: '#151719' }}
+              className={`p-4 flex flex-col gap-3 overflow-y-auto bg-terminal-panel ${!slot ? 'items-center justify-center' : ''}`}
             >
               {slot ? (
                 <>
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-semibold" style={{ color: '#F1F5F9' }}>{slot.name}</span>
-                    <button 
+                    <span className="font-mono text-xs font-semibold text-terminal-text">{slot.name}</span>
+                    <button
                       onClick={() => removeFromCompareSlot(index)}
-                      className="text-lg leading-none opacity-0 hover:opacity-100 transition-opacity"
-                      style={{ color: '#64748B' }}
+                      className="text-lg leading-none opacity-0 hover:opacity-100 transition-opacity text-terminal-text-muted"
                     >
                       ×
                     </button>
                   </div>
                   {/* Mini Chart */}
-                  <div className="h-[60px] rounded flex items-end gap-0.5 p-1" style={{ background: '#121417' }}>
+                  <div className="h-[60px] rounded flex items-end gap-0.5 p-1 bg-terminal-card">
                     {generateMiniBars()}
                   </div>
                   {/* Metrics */}
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px]" style={{ color: '#64748B' }}>Price</span>
-                      <span className="font-mono text-xs font-semibold" style={{ color: '#94A3B8' }}>${slot.price.toFixed(2)}</span>
+                      <span className="text-[10px] text-terminal-text-muted">Price</span>
+                      <span className="font-mono text-xs font-semibold text-terminal-text-secondary">${slot.price.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px]" style={{ color: '#64748B' }}>24h</span>
-                      <span className={`font-mono text-xs font-semibold ${slot.change.includes('+') ? 'text-[#4ADE80]' : 'text-[#FB7185]'}`}>
+                      <span className="text-[10px] text-terminal-text-muted">24h</span>
+                      <span className={`font-mono text-xs font-semibold ${slot.change.includes('+') ? 'text-status-success' : 'text-status-danger'}`}>
                         {slot.change}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px]" style={{ color: '#64748B' }}>Stability</span>
-                      <span 
+                      <span className="text-[10px] text-terminal-text-muted">Stability</span>
+                      <span
                         className="font-mono text-xs font-semibold"
-                        style={{ 
+                        style={{
                           color: slot.stability > 60 ? '#4ADE80' : slot.stability > 40 ? '#FACC15' : '#FB7185'
                         }}
                       >
@@ -876,10 +826,10 @@ export function MarketplacePage() {
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px]" style={{ color: '#64748B' }}>Gap</span>
-                      <span 
+                      <span className="text-[10px] text-terminal-text-muted">Gap</span>
+                      <span
                         className="font-mono text-xs font-semibold"
-                        style={{ 
+                        style={{
                           color: slot.gap > 40 ? '#FB7185' : slot.gap > 25 ? '#FACC15' : '#4ADE80'
                         }}
                       >
@@ -887,33 +837,32 @@ export function MarketplacePage() {
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px]" style={{ color: '#64748B' }}>Prob.</span>
-                      <span className="font-mono text-xs font-semibold" style={{ color: '#94A3B8' }}>{slot.probability}%</span>
+                      <span className="text-[10px] text-terminal-text-muted">Prob.</span>
+                      <span className="font-mono text-xs font-semibold text-terminal-text-secondary">{slot.probability}%</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px]" style={{ color: '#64748B' }}>Volume</span>
-                      <span className="font-mono text-xs font-semibold" style={{ color: '#94A3B8' }}>{slot.volume}</span>
+                      <span className="text-[10px] text-terminal-text-muted">Volume</span>
+                      <span className="font-mono text-xs font-semibold text-terminal-text-secondary">{slot.volume}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px]" style={{ color: '#64748B' }}>Fork In</span>
-                      <span className="font-mono text-xs font-semibold" style={{ color: '#94A3B8' }}>{slot.forkIn}</span>
+                      <span className="text-[10px] text-terminal-text-muted">Fork In</span>
+                      <span className="font-mono text-xs font-semibold text-terminal-text-secondary">{slot.forkIn}</span>
                     </div>
                   </div>
                 </>
               ) : (
                 <div className="text-center w-full">
-                  <span className="text-2xl block mb-3" style={{ color: '#64748B' }}>+</span>
-                  <select 
+                  <span className="text-2xl block mb-3 text-terminal-text-muted">+</span>
+                  <select
                     onChange={(e) => addToCompareSlot(index, e.target.value)}
-                    className="w-full px-2 py-1.5 rounded text-xs appearance-none cursor-pointer mb-2"
-                    style={{ background: '#121417', border: '1px solid #26292E', color: '#F1F5F9' }}
+                    className="w-full px-2 py-1.5 rounded text-xs appearance-none cursor-pointer mb-2 bg-terminal-card border border-terminal-border text-terminal-text"
                   >
                     <option value="">Select Theatre...</option>
                     {mockCompareTheatres.map(theatre => (
                       <option key={theatre.id} value={theatre.id}>{theatre.name}</option>
                     ))}
                   </select>
-                  <span className="text-[11px]" style={{ color: '#64748B' }}>Click to add</span>
+                  <span className="text-[11px] text-terminal-text-muted">Click to add</span>
                 </div>
               )}
             </div>
@@ -927,44 +876,44 @@ export function MarketplacePage() {
           const maxGap = Math.max(...selectedTheatres.map(t => t.gap));
           
           return (
-            <div className="p-4 border-t" style={{ background: '#121417', borderColor: '#26292E' }}>
+            <div className="p-4 border-t bg-terminal-card border-terminal-border">
               <div className="mb-4">
-                <span className="text-[10px] font-semibold uppercase mb-2 block" style={{ color: '#64748B' }}>Stability Comparison</span>
+                <span className="text-[10px] font-semibold uppercase mb-2 block text-terminal-text-muted">Stability Comparison</span>
                 {selectedTheatres.map(theatre => (
                   <div key={theatre.id} className="flex items-center gap-2 mb-1.5">
-                    <span className="font-mono text-[10px]" style={{ color: '#94A3B8', width: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span className="font-mono text-[10px] text-terminal-text-secondary w-[90px] overflow-hidden text-ellipsis whitespace-nowrap">
                       {theatre.name.replace('_', ' ')}
                     </span>
-                    <div className="flex-1 h-4 rounded" style={{ background: '#151719' }}>
-                      <div 
+                    <div className="flex-1 h-4 rounded bg-terminal-panel">
+                      <div
                         className="h-full rounded"
-                        style={{ 
+                        style={{
                           width: `${(theatre.stability / maxStability) * 100}%`,
                           background: theatre.stability > 60 ? '#4ADE80' : theatre.stability > 40 ? '#FACC15' : '#FB7185'
                         }}
                       />
                     </div>
-                    <span className="font-mono text-xs font-semibold" style={{ color: '#F1F5F9', width: '40px', textAlign: 'right' }}>{theatre.stability}%</span>
+                    <span className="font-mono text-xs font-semibold text-terminal-text w-[40px] text-right">{theatre.stability}%</span>
                   </div>
                 ))}
               </div>
               <div>
-                <span className="text-[10px] font-semibold uppercase mb-2 block" style={{ color: '#64748B' }}>Gap Comparison</span>
+                <span className="text-[10px] font-semibold uppercase mb-2 block text-terminal-text-muted">Gap Comparison</span>
                 {selectedTheatres.map(theatre => (
                   <div key={theatre.id} className="flex items-center gap-2 mb-1.5">
-                    <span className="font-mono text-[10px]" style={{ color: '#94A3B8', width: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span className="font-mono text-[10px] text-terminal-text-secondary w-[90px] overflow-hidden text-ellipsis whitespace-nowrap">
                       {theatre.name.replace('_', ' ')}
                     </span>
-                    <div className="flex-1 h-4 rounded" style={{ background: '#151719' }}>
-                      <div 
+                    <div className="flex-1 h-4 rounded bg-terminal-panel">
+                      <div
                         className="h-full rounded"
-                        style={{ 
+                        style={{
                           width: `${(theatre.gap / maxGap) * 100}%`,
                           background: theatre.gap > 40 ? '#FB7185' : theatre.gap > 25 ? '#FACC15' : '#4ADE80'
                         }}
                       />
                     </div>
-                    <span className="font-mono text-xs font-semibold" style={{ color: '#F1F5F9', width: '40px', textAlign: 'right' }}>{theatre.gap}%</span>
+                    <span className="font-mono text-xs font-semibold text-terminal-text w-[40px] text-right">{theatre.gap}%</span>
                   </div>
                 ))}
               </div>
@@ -973,18 +922,16 @@ export function MarketplacePage() {
         })()}
 
         {/* Footer Actions */}
-        <div className="px-5 py-4 border-t" style={{ background: '#121417', borderColor: '#26292E' }}>
+        <div className="px-5 py-4 border-t bg-terminal-card border-terminal-border">
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={clearAllCompareSlots}
-              className="flex-1 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
-              style={{ background: '#151719', border: '1px solid #26292E', color: '#94A3B8' }}
+              className="flex-1 px-4 py-2 rounded-lg text-xs font-semibold transition-colors bg-terminal-panel border border-terminal-border text-terminal-text-secondary"
             >
               Clear All
             </button>
-            <button 
-              className="flex-1 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
-              style={{ background: '#151719', border: '1px solid #26292E', color: '#94A3B8' }}
+            <button
+              className="flex-1 px-4 py-2 rounded-lg text-xs font-semibold transition-colors bg-terminal-panel border border-terminal-border text-terminal-text-secondary"
             >
               Export
             </button>
@@ -996,7 +943,7 @@ export function MarketplacePage() {
       <style>{`
         .mini-bar {
           flex: 1;
-          background: #3B82F6;
+          background: rgb(59 130 246);
           border-radius: 2px 2px 0 0;
           opacity: 0.7;
         }

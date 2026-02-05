@@ -71,7 +71,7 @@ function getStatusColor(status: Breach['status']): string {
     case 'investigating':
       return '#FF9500'; // amber
     case 'mitigated':
-      return '#00D4FF'; // cyan
+      return '#22D3EE'; // cyan
     case 'resolved':
       return '#00FF41'; // green
   }
@@ -115,9 +115,9 @@ function CollapsibleSection({
           {title}
         </h3>
         {isOpen ? (
-          <ChevronUp className="w-4 h-4 text-terminal-muted" />
+          <ChevronUp className="w-4 h-4 text-terminal-text-muted" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-terminal-muted" />
+          <ChevronDown className="w-4 h-4 text-terminal-text-muted" />
         )}
       </button>
       {isOpen && <div className="pb-4">{children}</div>}
@@ -141,7 +141,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
   );
 
   return (
-    <div className="bg-[#111111] rounded-lg border border-[#1A1A1A] p-4 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+    <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
       {/* Header Section */}
       <div className="border-b border-[#1A1A1A] pb-4 mb-4">
         <div className="flex items-start justify-between gap-4 mb-3">
@@ -153,7 +153,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
             </div>
             <div>
               <h2 className="text-xl font-bold text-terminal-text mb-1">{breach.title}</h2>
-              <div className="text-xs text-terminal-muted">{formatTimestamp(breach.timestamp)}</div>
+              <div className="text-xs text-terminal-text-muted">{formatTimestamp(breach.timestamp)}</div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -191,7 +191,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
         </h3>
         <p className="text-sm text-terminal-text mb-4">{breach.description}</p>
         <div>
-          <h4 className="text-xs font-semibold text-terminal-muted uppercase mb-1">
+          <h4 className="text-xs font-semibold text-terminal-text-muted uppercase mb-1">
             Root Cause
           </h4>
           <p className="text-sm text-terminal-text">{breach.rootCause}</p>
@@ -201,17 +201,17 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
       {/* Affected Timelines Section */}
       <CollapsibleSection title="Affected Timelines" defaultOpen={true}>
         {breach.affectedTimelines.length === 0 ? (
-          <p className="text-sm text-terminal-muted">No timelines affected</p>
+          <p className="text-sm text-terminal-text-muted">No timelines affected</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#1A1A1A]">
-                  <th className="text-left py-2 text-terminal-muted font-semibold">Timeline</th>
-                  <th className="text-left py-2 text-terminal-muted font-semibold">
+                  <th className="text-left py-2 text-terminal-text-muted font-semibold">Timeline</th>
+                  <th className="text-left py-2 text-terminal-text-muted font-semibold">
                     Stability
                   </th>
-                  <th className="text-left py-2 text-terminal-muted font-semibold">
+                  <th className="text-left py-2 text-terminal-text-muted font-semibold">
                     Logic Gap
                   </th>
                 </tr>
@@ -229,7 +229,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                         <span className="text-terminal-text">
                           {timeline.stabilityBefore.toFixed(1)}%
                         </span>
-                        <span className="text-terminal-muted mx-1">→</span>
+                        <span className="text-terminal-text-muted mx-1">→</span>
                         <span
                           className={
                             stabilityChange >= 0 ? 'text-green-500' : 'text-red-500'
@@ -242,7 +242,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                         <span className="text-terminal-text">
                           {timeline.logicGapBefore.toFixed(1)}%
                         </span>
-                        <span className="text-terminal-muted mx-1">→</span>
+                        <span className="text-terminal-text-muted mx-1">→</span>
                         <span
                           className={logicGapChange <= 0 ? 'text-green-500' : 'text-red-500'}
                         >
@@ -264,7 +264,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
         defaultOpen={breach.affectedAgents.length > 0}
       >
         {breach.affectedAgents.length === 0 ? (
-          <p className="text-sm text-terminal-muted">No agents affected</p>
+          <p className="text-sm text-terminal-text-muted">No agents affected</p>
         ) : (
           <div className="space-y-2">
             {breach.affectedAgents.map((agent) => (
@@ -274,7 +274,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Bot className="w-4 h-4 text-terminal-muted" />
+                    <Bot className="w-4 h-4 text-terminal-text-muted" />
                     <span className="text-sm font-medium text-terminal-text">{agent.name}</span>
                     <span
                       className="px-2 py-0.5 rounded text-xs"
@@ -288,7 +288,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                   </div>
                   <div className="flex items-center gap-4 text-sm">
                     <div>
-                      <span className="text-terminal-muted">P&L:</span>{' '}
+                      <span className="text-terminal-text-muted">P&L:</span>{' '}
                       <span
                         className={`font-mono ${
                           agent.pnlImpact >= 0 ? 'text-green-500' : 'text-red-500'
@@ -298,7 +298,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                       </span>
                     </div>
                     <div>
-                      <span className="text-terminal-muted">Sanity:</span>{' '}
+                      <span className="text-terminal-text-muted">Sanity:</span>{' '}
                       <span className="font-mono text-red-500">
                         -{agent.sanityImpact} points
                       </span>
@@ -314,7 +314,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
       {/* Beneficiaries Section */}
       <CollapsibleSection title="Who Benefited" defaultOpen={true}>
         {sortedBeneficiaries.length === 0 ? (
-          <p className="text-sm text-terminal-muted">No beneficiaries identified</p>
+          <p className="text-sm text-terminal-text-muted">No beneficiaries identified</p>
         ) : (
           <div className="space-y-2">
             {sortedBeneficiaries.map((beneficiary, index) => (
@@ -323,9 +323,9 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                 className="flex items-center gap-3 bg-terminal-panel rounded p-3 border border-[#1A1A1A]"
               >
                 {beneficiary.type === 'agent' ? (
-                  <Bot className="w-4 h-4 text-terminal-muted" />
+                  <Bot className="w-4 h-4 text-terminal-text-muted" />
                 ) : (
-                  <Wallet className="w-4 h-4 text-terminal-muted" />
+                  <Wallet className="w-4 h-4 text-terminal-text-muted" />
                 )}
                 <span className="text-sm text-terminal-text flex-1">{beneficiary.name}</span>
                 <span className="text-sm font-mono text-green-500">
@@ -340,7 +340,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
       {/* Evidence Changes Section */}
       <CollapsibleSection title="Evidence Changes" defaultOpen={true}>
         {breach.evidenceChanges.length === 0 ? (
-          <p className="text-sm text-terminal-muted">No evidence changes recorded</p>
+          <p className="text-sm text-terminal-text-muted">No evidence changes recorded</p>
         ) : (
           <div className="space-y-3">
             {breach.evidenceChanges.map((change, index) => {
@@ -367,7 +367,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-terminal-muted font-mono">
+                      <span className="text-xs text-terminal-text-muted font-mono">
                         {formatTimestamp(change.timestamp)}
                       </span>
                       <span
@@ -401,7 +401,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
       {/* Suggested Actions Section */}
       <CollapsibleSection title="Suggested Actions" defaultOpen={true}>
         {breach.suggestedActions.length === 0 ? (
-          <p className="text-sm text-terminal-muted">No suggested actions</p>
+          <p className="text-sm text-terminal-text-muted">No suggested actions</p>
         ) : (
           <div className="space-y-3">
             {breach.suggestedActions.map((action) => {
@@ -442,14 +442,14 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                         </span>
                       </div>
                       <p className="text-sm text-terminal-text mb-1">{action.action}</p>
-                      <p className="text-xs text-terminal-muted">
+                      <p className="text-xs text-terminal-text-muted">
                         Estimated impact: {action.estimatedImpact}
                       </p>
                     </div>
                     {onAction && (
                       <button
                         onClick={() => onAction(action.id)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-[#00D4FF]/20 border border-[#00D4FF] rounded text-xs font-medium text-[#00D4FF] hover:bg-[#00D4FF]/30 transition"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-[#22D3EE]/20 border border-[#22D3EE] rounded text-xs font-medium text-[#22D3EE] hover:bg-[#22D3EE]/30 transition"
                       >
                         <Play className="w-3 h-3" />
                         Execute

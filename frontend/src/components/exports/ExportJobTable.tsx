@@ -38,7 +38,7 @@ function getStatusColor(status: ExportJob['status']): string {
     case 'completed':
       return '#00FF41'; // green
     case 'running':
-      return '#00D4FF'; // cyan
+      return '#22D3EE'; // cyan
     case 'queued':
       return '#FF9500'; // amber
     case 'failed':
@@ -68,11 +68,11 @@ export function ExportJobTable({ jobs, onJobClick }: ExportJobTableProps) {
 
   if (jobs.length === 0) {
     return (
-      <div className="bg-[#111111] rounded-lg border border-[#1A1A1A] p-4">
+      <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
           Export Jobs
         </h3>
-        <p className="text-sm text-terminal-muted text-center py-8">
+        <p className="text-sm text-terminal-text-muted text-center py-8">
           No export jobs yet. Create one to get started.
         </p>
       </div>
@@ -80,7 +80,7 @@ export function ExportJobTable({ jobs, onJobClick }: ExportJobTableProps) {
   }
 
   return (
-    <div className="bg-[#111111] rounded-lg border border-[#1A1A1A] p-4">
+    <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4">
       <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
         Export Jobs
       </h3>
@@ -89,19 +89,19 @@ export function ExportJobTable({ jobs, onJobClick }: ExportJobTableProps) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#1A1A1A]">
-              <th className="text-left py-2 text-terminal-muted font-semibold text-xs uppercase">
+              <th className="text-left py-2 text-terminal-text-muted font-semibold text-xs uppercase">
                 ID
               </th>
-              <th className="text-left py-2 text-terminal-muted font-semibold text-xs uppercase">
+              <th className="text-left py-2 text-terminal-text-muted font-semibold text-xs uppercase">
                 Kind
               </th>
-              <th className="text-left py-2 text-terminal-muted font-semibold text-xs uppercase">
+              <th className="text-left py-2 text-terminal-text-muted font-semibold text-xs uppercase">
                 Status
               </th>
-              <th className="text-left py-2 text-terminal-muted font-semibold text-xs uppercase">
+              <th className="text-left py-2 text-terminal-text-muted font-semibold text-xs uppercase">
                 Created
               </th>
-              <th className="text-left py-2 text-terminal-muted font-semibold text-xs uppercase">
+              <th className="text-left py-2 text-terminal-text-muted font-semibold text-xs uppercase">
                 Rows
               </th>
             </tr>
@@ -139,7 +139,7 @@ export function ExportJobTable({ jobs, onJobClick }: ExportJobTableProps) {
                       {job.status}
                     </span>
                   </td>
-                  <td className="py-2 text-terminal-muted text-xs">
+                  <td className="py-2 text-terminal-text-muted text-xs">
                     {formatTimestamp(job.createdAt)}
                   </td>
                   <td className="py-2 text-terminal-text text-xs">

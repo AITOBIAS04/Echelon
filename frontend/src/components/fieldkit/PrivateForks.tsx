@@ -9,7 +9,7 @@ export function PrivateForks() {
       <h3 className="text-lg font-medium text-terminal-text mb-2">
         Private Simulation Forks
       </h3>
-      <p className="text-sm text-terminal-muted mb-6 max-w-md">
+      <p className="text-sm text-terminal-text-muted mb-6 max-w-md">
         Create "Ghost Forks" of any timeline to test strategies without risking real capital.
         Successful simulations can be published to the global SIGINT feed.
       </p>

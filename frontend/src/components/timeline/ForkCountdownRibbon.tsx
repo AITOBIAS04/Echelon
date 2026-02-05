@@ -85,7 +85,7 @@ export function ForkCountdownRibbon({
                 {remainingSeconds !== null ? formatTime(remainingSeconds) : '--:--'}
               </span>
             </div>
-            <p className="text-xs text-terminal-muted truncate mt-0.5">
+            <p className="text-xs text-terminal-text-muted truncate mt-0.5">
               {activeFork.question.length > 60
                 ? `${activeFork.question.substring(0, 60)}...`
                 : activeFork.question}
@@ -93,18 +93,18 @@ export function ForkCountdownRibbon({
           </div>
         </div>
       ) : nextFork ? (
-        <div className="bg-[#00D4FF]/20 border border-[#00D4FF] rounded-lg px-4 py-2 flex items-center gap-3">
-          <Clock className="w-4 h-4 text-[#00D4FF] flex-shrink-0" />
+        <div className="bg-[#22D3EE]/20 border border-[#22D3EE] rounded-lg px-4 py-2 flex items-center gap-3">
+          <Clock className="w-4 h-4 text-[#22D3EE] flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#00D4FF] uppercase tracking-wide">
+              <span className="text-xs font-bold text-[#22D3EE] uppercase tracking-wide">
                 Next Fork
               </span>
               <span className="text-xs text-terminal-text font-mono">
                 {remainingSeconds !== null ? formatTime(remainingSeconds) : '--:--'}
               </span>
             </div>
-            <p className="text-xs text-terminal-muted truncate mt-0.5">
+            <p className="text-xs text-terminal-text-muted truncate mt-0.5">
               {nextFork.question.length > 60
                 ? `${nextFork.question.substring(0, 60)}...`
                 : nextFork.question}
@@ -113,8 +113,8 @@ export function ForkCountdownRibbon({
         </div>
       ) : (
         <div className="bg-terminal-panel border border-terminal-border rounded-lg px-4 py-2 flex items-center gap-3">
-          <Clock className="w-4 h-4 text-terminal-muted flex-shrink-0" />
-          <span className="text-xs text-terminal-muted">
+          <Clock className="w-4 h-4 text-terminal-text-muted flex-shrink-0" />
+          <span className="text-xs text-terminal-text-muted">
             No upcoming forks
           </span>
         </div>

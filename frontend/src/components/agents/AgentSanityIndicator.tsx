@@ -21,7 +21,7 @@ export function AgentSanityIndicator({ sanity, maxSanity = 100, name }: AgentSan
   return (
     <div className="mt-3">
       <div className="flex justify-between items-center mb-1">
-        <span className="text-xs text-terminal-muted flex items-center gap-1">
+        <span className="text-xs text-terminal-text-muted flex items-center gap-1">
           <span>🧠</span> SANITY
         </span>
         <span className={clsx(

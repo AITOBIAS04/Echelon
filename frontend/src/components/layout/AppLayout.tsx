@@ -12,7 +12,7 @@ export function AppLayout() {
       <AgentsUiProvider>
         <DemoEngine>
           <DemoToastHost />
-          <div className="h-[100dvh] w-screen flex overflow-hidden bg-[#0B0C0E]">
+          <div className="h-[100dvh] w-screen flex overflow-hidden bg-slate-950">
             {/* Persistent left sidebar */}
             <Sidebar />
 
@@ -21,7 +21,7 @@ export function AppLayout() {
               <TopActionBar />
 
               {/* Viewport — each page fills this area and manages its own scroll */}
-              <div className="flex-1 min-h-0 relative bg-[#0B0C0E] overflow-auto">
+              <div className="flex-1 min-h-0 relative bg-slate-950 overflow-auto">
                 <Outlet />
               </div>
             </section>

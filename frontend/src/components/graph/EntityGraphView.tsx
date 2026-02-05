@@ -116,7 +116,7 @@ export function EntityGraphView() {
   const getTypeColor = (type: GraphNodeType): string => {
     switch (type) {
       case 'wallet':
-        return '#00D4FF'; // cyan
+        return '#22D3EE'; // cyan
       case 'agent':
         return '#9932CC'; // purple
       case 'timeline':
@@ -134,7 +134,7 @@ export function EntityGraphView() {
     switch (relation) {
       case 'holds_position':
       case 'placed_wing_flap':
-        return '#00D4FF'; // cyan
+        return '#22D3EE'; // cyan
       case 'founded':
         return '#00FF41'; // green
       case 'benefited':
@@ -151,7 +151,7 @@ export function EntityGraphView() {
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-terminal-muted">Loading graph...</div>
+        <div className="text-terminal-text-muted">Loading graph...</div>
       </div>
     );
   }
@@ -167,7 +167,7 @@ export function EntityGraphView() {
   if (!graph) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-terminal-muted">No graph data available</div>
+        <div className="text-terminal-text-muted">No graph data available</div>
       </div>
     );
   }
@@ -179,7 +179,7 @@ export function EntityGraphView() {
         <h1 className="text-xl font-bold text-terminal-text uppercase tracking-wide">
           Entity Graph Explorer
         </h1>
-        <div className="text-xs text-terminal-muted">
+        <div className="text-xs text-terminal-text-muted">
           {graph.nodes.length} nodes • {graph.edges.length} edges
         </div>
       </div>
@@ -188,7 +188,7 @@ export function EntityGraphView() {
       <div className="flex items-center gap-4 flex-wrap">
         {/* Search */}
         <div className="flex-1 min-w-[200px] relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-terminal-muted" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-terminal-text-muted" />
           <input
             type="text"
             value={searchQuery}
@@ -228,8 +228,8 @@ export function EntityGraphView() {
       {/* Main Content: Three Columns */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] gap-4">
         {/* Left: Node List */}
-        <div className="bg-[#111111] rounded-lg border border-[#1A1A1A] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-          <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-3">
+        <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+          <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
             Nodes
           </h3>
           <div className="space-y-4">
@@ -256,12 +256,12 @@ export function EntityGraphView() {
                           w-full text-left px-2 py-1.5 rounded text-xs transition
                           ${selectedNodeId === node.id
                             ? 'bg-terminal-panel border border-echelon-cyan text-terminal-text'
-                            : 'text-terminal-muted hover:text-terminal-text hover:bg-terminal-panel/50'
+                            : 'text-terminal-text-muted hover:text-terminal-text hover:bg-terminal-panel/50'
                           }
                         `}
                       >
                         <div className="truncate">{node.label}</div>
-                        <div className="text-[10px] font-mono text-terminal-muted truncate">
+                        <div className="text-[10px] font-mono text-terminal-text-muted truncate">
                           {node.id}
                         </div>
                       </button>
@@ -274,7 +274,7 @@ export function EntityGraphView() {
         </div>
 
         {/* Centre: Selected Node Detail */}
-        <div className="bg-[#111111] rounded-lg border border-[#1A1A1A] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+        <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           {selectedNode ? (
             <>
               <div className="flex items-center justify-between mb-4">
@@ -300,20 +300,20 @@ export function EntityGraphView() {
 
               {/* Node ID */}
               <div className="mb-4 pb-4 border-b border-[#1A1A1A]">
-                <div className="text-xs text-terminal-muted mb-1">Node ID</div>
+                <div className="text-xs text-terminal-text-muted mb-1">Node ID</div>
                 <div className="text-xs font-mono text-terminal-text">{selectedNode.id}</div>
               </div>
 
               {/* Metadata */}
               {selectedNode.meta && Object.keys(selectedNode.meta).length > 0 && (
                 <div className="mb-4 pb-4 border-b border-[#1A1A1A]">
-                  <h4 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-2">
+                  <h4 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-2">
                     Metadata
                   </h4>
                   <div className="space-y-2">
                     {Object.entries(selectedNode.meta).map(([key, value]) => (
                       <div key={key} className="text-xs">
-                        <span className="text-terminal-muted">{key}:</span>{' '}
+                        <span className="text-terminal-text-muted">{key}:</span>{' '}
                         <span className="text-terminal-text font-mono">
                           {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                         </span>
@@ -325,24 +325,24 @@ export function EntityGraphView() {
 
               {/* Connections Summary */}
               <div className="mb-4 pb-4 border-b border-[#1A1A1A]">
-                <h4 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-2">
+                <h4 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-2">
                   Connections
                 </h4>
                 <div className="flex items-center gap-4 text-xs">
                   <div>
-                    <span className="text-terminal-muted">Incoming:</span>{' '}
+                    <span className="text-terminal-text-muted">Incoming:</span>{' '}
                     <span className="text-terminal-text font-semibold">
                       {nodeEdges.incoming.length}
                     </span>
                   </div>
                   <div>
-                    <span className="text-terminal-muted">Outgoing:</span>{' '}
+                    <span className="text-terminal-text-muted">Outgoing:</span>{' '}
                     <span className="text-terminal-text font-semibold">
                       {nodeEdges.outgoing.length}
                     </span>
                   </div>
                   <div>
-                    <span className="text-terminal-muted">Connected Nodes:</span>{' '}
+                    <span className="text-terminal-text-muted">Connected Nodes:</span>{' '}
                     <span className="text-terminal-text font-semibold">
                       {connectedNodes.size}
                     </span>
@@ -353,7 +353,7 @@ export function EntityGraphView() {
               {/* Connected Nodes List */}
               {connectedNodes.size > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-2">
+                  <h4 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-2">
                     Connected Nodes
                   </h4>
                   <div className="space-y-1">
@@ -368,7 +368,7 @@ export function EntityGraphView() {
                           <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                             <span className="text-terminal-text">{node.label}</span>
-                            <span className="text-[10px] text-terminal-muted font-mono ml-auto">
+                            <span className="text-[10px] text-terminal-text-muted font-mono ml-auto">
                               {node.type}
                             </span>
                           </div>
@@ -380,7 +380,7 @@ export function EntityGraphView() {
               )}
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-terminal-muted">
+            <div className="flex flex-col items-center justify-center h-full text-terminal-text-muted">
               <div className="text-4xl mb-4 opacity-50">⊚</div>
               <p className="text-sm">Select a node to view details</p>
             </div>
@@ -388,8 +388,8 @@ export function EntityGraphView() {
         </div>
 
         {/* Right: Edge List */}
-        <div className="bg-[#111111] rounded-lg border border-[#1A1A1A] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-          <h3 className="text-xs font-semibold text-terminal-muted uppercase tracking-wide mb-3">
+        <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+          <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
             Edges
             {selectedNode && (
               <span className="ml-2 text-terminal-text">
@@ -399,7 +399,7 @@ export function EntityGraphView() {
           </h3>
 
           {!selectedNode ? (
-            <div className="text-xs text-terminal-muted text-center py-8">
+            <div className="text-xs text-terminal-text-muted text-center py-8">
               Select a node to view edges
             </div>
           ) : (
@@ -407,7 +407,7 @@ export function EntityGraphView() {
               {/* Incoming Edges */}
               {nodeEdges.incoming.length > 0 && (
                 <div>
-                  <div className="text-xs font-semibold text-terminal-muted uppercase mb-2 flex items-center gap-1">
+                  <div className="text-xs font-semibold text-terminal-text-muted uppercase mb-2 flex items-center gap-1">
                     <ArrowRight className="w-3 h-3" />
                     Incoming ({nodeEdges.incoming.length})
                   </div>
@@ -422,8 +422,8 @@ export function EntityGraphView() {
                           className="px-2 py-1.5 rounded bg-terminal-panel border border-terminal-border text-xs"
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-terminal-muted">{fromNode?.label || edge.from}</span>
-                            <ArrowRight className="w-3 h-3 text-terminal-muted" />
+                            <span className="text-terminal-text-muted">{fromNode?.label || edge.from}</span>
+                            <ArrowRight className="w-3 h-3 text-terminal-text-muted" />
                             <span className="text-terminal-text">{selectedNode.label}</span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -437,7 +437,7 @@ export function EntityGraphView() {
                               {edge.relation.replace('_', ' ')}
                             </span>
                             {edge.weight !== undefined && (
-                              <span className="text-[10px] text-terminal-muted">
+                              <span className="text-[10px] text-terminal-text-muted">
                                 weight: {edge.weight.toFixed(2)}
                               </span>
                             )}
@@ -452,7 +452,7 @@ export function EntityGraphView() {
               {/* Outgoing Edges */}
               {nodeEdges.outgoing.length > 0 && (
                 <div>
-                  <div className="text-xs font-semibold text-terminal-muted uppercase mb-2 flex items-center gap-1">
+                  <div className="text-xs font-semibold text-terminal-text-muted uppercase mb-2 flex items-center gap-1">
                     <ArrowLeft className="w-3 h-3" />
                     Outgoing ({nodeEdges.outgoing.length})
                   </div>
@@ -468,8 +468,8 @@ export function EntityGraphView() {
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-terminal-text">{selectedNode.label}</span>
-                            <ArrowRight className="w-3 h-3 text-terminal-muted" />
-                            <span className="text-terminal-muted">{toNode?.label || edge.to}</span>
+                            <ArrowRight className="w-3 h-3 text-terminal-text-muted" />
+                            <span className="text-terminal-text-muted">{toNode?.label || edge.to}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <span
@@ -482,7 +482,7 @@ export function EntityGraphView() {
                               {edge.relation.replace('_', ' ')}
                             </span>
                             {edge.weight !== undefined && (
-                              <span className="text-[10px] text-terminal-muted">
+                              <span className="text-[10px] text-terminal-text-muted">
                                 weight: {edge.weight.toFixed(2)}
                               </span>
                             )}
@@ -495,7 +495,7 @@ export function EntityGraphView() {
               )}
 
               {nodeEdges.incoming.length === 0 && nodeEdges.outgoing.length === 0 && (
-                <div className="text-xs text-terminal-muted text-center py-8">
+                <div className="text-xs text-terminal-text-muted text-center py-8">
                   No edges connected to this node
                 </div>
               )}

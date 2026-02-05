@@ -64,7 +64,7 @@ function ForkOptionSparkline({ priceHistory }: { priceHistory: ForkOption['price
       <polyline
         points={points}
         fill="none"
-        stroke="#00D4FF"
+        stroke="#22D3EE"
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -120,7 +120,7 @@ function formatTimeRemaining(
 function getStatusColor(status: ForkEvent['status']): string {
   switch (status) {
     case 'open':
-      return '#00D4FF'; // cyan
+      return '#22D3EE'; // cyan
     case 'repricing':
       return '#FF9500'; // amber
     case 'locked':
@@ -190,7 +190,7 @@ export function ForkTape({ timelineId, forks, onForkClick }: ForkTapeProps) {
   };
 
   return (
-    <div className="bg-[#111111] rounded-lg p-4 border border-[#1A1A1A]">
+    <div className="bg-slate-900 rounded-lg p-4 border border-[#1A1A1A]">
       {/* Filter Bar */}
       <div className="flex items-center gap-2 mb-4">
         {(['all', 'open', 'locked', 'settled'] as ForkFilter[]).map((filter) => (
@@ -199,7 +199,7 @@ export function ForkTape({ timelineId, forks, onForkClick }: ForkTapeProps) {
             onClick={() => setActiveFilter(filter)}
             className={`px-3 py-1 text-xs rounded transition ${
               activeFilter === filter
-                ? 'border border-[#00D4FF] text-[#00D4FF] bg-[#00D4FF]/10'
+                ? 'border border-[#22D3EE] text-[#22D3EE] bg-[#22D3EE]/10'
                 : 'border border-[#333] text-[#666] hover:text-[#999]'
             }`}
           >
@@ -214,7 +214,7 @@ export function ForkTape({ timelineId, forks, onForkClick }: ForkTapeProps) {
         className="space-y-2 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
       >
         {filteredForks.length === 0 ? (
-          <div className="text-center py-8 text-terminal-muted text-sm">
+          <div className="text-center py-8 text-terminal-text-muted text-sm">
             No {activeFilter === 'all' ? '' : activeFilter}{' '}
             {activeFilter === 'all' ? 'forks' : 'forks'} yet
           </div>
@@ -234,8 +234,8 @@ export function ForkTape({ timelineId, forks, onForkClick }: ForkTapeProps) {
               <div
                 key={fork.id}
                 onClick={() => handleForkClick(fork.id)}
-                className={`bg-[#111111] border border-[#1A1A1A] rounded p-3 cursor-pointer transition hover:border-[#333] ${
-                  onForkClick ? 'hover:border-[#00D4FF]/50' : ''
+                className={`bg-slate-900 border border-[#1A1A1A] rounded p-3 cursor-pointer transition hover:border-[#333] ${
+                  onForkClick ? 'hover:border-[#22D3EE]/50' : ''
                 }`}
               >
                 {/* Header Row */}
@@ -258,7 +258,7 @@ export function ForkTape({ timelineId, forks, onForkClick }: ForkTapeProps) {
                     </span>
                   </div>
                   {timeText && (
-                    <span className="text-xs text-terminal-muted whitespace-nowrap">
+                    <span className="text-xs text-terminal-text-muted whitespace-nowrap">
                       {timeText}
                     </span>
                   )}

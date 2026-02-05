@@ -108,18 +108,18 @@ export function BlackboxPage() {
   };
 
   return (
-    <div className="h-full w-full flex flex-col min-h-0" style={{ backgroundColor: '#0B0C0E', color: '#F1F5F9' }}>
+    <div className="h-full w-full flex flex-col min-h-0 bg-slate-950 text-terminal-text">
 
       {/* Tabs Row */}
-      <div className="flex items-center gap-2 px-6 py-3 border-b border-[#26292E]">
+      <div className="flex items-center gap-2 px-6 py-3 border-b border-terminal-border">
         {(Object.keys(CHART_MODE_LABELS) as ChartMode[]).map((mode) => (
           <button
             key={mode}
             onClick={() => setChartMode(mode)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               chartMode === mode
-                ? 'bg-[#1A1D23] text-[#F1F5F9]'
-                : 'text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1A1D23]'
+                ? 'bg-slate-800 text-terminal-text'
+                : 'text-terminal-text-muted hover:text-terminal-text-secondary hover:bg-slate-800'
             }`}
           >
             {CHART_MODE_LABELS[mode]}
@@ -174,25 +174,20 @@ export function BlackboxPage() {
       {alertPanelOpen && (
         <div
           ref={alertPanelRef}
-          className="fixed top-[60px] right-6 w-96 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl"
+          className="fixed top-[60px] right-6 w-96 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl bg-terminal-panel border border-terminal-border"
           onClick={(e) => e.stopPropagation()}
-          style={{
-            background: '#151719',
-            border: '1px solid #26292E',
-          }}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
-            <span className="text-sm font-semibold" style={{ color: '#F1F5F9' }}>Analytics Alerts</span>
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-terminal-card border-terminal-border">
+            <span className="text-sm font-semibold text-terminal-text">Analytics Alerts</span>
             <button
               onClick={() => setAlertPanelOpen(false)}
-              className="p-1 rounded transition-colors"
-              style={{ color: '#64748B' }}
+              className="p-1 rounded transition-colors text-terminal-text-muted"
             >
               ✕
             </button>
           </div>
           <div className="p-4 overflow-y-auto" style={{ maxHeight: 400 }}>
-            <p className="text-xs" style={{ color: '#64748B' }}>No alerts configured for analytics.</p>
+            <p className="text-xs text-terminal-text-muted">No alerts configured for analytics.</p>
           </div>
         </div>
       )}
@@ -210,25 +205,20 @@ export function BlackboxPage() {
       {comparePanelOpen && (
         <div
           ref={comparePanelRef}
-          className="fixed top-[60px] right-6 w-96 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl"
+          className="fixed top-[60px] right-6 w-96 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl bg-terminal-panel border border-terminal-border"
           onClick={(e) => e.stopPropagation()}
-          style={{
-            background: '#151719',
-            border: '1px solid #26292E',
-          }}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
-            <span className="text-sm font-semibold" style={{ color: '#F1F5F9' }}>Compare Theatres</span>
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-terminal-card border-terminal-border">
+            <span className="text-sm font-semibold text-terminal-text">Compare Theatres</span>
             <button
               onClick={() => setComparePanelOpen(false)}
-              className="p-1 rounded transition-colors"
-              style={{ color: '#64748B' }}
+              className="p-1 rounded transition-colors text-terminal-text-muted"
             >
               ✕
             </button>
           </div>
           <div className="p-4 overflow-y-auto" style={{ maxHeight: 400 }}>
-            <p className="text-xs" style={{ color: '#64748B' }}>Select theatres to compare.</p>
+            <p className="text-xs text-terminal-text-muted">Select theatres to compare.</p>
           </div>
         </div>
       )}
@@ -246,25 +236,20 @@ export function BlackboxPage() {
       {settingsPanelOpen && (
         <div
           ref={settingsPanelRef}
-          className="fixed top-[60px] right-6 w-80 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl"
+          className="fixed top-[60px] right-6 w-80 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl bg-terminal-panel border border-terminal-border"
           onClick={(e) => e.stopPropagation()}
-          style={{
-            background: '#151719',
-            border: '1px solid #26292E',
-          }}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ background: '#121417', borderColor: '#26292E' }}>
-            <span className="text-sm font-semibold" style={{ color: '#F1F5F9' }}>Analytics Settings</span>
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-terminal-card border-terminal-border">
+            <span className="text-sm font-semibold text-terminal-text">Analytics Settings</span>
             <button
               onClick={() => setSettingsPanelOpen(false)}
-              className="p-1 rounded transition-colors"
-              style={{ color: '#64748B' }}
+              className="p-1 rounded transition-colors text-terminal-text-muted"
             >
               ✕
             </button>
           </div>
           <div className="p-4">
-            <p className="text-xs" style={{ color: '#64748B' }}>Settings panel stub.</p>
+            <p className="text-xs text-terminal-text-muted">Settings panel stub.</p>
           </div>
         </div>
       )}

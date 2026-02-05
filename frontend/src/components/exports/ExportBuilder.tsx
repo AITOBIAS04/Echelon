@@ -57,7 +57,7 @@ export function ExportBuilder({ onCreateJob, loading = false }: ExportBuilderPro
   };
 
   return (
-    <div className="bg-[#111111] rounded-lg border border-[#1A1A1A] p-4">
+    <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4">
       <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
         Create Export Job
       </h3>
@@ -65,7 +65,7 @@ export function ExportBuilder({ onCreateJob, loading = false }: ExportBuilderPro
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Dataset Kind */}
         <div>
-          <label className="block text-xs text-terminal-muted mb-2 uppercase">
+          <label className="block text-xs text-terminal-text-muted mb-2 uppercase">
             Dataset Kind
           </label>
           <select
@@ -82,7 +82,7 @@ export function ExportBuilder({ onCreateJob, loading = false }: ExportBuilderPro
 
         {/* Scope */}
         <div>
-          <label className="block text-xs text-terminal-muted mb-2 uppercase">
+          <label className="block text-xs text-terminal-text-muted mb-2 uppercase">
             Scope
           </label>
           <select
@@ -99,7 +99,7 @@ export function ExportBuilder({ onCreateJob, loading = false }: ExportBuilderPro
 
         {/* Filters */}
         <div className="space-y-3">
-          <label className="block text-xs text-terminal-muted mb-2 uppercase">
+          <label className="block text-xs text-terminal-text-muted mb-2 uppercase">
             Filters
           </label>
 
@@ -129,7 +129,7 @@ export function ExportBuilder({ onCreateJob, loading = false }: ExportBuilderPro
 
           {/* Min Fork Count */}
           <div>
-            <label className="block text-xs text-terminal-muted mb-1">
+            <label className="block text-xs text-terminal-text-muted mb-1">
               Min Fork Count (optional)
             </label>
             <input

@@ -56,7 +56,7 @@ export function FieldKitPanel() {
             </h2>
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
               {agents.length === 0 ? (
-                <div className="text-center text-terminal-muted py-8">
+                <div className="text-center text-terminal-text-muted py-8">
                   No agent activity detected
                 </div>
               ) : (
@@ -72,14 +72,14 @@ export function FieldKitPanel() {
                         </div>
                         <div>
                           <div className="font-medium text-terminal-text">{agent.name}</div>
-                          <div className="text-xs text-terminal-muted">{agent.archetype}</div>
+                          <div className="text-xs text-terminal-text-muted">{agent.archetype}</div>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-mono text-echelon-green">
                           ${agent.totalVolume.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </div>
-                        <div className="text-xs text-terminal-muted">{agent.flapCount} actions</div>
+                        <div className="text-xs text-terminal-text-muted">{agent.flapCount} actions</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-xs">
@@ -110,17 +110,17 @@ export function FieldKitPanel() {
               </h3>
               <div className="space-y-3">
                 <div>
-                  <div className="text-xs text-terminal-muted mb-1">Active Timelines</div>
+                  <div className="text-xs text-terminal-text-muted mb-1">Active Timelines</div>
                   <div className="text-2xl font-mono text-echelon-green">{timelines.length}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-terminal-muted mb-1">With Paradoxes</div>
+                  <div className="text-xs text-terminal-text-muted mb-1">With Paradoxes</div>
                   <div className="text-2xl font-mono text-echelon-red">
                     {timelines.filter(t => t.has_active_paradox).length}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-terminal-muted mb-1">Total Volume (24h)</div>
+                  <div className="text-xs text-terminal-text-muted mb-1">Total Volume (24h)</div>
                   <div className="text-lg font-mono text-echelon-cyan">
                     ${timelines.reduce((sum, t) => sum + t.total_volume_usd, 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </div>
@@ -138,7 +138,7 @@ export function FieldKitPanel() {
                 {flaps.slice(0, 10).map((flap) => (
                   <div key={flap.id} className="text-xs">
                     <div className="text-terminal-text">{flap.agent_name}</div>
-                    <div className="text-terminal-muted truncate">{flap.action}</div>
+                    <div className="text-terminal-text-muted truncate">{flap.action}</div>
                   </div>
                 ))}
               </div>

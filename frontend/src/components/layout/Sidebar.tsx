@@ -69,7 +69,7 @@ export function Sidebar() {
 
   return (
     <aside 
-      className="h-full flex-shrink-0 bg-[#0B0C0E] border-r border-[#26292E] flex flex-col py-3 gap-2 overflow-hidden transition-all duration-300 ease-out"
+      className="h-full flex-shrink-0 bg-slate-950 border-r border-terminal-border flex flex-col py-3 gap-2 overflow-hidden transition-all duration-300 ease-out"
       style={{ 
         width: isExpanded ? '180px' : '64px',
         marginLeft: isExpanded ? '0' : '0'
@@ -79,14 +79,14 @@ export function Sidebar() {
     >
       {/* Brand */}
       <div className={clsx(
-        "flex items-center px-3 py-2 border border-[#26292E] rounded-lg bg-[rgba(18,20,23,0.55)] transition-all duration-300",
+        "flex items-center px-3 py-2 border border-terminal-border rounded-lg bg-slate-850/80 transition-all duration-300",
         isExpanded ? "justify-start gap-2.5" : "justify-center"
       )}>
-        <span className="font-extrabold tracking-[0.14em] text-sm text-[#F1F5F9] whitespace-nowrap">
+        <span className="font-extrabold tracking-[0.14em] text-sm text-terminal-text whitespace-nowrap">
           {isExpanded && "ECHELON"}
         </span>
         {!isExpanded && (
-          <span className="font-extrabold tracking-[0.14em] text-sm text-[#F1F5F9]">E</span>
+          <span className="font-extrabold tracking-[0.14em] text-sm text-terminal-text">E</span>
         )}
       </div>
 
@@ -96,7 +96,7 @@ export function Sidebar() {
         isExpanded ? "px-2 mt-1" : "px-1.5 mt-0"
       )}>
         {isExpanded && (
-          <span className="text-[10px] tracking-[0.08em] uppercase text-[#64748B] px-2 mt-1 mb-1">
+          <span className="text-[10px] tracking-[0.08em] uppercase text-terminal-text-muted px-2 mt-1 mb-1">
             Console
           </span>
         )}
@@ -110,8 +110,8 @@ export function Sidebar() {
               className={clsx(
                 'flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg border text-xs font-semibold transition-all duration-200 select-none',
                 active
-                  ? 'bg-[rgba(26,29,33,0.9)] border-[#26292E] text-[#F1F5F9]'
-                  : 'border-transparent text-[#94A3B8] hover:bg-[#151719] hover:border-[#26292E] hover:text-[#F1F5F9]'
+                  ? 'bg-slate-800/90 border-terminal-border text-terminal-text'
+                  : 'border-transparent text-terminal-text-secondary hover:bg-terminal-panel hover:border-terminal-border hover:text-terminal-text'
               )}
               style={{ justifyContent: isExpanded ? 'flex-start' : 'center' }}
             >
@@ -119,8 +119,8 @@ export function Sidebar() {
                 className={clsx(
                   'w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all duration-200',
                   active
-                    ? 'bg-[#3B82F6] shadow-[0_0_8px_rgba(59,130,246,0.3)]'
-                    : 'bg-[#64748B]'
+                    ? 'bg-status-info shadow-[0_0_8px_rgba(59,130,246,0.3)]'
+                    : 'bg-slate-600'
                 )}
               />
               {isExpanded && <span className="whitespace-nowrap">{item.label}</span>}
@@ -128,7 +128,7 @@ export function Sidebar() {
                 <div className="relative">
                   <NavIcon item={item} className="w-4 h-4" />
                   {active && (
-                    <span className="absolute -right-1 -top-1 w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
+                    <span className="absolute -right-1 -top-1 w-1.5 h-1.5 rounded-full bg-status-info" />
                   )}
                 </div>
               )}
@@ -143,7 +143,7 @@ export function Sidebar() {
             isExpanded ? "pl-3 mt-1" : "pl-0 mt-0"
           )}>
             {isExpanded && (
-              <span className="text-[10px] tracking-[0.08em] uppercase text-[#64748B] mt-2 mb-1">
+              <span className="text-[10px] tracking-[0.08em] uppercase text-terminal-text-muted mt-2 mb-1">
                 Agents
               </span>
             )}
@@ -156,8 +156,8 @@ export function Sidebar() {
                   className={clsx(
                     'px-2.5 py-2 rounded-lg border text-[11px] font-semibold transition-all duration-200',
                     subActive
-                      ? 'bg-[#151719] border-[#26292E] text-[#F1F5F9]'
-                      : 'border-transparent text-[#94A3B8] hover:bg-[#151719] hover:border-[#26292E] hover:text-[#F1F5F9]'
+                      ? 'bg-terminal-panel border-terminal-border text-terminal-text'
+                      : 'border-transparent text-terminal-text-secondary hover:bg-terminal-panel hover:border-terminal-border hover:text-terminal-text'
                   )}
                   style={{ justifyContent: isExpanded ? 'flex-start' : 'center' }}
                 >

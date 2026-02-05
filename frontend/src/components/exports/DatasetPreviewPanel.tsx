@@ -40,12 +40,12 @@ function formatFieldType(type: string): string {
 export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
   if (!preview) {
     return (
-      <div className="bg-[#111111] rounded-lg border border-[#1A1A1A] p-4 h-full flex items-center justify-center">
+      <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 h-full flex items-center justify-center">
         <div className="text-center">
-          <p className="text-sm text-terminal-muted mb-2">
+          <p className="text-sm text-terminal-text-muted mb-2">
             No dataset preview selected
           </p>
-          <p className="text-xs text-terminal-muted">
+          <p className="text-xs text-terminal-text-muted">
             Click a completed export job to view its dataset preview
           </p>
         </div>
@@ -54,7 +54,7 @@ export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
   }
 
   return (
-    <div className="bg-[#111111] rounded-lg border border-[#1A1A1A] p-4 h-full flex flex-col">
+    <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 h-full flex flex-col">
       <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
         Dataset Preview
       </h3>
@@ -62,14 +62,14 @@ export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
       {/* Schema Version */}
       <div className="mb-4 pb-4 border-b border-[#1A1A1A]">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-terminal-muted uppercase">Schema:</span>
+          <span className="text-xs text-terminal-text-muted uppercase">Schema:</span>
           <span className="text-xs font-mono text-terminal-text">{preview.schemaVersion}</span>
         </div>
       </div>
 
       {/* Schema Fields */}
       <div className="mb-4 pb-4 border-b border-[#1A1A1A]">
-        <h4 className="text-xs font-semibold text-terminal-muted uppercase mb-2">
+        <h4 className="text-xs font-semibold text-terminal-text-muted uppercase mb-2">
           Schema Fields
         </h4>
         <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
@@ -89,7 +89,7 @@ export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
                   {formatFieldType(field.type)}
                 </span>
               </div>
-              <p className="text-xs text-terminal-muted">{field.description}</p>
+              <p className="text-xs text-terminal-text-muted">{field.description}</p>
             </div>
           ))}
         </div>
@@ -97,17 +97,17 @@ export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
 
       {/* Sample Rows */}
       <div className="flex-1 min-h-0 flex flex-col">
-        <h4 className="text-xs font-semibold text-terminal-muted uppercase mb-2">
+        <h4 className="text-xs font-semibold text-terminal-text-muted uppercase mb-2">
           Sample Rows ({preview.sampleRows.length})
         </h4>
         <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-[#111111]">
+            <thead className="sticky top-0 bg-slate-900">
               <tr className="border-b border-[#1A1A1A]">
                 {preview.fields.map((field) => (
                   <th
                     key={field.name}
-                    className="text-left py-2 px-2 text-terminal-muted font-semibold uppercase"
+                    className="text-left py-2 px-2 text-terminal-text-muted font-semibold uppercase"
                   >
                     {field.name}
                   </th>
@@ -138,7 +138,7 @@ export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
 
       {/* Hint */}
       <div className="mt-4 pt-4 border-t border-[#1A1A1A]">
-        <p className="text-xs text-terminal-muted italic">
+        <p className="text-xs text-terminal-text-muted italic">
           💡 Replay available from fork rows
         </p>
       </div>

@@ -28,9 +28,9 @@ export function ParadoxProximityBar({
   // Clamp proximity to valid range
   const clampedProximity = Math.max(0, Math.min(100, proximity));
   
-  // CSS gradient from cyan (#00D4FF) to red (#FF3B3B)
+  // CSS gradient from cyan (#22D3EE) to red (#FF3B3B)
   const gradientStyle: React.CSSProperties = {
-    background: 'linear-gradient(to right, #00D4FF 0%, #FF3B3B 100%)',
+    background: 'linear-gradient(to right, #22D3EE 0%, #FF3B3B 100%)',
     width: `${clampedProximity}%`,
     height: '100%',
     borderRadius: '9999px', // rounded-full equivalent
@@ -40,7 +40,7 @@ export function ParadoxProximityBar({
   return (
     <div className="w-full">
       {showLabel && (
-        <div className="text-xs text-terminal-muted mb-1.5">
+        <div className="text-xs text-terminal-text-muted mb-1.5">
           PARADOX RISK
         </div>
       )}

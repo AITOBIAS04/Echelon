@@ -46,7 +46,7 @@ export function SigintPanel() {
               className={
                 mobileTab === 'timelines'
                   ? 'px-3 py-2 rounded-lg bg-terminal-panel border border-terminal-border text-echelon-cyan text-sm font-bold'
-                  : 'px-3 py-2 rounded-lg bg-terminal-bg border border-terminal-border text-terminal-muted text-sm font-bold'
+                  : 'px-3 py-2 rounded-lg bg-terminal-bg border border-terminal-border text-terminal-text-muted text-sm font-bold'
               }
             >
               <TrendingUp className="w-4 h-4 inline mr-1" />
@@ -57,14 +57,14 @@ export function SigintPanel() {
               className={
                 mobileTab === 'feed'
                   ? 'px-3 py-2 rounded-lg bg-terminal-panel border border-terminal-border text-echelon-cyan text-sm font-bold'
-                  : 'px-3 py-2 rounded-lg bg-terminal-bg border border-terminal-border text-terminal-muted text-sm font-bold'
+                  : 'px-3 py-2 rounded-lg bg-terminal-bg border border-terminal-border text-terminal-text-muted text-sm font-bold'
               }
             >
               <Activity className="w-4 h-4 inline mr-1" />
               Feed
             </button>
             <div className="flex-1" />
-            <span className="text-xs text-terminal-muted font-mono">
+            <span className="text-xs text-terminal-text-muted font-mono">
               {mobileTab === 'timelines' ? `${timelines.length} timelines` : `${flapsData?.total_count || 0} events`}
             </span>
           </div>
@@ -171,11 +171,11 @@ export function SigintPanel() {
       {/* Status Bar */}
       <div className="flex-shrink-0 h-8 flex items-center justify-between px-3 bg-terminal-panel border-t border-terminal-border text-xs">
         <div className="flex items-center gap-4">
-          <span className="text-terminal-muted">
+          <span className="text-terminal-text-muted">
             <Activity className="w-3 h-3 inline mr-1" />
             {flapsData?.total_count || 0} events
           </span>
-          <span className="text-terminal-muted">
+          <span className="text-terminal-text-muted">
             {timelines.length} timelines active
           </span>
         </div>

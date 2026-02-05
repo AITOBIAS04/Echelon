@@ -46,7 +46,7 @@ export function SavedViewsBar({
               flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition whitespace-nowrap flex-shrink-0
               ${isSelected
                 ? 'bg-echelon-cyan/20 border border-echelon-cyan text-echelon-cyan'
-                : 'bg-terminal-panel border border-terminal-border text-terminal-muted hover:text-terminal-text hover:border-terminal-border/70'
+                : 'bg-terminal-panel border border-terminal-border text-terminal-text-muted hover:text-terminal-text hover:border-terminal-border/70'
               }
             `}
           >

@@ -14,7 +14,7 @@ export function Header({ paradoxCount, onBreachesClick }: HeaderProps) {
         <span className="font-display text-xl tracking-wider text-echelon-cyan glow-green">
           ECHELON
         </span>
-        <span className="text-xs text-terminal-muted uppercase tracking-widest">
+        <span className="text-xs text-terminal-text-muted uppercase tracking-widest">
           Situation Room
         </span>
       </div>
@@ -41,7 +41,7 @@ export function Header({ paradoxCount, onBreachesClick }: HeaderProps) {
         )}
 
         {/* User */}
-        <button className="flex items-center gap-2 text-terminal-muted hover:text-terminal-text transition">
+        <button className="flex items-center gap-2 text-terminal-text-muted hover:text-terminal-text transition">
           <User className="w-4 h-4" />
           <span className="text-xs">Connect</span>
         </button>

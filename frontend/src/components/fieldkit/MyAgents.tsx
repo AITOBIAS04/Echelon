@@ -168,8 +168,8 @@ export function MyAgents() {
                 <span className="bg-echelon-purple/20 border border-echelon-purple/30 px-2 py-0.5 rounded text-echelon-purple font-mono">
                   GEN {lineage.gen}
                 </span>
-                <span className="text-terminal-muted">•</span>
-                <span className="text-terminal-muted">
+                <span className="text-terminal-text-muted">•</span>
+                <span className="text-terminal-text-muted">
                   {lineage.parents === 'GENESIS' ? (
                     <span className="text-echelon-cyan/60">GENESIS AGENT</span>
                   ) : (
@@ -190,7 +190,7 @@ export function MyAgents() {
               {/* Stats */}
               <div className="grid grid-cols-3 gap-2 mb-3 relative z-10">
                 <div className="text-center p-2 bg-terminal-bg rounded">
-                  <div className="text-xs text-terminal-muted">P&L</div>
+                  <div className="text-xs text-terminal-text-muted">P&L</div>
                   <div
                     className={clsx(
                       'text-sm font-mono font-bold',
@@ -201,13 +201,13 @@ export function MyAgents() {
                   </div>
                 </div>
                 <div className="text-center p-2 bg-terminal-bg rounded">
-                  <div className="text-xs text-terminal-muted">Win Rate</div>
+                  <div className="text-xs text-terminal-text-muted">Win Rate</div>
                   <div className="text-sm font-mono font-bold text-terminal-text">
                     {(agent.win_rate * 100).toFixed(0)}%
                   </div>
                 </div>
                 <div className="text-center p-2 bg-terminal-bg rounded">
-                  <div className="text-xs text-terminal-muted">Trades</div>
+                  <div className="text-xs text-terminal-text-muted">Trades</div>
                   <div className="text-sm font-mono font-bold text-terminal-text">
                     {agent.trades_count}
                   </div>

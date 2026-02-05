@@ -53,7 +53,7 @@ export function AgentsPage() {
   };
 
   return (
-    <div className="app-layout" style={{ minHeight: '100vh', display: 'flex', background: 'var(--bg-app)' }}>
+    <div className="app-layout" style={{ height: '100%', display: 'flex', background: 'var(--bg-app)' }}>
       <style>{`
         :root {
           --slate-950: #0B0C0E;

@@ -12,7 +12,7 @@ export function AgentDetail() {
       <div className="max-w-4xl mx-auto">
         <Link 
           to="/agents" 
-          className="flex items-center gap-2 text-terminal-muted hover:text-echelon-cyan mb-6 transition"
+          className="flex items-center gap-2 text-terminal-text-muted hover:text-echelon-cyan mb-6 transition"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Roster
@@ -22,10 +22,10 @@ export function AgentDetail() {
           <h1 className="text-2xl font-bold text-echelon-cyan mb-2">
             Agent: {agentId}
           </h1>
-          <p className="text-terminal-muted">
+          <p className="text-terminal-text-muted">
             Detailed agent view coming soon. This will show:
           </p>
-          <ul className="mt-4 space-y-2 text-sm text-terminal-muted">
+          <ul className="mt-4 space-y-2 text-sm text-terminal-text-muted">
             <li className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-echelon-cyan" />
               Complete trading history

@@ -22,7 +22,7 @@ export class ErrorBoundary extends React.Component<
       return (
         <div className="terminal-panel p-4 border border-echelon-red/40 text-terminal-text">
           <div className="text-echelon-red font-semibold mb-2">Home crashed</div>
-          <pre className="text-xs text-terminal-muted overflow-auto">
+          <pre className="text-xs text-terminal-text-muted overflow-auto">
             {String(this.state.error?.message || this.state.error)}
           </pre>
         </div>

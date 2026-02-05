@@ -115,7 +115,7 @@ export function LiveRibbon({ maxEvents = 18 }: { maxEvents?: number }) {
                 {e.badge.label}
               </span>
               <span className="text-[11px] text-terminal-text truncate max-w-[220px]">{e.title}</span>
-              <span className="text-[10px] font-mono text-terminal-muted">{e.ago}</span>
+              <span className="text-[10px] font-mono text-terminal-text-muted">{e.ago}</span>
             </button>
           ))}
         </div>

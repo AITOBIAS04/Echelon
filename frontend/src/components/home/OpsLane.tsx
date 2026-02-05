@@ -49,7 +49,7 @@ export function OpsLane({ laneId, cards, title }: OpsLaneProps) {
           <h3 className="text-sm font-bold text-terminal-text uppercase tracking-wide">
             {title}
           </h3>
-          <span className="text-xs text-terminal-muted font-mono">
+          <span className="text-xs text-terminal-text-muted font-mono">
             ({cards.length})
           </span>
         </div>
@@ -58,7 +58,7 @@ export function OpsLane({ laneId, cards, title }: OpsLaneProps) {
       {/* Cards */}
       <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
         {cards.length === 0 ? (
-          <div className="text-center py-8 text-terminal-muted text-xs">
+          <div className="text-center py-8 text-terminal-text-muted text-xs">
             No cards
           </div>
         ) : (

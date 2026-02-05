@@ -20,7 +20,7 @@ import { evaluateAlerts, type AlertTrigger } from '../../utils/alertEvaluator';
  */
 function SkeletonRow() {
   return (
-    <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-3 animate-pulse">
+    <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-3 animate-pulse">
       <div className="flex justify-between items-center mb-3">
         <div className="h-5 bg-[#1A1A1A] rounded w-48"></div>
         <div className="flex items-center gap-2">
@@ -209,7 +209,7 @@ export function Watchlist() {
           <h2 className="text-xl font-bold text-terminal-text uppercase tracking-wide">
             WATCHLIST
           </h2>
-          <p className="text-sm text-terminal-muted mt-1">
+          <p className="text-sm text-terminal-text-muted mt-1">
             {isLoading 
               ? 'Loading...' 
               : `${counts.all} timeline${counts.all !== 1 ? 's' : ''} tracked`
@@ -257,7 +257,7 @@ export function Watchlist() {
             </div>
           ))}
           {alerts.length > 3 && (
-            <div className="text-xs text-terminal-muted">
+            <div className="text-xs text-terminal-text-muted">
               +{alerts.length - 3} more alert{alerts.length - 3 !== 1 ? 's' : ''}
             </div>
           )}
@@ -283,7 +283,7 @@ export function Watchlist() {
             <h3 className="text-lg font-semibold text-terminal-text mb-2">
               Failed to load watchlist
             </h3>
-            <p className="text-sm text-terminal-muted mb-4">
+            <p className="text-sm text-terminal-text-muted mb-4">
               {error instanceof Error ? error.message : 'An unknown error occurred'}
             </p>
             <button
@@ -309,14 +309,14 @@ export function Watchlist() {
       {!isLoading && !isError && (!processedTimelines || processedTimelines.length === 0) && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md">
-            <Eye className="w-16 h-16 text-terminal-muted mx-auto mb-4 opacity-50" />
+            <Eye className="w-16 h-16 text-terminal-text-muted mx-auto mb-4 opacity-50" />
             <h3 className="text-lg font-semibold text-terminal-text mb-2">
               {activeFilter === 'all' 
                 ? 'Your watchlist is empty'
                 : `No timelines match "${activeFilter}" filter`
               }
             </h3>
-            <p className="text-sm text-terminal-muted mb-4">
+            <p className="text-sm text-terminal-text-muted mb-4">
               {activeFilter === 'all' 
                 ? 'Start tracking timelines to monitor their stability, paradox proximity, and risk metrics.'
                 : 'Try selecting a different filter or add more timelines to your watchlist.'
