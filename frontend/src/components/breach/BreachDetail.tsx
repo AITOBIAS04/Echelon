@@ -34,27 +34,27 @@ function getSeverityStyles(severity: Breach['severity']) {
       return {
         bg: 'bg-echelon-red/20',
         border: 'border-echelon-red',
-        text: 'text-red-500',
+        text: 'text-echelon-red',
         pulse: 'animate-pulse',
       };
     case 'high':
       return {
-        bg: 'bg-orange-500/20',
-        border: 'border-orange-500',
-        text: 'text-orange-500',
+        bg: 'bg-agent-degen/20',
+        border: 'border-agent-degen',
+        text: 'text-agent-degen',
         pulse: '',
       };
     case 'medium':
       return {
         bg: 'bg-echelon-amber/20',
         border: 'border-echelon-amber',
-        text: 'text-amber-500',
+        text: 'text-echelon-amber',
         pulse: '',
       };
     case 'low':
       return {
-        bg: 'bg-gray-500/20',
-        border: 'border-gray-500',
+        bg: 'bg-terminal-text-muted/10',
+        border: 'border-terminal-border',
         text: 'text-terminal-text-muted',
         pulse: '',
       };
@@ -62,18 +62,32 @@ function getSeverityStyles(severity: Breach['severity']) {
 }
 
 /**
- * Get status badge color
+ * Get status badge classes
  */
-function getStatusColor(status: Breach['status']): string {
+function getStatusClasses(status: Breach['status']): { bg: string; text: string; border: string } {
   switch (status) {
     case 'active':
-      return '#FF3B3B'; // red
+      return { bg: 'bg-echelon-red/20', text: 'text-echelon-red', border: 'border-echelon-red' };
     case 'investigating':
-      return '#FF9500'; // amber
+      return { bg: 'bg-echelon-amber/20', text: 'text-echelon-amber', border: 'border-echelon-amber' };
     case 'mitigated':
-      return '#22D3EE'; // cyan
+      return { bg: 'bg-echelon-cyan/20', text: 'text-echelon-cyan', border: 'border-echelon-cyan' };
     case 'resolved':
-      return '#00FF41'; // green
+      return { bg: 'bg-echelon-green/20', text: 'text-echelon-green', border: 'border-echelon-green' };
+  }
+}
+
+/**
+ * Get evidence change type classes
+ */
+function getChangeTypeClasses(changeType: 'added' | 'removed' | 'contradicted'): { bg: string; text: string; icon: string } {
+  switch (changeType) {
+    case 'added':
+      return { bg: 'bg-echelon-green/15', text: 'text-echelon-green', icon: 'text-echelon-green' };
+    case 'removed':
+      return { bg: 'bg-echelon-red/15', text: 'text-echelon-red', icon: 'text-echelon-red' };
+    case 'contradicted':
+      return { bg: 'bg-echelon-amber/15', text: 'text-echelon-amber', icon: 'text-echelon-amber' };
   }
 }
 
@@ -127,13 +141,13 @@ function CollapsibleSection({
 
 /**
  * BreachDetail Component
- * 
+ *
  * Displays comprehensive breach information including affected entities,
  * beneficiaries, evidence changes, and suggested actions.
  */
 export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps) {
   const severityStyles = getSeverityStyles(breach.severity);
-  const statusColor = getStatusColor(breach.status);
+  const statusClasses = getStatusClasses(breach.status);
 
   // Sort beneficiaries by estimatedGain descending
   const sortedBeneficiaries = [...breach.beneficiaries].sort(
@@ -141,7 +155,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
   );
 
   return (
-    <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+    <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-terminal-border scrollbar-track-transparent">
       {/* Header Section */}
       <div className="border-b border-terminal-border pb-4 mb-4">
         <div className="flex items-start justify-between gap-4 mb-3">
@@ -158,25 +172,20 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
           </div>
           <div className="flex items-center gap-3">
             <span
-              className="px-3 py-1 rounded text-xs font-semibold uppercase"
-              style={{
-                backgroundColor: `${statusColor}20`,
-                color: statusColor,
-                border: `1px solid ${statusColor}`,
-              }}
+              className={`px-3 py-1 rounded border text-xs font-semibold uppercase ${statusClasses.bg} ${statusClasses.text} ${statusClasses.border}`}
             >
               {breach.status}
             </span>
             <div className="flex items-center gap-1 text-xs">
               {breach.recoverable ? (
                 <>
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-green-500">Recoverable</span>
+                  <CheckCircle className="w-4 h-4 text-echelon-green" />
+                  <span className="text-echelon-green">Recoverable</span>
                 </>
               ) : (
                 <>
-                  <XCircle className="w-4 h-4 text-red-500" />
-                  <span className="text-red-500">Unrecoverable</span>
+                  <XCircle className="w-4 h-4 text-echelon-red" />
+                  <span className="text-echelon-red">Unrecoverable</span>
                 </>
               )}
             </div>
@@ -232,7 +241,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                         <span className="text-terminal-text-muted mx-1">→</span>
                         <span
                           className={
-                            stabilityChange >= 0 ? 'text-green-500' : 'text-red-500'
+                            stabilityChange >= 0 ? 'text-echelon-green' : 'text-echelon-red'
                           }
                         >
                           {timeline.stabilityAfter.toFixed(1)}%
@@ -244,7 +253,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                         </span>
                         <span className="text-terminal-text-muted mx-1">→</span>
                         <span
-                          className={logicGapChange <= 0 ? 'text-green-500' : 'text-red-500'}
+                          className={logicGapChange <= 0 ? 'text-echelon-green' : 'text-echelon-red'}
                         >
                           {timeline.logicGapAfter.toFixed(1)}%
                         </span>
@@ -276,13 +285,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                   <div className="flex items-center gap-2">
                     <Bot className="w-4 h-4 text-terminal-text-muted" />
                     <span className="text-sm font-medium text-terminal-text">{agent.name}</span>
-                    <span
-                      className="px-2 py-0.5 rounded text-xs"
-                      style={{
-                        backgroundColor: '#333',
-                        color: '#999',
-                      }}
-                    >
+                    <span className="px-2 py-0.5 rounded text-xs bg-terminal-bg border border-terminal-border text-terminal-text-muted">
                       {agent.archetype}
                     </span>
                   </div>
@@ -291,7 +294,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                       <span className="text-terminal-text-muted">P&L:</span>{' '}
                       <span
                         className={`font-mono ${
-                          agent.pnlImpact >= 0 ? 'text-green-500' : 'text-red-500'
+                          agent.pnlImpact >= 0 ? 'text-echelon-green' : 'text-echelon-red'
                         }`}
                       >
                         {agent.pnlImpact >= 0 ? '+' : ''}${agent.pnlImpact.toFixed(2)}
@@ -299,7 +302,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                     </div>
                     <div>
                       <span className="text-terminal-text-muted">Sanity:</span>{' '}
-                      <span className="font-mono text-red-500">
+                      <span className="font-mono text-echelon-red">
                         -{agent.sanityImpact} points
                       </span>
                     </div>
@@ -328,7 +331,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                   <Wallet className="w-4 h-4 text-terminal-text-muted" />
                 )}
                 <span className="text-sm text-terminal-text flex-1">{beneficiary.name}</span>
-                <span className="text-sm font-mono text-green-500">
+                <span className="text-sm font-mono text-echelon-green">
                   +${beneficiary.estimatedGain.toFixed(2)}
                 </span>
               </div>
@@ -344,12 +347,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
         ) : (
           <div className="space-y-3">
             {breach.evidenceChanges.map((change, index) => {
-              const changeTypeColors = {
-                added: { bg: '#00FF41', text: '#00FF41' },
-                removed: { bg: '#FF3B3B', text: '#FF3B3B' },
-                contradicted: { bg: '#FF9500', text: '#FF9500' },
-              };
-              const colors = changeTypeColors[change.changeType];
+              const changeClasses = getChangeTypeClasses(change.changeType);
 
               return (
                 <div
@@ -358,11 +356,11 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                 >
                   <div className="flex-shrink-0">
                     {change.changeType === 'added' ? (
-                      <Plus className="w-4 h-4" style={{ color: colors.text }} />
+                      <Plus className={`w-4 h-4 ${changeClasses.icon}`} />
                     ) : change.changeType === 'removed' ? (
-                      <Minus className="w-4 h-4" style={{ color: colors.text }} />
+                      <Minus className={`w-4 h-4 ${changeClasses.icon}`} />
                     ) : (
-                      <AlertTriangle className="w-4 h-4" style={{ color: colors.text }} />
+                      <AlertTriangle className={`w-4 h-4 ${changeClasses.icon}`} />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -370,21 +368,11 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                       <span className="text-xs text-terminal-text-muted font-mono">
                         {formatTimestamp(change.timestamp)}
                       </span>
-                      <span
-                        className="px-2 py-0.5 rounded text-xs font-medium"
-                        style={{
-                          backgroundColor: '#333',
-                          color: '#999',
-                        }}
-                      >
+                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-terminal-bg border border-terminal-border text-terminal-text-muted">
                         {change.source}
                       </span>
                       <span
-                        className="px-2 py-0.5 rounded text-xs font-semibold uppercase"
-                        style={{
-                          backgroundColor: `${colors.bg}20`,
-                          color: colors.text,
-                        }}
+                        className={`px-2 py-0.5 rounded text-xs font-semibold uppercase ${changeClasses.bg} ${changeClasses.text}`}
                       >
                         {change.changeType}
                       </span>
@@ -409,18 +397,18 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                 immediate: {
                   bg: 'bg-echelon-red/20',
                   border: 'border-echelon-red',
-                  text: 'text-red-500',
+                  text: 'text-echelon-red',
                   pulse: 'animate-pulse',
                 },
                 recommended: {
                   bg: 'bg-echelon-amber/20',
                   border: 'border-echelon-amber',
-                  text: 'text-amber-500',
+                  text: 'text-echelon-amber',
                   pulse: '',
                 },
                 optional: {
-                  bg: 'bg-gray-500/20',
-                  border: 'border-gray-500',
+                  bg: 'bg-terminal-text-muted/10',
+                  border: 'border-terminal-border',
                   text: 'text-terminal-text-muted',
                   pulse: '',
                 },
@@ -468,7 +456,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
         <div className="mt-6 pt-4 border-t border-terminal-border">
           <button
             onClick={onResolve}
-            className="w-full py-3 px-4 bg-green-500/20 border border-green-500 rounded text-sm font-semibold text-green-500 hover:bg-green-500/30 transition"
+            className="w-full py-3 px-4 bg-echelon-green/20 border border-echelon-green rounded text-sm font-semibold text-echelon-green hover:bg-echelon-green/30 transition"
           >
             Mark as Resolved
           </button>
