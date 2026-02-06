@@ -294,6 +294,28 @@
     }
   }
 
+  /* ── Card flip (MarketCard bet interaction) ── */
+  .card-flip-container {
+    perspective: 1200px;
+  }
+  .card-flip-inner {
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+    position: relative;
+  }
+  .card-flip-inner.flipped {
+    transform: rotateY(180deg);
+  }
+  .card-flip-front,
+  .card-flip-back {
+    backface-visibility: hidden;
+  }
+  .card-flip-back {
+    transform: rotateY(180deg);
+    position: absolute;
+    inset: 0;
+  }
+
   /* Ensure header dropdowns can overflow */
   .header-dropdown {
     z-index: 100;

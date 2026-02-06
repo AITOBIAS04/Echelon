@@ -88,6 +88,14 @@ const TOP_ACTIONS: Record<string, PageConfig> = {
       { label: 'Deploy Agent', icon: Plus, kind: 'primary', action: 'deployAgent' },
     ],
   },
+  '/agents/breach': {
+    name: 'Breach Console',
+    buttons: [],
+  },
+  '/agents/export': {
+    name: 'Export Console',
+    buttons: [],
+  },
 };
 
 /** Routes where Live/Alert/Compare buttons should be hidden */

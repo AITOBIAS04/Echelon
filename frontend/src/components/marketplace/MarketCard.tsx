@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Clock, AlertTriangle, ChevronRight, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { Market } from '../../types/marketplace';
 import { useDemoEnabled, useDemoOutcome } from '../../demo/hooks';
@@ -104,13 +104,13 @@ function formatCurrency(value: number): string {
 
 /**
  * MarketCard Component
- * 
+ *
  * Displays a single market card with:
  * - Category badge and stability gauge
  * - Market title
  * - YES/NO outcome betting UI
  * - Metrics: liquidity, fork time, logic gap
- * - RLMF training data indicator
+ * - 3D flip to bet form on outcome selection
  */
 export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
   const demoEnabled = useDemoEnabled();
@@ -147,6 +147,8 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
   const gapStyles = getGapStyles(market.gap);
   const stabilityPercent = Math.max(0, Math.min(100, displayStability));
 
+  const isFlipped = selectedOutcome !== null;
+
   const handleBet = (outcome: 'YES' | 'NO') => {
     if (demoEnabled) {
       setDemoBetSide(outcome);
@@ -158,201 +160,261 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
       onBet(market, outcome);
     }
     setSelectedOutcome(outcome);
+    setBetAmount(10);
   };
 
-  const potentialPayout = selectedOutcome
-    ? betAmount * (selectedOutcome === 'YES' ? market.yesPrice : market.noPrice)
-    : 0;
+  const handleCancel = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedOutcome(null);
+  };
+
+  const selectedPrice = selectedOutcome === 'YES' ? displayYesPrice : displayNoPrice;
+  const potentialPayout = selectedOutcome ? betAmount / selectedPrice : 0;
 
   return (
     <div
-      className={clsx(
-        'bg-terminal-panel border border-terminal-border rounded-xl p-4 transition-all cursor-pointer',
-        'hover:border-terminal-border/70 hover:bg-terminal-card',
-        'active:scale-[0.99]'
-      )}
+      className="card-flip-container"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() => onClick?.(market)}
     >
-      {/* Header: Category + Stability */}
-      <div className="flex items-center justify-between mb-3">
-        <span
-          className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider"
-          style={{
-            backgroundColor: categoryStyles.bg,
-            color: categoryStyles.text,
-            border: `1px solid ${categoryStyles.border}`,
-          }}
-        >
-          {market.categoryIcon} {market.categoryName}
-        </span>
+      <div className={clsx('card-flip-inner', isFlipped && 'flipped')}>
 
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">
-            {demoEnabled
-              ? displayStability >= 70 ? 'Stable' : displayStability >= 50 ? 'Degraded' : 'Critical'
-              : market.stabilityStatus}
-          </span>
-          <div className="w-10 h-1.5 bg-terminal-bg rounded-full overflow-hidden">
-            <div
-              className={clsx(
-                'h-full rounded-full transition-all duration-300',
-                `bg-[${stabilityColor.color}]`
-              )}
+        {/* ══════════════ FRONT FACE ══════════════ */}
+        <div
+          className={clsx(
+            'card-flip-front bg-terminal-panel border border-terminal-border rounded-xl p-4 transition-colors cursor-pointer',
+            'hover:border-terminal-border-light hover:bg-terminal-card',
+            'active:scale-[0.99]'
+          )}
+          onClick={() => onClick?.(market)}
+        >
+          {/* Header: Category + Stability */}
+          <div className="flex items-center justify-between mb-3">
+            <span
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider"
               style={{
-                width: `${stabilityPercent}%`,
-                backgroundColor: stabilityColor.color,
+                backgroundColor: categoryStyles.bg,
+                color: categoryStyles.text,
+                border: `1px solid ${categoryStyles.border}`,
               }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Title */}
-      <h3 className="text-sm font-semibold text-terminal-text mb-4 line-clamp-2 leading-snug">
-        {market.title}
-      </h3>
-
-      {/* Betting UI - Outcomes */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleBet('YES');
-          }}
-          className={clsx(
-            'flex-1 flex flex-col justify-between p-3 rounded-lg border transition-all',
-            'hover:border-status-success/50',
-            selectedOutcome === 'YES'
-              ? 'bg-status-success/10 border-status-success'
-              : 'bg-terminal-bg border-terminal-border'
-          )}
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-terminal-text-muted uppercase">YES</span>
-            <span className="text-[10px] font-mono text-terminal-secondary">
-              {displayYesProb.toFixed(0)}%
+            >
+              {market.categoryIcon} {market.categoryName}
             </span>
-          </div>
-          <div className="text-lg font-bold font-mono text-status-success">
-            ${displayYesPrice.toFixed(2)}
-          </div>
-        </button>
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleBet('NO');
-          }}
-          className={clsx(
-            'flex-1 flex flex-col justify-between p-3 rounded-lg border transition-all',
-            'hover:border-status-danger/50',
-            selectedOutcome === 'NO'
-              ? 'bg-status-danger/10 border-status-danger'
-              : 'bg-terminal-bg border-terminal-border'
-          )}
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-terminal-text-muted uppercase">NO</span>
-            <span className="text-[10px] font-mono text-terminal-secondary">
-              {displayNoProb.toFixed(0)}%
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">
+                {demoEnabled
+                  ? displayStability >= 70 ? 'Stable' : displayStability >= 50 ? 'Degraded' : 'Critical'
+                  : market.stabilityStatus}
+              </span>
+              <div className="w-10 h-1.5 bg-terminal-bg rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${stabilityPercent}%`,
+                    backgroundColor: stabilityColor.color,
+                  }}
+                />
+              </div>
+            </div>
           </div>
-          <div className="text-lg font-bold font-mono text-status-danger">
-            ${displayNoPrice.toFixed(2)}
-          </div>
-        </button>
-      </div>
 
-      {/* Bet Amount Slider (shown when outcome selected) */}
-      {selectedOutcome && (
-        <div className="mb-4 p-3 bg-terminal-bg rounded-lg border border-terminal-border">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-terminal-text-muted uppercase">Bet Amount</span>
-            <span className="text-sm font-mono text-terminal-text">${betAmount.toFixed(2)}</span>
-          </div>
-          <input
-            type="range"
-            min="1"
-            max="100"
-            value={betAmount}
-            onChange={(e) => setBetAmount(Number(e.target.value))}
-            onClick={(e) => e.stopPropagation()}
-            className="w-full h-1.5 bg-terminal-panel rounded-full appearance-none cursor-pointer"
-            style={{
-              background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${betAmount}%, #363A40 ${betAmount}%, #363A40 100%)`,
-            }}
-          />
-          <div className="flex justify-between mt-1">
+          {/* Title */}
+          <h3 className="text-sm font-semibold text-terminal-text mb-4 line-clamp-2 leading-snug">
+            {market.title}
+          </h3>
+
+          {/* Betting UI - Outcomes */}
+          <div className="flex gap-2 mb-4">
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setBetAmount(Math.max(1, betAmount - 10));
+                handleBet('YES');
               }}
-              className="text-[10px] text-terminal-text-muted hover:text-terminal-text"
+              className="flex-1 flex flex-col justify-between p-3 rounded-lg border transition-all hover:border-status-success/50 bg-terminal-bg border-terminal-border"
             >
-              -10
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold text-terminal-text-muted uppercase">YES</span>
+                <span className="text-[10px] font-mono text-terminal-secondary">
+                  {displayYesProb.toFixed(0)}%
+                </span>
+              </div>
+              <div className="text-lg font-bold font-mono text-status-success">
+                ${displayYesPrice.toFixed(2)}
+              </div>
             </button>
+
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setBetAmount(Math.min(100, betAmount + 10));
+                handleBet('NO');
               }}
-              className="text-[10px] text-terminal-text-muted hover:text-terminal-text"
+              className="flex-1 flex flex-col justify-between p-3 rounded-lg border transition-all hover:border-status-danger/50 bg-terminal-bg border-terminal-border"
             >
-              +10
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold text-terminal-text-muted uppercase">NO</span>
+                <span className="text-[10px] font-mono text-terminal-secondary">
+                  {displayNoProb.toFixed(0)}%
+                </span>
+              </div>
+              <div className="text-lg font-bold font-mono text-status-danger">
+                ${displayNoPrice.toFixed(2)}
+              </div>
             </button>
           </div>
-          <div className="mt-2 text-center">
-            <span className="text-xs text-terminal-text-muted">
-              Potential payout: <span className="text-status-success font-mono font-bold">${potentialPayout.toFixed(2)}</span>
-            </span>
+
+          {/* Footer Metrics */}
+          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-terminal-border">
+            <div className="flex flex-col">
+              <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">Liquidity</span>
+              <span className="text-xs font-mono font-medium text-terminal-secondary">
+                {formatCurrency(market.liquidity)}
+              </span>
+            </div>
+
+            <div className="flex flex-col">
+              <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">Fork In</span>
+              <span className="text-xs font-mono font-medium text-terminal-secondary flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatTimeRemaining(market.nextForkEtaSec)}
+              </span>
+            </div>
+
+            <div className="flex flex-col">
+              <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">Gap</span>
+              <span
+                className={clsx(
+                  'text-xs font-mono font-medium flex items-center gap-1',
+                  gapStyles.class === 'danger' && 'text-status-danger',
+                  gapStyles.class === 'warning' && 'text-status-warning',
+                  !gapStyles.class && 'text-terminal-secondary'
+                )}
+              >
+                <AlertTriangle className="w-3 h-3" />
+                {market.gap.toFixed(1)}%
+              </span>
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* Footer Metrics */}
-      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-terminal-border">
-        <div className="flex flex-col">
-          <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">Liquidity</span>
-          <span className="text-xs font-mono font-medium text-terminal-secondary">
-            {formatCurrency(market.liquidity)}
-          </span>
-        </div>
-
-        <div className="flex flex-col">
-          <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">Fork In</span>
-          <span className="text-xs font-mono font-medium text-terminal-secondary flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {formatTimeRemaining(market.nextForkEtaSec)}
-          </span>
-        </div>
-
-        <div className="flex flex-col">
-          <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">Gap</span>
-          <span
+          {/* Hover Arrow */}
+          <div
             className={clsx(
-              'text-xs font-mono font-medium flex items-center gap-1',
-              gapStyles.class === 'danger' && 'text-status-danger',
-              gapStyles.class === 'warning' && 'text-status-warning',
-              !gapStyles.class && 'text-terminal-secondary'
+              'absolute top-4 right-4 transition-all duration-200',
+              isHovered && !isFlipped ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
             )}
           >
-            <AlertTriangle className="w-3 h-3" />
-            {market.gap.toFixed(1)}%
-          </span>
+            <ChevronRight className="w-5 h-5 text-status-info" />
+          </div>
         </div>
-      </div>
 
-      {/* Hover Arrow */}
-      <div
-        className={clsx(
-          'absolute top-4 right-4 transition-all duration-200',
-          isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
-        )}
-      >
-        <ChevronRight className="w-5 h-5 text-status-info" />
+        {/* ══════════════ BACK FACE (Bet Form) ══════════════ */}
+        <div
+          className="card-flip-back bg-terminal-panel border border-terminal-border rounded-xl p-4 flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Back header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span
+                className={clsx(
+                  'px-3 py-1 rounded-lg text-xs font-bold uppercase border',
+                  selectedOutcome === 'YES'
+                    ? 'bg-status-success/15 border-status-success/40 text-status-success'
+                    : 'bg-status-danger/15 border-status-danger/40 text-status-danger'
+                )}
+              >
+                {selectedOutcome}
+              </span>
+              <span className="text-xs text-terminal-text-muted">on</span>
+            </div>
+            <button
+              onClick={handleCancel}
+              className="p-1.5 rounded-lg hover:bg-terminal-card text-terminal-text-muted hover:text-terminal-text transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Market title */}
+          <h3 className="text-sm font-semibold text-terminal-text mb-4 line-clamp-2 leading-snug">
+            {market.title}
+          </h3>
+
+          {/* Bet amount */}
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="p-3 bg-terminal-bg rounded-lg border border-terminal-border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">Bet Amount</span>
+                <span className="text-sm font-mono font-bold text-terminal-text">${betAmount.toFixed(2)}</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="100"
+                value={betAmount}
+                onChange={(e) => setBetAmount(Number(e.target.value))}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, ${selectedOutcome === 'YES' ? '#4ADE80' : '#FB7185'} 0%, ${selectedOutcome === 'YES' ? '#4ADE80' : '#FB7185'} ${betAmount}%, rgba(255,255,255,0.1) ${betAmount}%, rgba(255,255,255,0.1) 100%)`,
+                }}
+              />
+              <div className="flex justify-between mt-1.5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setBetAmount(Math.max(1, betAmount - 10));
+                  }}
+                  className="text-[10px] text-terminal-text-muted hover:text-terminal-text transition-colors"
+                >
+                  −10
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setBetAmount(Math.min(100, betAmount + 10));
+                  }}
+                  className="text-[10px] text-terminal-text-muted hover:text-terminal-text transition-colors"
+                >
+                  +10
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Payout + actions */}
+          <div className="mt-3 pt-3 border-t border-terminal-border">
+            <div className="text-center mb-3">
+              <span className="text-xs text-terminal-text-muted">Potential payout: </span>
+              <span className="text-sm font-mono font-bold text-echelon-green">
+                ${potentialPayout.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCancel}
+                className="flex-1 py-2 rounded-lg border border-terminal-border text-xs font-semibold text-terminal-text-secondary hover:bg-terminal-card transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // In a real app this would submit the bet
+                  setSelectedOutcome(null);
+                }}
+                className={clsx(
+                  'flex-1 py-2 rounded-lg border text-xs font-bold transition-colors',
+                  selectedOutcome === 'YES'
+                    ? 'bg-status-success/15 border-status-success/40 text-status-success hover:bg-status-success/25'
+                    : 'bg-status-danger/15 border-status-danger/40 text-status-danger hover:bg-status-danger/25'
+                )}
+              >
+                Confirm {selectedOutcome}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Demo Bet Modal */}

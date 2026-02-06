@@ -17,38 +17,38 @@ export interface BreachListProps {
 type SortOption = 'newest' | 'severity' | 'category';
 
 /**
- * Get severity badge color
+ * Get severity badge classes
  */
-function getSeverityColor(severity: BreachSeverity): string {
+function getSeverityClasses(severity: BreachSeverity): { bg: string; text: string; border: string; pulse: string } {
   switch (severity) {
     case 'critical':
-      return '#FF3B3B'; // red
+      return { bg: 'bg-echelon-red/20', text: 'text-echelon-red', border: 'border-echelon-red', pulse: 'animate-pulse' };
     case 'high':
-      return '#FF6B00'; // orange
+      return { bg: 'bg-agent-degen/20', text: 'text-agent-degen', border: 'border-agent-degen', pulse: '' };
     case 'medium':
-      return '#FF9500'; // amber
+      return { bg: 'bg-echelon-amber/20', text: 'text-echelon-amber', border: 'border-echelon-amber', pulse: '' };
     case 'low':
-      return '#666666'; // grey
+      return { bg: 'bg-terminal-text-muted/10', text: 'text-terminal-text-muted', border: 'border-terminal-border', pulse: '' };
   }
 }
 
 /**
- * Get category badge color
+ * Get category badge classes
  */
-function getCategoryColor(category: Breach['category']): { bg: string; text: string; pulse?: boolean } {
+function getCategoryClasses(category: Breach['category']): { bg: string; text: string; pulse: string } {
   switch (category) {
     case 'logic_gap_spike':
-      return { bg: '#FF9500', text: '#FF9500' }; // amber
+      return { bg: 'bg-echelon-amber/15', text: 'text-echelon-amber', pulse: '' };
     case 'sensor_contradiction':
-      return { bg: '#9932CC', text: '#9932CC' }; // purple
+      return { bg: 'bg-status-paradox/15', text: 'text-status-paradox', pulse: '' };
     case 'sabotage_cluster':
-      return { bg: '#FF3B3B', text: '#FF3B3B' }; // red
+      return { bg: 'bg-echelon-red/15', text: 'text-echelon-red', pulse: '' };
     case 'oracle_flip':
-      return { bg: '#22D3EE', text: '#22D3EE' }; // cyan
+      return { bg: 'bg-echelon-cyan/15', text: 'text-echelon-cyan', pulse: '' };
     case 'stability_collapse':
-      return { bg: '#FF6B00', text: '#FF6B00' }; // orange
+      return { bg: 'bg-agent-degen/15', text: 'text-agent-degen', pulse: '' };
     case 'paradox_detonation':
-      return { bg: '#FF3B3B', text: '#FF3B3B', pulse: true }; // red pulsing
+      return { bg: 'bg-echelon-red/15', text: 'text-echelon-red', pulse: 'animate-pulse' };
   }
 }
 
@@ -292,10 +292,10 @@ export function BreachList({
       </div>
 
       {/* Breach Cards List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin scrollbar-thumb-terminal-border scrollbar-track-transparent">
         {sortedBreaches.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
+            <CheckCircle className="w-16 h-16 text-echelon-green mb-4" />
             <h3 className="text-lg font-semibold text-terminal-text mb-2">
               No breaches detected
             </h3>
@@ -305,10 +305,9 @@ export function BreachList({
           </div>
         ) : (
           sortedBreaches.map((breach) => {
-            const severityColor = getSeverityColor(breach.severity);
-            const categoryColors = getCategoryColor(breach.category);
+            const severity = getSeverityClasses(breach.severity);
+            const category = getCategoryClasses(breach.category);
             const isSelected = selectedBreachId === breach.id;
-            const isCritical = breach.severity === 'critical';
 
             return (
               <div
@@ -316,15 +315,12 @@ export function BreachList({
                 onClick={() => onBreachClick(breach.id)}
                 className={`
                   relative bg-terminal-panel rounded border p-3 cursor-pointer transition
-                  ${isSelected ? 'border-echelon-cyan' : 'border-terminal-border hover:border-terminal-border'}
+                  ${isSelected ? 'border-echelon-cyan' : 'border-terminal-border hover:border-terminal-border-light'}
                 `}
               >
                 {/* Severity color bar (left edge) */}
                 <div
-                  className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${
-                    isCritical ? 'animate-pulse' : ''
-                  }`}
-                  style={{ backgroundColor: severityColor }}
+                  className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${severity.bg} ${severity.pulse}`}
                 />
 
                 <div className="ml-3 flex items-start justify-between gap-4">
@@ -335,13 +331,7 @@ export function BreachList({
                         {breach.title}
                       </h4>
                       <span
-                        className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${
-                          categoryColors.pulse ? 'animate-pulse' : ''
-                        }`}
-                        style={{
-                          backgroundColor: `${categoryColors.bg}20`,
-                          color: categoryColors.text,
-                        }}
+                        className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${category.bg} ${category.text} ${category.pulse}`}
                       >
                         {formatCategory(breach.category)}
                       </span>
@@ -360,12 +350,7 @@ export function BreachList({
                   {/* Right Section: Status Badge */}
                   <div className="flex-shrink-0">
                     <span
-                      className="px-2 py-0.5 rounded text-xs font-semibold uppercase"
-                      style={{
-                        backgroundColor: `${severityColor}20`,
-                        color: severityColor,
-                        border: `1px solid ${severityColor}`,
-                      }}
+                      className={`px-2 py-0.5 rounded border text-xs font-semibold uppercase ${severity.bg} ${severity.text} ${severity.border}`}
                     >
                       {breach.status}
                     </span>
