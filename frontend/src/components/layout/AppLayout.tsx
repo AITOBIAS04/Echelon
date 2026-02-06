@@ -16,7 +16,7 @@ export function AppLayout() {
         <RlmfUiProvider>
           <DemoEngine>
             <DemoToastHost />
-            <div className="h-[100dvh] w-screen flex overflow-hidden bg-terminal-bg">
+            <div className="h-[100dvh] w-screen flex overflow-hidden bg-terminal-bg canary-active">
               {/* Persistent left sidebar */}
               <Sidebar />
 
