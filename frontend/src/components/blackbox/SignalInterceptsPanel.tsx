@@ -8,10 +8,10 @@ interface SignalInterceptsPanelProps {
 }
 
 const SEVERITY_STYLES = {
-  critical: { bg: 'var(--status-danger-bg)', border: 'var(--status-danger)', text: 'var(--status-danger)' },
-  warning: { bg: 'var(--status-warning-bg)', border: 'var(--status-warning)', text: 'var(--status-warning)' },
-  info: { bg: 'var(--status-info-bg)', border: 'var(--status-info)', text: 'var(--status-info)' },
-  success: { bg: 'var(--status-success-bg)', border: 'var(--status-success)', text: 'var(--status-success)' },
+  critical: { bg: 'rgba(251, 113, 133, 0.15)', border: '#FB7185', text: '#FB7185' },
+  warning: { bg: 'rgba(251, 191, 36, 0.15)', border: '#FBBF24', text: '#FBBF24' },
+  info: { bg: 'rgba(59, 130, 246, 0.15)', border: '#3B82F6', text: '#3B82F6' },
+  success: { bg: 'rgba(74, 222, 128, 0.15)', border: '#4ADE80', text: '#4ADE80' },
 };
 
 export function SignalInterceptsPanel({ intercepts }: SignalInterceptsPanelProps) {
@@ -20,94 +20,64 @@ export function SignalInterceptsPanel({ intercepts }: SignalInterceptsPanelProps
   };
 
   return (
-    <div className="panel" style={{ flex: 1, minHeight: 0 }}>
-      <div className="panel-header">
-        <span className="panel-title">SIGNAL INTERCEPTS</span>
-        <span
-          style={{
-            fontSize: 9,
-            padding: '2px 6px',
-            background: 'var(--status-danger-bg)',
-            color: 'var(--status-danger)',
-            borderRadius: 4,
-            fontWeight: 600,
-          }}
-        >
+    <div className="rounded-2xl border border-[#26292E] bg-[#0F1113] flex flex-col min-h-0">
+      {/* Card Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#26292E]">
+        <span className="text-sm font-semibold text-[#F1F5F9]">SIGNAL INTERCEPTS</span>
+        <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-[rgba(251,113,133,0.15)] text-[#FB7185] rounded">
           LIVE
         </span>
       </div>
-      <div className="intercepts-panel" style={{ flex: 1, overflow: 'auto', padding: 8 }}>
-        {intercepts.map((intercept) => {
-          const style = SEVERITY_STYLES[intercept.severity];
-          const iconBg = style.bg;
 
-          return (
-            <div
-              key={intercept.id}
-              className="intercept-item"
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-                padding: 10,
-                borderRadius: 'var(--radius-md)',
-                marginBottom: 4,
-                borderLeft: `3px solid ${style.border}`,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-            >
+      {/* Intercepts List */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+        <div className="p-2 space-y-2">
+          {intercepts.map((intercept) => {
+            const style = SEVERITY_STYLES[intercept.severity];
+
+            return (
               <div
-                className="intercept-icon"
+                key={intercept.id}
+                className="flex items-start gap-2.5 p-2.5 rounded-lg border-l-2 cursor-pointer hover:bg-[#1A1D23] transition-colors"
                 style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 14,
-                  flexShrink: 0,
-                  background: iconBg,
+                  borderLeftColor: style.border,
+                  background: style.bg,
                 }}
               >
-                {intercept.icon}
-              </div>
-              <div className="intercept-content" style={{ flex: 1, minWidth: 0 }}>
+                {/* Icon */}
                 <div
-                  className="intercept-header"
-                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}
+                  className="w-7 h-7 rounded flex items-center justify-center text-sm flex-shrink-0"
+                  style={{ background: style.bg }}
                 >
-                  <span className="intercept-title" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {intercept.title}
-                  </span>
-                  <span className="intercept-time mono" style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-                    {formatTime(intercept.timestamp)}
-                  </span>
+                  {intercept.icon}
                 </div>
-                <div className="intercept-details" style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>
-                  {intercept.details}
-                </div>
-                <div className="intercept-meta" style={{ display: 'flex', gap: 8, marginTop: 4, fontSize: 9, color: 'var(--text-muted)' }}>
-                  <span>Source: {intercept.source}</span>
-                  <span
-                    className="intercept-tag"
-                    style={{
-                      padding: '1px 5px',
-                      background: 'var(--bg-app)',
-                      borderRadius: 3,
-                      textTransform: 'uppercase',
-                      fontWeight: 600,
-                      color: style.text,
-                    }}
-                  >
-                    {intercept.severity}
-                  </span>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-xs font-semibold text-[#F1F5F9]">{intercept.title}</span>
+                    <span className="text-[10px] font-mono text-[#64748B] flex-shrink-0">
+                      {formatTime(intercept.timestamp)}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-[#94A3B8] mt-0.5">{intercept.details}</div>
+                  <div className="flex items-center gap-2 mt-1.5 text-[9px] text-[#64748B]">
+                    <span>Source: {intercept.source}</span>
+                    <span
+                      className="px-1 py-0.5 rounded font-semibold uppercase"
+                      style={{
+                        background: 'rgba(15, 17, 19, 0.5)',
+                        color: style.text,
+                      }}
+                    >
+                      {intercept.severity}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

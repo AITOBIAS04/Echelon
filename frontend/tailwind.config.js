@@ -25,16 +25,34 @@ export default {
           '200': '#E5E7EB', // High contrast text
           '100': '#F3F4F6', // brightest text
         },
-        // Professional trading terminal palette (BullX-style) - cool grey scheme
+        // Glassmorphism System (New Deck Aligned)
+        'glass': {
+          'bg': '#030305',      // Deep Charcoal Background
+          'card': 'rgba(255, 255, 255, 0.03)', // Semi-transparent card
+          'border': 'rgba(255, 255, 255, 0.1)', // Razor-thin border
+          'border-light': 'rgba(255, 255, 255, 0.2)',
+          'text': '#F3F4F6',
+          'text-secondary': '#9CA3AF',
+          'text-muted': '#6B7280',
+        },
+        // Signal System (Functional Meaning)
+        'signal': {
+          'action': '#3B82F6',   // Electric Blue (Primary Actions)
+          'success': '#10B981',  // Emerald Green (Profit/Success)
+          'risk': '#F59E0B',     // Amber (Risk)
+          'sabotage': '#EF4444', // Red (Sabotage/Danger)
+          'muted': '#6B7280',    // Grey (Secondary/Borders)
+        },
+        // Professional trading terminal palette (Legacy compatibility mapped to new style)
         'terminal': {
-          'bg': '#1A1D21',      // Cool grey main background (slate-800)
-          'panel': '#151719',   // Panel backgrounds (slate-850)
-          'card': '#121417',    // Card surfaces (slate-900)
-          'border': '#26292E',  // Borders (slate-750)
-          'border-light': '#363A40',  // Hover states (slate-700)
-          'text': '#F1F5F9',    // Primary text
-          'text-secondary': '#94A3B8',  // Secondary text
-          'text-muted': '#64748B',  // Muted text
+          'bg': '#030305',      // Deep Charcoal
+          'panel': 'rgba(255, 255, 255, 0.03)',
+          'card': 'rgba(255, 255, 255, 0.03)',
+          'border': 'rgba(255, 255, 255, 0.1)',
+          'border-light': 'rgba(255, 255, 255, 0.2)',
+          'text': '#F3F4F6',    // Primary text
+          'text-secondary': '#9CA3AF',  // Secondary text
+          'text-muted': '#6B7280',  // Muted text
         },
         // Functional colours (muted, not neon)
         'status': {

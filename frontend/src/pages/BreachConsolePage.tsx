@@ -106,16 +106,7 @@ export function BreachConsolePage() {
   };
 
   return (
-    <div className="h-full flex flex-col gap-4">
-      <div className="flex items-center justify-between flex-shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-terminal-text uppercase tracking-wide">Breach Console</h1>
-          <p className="text-sm text-terminal-text-secondary mt-1">
-            Monitor and respond to active breaches across all theatres
-          </p>
-        </div>
-      </div>
-
+    <div className="h-full flex flex-col gap-4 pt-4">
       {/* Active + metrics */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 min-h-0">
         {/* Active breaches */}
