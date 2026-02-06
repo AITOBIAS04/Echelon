@@ -1,11 +1,14 @@
 /**
  * Centralized theme utility for Agents page colors.
  * Uses static Tailwind class strings to prevent purging in production builds.
- * 
+ *
  * Color mappings based on tailwind.config.js theme:
  * - Agent archetypes map to: emerald (WHALE), blue (DIPLOMAT), amber (SABOTEUR), rose (SHARK), purple (SPY)
  * - Sanity status maps to: emerald (STABLE), amber (STRESSED), rose (CRITICAL), red (BREAKDOWN)
  */
+
+import type { ComponentType } from 'react';
+import { Anchor, Shield, Flame, Crosshair, Eye, Bot } from 'lucide-react';
 
 // ============================================================================
 // Archetype Theme Mapping
@@ -14,7 +17,9 @@
 export type Archetype = 'WHALE' | 'DIPLOMAT' | 'SABOTEUR' | 'SHARK' | 'SPY' | string;
 
 export interface ArchetypeTheme {
-  /** Emoji icon for the archetype */
+  /** Lucide icon component for the archetype */
+  icon: ComponentType<{ className?: string }>;
+  /** @deprecated Use `icon` instead */
   emoji: string;
   /** Text color class for labels */
   textClass: string;
@@ -24,8 +29,10 @@ export interface ArchetypeTheme {
   bgClass: string;
   /** Hover border color class */
   hoverBorderClass: string;
-  /** Icon component name for clusters */
+  /** Icon component name (matches Lucide export name) */
   iconName: string;
+  /** Short description of the archetype's role */
+  description: string;
 }
 
 /**
@@ -38,57 +45,69 @@ export const getArchetypeTheme = (archetype: Archetype): ArchetypeTheme => {
   switch (normalizedArchetype) {
     case 'WHALE':
       return {
+        icon: Anchor,
         emoji: '🐋',
         textClass: 'text-emerald-400',
         borderClass: 'border-emerald-500/30',
         bgClass: 'bg-emerald-500/10',
         hoverBorderClass: 'hover:border-emerald-400/50',
-        iconName: 'Whale',
+        iconName: 'Anchor',
+        description: 'Deep-capital market mover with high liquidity influence',
       };
     case 'DIPLOMAT':
       return {
+        icon: Shield,
         emoji: '🤝',
         textClass: 'text-blue-400',
         borderClass: 'border-blue-500/30',
         bgClass: 'bg-blue-500/10',
         hoverBorderClass: 'hover:border-blue-400/50',
-        iconName: 'Users',
+        iconName: 'Shield',
+        description: 'Stability-focused agent that mediates cross-timeline conflicts',
       };
     case 'SABOTEUR':
       return {
+        icon: Flame,
         emoji: '💣',
         textClass: 'text-amber-400',
         borderClass: 'border-amber-500/30',
         bgClass: 'bg-amber-500/10',
         hoverBorderClass: 'hover:border-amber-400/50',
-        iconName: 'Zap',
+        iconName: 'Flame',
+        description: 'Adversarial agent that exploits logic gaps and destabilises markets',
       };
     case 'SHARK':
       return {
+        icon: Crosshair,
         emoji: '🦈',
         textClass: 'text-rose-400',
         borderClass: 'border-rose-500/30',
         bgClass: 'bg-rose-500/10',
         hoverBorderClass: 'hover:border-rose-400/50',
-        iconName: 'Target',
+        iconName: 'Crosshair',
+        description: 'High-volatility precision trader targeting price dislocations',
       };
     case 'SPY':
       return {
+        icon: Eye,
         emoji: '🕵️',
         textClass: 'text-purple-400',
         borderClass: 'border-purple-500/30',
         bgClass: 'bg-purple-500/10',
         hoverBorderClass: 'hover:border-purple-400/50',
-        iconName: 'Search',
+        iconName: 'Eye',
+        description: 'Intelligence gatherer specialising in OSINT and signal interception',
       };
     default:
       return {
+        icon: Bot,
         emoji: '🤖',
         textClass: 'text-slate-400',
         borderClass: 'border-slate-500/30',
         bgClass: 'bg-slate-500/10',
         hoverBorderClass: 'hover:border-slate-400/50',
-        iconName: 'User',
+        iconName: 'Bot',
+        description: 'General-purpose autonomous market agent',
       };
   }
 };
@@ -164,7 +183,9 @@ export const getSanityTheme = (sanityPercent: number): SanityTheme => {
 export type ActivityLevel = 'high' | 'medium' | 'low';
 
 export interface TheatreTheme {
-  /** Activity indicator emoji */
+  /** Activity indicator icon name (Lucide) */
+  indicatorIcon: 'Flame' | 'AlertCircle' | 'CheckCircle';
+  /** @deprecated Use indicatorIcon */
   indicator: string;
   /** Border color class */
   borderClass: string;
@@ -181,6 +202,7 @@ export const getTheatreTheme = (activity: ActivityLevel): TheatreTheme => {
   switch (activity) {
     case 'high':
       return {
+        indicatorIcon: 'Flame',
         indicator: '🔥',
         borderClass: 'border-rose-500/50',
         bgClass: 'bg-rose-500/10',
@@ -188,6 +210,7 @@ export const getTheatreTheme = (activity: ActivityLevel): TheatreTheme => {
       };
     case 'medium':
       return {
+        indicatorIcon: 'AlertCircle',
         indicator: '🟡',
         borderClass: 'border-amber-500/50',
         bgClass: 'bg-amber-500/10',
@@ -195,6 +218,7 @@ export const getTheatreTheme = (activity: ActivityLevel): TheatreTheme => {
       };
     case 'low':
       return {
+        indicatorIcon: 'CheckCircle',
         indicator: '🟢',
         borderClass: 'border-emerald-500/50',
         bgClass: 'bg-emerald-500/10',
@@ -202,6 +226,7 @@ export const getTheatreTheme = (activity: ActivityLevel): TheatreTheme => {
       };
     default:
       return {
+        indicatorIcon: 'CheckCircle',
         indicator: '🟢',
         borderClass: 'border-slate-500/50',
         bgClass: 'bg-slate-500/10',
@@ -286,8 +311,10 @@ export const getVelocityTheme = (velocity: string): VelocityTheme => {
 export type ConflictSeverity = 'high' | 'medium' | 'low';
 
 export interface ConflictTheme {
-  /** Severity badge text */
+  /** Severity badge text (no emoji) */
   badge: string;
+  /** Severity badge icon name (Lucide) */
+  badgeIcon: 'AlertTriangle' | 'AlertCircle' | 'CheckCircle';
   /** Badge background color */
   badgeBgClass: string;
   /** Badge text color */
@@ -309,7 +336,8 @@ export const getConflictTheme = (severity: ConflictSeverity, impact: number): Co
   switch (severity) {
     case 'high':
       return {
-        badge: '⚠️ HIGH IMPACT',
+        badge: 'HIGH IMPACT',
+        badgeIcon: 'AlertTriangle',
         badgeBgClass: 'bg-rose-500/20',
         badgeTextClass: 'text-rose-400',
         borderClass: 'border-rose-500/50',
@@ -318,7 +346,8 @@ export const getConflictTheme = (severity: ConflictSeverity, impact: number): Co
       };
     case 'medium':
       return {
-        badge: '🟡 MEDIUM',
+        badge: 'MEDIUM',
+        badgeIcon: 'AlertCircle',
         badgeBgClass: 'bg-amber-500/20',
         badgeTextClass: 'text-amber-400',
         borderClass: 'border-amber-500/50',
@@ -327,7 +356,8 @@ export const getConflictTheme = (severity: ConflictSeverity, impact: number): Co
       };
     case 'low':
       return {
-        badge: '🟢 LOW',
+        badge: 'LOW',
+        badgeIcon: 'CheckCircle',
         badgeBgClass: 'bg-emerald-500/20',
         badgeTextClass: 'text-emerald-400',
         borderClass: 'border-emerald-500/50',
@@ -337,6 +367,7 @@ export const getConflictTheme = (severity: ConflictSeverity, impact: number): Co
     default:
       return {
         badge: '•',
+        badgeIcon: 'CheckCircle',
         badgeBgClass: 'bg-slate-500/20',
         badgeTextClass: 'text-slate-400',
         borderClass: 'border-slate-500/50',
