@@ -5,7 +5,7 @@ export function ButlerWidget() {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[45]">
+    <div className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[100]">
       {/* Expanded Panel */}
       {isExpanded && (
         <div className="mb-4 w-80 bg-[#0D0D0D] border border-purple-500/50 rounded-lg shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-200">

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Database, ExternalLink } from 'lucide-react';
 import type { LaunchCard } from '../../types/launchpad';
+import { PHASE_COLORS, CATEGORY_COLORS, getQualityColor } from '../../constants/launchpad';
 
 /**
  * LaunchCardMini Props
@@ -11,45 +12,6 @@ export interface LaunchCardMiniProps {
 }
 
 /**
- * Get phase badge color and label
- */
-function getPhaseBadge(phase: LaunchCard['phase']): { bg: string; text: string; label: string } {
-  switch (phase) {
-    case 'draft':
-      return { bg: '#64748B', text: '#FFFFFF', label: 'DRAFT' };
-    case 'sandbox':
-      return { bg: '#F59E0B', text: '#FFFFFF', label: 'SANDBOX' };
-    case 'pilot':
-      return { bg: '#3B82F6', text: '#FFFFFF', label: 'PILOT' };
-    case 'graduated':
-      return { bg: '#10B981', text: '#FFFFFF', label: 'GRADUATED' };
-    case 'failed':
-      return { bg: '#EF4444', text: '#FFFFFF', label: 'FAILED' };
-  }
-}
-
-/**
- * Get category badge color
- */
-function getCategoryColor(category: LaunchCard['category']): string {
-  switch (category) {
-    case 'theatre':
-      return '#3B82F6';
-    case 'osint':
-      return '#8B5CF6';
-  }
-}
-
-/**
- * Get quality score color
- */
-function getQualityColor(score: number): string {
-  if (score >= 80) return '#10B981'; // emerald
-  if (score >= 60) return '#F59E0B'; // amber
-  return '#EF4444'; // crimson
-}
-
-/**
  * LaunchCardMini Component
  * 
  * Compact card displaying launch information with phase badge,
@@ -57,8 +19,8 @@ function getQualityColor(score: number): string {
  */
 export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
   const navigate = useNavigate();
-  const phaseBadge = getPhaseBadge(launch.phase);
-  const categoryColor = getCategoryColor(launch.category);
+  const phaseBadge = PHASE_COLORS[launch.phase];
+  const categoryColor = CATEGORY_COLORS[launch.category];
   const qualityColor = getQualityColor(launch.qualityScore);
 
   const handleView = (e: React.MouseEvent) => {
@@ -67,7 +29,7 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
   };
 
   return (
-    <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4 hover:border-[#333] transition">
+    <div className="bg-slate-900 border border-terminal-border rounded-lg p-4 hover:border-terminal-border-light transition">
       {/* Header Row */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
@@ -118,7 +80,7 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
             {launch.qualityScore}
           </span>
         </div>
-        <div className="w-full h-1.5 bg-[#1A1A1A] rounded-full overflow-hidden">
+        <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
           <div
             className="h-full transition-all"
             style={{

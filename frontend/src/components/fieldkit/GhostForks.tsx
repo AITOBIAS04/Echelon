@@ -284,11 +284,11 @@ export function GhostForks() {
       {/* Create Fork Modal */}
       {showCreateModal && (
         <div 
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-[300] p-4"
           onClick={() => setShowCreateModal(false)}
         >
           <div 
-            className="bg-terminal-panel border border-echelon-cyan/50 rounded-lg p-6 max-w-lg w-full"
+            className="bg-terminal-overlay border border-echelon-cyan/50 rounded-lg p-6 max-w-lg w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-echelon-cyan font-bold text-lg mb-4 flex items-center gap-2">

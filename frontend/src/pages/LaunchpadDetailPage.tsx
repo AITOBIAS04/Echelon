@@ -5,45 +5,7 @@ import { listLaunches } from '../api/launchpad';
 import { ReplayDrawer } from '../components/replay/ReplayDrawer';
 import type { LaunchCard } from '../types/launchpad';
 import type { ReplayPointer } from '../types/replay';
-
-/**
- * Get phase badge color and label
- */
-function getPhaseBadge(phase: LaunchCard['phase']): { bg: string; text: string; label: string } {
-  switch (phase) {
-    case 'draft':
-      return { bg: '#666666', text: '#FFFFFF', label: 'DRAFT' };
-    case 'sandbox':
-      return { bg: '#FF9500', text: '#FFFFFF', label: 'SANDBOX' };
-    case 'pilot':
-      return { bg: '#22D3EE', text: '#000000', label: 'PILOT' };
-    case 'graduated':
-      return { bg: '#00FF41', text: '#000000', label: 'GRADUATED' };
-    case 'failed':
-      return { bg: '#FF3B3B', text: '#FFFFFF', label: 'FAILED' };
-  }
-}
-
-/**
- * Get category badge color
- */
-function getCategoryColor(category: LaunchCard['category']): string {
-  switch (category) {
-    case 'theatre':
-      return '#22D3EE';
-    case 'osint':
-      return '#9932CC';
-  }
-}
-
-/**
- * Get quality score color
- */
-function getQualityColor(score: number): string {
-  if (score >= 80) return '#00FF41'; // green
-  if (score >= 60) return '#FF9500'; // amber
-  return '#FF3B3B'; // red
-}
+import { PHASE_COLORS, CATEGORY_COLORS, getQualityColor } from '../constants/launchpad';
 
 /**
  * Mock mapping of launch IDs to timeline IDs
@@ -170,8 +132,8 @@ export function LaunchpadDetailPage() {
     );
   }
 
-  const phaseBadge = getPhaseBadge(launch.phase);
-  const categoryColor = getCategoryColor(launch.category);
+  const phaseBadge = PHASE_COLORS[launch.phase];
+  const categoryColor = CATEGORY_COLORS[launch.category];
   const qualityColor = getQualityColor(launch.qualityScore);
   const canOpenMarket = launch.phase === 'graduated' && launchToTimelineMap[launch.id];
 
@@ -201,7 +163,7 @@ export function LaunchpadDetailPage() {
               {launch.category.toUpperCase()}
             </span>
             {launch.exportEligible && (
-              <span className="flex items-center gap-1 text-xs text-[#22D3EE]">
+              <span className="flex items-center gap-1 text-xs text-echelon-cyan">
                 <Database className="w-3 h-3" />
                 EXPORT ELIGIBLE
               </span>
@@ -229,7 +191,7 @@ export function LaunchpadDetailPage() {
             </span>
             <span className="text-sm text-terminal-text-muted">/ 100</span>
           </div>
-          <div className="w-full h-2 bg-[#1A1A1A] rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full transition-all"
               style={{
@@ -313,7 +275,7 @@ export function LaunchpadDetailPage() {
           disabled={!canOpenMarket}
           className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold rounded transition ${
             canOpenMarket
-              ? 'bg-[#22D3EE]/20 border border-[#22D3EE] text-[#22D3EE] hover:bg-[#22D3EE]/30'
+              ? 'bg-echelon-cyan/20 border border-echelon-cyan text-echelon-cyan hover:bg-echelon-cyan/30'
               : 'bg-terminal-bg border border-terminal-border text-terminal-text-muted cursor-not-allowed'
           }`}
         >
@@ -322,7 +284,7 @@ export function LaunchpadDetailPage() {
         </button>
         <button
           onClick={handleViewReplay}
-          className="flex items-center gap-2 px-6 py-3 text-sm font-semibold bg-terminal-bg border border-terminal-border rounded hover:border-[#22D3EE] hover:text-[#22D3EE] transition"
+          className="flex items-center gap-2 px-6 py-3 text-sm font-semibold bg-terminal-bg border border-terminal-border rounded hover:border-echelon-cyan hover:text-echelon-cyan transition"
         >
           <Play className="w-4 h-4" />
           VIEW REPLAY

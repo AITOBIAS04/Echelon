@@ -190,12 +190,12 @@ export function TaskForce() {
       {showCreateModal && (
         <>
           <div
-            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[9990]"
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[300]"
             onClick={() => setShowCreateModal(false)}
           />
           {/* Single scroll container (iOS-friendly) */}
           <div
-            className="fixed inset-0 z-[9995] overflow-y-scroll overscroll-contain p-4"
+            className="fixed inset-0 z-[310] overflow-y-scroll overscroll-contain p-4"
             style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
           >
             <div className="min-h-full flex items-start justify-center py-8">

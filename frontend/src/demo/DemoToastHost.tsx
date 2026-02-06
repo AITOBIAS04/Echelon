@@ -12,7 +12,7 @@ export function DemoToastHost() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed right-4 top-4 z-[100] flex w-[320px] flex-col gap-2">
+    <div className="fixed right-4 top-4 z-[500] flex w-[320px] flex-col gap-2">
       {toasts.map((t) => (
         <div
           key={t.id}

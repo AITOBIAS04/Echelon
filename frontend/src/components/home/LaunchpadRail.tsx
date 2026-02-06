@@ -64,7 +64,7 @@ export function LaunchpadRail({ hideCreateCard = false }: LaunchpadRailProps) {
       {/* Trending Launches */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-4 h-4 text-[#22D3EE]" />
+          <Sparkles className="w-4 h-4 text-echelon-cyan" />
           <h2 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">
             Trending Launches
           </h2>
@@ -91,7 +91,7 @@ export function LaunchpadRail({ hideCreateCard = false }: LaunchpadRailProps) {
           </h2>
         </div>
         {feed.drafts.length === 0 ? (
-          <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-8 text-center">
+          <div className="bg-slate-900 border border-terminal-border rounded-lg p-8 text-center">
             <FileText className="w-12 h-12 text-terminal-text-muted mx-auto mb-3 opacity-50" />
             <p className="text-sm text-terminal-text-muted mb-2">No drafts yet</p>
             <p className="text-xs text-terminal-text-muted">
@@ -110,7 +110,7 @@ export function LaunchpadRail({ hideCreateCard = false }: LaunchpadRailProps) {
       {/* Recently Graduated */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-4 h-4 rounded-full bg-[#00FF41] opacity-50" />
+          <div className="w-4 h-4 rounded-full bg-status-success opacity-50" />
           <h2 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">
             Recently Graduated
           </h2>
