@@ -78,29 +78,44 @@ export function LaunchpadPage() {
   ];
 
   return (
-    <div className="h-full flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <div>
-            {/* Launchpad header removed - clean slate */}
+    <div className="h-full flex flex-col gap-4 p-4">
+      {/* Hero Banner */}
+      <div className="relative overflow-hidden rounded-xl border border-terminal-border bg-gradient-to-r from-terminal-panel via-echelon-cyan/[0.03] to-terminal-panel p-5 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-2.5 h-2.5 rounded-full bg-echelon-cyan animate-pulse-slow shadow-glow-cyan" />
+            <div>
+              <h1 className="page-title">Launch Terminal</h1>
+              <p className="text-xs text-terminal-text-muted mt-1">Deploy, monitor, and scale prediction timelines</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="data-label">Active</span>
+              <span className="data-value text-sm">{sortedLaunches.length}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="data-label">Feed</span>
+              <span className="data-value text-sm">{demoEnabled ? liveFeed.length : 0}</span>
+            </div>
           </div>
         </div>
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-echelon-cyan/20 to-transparent" />
       </div>
 
       {/* Live launches feed */}
-      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+      <div className="terminal-panel p-4 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Rocket className="w-4 h-4 text-status-entropy" />
-            <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">Live Launches</h3>
+            <span className="section-title-accented">Live Launches</span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded border border-terminal-border bg-terminal-card text-terminal-text-muted">
               {demoEnabled ? "Live feed" : "Preview"}
             </span>
           </div>
         </div>
 
-        <div className="max-h-[220px] overflow-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent space-y-2 pr-1">
+        <div className="max-h-[180px] overflow-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent space-y-2 pr-1">
           {(demoEnabled ? liveFeed : []).slice(0, 10).map((it: any) => {
             const icon =
               it.kind === "launch" ? <Rocket className="w-4 h-4 text-status-success" /> :
@@ -125,7 +140,7 @@ export function LaunchpadPage() {
                     onClick={() => {
                       demoStore.pushToast("Shield injected", "Stability intervention queued");
                     }}
-                    className="px-2.5 py-1.5 text-xs rounded border border-terminal-border hover:border-status-entropy/60 hover:text-status-entropy transition flex items-center gap-1"
+                    className="btn-ghost gap-1"
                   >
                     <Shield className="w-3.5 h-3.5" />
                     {it.cta.label}
@@ -151,10 +166,10 @@ export function LaunchpadPage() {
         </div>
       </div>
 
-      {/* Clone CTA */}
-      <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
+      {/* Quick Launch CTA */}
+      <div className="terminal-card overflow-hidden flex-shrink-0">
         <div className="px-4 py-3 border-b border-terminal-border">
-          <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">Quick Launch</h3>
+          <span className="section-title">Quick Launch</span>
         </div>
 
         {sortedLaunches.length > 0 ? (
@@ -163,7 +178,7 @@ export function LaunchpadPage() {
               demoStore.pushToast("Fork cloned", "Draft created in Launchpad");
               navigate('/launchpad/new');
             }}
-            className="w-full group flex items-center justify-between p-4 hover:bg-terminal-card/50 transition-colors text-left"
+            className="w-full group flex items-center justify-between p-4 hover:bg-terminal-elevated transition-all text-left hover-lift"
           >
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-lg bg-status-entropy/10 border border-status-entropy/20 flex items-center justify-center">
@@ -171,22 +186,22 @@ export function LaunchpadPage() {
               </div>
               <div>
                 <div className="text-sm font-semibold text-terminal-text">Clone & configure</div>
-                <div className="text-xs text-terminal-muted mt-0.5">
+                <div className="text-xs text-terminal-text-muted mt-0.5">
                   Fast path using top performer: {sortedLaunches[0].title}
                 </div>
               </div>
             </div>
-            <ArrowRight className="w-4 h-4 text-terminal-muted group-hover:text-status-entropy transition-colors" />
+            <ArrowRight className="w-4 h-4 text-terminal-text-muted group-hover:text-status-entropy transition-colors" />
           </button>
         ) : (
-          <div className="p-4 text-xs text-terminal-muted">No candidate forks available.</div>
+          <div className="p-4 text-xs text-terminal-text-muted">No candidate forks available.</div>
         )}
 
         <div className="h-px bg-terminal-border" />
 
         <button
           onClick={() => navigate('/launchpad/new')}
-          className="w-full group flex items-center justify-between p-4 hover:bg-terminal-card/50 transition-colors text-left"
+          className="w-full group flex items-center justify-between p-4 hover:bg-terminal-elevated transition-all text-left hover-lift"
         >
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-lg bg-status-info/10 border border-status-info/20 flex items-center justify-center">
@@ -194,12 +209,12 @@ export function LaunchpadPage() {
             </div>
             <div>
               <div className="text-sm font-semibold text-terminal-text">Open advanced</div>
-              <div className="text-xs text-terminal-muted mt-0.5">
+              <div className="text-xs text-terminal-text-muted mt-0.5">
                 Define risk, oracle composition, and fork parameters
               </div>
             </div>
           </div>
-          <ArrowRight className="w-4 h-4 text-terminal-muted group-hover:text-status-info transition-colors" />
+          <ArrowRight className="w-4 h-4 text-terminal-text-muted group-hover:text-status-info transition-colors" />
         </button>
       </div>
 
@@ -213,11 +228,7 @@ export function LaunchpadPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium rounded transition ${
-                  isActive
-                    ? 'bg-echelon-cyan/20 border border-echelon-cyan text-echelon-cyan'
-                    : 'bg-terminal-bg border border-terminal-border text-terminal-text-muted hover:text-terminal-text'
-                }`}
+                className={isActive ? 'btn-cyan' : 'btn-ghost'}
               >
                 {tab.label}
               </button>
@@ -227,13 +238,13 @@ export function LaunchpadPage() {
 
         {/* Sort Toggle */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-terminal-text-muted">Sort:</span>
-          <div className="flex items-center gap-1 bg-terminal-bg border border-terminal-border rounded">
+          <span className="data-label">Sort</span>
+          <div className="flex items-center gap-1 bg-terminal-bg border border-terminal-border rounded-lg">
             <button
               onClick={() => setSortMode('trending')}
-              className={`px-3 py-1.5 text-xs flex items-center gap-1 transition ${
+              className={`px-3 py-1.5 text-xs flex items-center gap-1 rounded-l-lg transition-all ${
                 sortMode === 'trending'
-                  ? 'bg-echelon-cyan/20 text-echelon-cyan'
+                  ? 'bg-echelon-cyan/15 text-echelon-cyan'
                   : 'text-terminal-text-muted hover:text-terminal-text'
               }`}
             >
@@ -243,9 +254,9 @@ export function LaunchpadPage() {
             <div className="w-px h-4 bg-terminal-border" />
             <button
               onClick={() => setSortMode('new')}
-              className={`px-3 py-1.5 text-xs flex items-center gap-1 transition ${
+              className={`px-3 py-1.5 text-xs flex items-center gap-1 rounded-r-lg transition-all ${
                 sortMode === 'new'
-                  ? 'bg-echelon-cyan/20 text-echelon-cyan'
+                  ? 'bg-echelon-cyan/15 text-echelon-cyan'
                   : 'text-terminal-text-muted hover:text-terminal-text'
               }`}
             >
@@ -278,8 +289,10 @@ export function LaunchpadPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {sortedLaunches.map((launch) => (
-              <LaunchCardMini key={launch.id} launch={launch} />
+            {sortedLaunches.map((launch, idx) => (
+              <div key={launch.id} className="animate-stagger-in" style={{ animationDelay: `${idx * 40}ms` }}>
+                <LaunchCardMini launch={launch} />
+              </div>
             ))}
           </div>
         )}

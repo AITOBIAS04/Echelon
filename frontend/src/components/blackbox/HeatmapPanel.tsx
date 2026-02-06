@@ -1,6 +1,7 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
 import { useTimeSales } from '../../hooks/useBlackbox';
 import type { Trade } from '../../types/blackbox';
+import { CHART } from '../../constants/colors';
 
 type Cell = { r: number; c: number; v: number };
 
@@ -51,7 +52,7 @@ export function HeatmapPanel() {
   const hm = useMemo(() => buildHeatmap(trades, 32, 26, 60_000), [trades]);
 
   return (
-    <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4 flex flex-col gap-4 min-h-[300px]" style={{ flex: '1 1 400px' }}>
+    <div className="chart-container flex flex-col gap-4 min-h-[300px]" style={{ flex: '1 1 400px' }}>
       <div className="flex items-center justify-between flex-shrink-0">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">Market Heatmap</h3>
         <span className="text-[10px] font-mono text-terminal-text-muted">Last 60s</span>
@@ -65,7 +66,7 @@ export function HeatmapPanel() {
             {/* Background grid */}
             <defs>
               <pattern id="heatmapGrid" x="0" y="0" width="100%" height="100%" patternUnits="userSpaceOnUse">
-                <rect width="100%" height="100%" fill="#0f172a" fillOpacity="0.2" />
+                <rect width="100%" height="100%" fill="#080A0E" fillOpacity="0.2" />
               </pattern>
             </defs>
 
@@ -75,11 +76,11 @@ export function HeatmapPanel() {
             <g opacity={0.15}>
               {Array.from({ length: 8 }, (_, i) => i + 1).map((i) => {
                 const x = 56 + (i / 8) * (size.width - 72);
-                return <line key={`v${i}`} x1={x} x2={x} y1={14} y2={size.height - 18} stroke="#64748B" strokeWidth={0.5} />;
+                return <line key={`v${i}`} x1={x} x2={x} y1={14} y2={size.height - 18} stroke={CHART.GRID} strokeWidth={0.5} />;
               })}
               {Array.from({ length: 6 }, (_, i) => i + 1).map((i) => {
                 const y = 14 + (i / 6) * (size.height - 32);
-                return <line key={`h${i}`} x1={56} x2={size.width - 16} y1={y} y2={y} stroke="#64748B" strokeWidth={0.5} />;
+                return <line key={`h${i}`} x1={56} x2={size.width - 16} y1={y} y2={y} stroke={CHART.GRID} strokeWidth={0.5} />;
               })}
             </g>
 

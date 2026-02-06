@@ -30,21 +30,50 @@
 
 @layer components {
   .terminal-panel {
-    @apply bg-glass-card border border-glass-border rounded-lg backdrop-blur-[20px];
+    @apply bg-terminal-panel border border-terminal-border rounded-lg;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
   }
   
   .terminal-header {
     @apply font-sans text-xs font-semibold uppercase tracking-wider text-terminal-text-secondary;
   }
   
-  /* Subtle card hover effect */
+  /* Card with visible elevation and hover lift */
   .terminal-card {
-    @apply bg-glass-card border border-glass-border rounded-md backdrop-blur-[20px];
-    @apply transition-all duration-200 ease-out;
+    @apply bg-terminal-card border border-terminal-border rounded-lg transition-all duration-200 ease-out;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
   }
-  
+
   .terminal-card:hover {
-    @apply border-glass-border-light bg-glass-card;
+    @apply border-terminal-border-light shadow-elevation-2;
+  }
+
+  /* Elevated card (highest non-overlay tier) */
+  .terminal-card-elevated {
+    @apply bg-terminal-elevated border border-terminal-border-light rounded-lg shadow-elevation-2;
+  }
+
+  /* ── Typography ladder ── */
+  .page-title {
+    @apply text-base font-bold text-terminal-text uppercase tracking-widest;
+  }
+  .section-title {
+    @apply text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider;
+  }
+  .section-title-accented {
+    @apply text-xs font-semibold text-terminal-text uppercase tracking-wider pl-3 border-l-2 border-echelon-cyan;
+  }
+  .data-label {
+    @apply text-[10px] font-medium uppercase tracking-wider text-terminal-text-muted;
+  }
+  .data-value {
+    @apply text-xs font-semibold font-mono tabular-nums text-terminal-text;
+  }
+
+  /* Chart container with inset gradient feel */
+  .chart-container {
+    @apply bg-terminal-panel border border-terminal-border rounded-lg p-4;
+    background: linear-gradient(180deg, #080A0E 0%, #050710 100%);
   }
 
   /* Solid overlay surface for modals/drawers/sidebars */
@@ -90,7 +119,11 @@
 
   /* ── Button variants ── */
   .btn {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap select-none;
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border
+           text-xs font-semibold transition-all duration-150 whitespace-nowrap select-none cursor-pointer;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-echelon-blue/40
+           focus-visible:ring-offset-1 focus-visible:ring-offset-terminal-bg;
+    @apply active:scale-[0.97];
   }
   .btn-primary {
     @apply btn border-echelon-blue/30 bg-echelon-blue/10 text-echelon-blue hover:bg-echelon-blue/[0.18];
@@ -136,16 +169,21 @@
     @apply w-full text-xs;
   }
   .terminal-table thead th {
-    @apply text-[10px] font-semibold uppercase tracking-[0.06em] text-terminal-text-muted px-3 py-2 text-left border-b border-terminal-border;
+    @apply text-[10px] font-semibold uppercase tracking-[0.06em] text-terminal-text-muted
+           px-3 py-2.5 text-left border-b border-terminal-border bg-terminal-panel;
   }
   .terminal-table tbody tr {
-    @apply border-b border-terminal-border/50 transition-colors duration-150;
+    @apply border-b border-terminal-border/50 transition-all duration-150;
   }
   .terminal-table tbody tr:hover {
-    @apply bg-terminal-panel/60;
+    @apply bg-terminal-card;
+    box-shadow: inset 3px 0 0 rgba(34,211,238,0.3);
   }
   .terminal-table tbody td {
     @apply px-3 py-2.5 text-terminal-text-secondary;
+  }
+  .cell-numeric {
+    @apply font-mono tabular-nums text-right;
   }
 
   /* ── Metric block (for key stats) ── */
@@ -188,15 +226,29 @@
     scrollbar-width: none;
   }
 
+  /* ── Micro-interaction utilities ── */
+  .hover-lift {
+    @apply transition-all duration-200 ease-out;
+  }
+  .hover-lift:hover {
+    @apply -translate-y-px shadow-elevation-2;
+  }
+  .press-down:active {
+    @apply scale-[0.97];
+  }
+  .page-enter {
+    animation: fadeIn 0.2s ease-out, slideUp 0.2s ease-out;
+  }
+
   /* Smooth animations */
   .animate-fade-in {
     animation: fadeIn 0.3s ease-out forwards;
   }
-  
+
   .animate-slide-up {
     animation: slideUp 0.3s ease-out forwards;
   }
-  
+
   .animate-scale-in {
     animation: scaleIn 0.2s ease-out forwards;
   }

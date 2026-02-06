@@ -147,10 +147,10 @@ export function TopActionBar() {
     : config.buttons;
 
   return (
-    <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-slate-850/80 backdrop-blur-sm">
+    <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-slate-850/80 backdrop-blur-sm" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
       {/* Page name / breadcrumb */}
       <div className="flex items-center gap-2.5 min-w-0">
-        <span className="text-xs font-extrabold tracking-[0.06em] uppercase text-terminal-text whitespace-nowrap">
+        <span className="text-sm font-bold tracking-[0.1em] uppercase text-terminal-text whitespace-nowrap">
           {config.name}
         </span>
       </div>
@@ -188,8 +188,8 @@ export function TopActionBar() {
                 className={clsx(
                   'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap',
                   isActive
-                    ? 'border-[rgba(34,211,238,0.35)] bg-[rgba(34,211,238,0.1)] text-[#22D3EE]'
-                    : 'border-[#26292E] bg-[#151719] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#64748B] hover:bg-[#1A1D21]'
+                    ? 'border-echelon-cyan/35 bg-echelon-cyan/10 text-echelon-cyan'
+                    : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-terminal-card'
                 )}
               >
                 {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}

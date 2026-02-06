@@ -29,7 +29,10 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
   };
 
   return (
-    <div className="bg-slate-900 border border-terminal-border rounded-lg p-4 hover:border-terminal-border-light transition">
+    <div className="terminal-card group relative overflow-hidden p-4 hover:shadow-elevation-2 hover:scale-[1.005]">
+      {/* Top-edge gradient highlight */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-terminal-border-light/60 to-transparent" />
+
       {/* Header Row */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
@@ -72,9 +75,9 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
       {/* Quality Score Meter */}
       <div className="mb-3">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-xs text-terminal-text-secondary">Quality Score</span>
+          <span className="data-label">Quality Score</span>
           <span
-            className="text-xs font-mono font-semibold"
+            className="data-value"
             style={{ color: qualityColor }}
           >
             {launch.qualityScore}
@@ -82,10 +85,10 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
         </div>
         <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
           <div
-            className="h-full transition-all"
+            className="h-full transition-all rounded-full"
             style={{
               width: `${launch.qualityScore}%`,
-              backgroundColor: qualityColor,
+              background: `linear-gradient(90deg, ${qualityColor}88, ${qualityColor})`,
             }}
           />
         </div>
@@ -93,8 +96,8 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
 
       {/* Fork Range */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs text-terminal-text-secondary">Fork Range</span>
-        <span className="text-xs font-mono text-terminal-text">
+        <span className="data-label">Fork Range</span>
+        <span className="data-value">
           {launch.forkTargetRange[0]}-{launch.forkTargetRange[1]}
         </span>
       </div>
@@ -102,7 +105,7 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
       {/* Action Button */}
       <button
         onClick={handleView}
-        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-status-info hover:text-status-info transition"
+        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold bg-terminal-bg border border-terminal-border rounded-lg transition-all group-hover:border-echelon-cyan/30 group-hover:text-echelon-cyan text-terminal-text-secondary"
       >
         <ExternalLink className="w-3 h-3" />
         VIEW
