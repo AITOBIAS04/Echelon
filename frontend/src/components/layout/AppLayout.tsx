@@ -16,7 +16,7 @@ export function AppLayout() {
         <RlmfUiProvider>
           <DemoEngine>
             <DemoToastHost />
-            <div className="h-[100dvh] w-screen flex overflow-hidden bg-slate-950">
+            <div className="h-[100dvh] w-screen flex overflow-hidden bg-terminal-bg">
               {/* Persistent left sidebar */}
               <Sidebar />
 
@@ -25,7 +25,7 @@ export function AppLayout() {
                 <TopActionBar />
 
                 {/* Viewport — each page fills this area and manages its own scroll */}
-                <div className="flex-1 min-h-0 relative bg-slate-950 overflow-auto">
+                <div className="flex-1 min-h-0 relative bg-terminal-bg overflow-auto">
                   <div key={location.pathname} className="page-enter h-full">
                     <Outlet />
                   </div>

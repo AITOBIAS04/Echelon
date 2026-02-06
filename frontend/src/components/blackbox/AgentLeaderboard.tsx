@@ -22,28 +22,28 @@ const RANK_COLORS = ['#FFD700', '#C0C0C0', '#CD7F32', '#6B7280'];
 
 export function AgentLeaderboard({ agents, searchQuery, onSearchChange }: AgentLeaderboardProps) {
   return (
-    <div className="rounded-2xl border border-[#26292E] bg-[#0F1113] flex flex-col min-h-0">
+    <div className="rounded-2xl terminal-panel flex flex-col min-h-0">
       {/* Card Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#26292E]">
-        <span className="text-sm font-semibold text-[#F1F5F9]">AGENT PERFORMANCE</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
+        <span className="text-sm font-semibold text-terminal-text">AGENT PERFORMANCE</span>
         <input
           type="text"
           placeholder="Filter agents..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-28 px-2 py-1 text-xs bg-[#0B0C0E] border border-[#26292E] text-[#F1F5F9] rounded outline-none"
+          className="w-28 terminal-input"
         />
       </div>
 
       {/* Table */}
 <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         <table className="w-full table-fixed">
-          <thead className="sticky top-0 bg-[#0F1113] z-10">
+          <thead className="sticky top-0 bg-terminal-header z-10">
             <tr>
-              <th className="w-[28px] px-2 py-2 text-left text-xs font-medium text-[#64748B]">#</th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-[#64748B]">AGENT</th>
-              <th className="w-[96px] px-3 py-2 text-left text-xs font-medium text-[#64748B]">P&L</th>
-              <th className="w-[88px] px-3 py-2 text-left text-xs font-medium text-[#64748B]">VOL</th>
+              <th className="w-[28px] px-2 py-2 text-left text-xs font-medium text-terminal-text-muted">#</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-terminal-text-muted">AGENT</th>
+              <th className="w-[96px] px-3 py-2 text-left text-xs font-medium text-terminal-text-muted">P&L</th>
+              <th className="w-[88px] px-3 py-2 text-left text-xs font-medium text-terminal-text-muted">VOL</th>
             </tr>
           </thead>
           <tbody>
@@ -52,8 +52,8 @@ export function AgentLeaderboard({ agents, searchQuery, onSearchChange }: AgentL
               const rankColor = index < 4 ? RANK_COLORS[index] : 'transparent';
 
               return (
-                <tr key={agent.id} className="hover:bg-[#1A1D23] transition-colors">
-                  <td className="px-2 py-1.5 text-xs font-mono font-medium text-[#94A3B8]">
+                <tr key={agent.id} className="hover:bg-terminal-hover transition-colors">
+                  <td className="px-2 py-1.5 text-xs font-mono font-medium text-terminal-text-secondary">
                     <span style={{ color: rankColor !== 'transparent' ? rankColor : undefined }}>
                       {index + 1}
                     </span>
@@ -67,15 +67,15 @@ export function AgentLeaderboard({ agents, searchQuery, onSearchChange }: AgentL
                         {agent.name[0]}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-medium text-[#F1F5F9] truncate">{agent.name}</div>
-                        <div className="text-[10px] text-[#64748B]">{agent.winRate}% WR · {agent.sharpe} SR</div>
+                        <div className="text-xs font-medium text-terminal-text truncate">{agent.name}</div>
+                        <div className="text-[10px] text-terminal-text-muted">{agent.winRate}% WR · {agent.sharpe} SR</div>
                       </div>
                     </div>
                   </td>
-                  <td className={`px-3 py-1.5 text-xs font-mono font-medium ${agent.pnl >= 0 ? 'text-[#4ADE80]' : 'text-[#FB7185]'}`}>
+                  <td className={`px-3 py-1.5 text-xs font-mono font-medium ${agent.pnl >= 0 ? 'text-echelon-green' : 'text-echelon-red'}`}>
                     {agent.pnlDisplay}
                   </td>
-                  <td className="px-3 py-1.5 text-xs font-mono text-[#94A3B8]">
+                  <td className="px-3 py-1.5 text-xs font-mono text-terminal-text-secondary">
                     {agent.volumeDisplay}
                   </td>
                 </tr>

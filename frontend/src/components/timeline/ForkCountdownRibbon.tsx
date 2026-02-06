@@ -74,11 +74,11 @@ export function ForkCountdownRibbon({
   return (
     <div className="w-full">
       {activeFork ? (
-        <div className="bg-[#FF3B3B]/20 border border-[#FF3B3B] rounded-lg px-4 py-2 flex items-center gap-3">
-          <Zap className="w-4 h-4 text-[#FF3B3B] flex-shrink-0 animate-pulse" />
+        <div className="bg-echelon-red/20 border border-echelon-red rounded-lg px-4 py-2 flex items-center gap-3">
+          <Zap className="w-4 h-4 text-echelon-red flex-shrink-0 animate-pulse" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#FF3B3B] uppercase tracking-wide">
+              <span className="text-xs font-bold text-echelon-red uppercase tracking-wide">
                 Fork Live
               </span>
               <span className="text-xs text-terminal-text font-mono">
@@ -93,11 +93,11 @@ export function ForkCountdownRibbon({
           </div>
         </div>
       ) : nextFork ? (
-        <div className="bg-[#22D3EE]/20 border border-[#22D3EE] rounded-lg px-4 py-2 flex items-center gap-3">
-          <Clock className="w-4 h-4 text-[#22D3EE] flex-shrink-0" />
+        <div className="bg-echelon-cyan/20 border border-echelon-cyan rounded-lg px-4 py-2 flex items-center gap-3">
+          <Clock className="w-4 h-4 text-echelon-cyan flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#22D3EE] uppercase tracking-wide">
+              <span className="text-xs font-bold text-echelon-cyan uppercase tracking-wide">
                 Next Fork
               </span>
               <span className="text-xs text-terminal-text font-mono">

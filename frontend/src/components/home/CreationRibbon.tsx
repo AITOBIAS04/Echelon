@@ -76,7 +76,7 @@ export function CreationRibbon() {
       {/* Default State: Slim Bar */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full h-10 flex items-center justify-between px-4 bg-slate-800/90 backdrop-blur-sm border-b border-white/10 hover:bg-slate-800 transition"
+        className="w-full h-10 flex items-center justify-between px-4 bg-terminal-card/90 backdrop-blur-sm border-b border-terminal-border hover:bg-terminal-elevated transition"
       >
         <span className="text-sm font-semibold text-white/90 uppercase tracking-wide">
           ✨ INITIALIZE NEW TIMELINE
@@ -90,7 +90,7 @@ export function CreationRibbon() {
 
       {/* Expanded State: Creation Options */}
       {isExpanded && (
-        <div className="absolute top-10 left-0 right-0 bg-slate-800/90 backdrop-blur-sm border-b border-white/10">
+        <div className="absolute top-10 left-0 right-0 bg-terminal-card/90 backdrop-blur-sm border-b border-terminal-border">
           <div className="px-4 py-4 grid grid-cols-4 gap-4">
             {creationOptions.map((option) => {
               const Icon = option.icon;

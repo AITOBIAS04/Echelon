@@ -103,7 +103,7 @@ export function PortfolioPage() {
   };
 
   return (
-    <div className="h-full flex flex-col min-h-0 bg-slate-950 text-terminal-text">
+    <div className="h-full flex flex-col min-h-0 bg-terminal-bg text-terminal-text">
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {/* Content */}
@@ -111,7 +111,7 @@ export function PortfolioPage() {
           {/* Left Column - Scrollable with Main Panel Inside */}
           <div className="flex-1 min-w-0 overflow-y-auto pr-6 custom-scrollbar">
             {/* Main Panel */}
-            <div className="bg-slate-950 border border-terminal-border rounded-2xl flex flex-col overflow-hidden">
+            <div className="bg-terminal-bg border border-terminal-border rounded-2xl flex flex-col overflow-hidden">
             {/* Header */}
             <div className="px-4 py-4 border-b border-terminal-border">
               <div className="text-sm font-semibold text-terminal-text mb-1">
@@ -124,7 +124,7 @@ export function PortfolioPage() {
 
             {/* Top Metrics */}
             <div className="grid grid-cols-3 gap-3 p-4">
-              <div className="bg-slate-950 border border-terminal-border rounded-xl p-3">
+              <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
                 <div className="text-[10px] font-semibold text-terminal-text-muted uppercase tracking-wider mb-1">
                   Total P/L
                 </div>
@@ -132,7 +132,7 @@ export function PortfolioPage() {
                   +${totals.totalPL.toLocaleString()}
                 </div>
               </div>
-              <div className="bg-slate-950 border border-terminal-border rounded-xl p-3">
+              <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
                 <div className="text-[10px] font-semibold text-terminal-text-muted uppercase tracking-wider mb-1">
                   Win Rate
                 </div>
@@ -140,7 +140,7 @@ export function PortfolioPage() {
                   {totals.winRate.toFixed(0)}%
                 </div>
               </div>
-              <div className="bg-slate-950 border border-terminal-border rounded-xl p-3">
+              <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
                 <div className="text-[10px] font-semibold text-terminal-text-muted uppercase tracking-wider mb-1">
                   Positions
                 </div>
@@ -159,7 +159,7 @@ export function PortfolioPage() {
                 </div>
                 <div className="grid grid-cols-4 gap-3">
                   {riskMetrics.map((metric, i) => (
-                    <div key={i} className="bg-slate-950 border border-terminal-border rounded-xl p-3">
+                    <div key={i} className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[11px] text-terminal-text-secondary">{metric.label}</span>
                         <span className="text-sm" style={{ color: metric.level === 'low' ? '#4ADE80' : metric.level === 'medium' ? '#F59E0B' : '#FB7185' }}>
@@ -174,7 +174,7 @@ export function PortfolioPage() {
                       </div>
                       <div className="text-[11px] text-terminal-text-muted mono">/ {metric.max}</div>
                       <div className="mt-2">
-                        <div className="h-1 bg-slate-950 rounded overflow-hidden mb-1">
+                        <div className="h-1 bg-terminal-bg rounded overflow-hidden mb-1">
                           <div className="h-full rounded transition-all" style={{ width: `${metric.value}%`, background: metric.level === 'low' ? '#4ADE80' : metric.level === 'medium' ? '#FACC15' : '#FB7185' }}></div>
                         </div>
                         <div className="flex items-center justify-between">
@@ -190,7 +190,7 @@ export function PortfolioPage() {
               </div>
 
               {/* Exposure Summary */}
-              <div className="mt-4 p-3 bg-slate-950 border border-terminal-border rounded-xl">
+              <div className="mt-4 p-3 bg-terminal-bg border border-terminal-border rounded-xl">
                 <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider mb-3">
                   Exposure Summary
                 </div>
@@ -205,7 +205,7 @@ export function PortfolioPage() {
                     <span className="text-[11px] text-terminal-text-secondary">Net YES Notional</span>
                     <span className="text-xs font-semibold text-status-success mono">${totals.yesNotional.toLocaleString()}.00</span>
                   </div>
-                  <div className="h-1.5 bg-slate-950 rounded overflow-hidden">
+                  <div className="h-1.5 bg-terminal-bg rounded overflow-hidden">
                     <div className="h-full bg-status-success" style={{ width: `${allocationTotals.yesTotal}%` }}></div>
                   </div>
                 </div>
@@ -214,21 +214,21 @@ export function PortfolioPage() {
                     <span className="text-[11px] text-terminal-text-secondary">Net NO Notional</span>
                     <span className="text-xs font-semibold text-status-danger mono">${totals.noNotional.toLocaleString()}.00</span>
                   </div>
-                  <div className="h-1.5 bg-slate-950 rounded overflow-hidden">
+                  <div className="h-1.5 bg-terminal-bg rounded overflow-hidden">
                     <div className="h-full bg-status-danger" style={{ width: `${allocationTotals.noTotal}%` }}></div>
                   </div>
                 </div>
               </div>
 
               {/* Portfolio Allocation */}
-              <div className="mt-4 p-3 bg-slate-950 border border-terminal-border rounded-xl">
+              <div className="mt-4 p-3 bg-terminal-bg border border-terminal-border rounded-xl">
                 <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider mb-3">
                   Portfolio Allocation
                 </div>
                 {allocations.map((allocation, i) => (
                   <div key={i} className="flex items-center gap-3 mb-2">
                     <span className="text-[11px] text-terminal-text mono w-20">{allocation.timelineId} ({allocation.direction})</span>
-                    <div className="flex-1 h-2 bg-slate-950 rounded overflow-hidden">
+                    <div className="flex-1 h-2 bg-terminal-bg rounded overflow-hidden">
                       <div className="h-full rounded" style={{ width: `${allocation.percent}%`, background: allocation.direction === 'YES' ? '#4ADE80' : '#FB7185' }}></div>
                     </div>
                     <span className="text-[11px] text-terminal-text-muted mono w-10 text-right">{allocation.percent}%</span>
@@ -237,7 +237,7 @@ export function PortfolioPage() {
               </div>
 
               {/* Equity Curve */}
-              <div className="mt-4 p-3 bg-slate-950 border border-terminal-border rounded-xl">
+              <div className="mt-4 p-3 bg-terminal-bg border border-terminal-border rounded-xl">
                 <div className="flex justify-between items-center mb-3">
                   <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider">Equity Curve (30D)</div>
                   <div className="flex gap-1">
@@ -252,7 +252,7 @@ export function PortfolioPage() {
                     ))}
                   </div>
                 </div>
-                <div className="relative h-[120px] bg-slate-950 rounded-lg overflow-hidden">
+                <div className="relative h-[120px] bg-terminal-bg rounded-lg overflow-hidden">
                   <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
                     <defs>
                       <linearGradient id="equityGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -296,23 +296,23 @@ export function PortfolioPage() {
               </div>
 
               {/* Correlation Matrix */}
-              <div className="mt-4 p-3 bg-slate-950 border border-terminal-border rounded-xl">
+              <div className="mt-4 p-3 bg-terminal-bg border border-terminal-border rounded-xl">
                 <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider mb-3">
                   Position Correlations
                 </div>
                 <table className="w-full border-collapse text-[11px]">
                   <thead>
                     <tr>
-                      <th className="p-2 text-center border border-terminal-border bg-slate-950 font-semibold text-terminal-text-muted"></th>
+                      <th className="p-2 text-center border border-terminal-border bg-terminal-bg font-semibold text-terminal-text-muted"></th>
                       {['TL-2847', 'TL-2846', 'TL-2845', 'TL-2844'].map((tl) => (
-                        <th key={tl} className="p-2 text-center border border-terminal-border bg-slate-950 font-semibold text-terminal-text-muted">{tl}</th>
+                        <th key={tl} className="p-2 text-center border border-terminal-border bg-terminal-bg font-semibold text-terminal-text-muted">{tl}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {['TL-2847', 'TL-2846', 'TL-2845', 'TL-2844'].map((tl1) => (
                       <tr key={tl1}>
-                        <td className="p-2 text-center border border-terminal-border bg-slate-950 font-semibold text-terminal-text-muted">{tl1}</td>
+                        <td className="p-2 text-center border border-terminal-border bg-terminal-bg font-semibold text-terminal-text-muted">{tl1}</td>
                         {['TL-2847', 'TL-2846', 'TL-2845', 'TL-2844'].map((tl2) => {
                           const corr = getCorrelation(tl1, tl2);
                           return (
@@ -332,14 +332,14 @@ export function PortfolioPage() {
                 <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider mb-3">
                   Top Risks
                 </div>
-                <table className="w-full border-collapse bg-slate-950 border border-terminal-border rounded-xl overflow-hidden">
+                <table className="w-full border-collapse bg-terminal-bg border border-terminal-border rounded-xl overflow-hidden">
                   <thead>
                     <tr>
-                      <th className="p-2 text-left text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-slate-950 border-b border-terminal-border">Timeline</th>
-                      <th className="p-2 text-left text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-slate-950 border-b border-terminal-border">Risk Score</th>
-                      <th className="p-2 text-left text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-slate-950 border-b border-terminal-border">Drivers</th>
-                      <th className="p-2 text-left text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-slate-950 border-b border-terminal-border">Burn at Collapse</th>
-                      <th className="p-2 text-right text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-slate-950 border-b border-terminal-border">Actions</th>
+                      <th className="p-2 text-left text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border">Timeline</th>
+                      <th className="p-2 text-left text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border">Risk Score</th>
+                      <th className="p-2 text-left text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border">Drivers</th>
+                      <th className="p-2 text-left text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border">Burn at Collapse</th>
+                      <th className="p-2 text-right text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -351,8 +351,8 @@ export function PortfolioPage() {
                         <td className="p-2"><span className="text-xs text-status-danger mono">${item.burnAtCollapse.toLocaleString()}</span></td>
                         <td className="p-2">
                           <div className="flex gap-1 justify-end">
-                            <button className="px-2 py-1 bg-slate-950 border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">OPEN</button>
-                            <button className="px-2 py-1 bg-slate-950 border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">REPLAY</button>
+                            <button className="px-2 py-1 bg-terminal-bg border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">OPEN</button>
+                            <button className="px-2 py-1 bg-terminal-bg border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">REPLAY</button>
                           </div>
                         </td>
                       </tr>
@@ -377,7 +377,7 @@ export function PortfolioPage() {
               </div>
 
               {/* Positions Panel */}
-              <div className="flex-1 bg-slate-950 border border-terminal-border rounded-xl flex flex-col mt-4 overflow-hidden">
+              <div className="flex-1 bg-terminal-bg border border-terminal-border rounded-xl flex flex-col mt-4 overflow-hidden">
                 <div className="flex items-center justify-between p-3 border-b border-terminal-border">
                   <div className="flex gap-3">
                     {(['positions', 'foldovers'] as PositionTab[]).map((tab) => (
@@ -390,7 +390,7 @@ export function PortfolioPage() {
                       </button>
                     ))}
                   </div>
-                  <button className="flex items-center gap-2 px-3 py-2 bg-slate-950 border border-terminal-border rounded-lg text-[11px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">
+                  <button className="flex items-center gap-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded-lg text-[11px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">
                     <Filter size={12} />
                     Filter
                   </button>
@@ -399,12 +399,12 @@ export function PortfolioPage() {
                   <table className="w-full border-collapse">
                     <thead>
                       <tr>
-                        <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-slate-950 border-b border-terminal-border sticky top-0">Timeline</th>
-                        <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-slate-950 border-b border-terminal-border sticky top-0">Direction</th>
-                        <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-slate-950 border-b border-terminal-border sticky top-0">Entry Price</th>
-                        <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-slate-950 border-b border-terminal-border sticky top-0">Current Price</th>
-                        <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-slate-950 border-b border-terminal-border sticky top-0">P/L</th>
-                        <th className="text-right p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-slate-950 border-b border-terminal-border sticky top-0">Actions</th>
+                        <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Timeline</th>
+                        <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Direction</th>
+                        <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Entry Price</th>
+                        <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Current Price</th>
+                        <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">P/L</th>
+                        <th className="text-right p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -425,8 +425,8 @@ export function PortfolioPage() {
                           </td>
                           <td className="p-2">
                             <div className="flex gap-1 justify-end">
-                              <button className="px-2 py-1 bg-slate-950 border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">OPEN</button>
-                              <button className="px-2 py-1 bg-slate-950 border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">REPLAY</button>
+                              <button className="px-2 py-1 bg-terminal-bg border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">OPEN</button>
+                              <button className="px-2 py-1 bg-terminal-bg border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">REPLAY</button>
                             </div>
                           </td>
                         </tr>
@@ -443,10 +443,10 @@ export function PortfolioPage() {
           {/* Right Fixed Sidebar */}
           <aside className="w-[360px] flex-shrink-0 flex flex-col gap-4 self-start sticky top-6">
             {/* Ghost Forks Widget */}
-            <div className="bg-slate-950 border border-terminal-border rounded-xl">
+            <div className="bg-terminal-bg border border-terminal-border rounded-xl">
               <div className="flex items-center justify-between px-3 py-2 border-b border-terminal-border">
                 <span className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider">Ghost Forks</span>
-                <button onClick={() => setShowForksPanel(true)} className="px-2 py-1 bg-slate-950 border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">VIEW ALL</button>
+                <button onClick={() => setShowForksPanel(true)} className="px-2 py-1 bg-terminal-bg border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">VIEW ALL</button>
               </div>
               <div className="p-3">
                 {ghostForks.map((fork, i) => (
@@ -459,17 +459,17 @@ export function PortfolioPage() {
             </div>
 
             {/* My Agents Widget */}
-            <div className="bg-slate-950 border border-terminal-border rounded-xl">
+            <div className="bg-terminal-bg border border-terminal-border rounded-xl">
               <div className="flex items-center justify-between px-3 py-2 border-b border-terminal-border">
                 <span className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider">My Agents</span>
-                <button onClick={() => setShowAgentsPanel(true)} className="px-2 py-1 bg-slate-950 border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">MANAGE</button>
+                <button onClick={() => setShowAgentsPanel(true)} className="px-2 py-1 bg-terminal-bg border border-terminal-border rounded text-[10px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">MANAGE</button>
               </div>
               <div className="p-3">
                 {agents.slice(0, 4).map((agent, i) => (
                   <div key={i} className="flex items-center gap-2 py-2" style={{ borderBottom: i < 3 ? '1px solid rgba(255,255,255,0.1)' : 'none' }}>
                     <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: agent.color }}>{agent.name.charAt(6)}</div>
                     <span className="text-xs text-terminal-text flex-1">{agent.name}</span>
-                    <span className="text-[9px] text-terminal-text-muted px-1.5 py-0.5 bg-slate-950 rounded">{agent.archetype}</span>
+                    <span className="text-[9px] text-terminal-text-muted px-1.5 py-0.5 bg-terminal-bg rounded">{agent.archetype}</span>
                     <span className="text-xs font-semibold mono" style={{ color: agent.pnl >= 0 ? '#4ADE80' : '#FB7185' }}>{agent.pnl >= 0 ? '+' : ''}${Math.abs(agent.pnl / 1000).toFixed(1)}K</span>
                   </div>
                 ))}
@@ -478,11 +478,11 @@ export function PortfolioPage() {
 
             {/* Stats Row */}
             <div className="flex gap-3">
-              <div className="flex-1 text-center p-3 bg-slate-950 border border-terminal-border rounded-xl">
+              <div className="flex-1 text-center p-3 bg-terminal-bg border border-terminal-border rounded-xl">
                 <div className="text-xl font-bold text-terminal-text mono">{agents.length}</div>
                 <div className="text-[10px] text-terminal-text-muted mt-0.5">Live Agents</div>
               </div>
-              <div className="flex-1 text-center p-3 bg-slate-950 border border-terminal-border rounded-xl">
+              <div className="flex-1 text-center p-3 bg-terminal-bg border border-terminal-border rounded-xl">
                 <div className="text-xl font-bold text-terminal-text mono">{agents.reduce((sum, a) => sum + a.actions, 0).toLocaleString()}</div>
                 <div className="text-[10px] text-terminal-text-muted mt-0.5">Active Ops</div>
               </div>
@@ -510,14 +510,14 @@ export function PortfolioPage() {
             <Bot size={18} className="text-echelon-cyan" />
             Manage Agents
           </div>
-          <button onClick={() => setShowAgentsPanel(false)} className="w-8 h-8 flex items-center justify-center bg-slate-950 border border-terminal-border rounded-lg text-terminal-text-muted cursor-pointer transition-all hover:text-terminal-text">
+          <button onClick={() => setShowAgentsPanel(false)} className="w-8 h-8 flex items-center justify-center bg-terminal-bg border border-terminal-border rounded-lg text-terminal-text-muted cursor-pointer transition-all hover:text-terminal-text">
             <X size={14} />
           </button>
         </div>
         <div className="flex-1 overflow-auto p-4">
           <div className="grid grid-cols-2 gap-3">
             {agents.map((agent, i) => (
-              <div key={i} className="bg-slate-950 border border-terminal-border rounded-xl p-3">
+              <div key={i} className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: agent.color }}>{agent.name.charAt(6)}</div>
                   <div className="flex-1">
@@ -561,14 +561,14 @@ export function PortfolioPage() {
             <GitBranch size={18} className="text-echelon-cyan" />
             Ghost Forks
           </div>
-          <button onClick={() => setShowForksPanel(false)} className="w-8 h-8 flex items-center justify-center bg-slate-950 border border-terminal-border rounded-lg text-terminal-text-muted cursor-pointer transition-all hover:text-terminal-text">
+          <button onClick={() => setShowForksPanel(false)} className="w-8 h-8 flex items-center justify-center bg-terminal-bg border border-terminal-border rounded-lg text-terminal-text-muted cursor-pointer transition-all hover:text-terminal-text">
             <X size={14} />
           </button>
         </div>
         <div className="flex-1 overflow-auto p-4">
           <div className="flex flex-col gap-2">
             {forkDetails.map((fork, i) => (
-              <div key={i} className="bg-slate-950 border border-terminal-border rounded-xl p-3">
+              <div key={i} className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-terminal-text mono">{fork.id}</span>
                   <span className="text-[10px] text-terminal-text-muted">{fork.timeAgo}</span>
@@ -601,19 +601,19 @@ export function PortfolioPage() {
               <div className="text-xl font-bold text-status-success mono">+${yieldBreakdown.total.toLocaleString()}</div>
             </div>
             <div className="grid grid-cols-4 gap-2">
-              <div className="bg-slate-950 border border-terminal-border rounded-lg p-2 text-center">
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-2 text-center">
                 <div className="text-sm font-semibold text-terminal-text mono">${yieldBreakdown.trading.toLocaleString()}</div>
                 <div className="text-[9px] text-terminal-text-muted uppercase mt-1">Trading</div>
               </div>
-              <div className="bg-slate-950 border border-terminal-border rounded-lg p-2 text-center">
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-2 text-center">
                 <div className="text-sm font-semibold text-terminal-text mono">${yieldBreakdown.MEV.toLocaleString()}</div>
                 <div className="text-[9px] text-terminal-text-muted uppercase mt-1">MEV</div>
               </div>
-              <div className="bg-slate-950 border border-terminal-border rounded-lg p-2 text-center">
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-2 text-center">
                 <div className="text-sm font-semibold text-terminal-text mono">${yieldBreakdown.bribes.toLocaleString()}</div>
                 <div className="text-[9px] text-terminal-text-muted uppercase mt-1">Bribes</div>
               </div>
-              <div className="bg-slate-950 border border-terminal-border rounded-lg p-2 text-center">
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-2 text-center">
                 <div className="text-sm font-semibold text-terminal-text mono">${yieldBreakdown.total.toLocaleString()}</div>
                 <div className="text-[9px] text-terminal-text-muted uppercase mt-1">Total</div>
               </div>

@@ -181,7 +181,7 @@ export function LaunchpadDetailPage() {
       {/* Details Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Quality Score */}
-        <div className="bg-slate-900 border border-terminal-border rounded-lg p-4">
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
           <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
             Quality Score
           </h3>
@@ -191,7 +191,7 @@ export function LaunchpadDetailPage() {
             </span>
             <span className="text-sm text-terminal-text-muted">/ 100</span>
           </div>
-          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-terminal-card rounded-full overflow-hidden">
             <div
               className="h-full transition-all"
               style={{
@@ -203,7 +203,7 @@ export function LaunchpadDetailPage() {
         </div>
 
         {/* Fork Target Range */}
-        <div className="bg-slate-900 border border-terminal-border rounded-lg p-4">
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
           <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3 flex items-center gap-2">
             <GitBranch className="w-4 h-4" />
             Fork Target Range
@@ -216,7 +216,7 @@ export function LaunchpadDetailPage() {
 
         {/* Episode Length */}
         {launch.episodeLengthSec && (
-          <div className="bg-slate-900 border border-terminal-border rounded-lg p-4">
+          <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
             <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
               Episode Length
             </h3>
@@ -227,7 +227,7 @@ export function LaunchpadDetailPage() {
         )}
 
         {/* Tags */}
-        <div className="bg-slate-900 border border-terminal-border rounded-lg p-4">
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
           <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
             Tags
           </h3>
@@ -245,7 +245,7 @@ export function LaunchpadDetailPage() {
       </div>
 
       {/* Metadata */}
-      <div className="bg-slate-900 border border-terminal-border rounded-lg p-4">
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-terminal-text-muted">Created:</span>{' '}

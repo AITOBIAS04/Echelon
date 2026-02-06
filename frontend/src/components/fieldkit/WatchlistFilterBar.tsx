@@ -80,7 +80,7 @@ export function WatchlistFilterBar({
               transition-colors duration-150
               ${isActive 
                 ? 'bg-green-500/10' 
-                : 'bg-transparent hover:text-[#999]'
+                : 'bg-transparent hover:text-terminal-text-secondary'
               }
             `}
             style={{

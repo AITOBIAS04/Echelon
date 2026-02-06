@@ -119,7 +119,7 @@ export function PortfolioRiskPanel() {
       {/* KPI Tiles */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Risk Index */}
-        <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-terminal-text-muted uppercase tracking-wide">Risk Index</span>
             <Activity className="w-4 h-4" style={{ color: getRiskColor(summary.riskIndex) }} />
@@ -147,7 +147,7 @@ export function PortfolioRiskPanel() {
         </div>
 
         {/* Fragility Index */}
-        <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-terminal-text-muted uppercase tracking-wide">Fragility Index</span>
             <TrendingUp className="w-4 h-4 text-amber-500" />
@@ -169,7 +169,7 @@ export function PortfolioRiskPanel() {
         </div>
 
         {/* Belief Divergence Index */}
-        <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-terminal-text-muted uppercase tracking-wide">Belief Divergence</span>
             <AlertTriangle className="w-4 h-4 text-purple-500" />
@@ -192,7 +192,7 @@ export function PortfolioRiskPanel() {
       </div>
 
       {/* Exposure Summary */}
-      <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-3">
           Exposure Summary
         </h3>
@@ -216,7 +216,7 @@ export function PortfolioRiskPanel() {
                 {formatCurrency(summary.netYesNotional)}
               </span>
             </div>
-            <div className="w-full h-2 bg-[#1A1A1A] rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-terminal-card rounded-full overflow-hidden">
               <div
                 className="h-full bg-green-500/50 transition-all"
                 style={{
@@ -236,7 +236,7 @@ export function PortfolioRiskPanel() {
                 {formatCurrency(summary.netNoNotional)}
               </span>
             </div>
-            <div className="w-full h-2 bg-[#1A1A1A] rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-terminal-card rounded-full overflow-hidden">
               <div
                 className="h-full bg-red-500/50 transition-all"
                 style={{
@@ -249,7 +249,7 @@ export function PortfolioRiskPanel() {
       </div>
 
       {/* Top Risks Table */}
-      <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-3">
           Top Risks
         </h3>
@@ -261,7 +261,7 @@ export function PortfolioRiskPanel() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#1A1A1A]">
+                <tr className="border-b border-terminal-border">
                   <th className="text-left p-2 text-terminal-text-muted uppercase text-xs">Timeline</th>
                   <th className="text-left p-2 text-terminal-text-muted uppercase text-xs">Risk Score</th>
                   <th className="text-left p-2 text-terminal-text-muted uppercase text-xs">Drivers</th>
@@ -273,7 +273,7 @@ export function PortfolioRiskPanel() {
                 {summary.topRisks.map((risk) => (
                   <tr
                     key={risk.timelineId}
-                    className="border-b border-[#1A1A1A]/50 hover:bg-[#1A1A1A]/30 transition"
+                    className="border-b border-terminal-border/50 hover:bg-terminal-card/30 transition"
                   >
                     <td className="p-2">
                       <span className="font-mono text-terminal-text text-xs">
@@ -294,7 +294,7 @@ export function PortfolioRiskPanel() {
                       </span>
                     </td>
                     <td className="p-2">
-                      <span className="font-mono text-red-400 text-xs">
+                      <span className="font-mono text-echelon-red text-xs">
                         {formatCurrency(risk.burnAtCollapse)}
                       </span>
                     </td>
@@ -324,7 +324,7 @@ export function PortfolioRiskPanel() {
 
       {/* Recommendations */}
       {summary.recommendations.length > 0 && (
-        <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
           <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-3">
             Recommendations
           </h3>

@@ -67,9 +67,9 @@ export function GravityField() {
   }, [timelines]);
 
   const getStrengthColor = (strength: number): string => {
-    if (strength > 0.7) return 'text-red-400';
-    if (strength > 0.4) return 'text-amber-400';
-    return 'text-emerald-400';
+    if (strength > 0.7) return 'text-echelon-red';
+    if (strength > 0.4) return 'text-echelon-amber';
+    return 'text-echelon-green';
   };
 
   const getBarColor = (strength: number): string => {
@@ -80,9 +80,9 @@ export function GravityField() {
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
-      case 'up': return <TrendingUp className="w-3 h-3 text-emerald-400" />;
-      case 'down': return <TrendingDown className="w-3 h-3 text-red-400" />;
-      default: return <Minus className="w-3 h-3 text-slate-600" />;
+      case 'up': return <TrendingUp className="w-3 h-3 text-echelon-green" />;
+      case 'down': return <TrendingDown className="w-3 h-3 text-echelon-red" />;
+      default: return <Minus className="w-3 h-3 text-terminal-text-muted" />;
     }
   };
 
@@ -90,8 +90,8 @@ export function GravityField() {
     return (
       <div className="flex items-center justify-center h-32">
         <div className="flex items-center gap-2">
-          <Zap className="w-4 h-4 text-blue-400 animate-pulse" />
-          <span className="text-slate-400 text-xs">Loading gravity data...</span>
+          <Zap className="w-4 h-4 text-echelon-blue animate-pulse" />
+          <span className="text-terminal-text-secondary text-xs">Loading gravity data...</span>
         </div>
       </div>
     );
@@ -99,8 +99,8 @@ export function GravityField() {
 
   if (gravityWells.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 text-slate-400">
-        <Target className="w-8 h-8 mb-2 text-slate-600 opacity-50" />
+      <div className="flex flex-col items-center justify-center h-48 text-terminal-text-secondary">
+        <Target className="w-8 h-8 mb-2 text-terminal-text-muted opacity-50" />
         <span className="text-xs">No gravity wells detected</span>
       </div>
     );
@@ -112,9 +112,9 @@ export function GravityField() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
       {/* Radar Visualization */}
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded p-3">
-        <div className="text-xs font-medium text-slate-200 mb-2 flex items-center gap-2">
-          <Target className="w-3.5 h-3.5 text-blue-400" />
+      <div className="bg-terminal-panel border border-terminal-border rounded p-3">
+        <div className="text-xs font-medium text-terminal-text mb-2 flex items-center gap-2">
+          <Target className="w-3.5 h-3.5 text-echelon-blue" />
           Keyword Radar
         </div>
 
@@ -122,9 +122,9 @@ export function GravityField() {
           {/* Radar circles */}
           <svg viewBox="0 0 100 100" className="w-full h-full">
             {/* Concentric circles */}
-            <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-700" />
-            <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-700" />
-            <circle cx="50" cy="50" r="15" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-slate-700" />
+            <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-terminal-text-muted" />
+            <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-terminal-text-muted" />
+            <circle cx="50" cy="50" r="15" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-terminal-text-muted" />
 
             {/* Plot keywords as dots */}
             {gravityWells.slice(0, 6).map((well, i) => {
@@ -167,7 +167,7 @@ export function GravityField() {
           {/* Center label */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center">
-              <div className="text-[9px] text-slate-500">DOM</div>
+              <div className="text-[9px] text-terminal-text-muted">DOM</div>
               <div className={clsx(
                 'font-bold text-sm',
                 getStrengthColor(dominant.strength)
@@ -180,8 +180,8 @@ export function GravityField() {
       </div>
 
       {/* Gravity Well Strength List */}
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded p-3">
-        <div className="text-xs font-medium text-slate-200 mb-2">Gravity Wells</div>
+      <div className="bg-terminal-panel border border-terminal-border rounded p-3">
+        <div className="text-xs font-medium text-terminal-text mb-2">Gravity Wells</div>
 
         <div className="space-y-2">
           {gravityWells.map((well) => (
@@ -193,7 +193,7 @@ export function GravityField() {
                 {well.keyword}
               </span>
 
-              <div className="flex-1 h-2 bg-slate-800/50 border border-slate-700/50 rounded-full overflow-hidden">
+              <div className="flex-1 h-2 bg-terminal-card border border-terminal-border rounded-full overflow-hidden">
                 <div
                   className={clsx(
                     'h-full rounded-full transition-all',
@@ -212,7 +212,7 @@ export function GravityField() {
 
               {getTrendIcon(well.trend)}
 
-              <span className="text-[10px] text-slate-500 w-12 text-right">
+              <span className="text-[10px] text-terminal-text-muted w-12 text-right">
                 {well.agentCount}
               </span>
             </div>
@@ -220,10 +220,10 @@ export function GravityField() {
         </div>
 
         {/* Legend */}
-        <div className="mt-2 pt-2 border-t border-slate-700/30 text-[10px] text-slate-500 flex gap-3">
-          <span><span className="text-emerald-400">●</span> Low</span>
-          <span><span className="text-amber-400">●</span> Med</span>
-          <span><span className="text-red-400">●</span> High</span>
+        <div className="mt-2 pt-2 border-t border-terminal-border text-[10px] text-terminal-text-muted flex gap-3">
+          <span><span className="text-echelon-green">●</span> Low</span>
+          <span><span className="text-echelon-amber">●</span> Med</span>
+          <span><span className="text-echelon-red">●</span> High</span>
         </div>
       </div>
     </div>

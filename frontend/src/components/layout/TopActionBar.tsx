@@ -147,10 +147,10 @@ export function TopActionBar() {
     : config.buttons;
 
   return (
-    <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-slate-850/80 backdrop-blur-sm" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
+    <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-terminal-panel" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.03)' }}>
       {/* Page name / breadcrumb */}
       <div className="flex items-center gap-2.5 min-w-0">
-        <span className="text-sm font-bold tracking-[0.1em] uppercase text-terminal-text whitespace-nowrap">
+        <span className="text-sm font-bold tracking-[0.1em] uppercase text-terminal-text whitespace-nowrap pl-3 border-l-2 border-echelon-blue/40">
           {config.name}
         </span>
       </div>
@@ -169,7 +169,7 @@ export function TopActionBar() {
                   'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap',
                   isActive
                     ? 'border-echelon-cyan/30 bg-echelon-cyan/10 text-echelon-cyan'
-                    : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-slate-800'
+                    : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-terminal-card'
                 )}
               >
                 {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
@@ -236,7 +236,7 @@ export function TopActionBar() {
                   ? 'border-echelon-blue/30 bg-echelon-blue/10 text-echelon-blue hover:bg-echelon-blue/[0.18] hover:-translate-y-px'
                   : btn.kind === 'warn'
                   ? 'border-echelon-amber/30 bg-echelon-amber/10 text-echelon-amber hover:bg-echelon-amber/[0.18] hover:-translate-y-px'
-                  : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-slate-800 hover:-translate-y-px'
+                  : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-terminal-card hover:-translate-y-px'
               )}
             >
               {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}

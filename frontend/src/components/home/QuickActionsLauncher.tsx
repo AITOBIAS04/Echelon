@@ -37,7 +37,7 @@ export function QuickActionsLauncher() {
   ];
 
   return (
-    <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+    <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
       <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-3">
         Quick Actions
       </h3>

@@ -79,7 +79,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
 
   if (sortedEvents.length === 0) {
     return (
-      <div className="bg-slate-900 rounded-lg p-4 border border-[#1A1A1A]">
+      <div className="bg-terminal-panel rounded-lg p-4 border border-terminal-border">
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <Shield className="w-12 h-12 text-terminal-text-muted mb-3 opacity-50" />
           <p className="text-sm text-terminal-text-muted">No sabotage activity</p>
@@ -89,7 +89,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
   }
 
   return (
-    <div className="bg-slate-900 rounded-lg p-4 border border-[#1A1A1A]">
+    <div className="bg-terminal-panel rounded-lg p-4 border border-terminal-border">
       <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
         Sabotage History
       </h3>
@@ -113,7 +113,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
                 {/* Timeline dot and line */}
                 <div className="flex flex-col items-center pt-1">
                   <div
-                    className={`w-3 h-3 rounded-full border-2 border-[#111111] ${
+                    className={`w-3 h-3 rounded-full border-2 border-terminal-border ${
                       isRecent ? 'animate-pulse' : ''
                     }`}
                     style={{
@@ -130,7 +130,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
                 </div>
 
                 {/* Event card */}
-                <div className="flex-1 bg-terminal-panel rounded p-3 border border-[#1A1A1A]">
+                <div className="flex-1 bg-terminal-panel rounded p-3 border border-terminal-border">
                   {/* Phase badge and timestamp */}
                   <div className="flex items-center justify-between mb-2">
                     <span
@@ -153,7 +153,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
                     {event.phase === 'disclosed' && (
                       <>
                         <div className="flex items-center gap-2 text-terminal-text">
-                          <Crosshair className="w-4 h-4 text-[#FF9500]" />
+                          <Crosshair className="w-4 h-4 text-echelon-amber" />
                           <span>
                             <span className="font-medium">{event.saboteurName}</span> preparing{' '}
                             <span className="font-medium">'{event.sabotageType}'</span> attack
@@ -169,7 +169,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
                     {event.phase === 'committed' && (
                       <>
                         <div className="flex items-center gap-2 text-terminal-text">
-                          <Crosshair className="w-4 h-4 text-[#FF6B00]" />
+                          <Crosshair className="w-4 h-4 text-echelon-amber" />
                           <span>
                             <span className="font-medium">{event.saboteurName}</span> committed to attack
                           </span>
@@ -183,7 +183,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
                     {event.phase === 'executed' && (
                       <>
                         <div className="flex items-center gap-2 text-terminal-text">
-                          <Crosshair className="w-4 h-4 text-[#FF3B3B]" />
+                          <Crosshair className="w-4 h-4 text-echelon-red" />
                           <span>Attack landed. Stability impact:{' '}
                             <span className="text-red-500 font-medium">
                               -{Math.abs(event.effectSize).toFixed(1)}%
@@ -201,7 +201,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
                     {event.phase === 'slashed' && (
                       <>
                         <div className="flex items-center gap-2 text-terminal-text">
-                          <Shield className="w-4 h-4 text-[#00FF41]" />
+                          <Shield className="w-4 h-4 text-echelon-green" />
                           <span>Timeline recovered. Stake slashed.</span>
                         </div>
                         <div className="text-terminal-text-muted text-xs ml-6">

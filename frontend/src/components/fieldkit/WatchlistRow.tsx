@@ -68,9 +68,9 @@ export function WatchlistRow({
     <div
       onClick={handleCardClick}
       className="
-        bg-slate-900 border border-[#1A1A1A] rounded-lg p-3
+        bg-terminal-panel border border-terminal-border rounded-lg p-3
         cursor-pointer transition-colors duration-150
-        hover:border-[#333]
+        hover:border-terminal-border
       "
     >
       {/* Row 1: Timeline name + YES price + Logic Gap */}
@@ -128,7 +128,7 @@ export function WatchlistRow({
           <button
             onClick={handleRemoveClick}
             className="
-              p-1.5 rounded hover:bg-red-500/20
+              p-1.5 rounded hover:bg-echelon-red/20
               text-terminal-text-muted hover:text-red-500
               transition-colors duration-150
             "

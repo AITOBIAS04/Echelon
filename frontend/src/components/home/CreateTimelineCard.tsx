@@ -21,7 +21,7 @@ export function CreateTimelineCard() {
   return (
     <button
       onClick={handleClick}
-      className="w-full bg-slate-900 border-2 border-dashed border-terminal-border rounded-lg p-6 hover:border-status-info hover:bg-[#0D0D0D] transition-all group"
+      className="w-full bg-terminal-panel border-2 border-dashed border-terminal-border rounded-lg p-6 hover:border-status-info hover:bg-terminal-panel transition-all group"
     >
       <div className="flex flex-col items-center justify-center text-center">
         <div className="relative mb-4">

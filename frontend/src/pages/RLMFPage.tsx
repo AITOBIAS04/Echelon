@@ -188,7 +188,7 @@ export function RLMFPage() {
             </div>
             
             {/* Visualizer */}
-            <div className="relative h-[240px] bg-[#050505] overflow-hidden">
+            <div className="relative h-[240px] bg-terminal-bg overflow-hidden">
               {/* Grid Background */}
               <div className="absolute inset-0 opacity-20" style={{
                 backgroundImage: `linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px)`,
