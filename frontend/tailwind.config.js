@@ -53,8 +53,8 @@ export default {
           'overlay': '#121417',   // Solid surface for overlays/modals/drawers
           'hover': '#1E2330',     // Visible hover state for rows/items
           'header': '#0C1018',    // Distinct table/section header bg
-          'border': 'rgba(255, 255, 255, 0.1)',
-          'border-light': 'rgba(255, 255, 255, 0.2)',
+          'border': 'rgba(255, 255, 255, 0.13)',
+          'border-light': 'rgba(255, 255, 255, 0.22)',
           'text': '#F3F4F6',      // Primary text
           'text-secondary': '#9CA3AF',  // Secondary text
           'text-muted': '#6B7280',  // Muted text

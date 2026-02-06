@@ -157,6 +157,13 @@ export function TopActionBar() {
 
       {/* Action buttons */}
       <div className="flex items-center gap-2 flex-wrap">
+        {/* Build stamp — remove once deployment confirmed */}
+        <span
+          className="font-mono text-[9px] text-terminal-text-muted/60 px-2 py-1 rounded border border-terminal-border/40 bg-terminal-bg/50 select-all whitespace-nowrap"
+          title={`Build: ${__BUILD_HASH__}`}
+        >
+          {__BUILD_ID__} · {__BUILD_HASH__}
+        </span>
         {filteredButtons.map((btn) => {
           // Tab buttons for agents page
           if (btn.isTab && isAgentsPage) {
