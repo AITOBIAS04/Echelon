@@ -310,9 +310,9 @@ export function MarketplacePage() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-slate-950 text-terminal-text">
+    <div className="h-full flex flex-col bg-terminal-bg text-terminal-text">
       {/* Controls Bar */}
-      <div className="flex-shrink-0 flex items-center gap-4 px-6 py-3 bg-slate-950 border-b border-terminal-border">
+      <div className="flex-shrink-0 flex items-center gap-4 px-6 py-3 bg-terminal-bg border-b border-terminal-border">
         {/* Search */}
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-terminal-text-muted" />
@@ -358,7 +358,7 @@ export function MarketplacePage() {
       </div>
 
       {/* Category Navigation */}
-      <div className="flex-shrink-0 flex items-center gap-1 px-6 py-3 overflow-x-auto bg-slate-950 border-b border-terminal-border">
+      <div className="flex-shrink-0 flex items-center gap-1 px-6 py-3 overflow-x-auto bg-terminal-bg border-b border-terminal-border">
         {CATEGORIES.map(cat => (
           <button
             key={cat.id}

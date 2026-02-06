@@ -78,10 +78,10 @@ export function Sidebar() {
 
   return (
     <aside
-      className="h-full flex-shrink-0 bg-slate-950 border-r border-terminal-border flex flex-col py-3 gap-2 overflow-hidden transition-all duration-300 ease-out"
+      className="h-full flex-shrink-0 bg-terminal-panel border-r border-terminal-border flex flex-col py-3 gap-2 overflow-hidden transition-all duration-300 ease-out"
       style={{
         width: isExpanded ? '180px' : '64px',
-        marginLeft: isExpanded ? '0' : '0'
+        boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.04), 2px 0 8px rgba(0,0,0,0.3)',
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -92,14 +92,14 @@ export function Sidebar() {
         "bg-gradient-to-r from-echelon-cyan/[0.06] to-transparent",
         isExpanded ? "justify-start gap-2.5 mx-2" : "justify-center mx-1.5"
       )}
-        style={{ boxShadow: '0 0 12px rgba(34,211,238,0.06)' }}
+        style={{ boxShadow: '0 0 20px rgba(34,211,238,0.10)' }}
       >
         {isExpanded ? (
           <span className="font-extrabold tracking-[0.14em] text-sm text-terminal-text whitespace-nowrap">
             ECHELON
           </span>
         ) : (
-          <span className="w-8 h-8 rounded-lg bg-echelon-cyan/[0.08] border border-echelon-cyan/20 flex items-center justify-center font-extrabold tracking-[0.14em] text-sm text-terminal-text">
+          <span className="w-8 h-8 rounded-lg bg-echelon-cyan/[0.12] border border-echelon-cyan/25 flex items-center justify-center font-extrabold tracking-[0.14em] text-sm text-terminal-text shadow-glow-cyan">
             E
           </span>
         )}
@@ -129,7 +129,7 @@ export function Sidebar() {
                 'flex items-center gap-2.5 py-2.5 rounded-r-lg text-xs font-semibold transition-all duration-200 select-none',
                 isExpanded ? 'px-3' : 'px-2.5 justify-center',
                 active
-                  ? 'border-l-[3px] border-l-echelon-cyan bg-echelon-cyan/[0.06] text-terminal-text'
+                  ? 'border-l-[3px] border-l-echelon-cyan bg-echelon-cyan/[0.10] text-terminal-text'
                   : 'border-l-[3px] border-l-transparent text-terminal-text-secondary hover:bg-terminal-card hover:text-terminal-text'
               )}
             >
