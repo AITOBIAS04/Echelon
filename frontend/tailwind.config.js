@@ -48,6 +48,7 @@ export default {
           'bg': '#030305',      // Deep Charcoal
           'panel': 'rgba(255, 255, 255, 0.03)',
           'card': 'rgba(255, 255, 255, 0.03)',
+          'overlay': '#121417', // Solid surface for overlays/modals/drawers
           'border': 'rgba(255, 255, 255, 0.1)',
           'border-light': 'rgba(255, 255, 255, 0.2)',
           'text': '#F3F4F6',    // Primary text

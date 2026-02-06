@@ -120,14 +120,14 @@ export function CompareSidebar({ isOpen, onClose }: CompareSidebarProps) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-[9998]"
+        className="fixed inset-0 bg-black/50 z-[200]"
         onClick={onClose}
       />
 
       {/* Sidebar */}
       <div
         ref={sidebarRef}
-        className="fixed top-0 right-0 h-full w-[480px] max-w-[90vw] bg-terminal-panel border-l border-terminal-border shadow-2xl z-[9999] flex flex-col transition-transform duration-300"
+        className="fixed top-0 right-0 h-full w-[480px] max-w-[90vw] bg-terminal-overlay border-l border-terminal-border shadow-2xl z-[210] flex flex-col transition-transform duration-300"
         style={{ transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
       >
         {/* Header */}
