@@ -47,10 +47,12 @@ export default {
         'terminal': {
           'bg': '#030305',        // Deep Charcoal — base layer
           'surface': '#0A0C10',   // Intermediate between bg and panel
-          'panel': '#080A0E',     // Opaque panel — visibly distinct from bg
-          'card': '#0E1014',      // Card surface — step up from panel
-          'elevated': '#161A1E',  // Highest non-overlay tier
+          'panel': '#0A0D12',     // Opaque panel — visibly distinct from bg
+          'card': '#10141A',      // Card surface — clear step up from panel
+          'elevated': '#1A1F26',  // Highest non-overlay tier — clearly distinct
           'overlay': '#121417',   // Solid surface for overlays/modals/drawers
+          'hover': '#1E2330',     // Visible hover state for rows/items
+          'header': '#0C1018',    // Distinct table/section header bg
           'border': 'rgba(255, 255, 255, 0.1)',
           'border-light': 'rgba(255, 255, 255, 0.2)',
           'text': '#F3F4F6',      // Primary text
@@ -92,9 +94,9 @@ export default {
         'sans': ['Inter', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'elevation-1': '0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)',
-        'elevation-2': '0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
-        'elevation-3': '0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
+        'elevation-1': '0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.3)',
+        'elevation-2': '0 4px 12px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.3)',
+        'elevation-3': '0 8px 24px rgba(0,0,0,0.6), 0 4px 8px rgba(0,0,0,0.4)',
         'glow-cyan': '0 0 12px rgba(34,211,238,0.15)',
         'glow-blue': '0 0 12px rgba(59,130,246,0.15)',
       },

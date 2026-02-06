@@ -16,10 +16,10 @@ export function DemoToastHost() {
       {toasts.map((t) => (
         <div
           key={t.id}
-          className="rounded-lg border border-purple-500/20 bg-[#0D0D0D]/90 px-3 py-2 shadow-lg backdrop-blur"
+          className="rounded-lg border border-status-paradox/20 bg-terminal-overlay px-3 py-2 shadow-elevation-2 backdrop-blur"
         >
-          <div className="text-sm text-slate-100">{t.title}</div>
-          {t.detail ? <div className="text-xs text-slate-400">{t.detail}</div> : null}
+          <div className="text-sm text-terminal-text">{t.title}</div>
+          {t.detail ? <div className="text-xs text-terminal-text-secondary">{t.detail}</div> : null}
         </div>
       ))}
     </div>
