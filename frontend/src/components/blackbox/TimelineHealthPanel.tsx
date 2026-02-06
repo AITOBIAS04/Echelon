@@ -102,7 +102,7 @@ function TimelineCard({ timeline }: { timeline: any }) {
                   {osintAlignment.toFixed(0)}%
                 </span>
               </div>
-              <div className="h-1 bg-slate-700 rounded-full overflow-hidden">
+              <div className="h-1 bg-terminal-border rounded-full overflow-hidden">
                 <div
                   className={clsx(
                     'h-full rounded-full transition-all',

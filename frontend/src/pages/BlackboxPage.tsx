@@ -108,7 +108,7 @@ export function BlackboxPage() {
   };
 
   return (
-    <div className="h-full w-full flex flex-col min-h-0 bg-slate-950 text-terminal-text">
+    <div className="h-full w-full flex flex-col min-h-0 bg-terminal-bg text-terminal-text">
 
       {/* Tabs Row */}
       <div className="flex items-center gap-2 px-6 py-3 border-b border-terminal-border">
@@ -118,8 +118,8 @@ export function BlackboxPage() {
             onClick={() => setChartMode(mode)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               chartMode === mode
-                ? 'bg-slate-800 text-terminal-text'
-                : 'text-terminal-text-muted hover:text-terminal-text-secondary hover:bg-slate-800'
+                ? 'bg-terminal-card text-terminal-text'
+                : 'text-terminal-text-muted hover:text-terminal-text-secondary hover:bg-terminal-card'
             }`}
           >
             {CHART_MODE_LABELS[mode]}

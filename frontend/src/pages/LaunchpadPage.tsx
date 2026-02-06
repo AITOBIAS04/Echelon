@@ -80,12 +80,12 @@ export function LaunchpadPage() {
   return (
     <div className="h-full flex flex-col gap-4 p-4">
       {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-xl border border-terminal-border bg-gradient-to-r from-terminal-panel via-echelon-cyan/[0.03] to-terminal-panel p-5 flex-shrink-0">
+      <div className="relative overflow-hidden rounded-xl border border-echelon-cyan/15 bg-gradient-to-r from-terminal-panel via-echelon-cyan/[0.06] to-terminal-panel p-5 flex-shrink-0" style={{ boxShadow: 'inset 0 1px 0 rgba(34,211,238,0.08), 0 2px 12px rgba(0,0,0,0.3)' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-2.5 h-2.5 rounded-full bg-echelon-cyan animate-pulse-slow shadow-glow-cyan" />
+            <div className="w-3 h-3 rounded-full bg-echelon-cyan animate-pulse-slow shadow-glow-cyan" />
             <div>
-              <h1 className="page-title">Launch Terminal</h1>
+              <h1 className="page-title text-lg">Launch Terminal</h1>
               <p className="text-xs text-terminal-text-muted mt-1">Deploy, monitor, and scale prediction timelines</p>
             </div>
           </div>
@@ -100,7 +100,7 @@ export function LaunchpadPage() {
             </div>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-echelon-cyan/20 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-echelon-cyan/30 to-transparent" />
       </div>
 
       {/* Live launches feed */}

@@ -83,7 +83,7 @@ export function LaunchCardMini({ launch }: LaunchCardMiniProps) {
             {launch.qualityScore}
           </span>
         </div>
-        <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+        <div className="w-full h-1.5 bg-terminal-border rounded-full overflow-hidden">
           <div
             className="h-full transition-all rounded-full"
             style={{
