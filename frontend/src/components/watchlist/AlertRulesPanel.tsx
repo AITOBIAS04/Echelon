@@ -12,7 +12,7 @@ export function AlertRulesPanel({ view, onUpdateView }: AlertRulesPanelProps) {
 
   if (!view) {
     return (
-      <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 text-center text-terminal-text-muted">
+      <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4 text-center text-terminal-text-muted">
         <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
         <p className="text-sm">Select a view to manage alert rules</p>
       </div>
@@ -93,16 +93,16 @@ export function AlertRulesPanel({ view, onUpdateView }: AlertRulesPanelProps) {
   const getSeverityColor = (severity: AlertRule['severity']): string => {
     switch (severity) {
       case 'critical':
-        return 'text-red-500 bg-red-500/20 border-red-500/50';
+        return 'text-red-500 bg-echelon-red/20 border-echelon-red/50';
       case 'warn':
-        return 'text-amber-500 bg-amber-500/20 border-amber-500/50';
+        return 'text-amber-500 bg-echelon-amber/20 border-echelon-amber/50';
       case 'info':
         return 'text-cyan-500 bg-cyan-500/20 border-cyan-500/50';
     }
   };
 
   return (
-    <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4">
+    <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide flex items-center gap-2">
           <Bell className="w-4 h-4" />
@@ -127,7 +127,7 @@ export function AlertRulesPanel({ view, onUpdateView }: AlertRulesPanelProps) {
           {view.alertRules.map((rule) => (
             <div
               key={rule.id}
-              className="bg-[#0D0D0D] border border-[#1A1A1A] rounded p-3"
+              className="bg-terminal-panel border border-terminal-border rounded p-3"
             >
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex-1 min-w-0">
@@ -167,16 +167,16 @@ export function AlertRulesPanel({ view, onUpdateView }: AlertRulesPanelProps) {
                   </button>
                   <button
                     onClick={() => handleDelete(rule.id)}
-                    className="p-1 hover:bg-red-500/20 rounded transition"
+                    className="p-1 hover:bg-echelon-red/20 rounded transition"
                     title="Delete rule"
                   >
-                    <Trash2 className="w-3 h-3 text-red-400" />
+                    <Trash2 className="w-3 h-3 text-echelon-red" />
                   </button>
                 </div>
               </div>
               
               {editingRuleId === rule.id && (
-                <div className="mt-3 pt-3 border-t border-[#1A1A1A] text-xs">
+                <div className="mt-3 pt-3 border-t border-terminal-border text-xs">
                   <p className="text-terminal-text-muted mb-2">Alert rule editing UI (stubbed)</p>
                   <p className="text-terminal-text-muted">
                     Full editing interface would allow modification of condition, severity, and scope.

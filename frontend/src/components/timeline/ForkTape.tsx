@@ -190,7 +190,7 @@ export function ForkTape({ timelineId, forks, onForkClick }: ForkTapeProps) {
   };
 
   return (
-    <div className="bg-slate-900 rounded-lg p-4 border border-[#1A1A1A]">
+    <div className="bg-terminal-panel rounded-lg p-4 border border-terminal-border">
       {/* Filter Bar */}
       <div className="flex items-center gap-2 mb-4">
         {(['all', 'open', 'locked', 'settled'] as ForkFilter[]).map((filter) => (
@@ -199,8 +199,8 @@ export function ForkTape({ timelineId, forks, onForkClick }: ForkTapeProps) {
             onClick={() => setActiveFilter(filter)}
             className={`px-3 py-1 text-xs rounded transition ${
               activeFilter === filter
-                ? 'border border-[#22D3EE] text-[#22D3EE] bg-[#22D3EE]/10'
-                : 'border border-[#333] text-[#666] hover:text-[#999]'
+                ? 'border border-echelon-cyan text-echelon-cyan bg-echelon-cyan/10'
+                : 'border border-terminal-border text-terminal-text-muted hover:text-terminal-text-secondary'
             }`}
           >
             {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -234,8 +234,8 @@ export function ForkTape({ timelineId, forks, onForkClick }: ForkTapeProps) {
               <div
                 key={fork.id}
                 onClick={() => handleForkClick(fork.id)}
-                className={`bg-slate-900 border border-[#1A1A1A] rounded p-3 cursor-pointer transition hover:border-[#333] ${
-                  onForkClick ? 'hover:border-[#22D3EE]/50' : ''
+                className={`bg-terminal-panel border border-terminal-border rounded p-3 cursor-pointer transition hover:border-terminal-border ${
+                  onForkClick ? 'hover:border-echelon-cyan/50' : ''
                 }`}
               >
                 {/* Header Row */}
@@ -289,7 +289,7 @@ export function ForkTape({ timelineId, forks, onForkClick }: ForkTapeProps) {
                 </div>
 
                 {/* Replay Button */}
-                <div className="mt-3 pt-3 border-t border-[#1A1A1A]">
+                <div className="mt-3 pt-3 border-t border-terminal-border">
                   <button
                     onClick={(e) => handleReplayClick(e, fork.id)}
                     className="flex items-center gap-2 px-3 py-1.5 w-full bg-terminal-bg border border-terminal-border rounded text-xs font-medium text-terminal-text hover:border-echelon-cyan hover:text-echelon-cyan transition-colors"

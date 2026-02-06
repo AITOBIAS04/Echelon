@@ -29,16 +29,16 @@ function getAgentIcon(agent: string): React.ComponentType<{ className?: string }
 }
 
 /**
- * Get action button style
+ * Get action button style — token-based
  */
 function getActionStyle(action: string): string {
   const styles: Record<string, string> = {
-    Theatre: 'text-[#3B82F6] hover:bg-[rgba(59,130,246,0.1)] border-[rgba(59,130,246,0.3)]',
-    Trade: 'text-[#4ADE80] hover:bg-[rgba(74,222,128,0.1)] border-[rgba(74,222,128,0.3)]',
-    Shield: 'text-[#FACC15] hover:bg-[rgba(250,204,21,0.1)] border-[rgba(250,204,21,0.3)]',
-    Adjust: 'text-[#8B5CF6] hover:bg-[rgba(139,92,246,0.1)] border-[rgba(139,92,246,0.3)]',
-    Verify: 'text-[#22D3EE] hover:bg-[rgba(34,211,238,0.1)] border-[rgba(34,211,238,0.3)]',
-    Monitor: 'text-[#64748B] hover:bg-[#151719] border-[#26292E]',
+    Theatre: 'text-echelon-blue hover:bg-echelon-blue/10 border-echelon-blue/30',
+    Trade: 'text-echelon-green hover:bg-echelon-green/10 border-echelon-green/30',
+    Shield: 'text-echelon-amber hover:bg-echelon-amber/10 border-echelon-amber/30',
+    Adjust: 'text-status-paradox hover:bg-status-paradox/10 border-status-paradox/30',
+    Verify: 'text-echelon-cyan hover:bg-echelon-cyan/10 border-echelon-cyan/30',
+    Monitor: 'text-terminal-text-muted hover:bg-terminal-panel border-terminal-border',
   };
 
   return styles[action] || styles.Monitor;
@@ -46,7 +46,7 @@ function getActionStyle(action: string): string {
 
 /**
  * SignalIntercepts Component
- * 
+ *
  * Sidebar panel showing real-time signal intercepts from AI agents:
  * - Agent name and icon
  * - Timestamp
@@ -61,24 +61,24 @@ export function SignalIntercepts({ intercepts, onViewAll, onInterceptClick }: Si
   }
 
   return (
-    <div className="flex flex-col border-b border-[#26292E]">
+    <div className="flex flex-col border-b border-terminal-border">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#151719]/95 backdrop-blur-sm px-4 py-3 border-b border-[#26292E]">
+      <div className="sticky top-0 z-10 bg-terminal-panel/95 backdrop-blur-sm px-4 py-3 border-b border-terminal-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-[#4ADE80] animate-pulse" />
-            <span className="text-xs font-bold text-[#F1F5F9] uppercase tracking-wider">
+            <Activity className="w-4 h-4 text-echelon-green animate-pulse" />
+            <span className="text-xs font-bold text-terminal-text uppercase tracking-wider">
               Signal Intercepts
             </span>
-            <span className="flex items-center gap-1 px-1.5 py-0.5 bg-[rgba(251,113,133,0.2)] border border-[rgba(251,113,133,0.3)] rounded text-[9px] font-bold text-[#FB7185] uppercase">
-              <span className="w-1 h-1 bg-[#FB7185] rounded-full animate-pulse" />
+            <span className="flex items-center gap-1 px-1.5 py-0.5 bg-echelon-red/20 border border-echelon-red/30 rounded text-[9px] font-bold text-echelon-red uppercase">
+              <span className="w-1 h-1 bg-echelon-red rounded-full animate-pulse" />
               LIVE
             </span>
           </div>
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="text-[10px] text-[#3B82F6] hover:underline"
+              className="text-[10px] text-echelon-blue hover:underline"
             >
               Full Feed →
             </button>
@@ -96,9 +96,9 @@ export function SignalIntercepts({ intercepts, onViewAll, onInterceptClick }: Si
             <div
               key={intercept.id || index}
               className={clsx(
-                'border-b border-[#26292E] last:border-b-0',
-                'transition-colors hover:bg-[#1A1D21]/50 cursor-pointer',
-                isExpanded && 'bg-[#1A1D21]/50'
+                'border-b border-terminal-border last:border-b-0',
+                'transition-colors hover:bg-terminal-hover/50 cursor-pointer',
+                isExpanded && 'bg-terminal-hover/50'
               )}
               onClick={() => {
                 setExpandedId(isExpanded ? null : (intercept.id || String(index)));
@@ -109,21 +109,21 @@ export function SignalIntercepts({ intercepts, onViewAll, onInterceptClick }: Si
                 {/* Header: Agent + Time */}
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <AgentIcon className="w-4 h-4 text-[#64748B]" />
-                    <span className="text-xs font-bold font-mono text-[#F1F5F9]">
+                    <AgentIcon className="w-4 h-4 text-terminal-text-muted" />
+                    <span className="text-xs font-bold font-mono text-terminal-text">
                       {intercept.agent}
                     </span>
-                    <span className="text-[10px] text-[#64748B] px-1.5 py-0.5 bg-[#121417] rounded border border-[#26292E]">
+                    <span className="text-[10px] text-terminal-text-muted px-1.5 py-0.5 bg-terminal-panel rounded border border-terminal-border">
                       {intercept.theatre}
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-[#64748B]">
+                  <span className="text-[10px] font-mono text-terminal-text-muted">
                     {intercept.time}
                   </span>
                 </div>
 
                 {/* Content */}
-                <p className="text-xs text-[#94A3B8] leading-relaxed mb-3">
+                <p className="text-xs text-terminal-text-secondary leading-relaxed mb-3">
                   {intercept.content}
                 </p>
 
@@ -143,7 +143,7 @@ export function SignalIntercepts({ intercepts, onViewAll, onInterceptClick }: Si
                     >
                       {action}
                     </button>
-))}
+                  ))}
                 </div>
               </div>
             </div>
@@ -152,8 +152,8 @@ export function SignalIntercepts({ intercepts, onViewAll, onInterceptClick }: Si
       </div>
 
       {/* Source Footer */}
-      <div className="px-4 py-2 bg-[#121417] border-t border-[#26292E]">
-        <p className="text-[10px] text-center font-mono text-[#64748B]">
+      <div className="px-4 py-2 bg-terminal-panel border-t border-terminal-border">
+        <p className="text-[10px] text-center font-mono text-terminal-text-muted">
           SRC: OSINT / SENSORS / ON-CHAIN
         </p>
       </div>

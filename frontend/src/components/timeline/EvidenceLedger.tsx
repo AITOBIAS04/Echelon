@@ -56,7 +56,7 @@ function ConfidenceBar({ confidence }: { confidence: number }) {
   const clampedConfidence = Math.max(0, Math.min(100, confidence));
 
   return (
-    <div className="w-10 h-2 bg-[#1A1A1A] rounded-full overflow-hidden">
+    <div className="w-10 h-2 bg-terminal-card rounded-full overflow-hidden">
       <div
         className="h-full transition-all duration-300"
         style={{
@@ -86,7 +86,7 @@ export function EvidenceLedger({ entries, onEntryClick }: EvidenceLedgerProps) {
 
   if (sortedEntries.length === 0) {
     return (
-      <div className="bg-[#0D0D0D] rounded-lg p-4 border border-[#1A1A1A]">
+      <div className="bg-terminal-panel rounded-lg p-4 border border-terminal-border">
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <FileSearch className="w-12 h-12 text-terminal-text-muted mb-3 opacity-50" />
           <p className="text-sm text-terminal-text-muted">No evidence recorded</p>
@@ -96,8 +96,8 @@ export function EvidenceLedger({ entries, onEntryClick }: EvidenceLedgerProps) {
   }
 
   return (
-    <div className="bg-[#0D0D0D] rounded-lg border border-[#1A1A1A]">
-      <div className="p-4 border-b border-[#1A1A1A]">
+    <div className="bg-terminal-panel rounded-lg border border-terminal-border">
+      <div className="p-4 border-b border-terminal-border">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">
           Evidence Ledger
         </h3>
@@ -137,9 +137,9 @@ export function EvidenceLedger({ entries, onEntryClick }: EvidenceLedgerProps) {
               key={entry.id}
               onClick={() => onEntryClick?.(entry.id)}
               className={`
-                flex items-center gap-4 py-2 px-3 border-b border-[#1A1A1A]
+                flex items-center gap-4 py-2 px-3 border-b border-terminal-border
                 transition-colors duration-150
-                ${onEntryClick ? 'cursor-pointer hover:bg-[#1A1A1A]' : ''}
+                ${onEntryClick ? 'cursor-pointer hover:bg-terminal-card' : ''}
                 ${hasContradiction ? 'border-l-2 border-l-amber-500' : ''}
               `}
             >
@@ -173,7 +173,7 @@ export function EvidenceLedger({ entries, onEntryClick }: EvidenceLedgerProps) {
                 {hasContradiction && (
                   <div className="relative group flex-shrink-0">
                     <AlertTriangle className="w-4 h-4 text-amber-500" />
-                    <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-10 bg-[#1A1A1A] border border-[#333] rounded p-2 text-xs text-terminal-text whitespace-nowrap shadow-lg">
+                    <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block z-10 bg-terminal-card border border-terminal-border rounded p-2 text-xs text-terminal-text whitespace-nowrap shadow-lg">
                       Conflicts with: {entry.contradiction?.reason}
                     </div>
                   </div>

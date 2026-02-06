@@ -57,7 +57,7 @@ export function ExportBuilder({ onCreateJob, loading = false }: ExportBuilderPro
   };
 
   return (
-    <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4">
+    <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4">
       <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
         Create Export Job
       </h3>

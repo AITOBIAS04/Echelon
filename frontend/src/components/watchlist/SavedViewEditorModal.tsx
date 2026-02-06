@@ -82,7 +82,7 @@ export function SavedViewEditorModal({
       onClick={onClose}
     >
       <div
-        className="bg-[#0D0D0D] border border-terminal-border rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
+        className="bg-terminal-panel border border-terminal-border rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

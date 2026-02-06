@@ -89,7 +89,7 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
     <>
       {/* Glassmorphism Overlay */}
       <div 
-        className="fixed inset-0 bg-[#030305]/80 backdrop-blur-sm z-[300]"
+        className="fixed inset-0 bg-terminal-bg/80 backdrop-blur-sm z-[300]"
         style={{ pointerEvents: 'auto' }}
         onClick={onClose}
       />
@@ -102,7 +102,7 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
         }}
       >
         <div 
-          className="bg-[#030305] border border-glass-border rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto shadow-2xl"
+          className="bg-terminal-bg border border-glass-border rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
         {/* Header */}
@@ -132,7 +132,7 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
                         <Globe className="w-32 h-32" />
                     </div>
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-sans font-medium text-gray-400 flex items-center gap-2">
+                        <h3 className="text-sm font-sans font-medium text-terminal-text-secondary flex items-center gap-2">
                             <Globe className="w-4 h-4 text-signal-action" />
                             ACTIVE MISSION MAP
                         </h3>
@@ -166,7 +166,7 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
                     {/* Net APY Card */}
                     <div className="bg-glass-card border border-glass-border rounded-xl p-4 backdrop-blur-md flex flex-col justify-center h-[calc(50%-0.5rem)] hover:border-glass-border-light transition-colors">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-sans text-gray-400">NET APY</span>
+                            <span className="text-xs font-sans text-terminal-text-secondary">NET APY</span>
                             <Activity className="w-4 h-4 text-signal-success opacity-80" />
                         </div>
                         <div className="text-2xl font-mono font-bold text-signal-success tracking-tight">
@@ -177,7 +177,7 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
                     {/* Paradox Level Card */}
                     <div className="bg-glass-card border border-glass-border rounded-xl p-4 backdrop-blur-md flex flex-col justify-center h-[calc(50%-0.5rem)] hover:border-glass-border-light transition-colors">
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-sans text-gray-400">PARADOX LEVEL</span>
+                            <span className="text-xs font-sans text-terminal-text-secondary">PARADOX LEVEL</span>
                             <ShieldAlert className="w-4 h-4 text-signal-risk opacity-80" />
                         </div>
                         <div className="text-2xl font-mono font-bold text-signal-risk tracking-tight">
@@ -202,14 +202,14 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-xs font-sans text-gray-400 mr-2">SANITY INTEGRITY</span>
+                <span className="text-xs font-sans text-terminal-text-secondary mr-2">SANITY INTEGRITY</span>
                 <span className={`font-mono font-bold ${agentSanity > 50 ? 'text-signal-success' : 'text-signal-risk'}`}>
                     {agentSanity}%
                 </span>
               </div>
             </div>
             {/* Progress Bar */}
-            <div className="w-full bg-gray-800/50 rounded-full h-1.5 overflow-hidden">
+            <div className="w-full bg-terminal-border/50 rounded-full h-1.5 overflow-hidden">
                <div 
                   className={`h-full rounded-full transition-all duration-500 ${agentSanity > 50 ? 'bg-signal-success' : agentSanity > 25 ? 'bg-signal-risk' : 'bg-signal-sabotage'}`}
                   style={{ width: `${agentSanity}%` }}
@@ -219,7 +219,7 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
 
           {/* Mission Selection Grid */}
           <div className="mb-4">
-            <h4 className="text-xs font-sans font-semibold text-gray-500 uppercase tracking-widest mb-4 ml-1">Select Operation</h4>
+            <h4 className="text-xs font-sans font-semibold text-terminal-text-muted uppercase tracking-widest mb-4 ml-1">Select Operation</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {MISSION_TEMPLATES.map((template) => {
                 const Icon = template.icon;
@@ -236,7 +236,7 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
                   >
                     <div className="flex items-start gap-4 relative z-10">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isSelected ? 'bg-signal-action/20' : 'bg-white/5 group-hover:bg-white/10'}`}>
-                        <Icon className={`w-5 h-5 ${isSelected ? 'text-signal-action' : 'text-gray-400 group-hover:text-gray-200'}`} />
+                        <Icon className={`w-5 h-5 ${isSelected ? 'text-signal-action' : 'text-terminal-text-secondary group-hover:text-gray-200'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
@@ -251,11 +251,11 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
                                 <Zap className="w-3 h-3" />
                                 {template.cost}
                             </span>
-                            <span className={`text-xs font-mono flex items-center gap-1 ${isSelected ? 'text-signal-action' : 'text-gray-500'}`}>
+                            <span className={`text-xs font-mono flex items-center gap-1 ${isSelected ? 'text-signal-action' : 'text-terminal-text-muted'}`}>
                                 <Activity className="w-3 h-3" />
                                 -{template.sanityCost} SAN
                             </span>
-                            <span className="text-gray-600 text-[10px] font-sans ml-auto">
+                            <span className="text-terminal-text-muted text-[10px] font-sans ml-auto">
                                 {template.duration}
                             </span>
                         </div>
@@ -272,23 +272,23 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
             <div className="mb-6 p-4 bg-glass-card border border-glass-border rounded-xl backdrop-blur-md animate-fade-in">
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-sans text-gray-500 uppercase tracking-wide block mb-2">Target URL (Optional)</label>
+                  <label className="text-xs font-sans text-terminal-text-muted uppercase tracking-wide block mb-2">Target URL (Optional)</label>
                   <input
                     type="text"
                     value={targetUrl}
                     onChange={(e) => setTargetUrl(e.target.value)}
                     placeholder="https://twitter.com/... or https://discord.gg/..."
-                    className="w-full bg-[#050507] border border-glass-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-signal-action focus:outline-none focus:ring-1 focus:ring-signal-action/50 transition-all font-sans"
+                    className="w-full bg-terminal-bg border border-glass-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-signal-action focus:outline-none focus:ring-1 focus:ring-signal-action/50 transition-all font-sans"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-sans text-gray-500 uppercase tracking-wide block mb-2">Intelligence Query</label>
+                  <label className="text-xs font-sans text-terminal-text-muted uppercase tracking-wide block mb-2">Intelligence Query</label>
                   <textarea
                     value={customQuery}
                     onChange={(e) => setCustomQuery(e.target.value)}
                     placeholder="e.g., Monitor all mentions of 'Project Titan' in Apple-related Discord servers..."
                     rows={3}
-                    className="w-full bg-[#050507] border border-glass-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-signal-action focus:outline-none focus:ring-1 focus:ring-signal-action/50 transition-all resize-none font-sans"
+                    className="w-full bg-terminal-bg border border-glass-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-signal-action focus:outline-none focus:ring-1 focus:ring-signal-action/50 transition-all resize-none font-sans"
                   />
                 </div>
               </div>
@@ -299,17 +299,17 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
           {selectedMission && (
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="bg-glass-card border border-glass-border rounded-xl p-4 backdrop-blur-md">
-                    <h4 className="text-xs text-gray-500 font-sans uppercase tracking-wide mb-3">Mission Analysis</h4>
+                    <h4 className="text-xs text-terminal-text-muted font-sans uppercase tracking-wide mb-3">Mission Analysis</h4>
                      <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                        <span className="text-gray-400 font-sans">Token Cost</span>
+                        <span className="text-terminal-text-secondary font-sans">Token Cost</span>
                         <span className="text-signal-risk font-mono font-bold flex items-center gap-1">
                             <Zap className="w-3 h-3" />
                             {selectedMission.cost} $ECH
                         </span>
                         </div>
                         <div className="flex justify-between text-sm">
-                        <span className="text-gray-400 font-sans">Sanity Impact</span>
+                        <span className="text-terminal-text-secondary font-sans">Sanity Impact</span>
                         <span className={`font-mono font-bold ${canAffordSanity ? 'text-signal-action' : 'text-signal-sabotage'}`}>
                             -{selectedMission.sanityCost} SAN
                         </span>
@@ -334,7 +334,7 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
              <AlertTriangle className="w-4 h-4 text-signal-risk mt-0.5 flex-shrink-0" />
              <div>
                <p className="text-signal-risk text-sm font-bold font-sans">Wallet Connection Required</p>
-               <p className="text-gray-400 text-xs mt-0.5 font-sans">
+               <p className="text-terminal-text-secondary text-xs mt-0.5 font-sans">
                  Connect wallet and hold $ECHELON to deploy intelligence missions.
                </p>
              </div>

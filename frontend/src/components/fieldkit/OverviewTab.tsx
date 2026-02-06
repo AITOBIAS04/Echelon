@@ -14,10 +14,10 @@ function ActiveBreachesWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
         <div className="animate-pulse">
-          <div className="h-4 bg-[#1A1A1A] rounded w-32 mb-2"></div>
-          <div className="h-6 bg-[#1A1A1A] rounded w-16"></div>
+          <div className="h-4 bg-terminal-card rounded w-32 mb-2"></div>
+          <div className="h-6 bg-terminal-card rounded w-16"></div>
         </div>
       </div>
     );
@@ -28,7 +28,7 @@ function ActiveBreachesWidget() {
   const highCount = activeBreaches.filter((b) => b.severity === 'high').length;
 
   return (
-    <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+    <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-red-500" />
@@ -86,11 +86,11 @@ function BrittleTimelinesWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
         <div className="animate-pulse space-y-2">
-          <div className="h-4 bg-[#1A1A1A] rounded w-32 mb-3"></div>
+          <div className="h-4 bg-terminal-card rounded w-32 mb-3"></div>
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-8 bg-[#1A1A1A] rounded"></div>
+            <div key={i} className="h-8 bg-terminal-card rounded"></div>
           ))}
         </div>
       </div>
@@ -103,7 +103,7 @@ function BrittleTimelinesWidget() {
   );
 
   return (
-    <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+    <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">
           Brittle Timelines
@@ -126,7 +126,7 @@ function BrittleTimelinesWidget() {
             <button
               key={timeline.id}
               onClick={() => navigate(`/timeline/${timeline.id}`)}
-              className="w-full text-left p-2 bg-[#0D0D0D] border border-[#1A1A1A] rounded hover:border-echelon-cyan transition"
+              className="w-full text-left p-2 bg-terminal-panel border border-terminal-border rounded hover:border-echelon-cyan transition"
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm text-terminal-text truncate flex-1">

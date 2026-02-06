@@ -32,8 +32,8 @@ function getSeverityStyles(severity: Breach['severity']) {
   switch (severity) {
     case 'critical':
       return {
-        bg: 'bg-red-500/20',
-        border: 'border-red-500',
+        bg: 'bg-echelon-red/20',
+        border: 'border-echelon-red',
         text: 'text-red-500',
         pulse: 'animate-pulse',
       };
@@ -46,8 +46,8 @@ function getSeverityStyles(severity: Breach['severity']) {
       };
     case 'medium':
       return {
-        bg: 'bg-amber-500/20',
-        border: 'border-amber-500',
+        bg: 'bg-echelon-amber/20',
+        border: 'border-echelon-amber',
         text: 'text-amber-500',
         pulse: '',
       };
@@ -55,7 +55,7 @@ function getSeverityStyles(severity: Breach['severity']) {
       return {
         bg: 'bg-gray-500/20',
         border: 'border-gray-500',
-        text: 'text-gray-500',
+        text: 'text-terminal-text-muted',
         pulse: '',
       };
   }
@@ -106,7 +106,7 @@ function CollapsibleSection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border-b border-[#1A1A1A]">
+    <div className="border-b border-terminal-border">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between py-3 text-left"
@@ -141,9 +141,9 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
   );
 
   return (
-    <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+    <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4 h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
       {/* Header Section */}
-      <div className="border-b border-[#1A1A1A] pb-4 mb-4">
+      <div className="border-b border-terminal-border pb-4 mb-4">
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex items-center gap-3">
             <div
@@ -185,7 +185,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
       </div>
 
       {/* Description Section */}
-      <div className="border-b border-[#1A1A1A] pb-4 mb-4">
+      <div className="border-b border-terminal-border pb-4 mb-4">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-2">
           Description
         </h3>
@@ -206,7 +206,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#1A1A1A]">
+                <tr className="border-b border-terminal-border">
                   <th className="text-left py-2 text-terminal-text-muted font-semibold">Timeline</th>
                   <th className="text-left py-2 text-terminal-text-muted font-semibold">
                     Stability
@@ -223,7 +223,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                   const logicGapChange = timeline.logicGapAfter - timeline.logicGapBefore;
 
                   return (
-                    <tr key={timeline.id} className="border-b border-[#1A1A1A]">
+                    <tr key={timeline.id} className="border-b border-terminal-border">
                       <td className="py-2 text-terminal-text font-medium">{timeline.name}</td>
                       <td className="py-2">
                         <span className="text-terminal-text">
@@ -270,7 +270,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
             {breach.affectedAgents.map((agent) => (
               <div
                 key={agent.id}
-                className="bg-terminal-panel rounded p-3 border border-[#1A1A1A]"
+                className="bg-terminal-panel rounded p-3 border border-terminal-border"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -320,7 +320,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
             {sortedBeneficiaries.map((beneficiary, index) => (
               <div
                 key={`${beneficiary.type}-${beneficiary.id}-${index}`}
-                className="flex items-center gap-3 bg-terminal-panel rounded p-3 border border-[#1A1A1A]"
+                className="flex items-center gap-3 bg-terminal-panel rounded p-3 border border-terminal-border"
               >
                 {beneficiary.type === 'agent' ? (
                   <Bot className="w-4 h-4 text-terminal-text-muted" />
@@ -354,7 +354,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
               return (
                 <div
                   key={`${change.timestamp}-${index}`}
-                  className="flex items-start gap-3 bg-terminal-panel rounded p-3 border border-[#1A1A1A]"
+                  className="flex items-start gap-3 bg-terminal-panel rounded p-3 border border-terminal-border"
                 >
                   <div className="flex-shrink-0">
                     {change.changeType === 'added' ? (
@@ -407,21 +407,21 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
             {breach.suggestedActions.map((action) => {
               const priorityStyles = {
                 immediate: {
-                  bg: 'bg-red-500/20',
-                  border: 'border-red-500',
+                  bg: 'bg-echelon-red/20',
+                  border: 'border-echelon-red',
                   text: 'text-red-500',
                   pulse: 'animate-pulse',
                 },
                 recommended: {
-                  bg: 'bg-amber-500/20',
-                  border: 'border-amber-500',
+                  bg: 'bg-echelon-amber/20',
+                  border: 'border-echelon-amber',
                   text: 'text-amber-500',
                   pulse: '',
                 },
                 optional: {
                   bg: 'bg-gray-500/20',
                   border: 'border-gray-500',
-                  text: 'text-gray-500',
+                  text: 'text-terminal-text-muted',
                   pulse: '',
                 },
               };
@@ -430,7 +430,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
               return (
                 <div
                   key={action.id}
-                  className="bg-terminal-panel rounded p-3 border border-[#1A1A1A]"
+                  className="bg-terminal-panel rounded p-3 border border-terminal-border"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
@@ -449,7 +449,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
                     {onAction && (
                       <button
                         onClick={() => onAction(action.id)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-[#22D3EE]/20 border border-[#22D3EE] rounded text-xs font-medium text-[#22D3EE] hover:bg-[#22D3EE]/30 transition"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-echelon-cyan/20 border border-echelon-cyan rounded text-xs font-medium text-echelon-cyan hover:bg-echelon-cyan/30 transition"
                       >
                         <Play className="w-3 h-3" />
                         Execute
@@ -465,7 +465,7 @@ export function BreachDetail({ breach, onAction, onResolve }: BreachDetailProps)
 
       {/* Footer: Resolve Button */}
       {breach.status !== 'resolved' && onResolve && (
-        <div className="mt-6 pt-4 border-t border-[#1A1A1A]">
+        <div className="mt-6 pt-4 border-t border-terminal-border">
           <button
             onClick={onResolve}
             className="w-full py-3 px-4 bg-green-500/20 border border-green-500 rounded text-sm font-semibold text-green-500 hover:bg-green-500/30 transition"

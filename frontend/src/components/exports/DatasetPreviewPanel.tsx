@@ -40,7 +40,7 @@ function formatFieldType(type: string): string {
 export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
   if (!preview) {
     return (
-      <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 h-full flex items-center justify-center">
+      <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4 h-full flex items-center justify-center">
         <div className="text-center">
           <p className="text-sm text-terminal-text-muted mb-2">
             No dataset preview selected
@@ -54,13 +54,13 @@ export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
   }
 
   return (
-    <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 h-full flex flex-col">
+    <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4 h-full flex flex-col">
       <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
         Dataset Preview
       </h3>
 
       {/* Schema Version */}
-      <div className="mb-4 pb-4 border-b border-[#1A1A1A]">
+      <div className="mb-4 pb-4 border-b border-terminal-border">
         <div className="flex items-center gap-2">
           <span className="text-xs text-terminal-text-muted uppercase">Schema:</span>
           <span className="text-xs font-mono text-terminal-text">{preview.schemaVersion}</span>
@@ -68,13 +68,13 @@ export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
       </div>
 
       {/* Schema Fields */}
-      <div className="mb-4 pb-4 border-b border-[#1A1A1A]">
+      <div className="mb-4 pb-4 border-b border-terminal-border">
         <h4 className="text-xs font-semibold text-terminal-text-muted uppercase mb-2">
           Schema Fields
         </h4>
         <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           {preview.fields.map((field) => (
-            <div key={field.name} className="bg-terminal-panel rounded p-2 border border-[#1A1A1A]">
+            <div key={field.name} className="bg-terminal-panel rounded p-2 border border-terminal-border">
               <div className="flex items-start justify-between gap-2 mb-1">
                 <span className="text-xs font-mono font-semibold text-terminal-text">
                   {field.name}
@@ -102,8 +102,8 @@ export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
         </h4>
         <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-slate-900">
-              <tr className="border-b border-[#1A1A1A]">
+            <thead className="sticky top-0 bg-terminal-panel">
+              <tr className="border-b border-terminal-border">
                 {preview.fields.map((field) => (
                   <th
                     key={field.name}
@@ -118,7 +118,7 @@ export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
               {preview.sampleRows.map((row, index) => (
                 <tr
                   key={index}
-                  className="border-b border-[#1A1A1A] hover:bg-terminal-panel/50 transition-colors"
+                  className="border-b border-terminal-border hover:bg-terminal-panel/50 transition-colors"
                 >
                   {preview.fields.map((field) => (
                     <td
@@ -137,7 +137,7 @@ export function DatasetPreviewPanel({ preview }: DatasetPreviewPanelProps) {
       </div>
 
       {/* Hint */}
-      <div className="mt-4 pt-4 border-t border-[#1A1A1A]">
+      <div className="mt-4 pt-4 border-t border-terminal-border">
         <p className="text-xs text-terminal-text-muted italic">
           💡 Replay available from fork rows
         </p>
