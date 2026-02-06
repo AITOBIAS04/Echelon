@@ -26,10 +26,10 @@ export function DemoBetModal(props: {
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/95 backdrop-blur-md z-[9990]"
+        className="fixed inset-0 bg-black/95 backdrop-blur-md z-[300]"
         onClick={props.onClose}
       />
-      <div className="fixed inset-0 z-[9995] flex items-center justify-center">
+      <div className="fixed inset-0 z-[310] flex items-center justify-center">
         <div className="w-[440px] bg-[#0D0D0D] border border-purple-500/40 rounded-lg p-4 shadow-2xl">
           <div className="mb-3">
             <div className="text-xs text-slate-400">Place bet</div>

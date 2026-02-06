@@ -197,16 +197,16 @@ export function ReplayDrawer({ open, onClose, pointer }: ReplayDrawerProps) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/80 z-40 md:bg-black/60"
+        className="fixed inset-0 bg-black/80 z-[200] md:bg-black/60"
         onClick={onClose}
       />
 
       {/* Drawer */}
       <div
         className={`
-          fixed top-0 right-0 bottom-0 z-50
+          fixed top-0 right-0 bottom-0 z-[210]
           w-full md:w-[420px]
-          bg-terminal-panel border-l border-terminal-border
+          bg-terminal-overlay border-l border-terminal-border
           flex flex-col
           shadow-xl
           transform transition-transform duration-300 ease-out

@@ -47,6 +47,11 @@
     @apply border-glass-border-light bg-glass-card;
   }
 
+  /* Solid overlay surface for modals/drawers/sidebars */
+  .overlay-surface {
+    @apply bg-terminal-overlay border border-glass-border shadow-2xl;
+  }
+
   /* Status pill styles */
   .status-pill {
     @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
@@ -225,7 +230,7 @@
 
   /* Ensure header dropdowns can overflow */
   .header-dropdown {
-    z-index: 9999;
+    z-index: 100;
     position: fixed;
   }
 
@@ -235,13 +240,13 @@
     inset: 0;
     background: rgba(11, 12, 14, 0.9);
     backdrop-filter: blur(8px);
-    z-index: 9990;
+    z-index: 300;
     pointer-events: auto;
   }
 
   .modal-content {
     position: fixed;
-    z-index: 9995;
+    z-index: 310;
     pointer-events: auto;
   }
 

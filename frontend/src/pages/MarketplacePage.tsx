@@ -453,8 +453,7 @@ export function MarketplacePage() {
       {/* Alert Notification Panel Backdrop */}
       {alertsPanelOpen && (
         <div
-          className="fixed inset-0 z-40"
-          style={{ background: 'rgba(0,0,0,0.3)' }}
+          className="fixed inset-0 z-[200] bg-black/40"
           onClick={() => setAlertsPanelOpen(false)}
         />
       )}
@@ -463,7 +462,7 @@ export function MarketplacePage() {
       {alertsPanelOpen && (
         <div
           ref={alertPanelRef}
-          className="fixed top-[60px] right-6 w-[380px] max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl bg-terminal-panel border border-terminal-border"
+          className="fixed top-[60px] right-6 w-[380px] max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-[210] shadow-xl bg-terminal-overlay border border-terminal-border"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b bg-terminal-card border-terminal-border">
@@ -598,12 +597,12 @@ export function MarketplacePage() {
       {/* Alert Management Modal */}
       {alertsModalOpen && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-[300] flex items-center justify-center"
           style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
           onClick={() => setAlertsModalOpen(false)}
         >
           <div
-            className="rounded-xl w-[600px] max-w-[90vw] max-h-[85vh] flex flex-col shadow-xl bg-terminal-panel border border-terminal-border"
+            className="rounded-xl w-[600px] max-w-[90vw] max-h-[85vh] flex flex-col shadow-xl bg-terminal-overlay border border-terminal-border"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-4 border-b bg-terminal-card border-terminal-border">
@@ -757,14 +756,14 @@ export function MarketplacePage() {
 
       {/* Compare Sidebar Backdrop */}
       <div
-        className={`fixed inset-0 z-40 transition-opacity duration-300 ${compareSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        style={{ background: 'rgba(0,0,0,0.3)' }}
+        className={`fixed inset-0 z-[200] transition-opacity duration-300 ${compareSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        style={{ background: 'rgba(0,0,0,0.4)' }}
         onClick={() => setCompareSidebarOpen(false)}
       />
 
       {/* Compare Sidebar */}
       <div
-        className={`fixed top-0 h-full shadow-xl z-[1500] flex flex-col transition-all duration-300 ease-out bg-terminal-panel border-l border-terminal-border ${compareSidebarOpen ? 'right-0' : 'right-[-480px]'}`}
+        className={`fixed top-0 h-full shadow-xl z-[210] flex flex-col transition-all duration-300 ease-out bg-terminal-overlay border-l border-terminal-border ${compareSidebarOpen ? 'right-0' : 'right-[-480px]'}`}
         style={{ width: '480px' }}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b bg-terminal-card border-terminal-border">

@@ -89,14 +89,14 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
     <>
       {/* Glassmorphism Overlay */}
       <div 
-        className="fixed inset-0 bg-[#030305]/80 backdrop-blur-sm z-[9990]"
+        className="fixed inset-0 bg-[#030305]/80 backdrop-blur-sm z-[300]"
         style={{ pointerEvents: 'auto' }}
         onClick={onClose}
       />
       
       {/* Modal content */}
       <div 
-        className="fixed inset-0 z-[9995] flex items-center justify-center p-4 pointer-events-none"
+        className="fixed inset-0 z-[310] flex items-center justify-center p-4 pointer-events-none"
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();
         }}

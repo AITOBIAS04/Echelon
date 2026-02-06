@@ -164,8 +164,7 @@ export function BlackboxPage() {
       {/* Alert Panel Backdrop */}
       {alertPanelOpen && (
         <div
-          className="fixed inset-0 z-40"
-          style={{ background: 'rgba(0,0,0,0.3)' }}
+          className="fixed inset-0 z-[200] bg-black/40"
           onClick={() => setAlertPanelOpen(false)}
         />
       )}
@@ -174,7 +173,7 @@ export function BlackboxPage() {
       {alertPanelOpen && (
         <div
           ref={alertPanelRef}
-          className="fixed top-[60px] right-6 w-96 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl bg-terminal-panel border border-terminal-border"
+          className="fixed top-[60px] right-6 w-96 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-[210] shadow-xl bg-terminal-overlay border border-terminal-border"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b bg-terminal-card border-terminal-border">
@@ -195,8 +194,7 @@ export function BlackboxPage() {
       {/* Compare Panel Backdrop */}
       {comparePanelOpen && (
         <div
-          className="fixed inset-0 z-40"
-          style={{ background: 'rgba(0,0,0,0.3)' }}
+          className="fixed inset-0 z-[200] bg-black/40"
           onClick={() => setComparePanelOpen(false)}
         />
       )}
@@ -205,7 +203,7 @@ export function BlackboxPage() {
       {comparePanelOpen && (
         <div
           ref={comparePanelRef}
-          className="fixed top-[60px] right-6 w-96 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl bg-terminal-panel border border-terminal-border"
+          className="fixed top-[60px] right-6 w-96 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-[210] shadow-xl bg-terminal-overlay border border-terminal-border"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b bg-terminal-card border-terminal-border">
@@ -226,8 +224,7 @@ export function BlackboxPage() {
       {/* Settings Panel Backdrop */}
       {settingsPanelOpen && (
         <div
-          className="fixed inset-0 z-40"
-          style={{ background: 'rgba(0,0,0,0.3)' }}
+          className="fixed inset-0 z-[200] bg-black/40"
           onClick={() => setSettingsPanelOpen(false)}
         />
       )}
@@ -236,7 +233,7 @@ export function BlackboxPage() {
       {settingsPanelOpen && (
         <div
           ref={settingsPanelRef}
-          className="fixed top-[60px] right-6 w-80 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-50 shadow-xl bg-terminal-panel border border-terminal-border"
+          className="fixed top-[60px] right-6 w-80 max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-[210] shadow-xl bg-terminal-overlay border border-terminal-border"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b bg-terminal-card border-terminal-border">

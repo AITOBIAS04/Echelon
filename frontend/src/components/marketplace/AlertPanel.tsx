@@ -196,14 +196,14 @@ export function AlertPanel({ isOpen, onClose }: AlertPanelProps) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[9998]"
+        className="fixed inset-0 z-[200] bg-black/40"
         onClick={onClose}
       />
 
       {/* Panel */}
       <div
         ref={panelRef}
-        className="fixed top-16 right-4 w-96 max-h-[calc(100vh-8rem)] bg-terminal-panel border border-terminal-border rounded-xl shadow-2xl z-[9999] flex flex-col overflow-hidden"
+        className="fixed top-16 right-4 w-96 max-h-[calc(100vh-8rem)] bg-terminal-overlay border border-terminal-border rounded-xl shadow-2xl z-[210] flex flex-col overflow-hidden"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border bg-terminal-bg/50">

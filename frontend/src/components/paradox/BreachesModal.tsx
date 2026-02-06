@@ -31,12 +31,12 @@ export function BreachesModal({ paradoxes, onClose }: BreachesModalProps) {
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onClose}
       style={{ pointerEvents: 'auto' }}
     >
       <div 
-        className="w-full max-w-4xl max-h-[90vh] bg-terminal-panel border border-terminal-border rounded-lg shadow-2xl flex flex-col overflow-hidden"
+        className="w-full max-w-4xl max-h-[90vh] bg-terminal-overlay border border-terminal-border rounded-lg shadow-2xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
