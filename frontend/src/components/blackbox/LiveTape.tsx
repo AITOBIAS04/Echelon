@@ -167,7 +167,7 @@ export function LiveTape() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <span className="text-emerald-400 animate-pulse">SCANNING TAPE...</span>
+        <span className="text-echelon-green animate-pulse">SCANNING TAPE...</span>
       </div>
     );
   }
@@ -175,8 +175,8 @@ export function LiveTape() {
   if (error) {
 return (
       <div className="flex flex-col items-center justify-center h-64">
-        <span className="text-red-400 mb-2">ERROR: {error}</span>
-        <span className="text-slate-400 text-sm">Failed to load tape events</span>
+        <span className="text-echelon-red mb-2">ERROR: {error}</span>
+        <span className="text-terminal-text-secondary text-sm">Failed to load tape events</span>
       </div>
     );
   }
@@ -189,7 +189,7 @@ return (
         <div className="relative">
           <button
             onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
-            className="flex items-center gap-2 px-3 py-2 text-xs bg-slate-900/50 border border-slate-700/50 rounded text-slate-300 hover:text-blue-400 transition min-w-[160px]"
+            className="flex items-center gap-2 px-3 py-2 text-xs bg-terminal-panel border border-terminal-border rounded text-terminal-text hover:text-echelon-blue transition min-w-[160px]"
           >
             <span>{eventTypes.find((t) => t.value === selectedType)?.label || 'ALL EVENTS'}</span>
             <ChevronDown className={`w-3 h-3 transition ${isTypeDropdownOpen ? 'rotate-180' : ''}`} />
@@ -200,7 +200,7 @@ return (
                 className="fixed inset-0 z-10"
                 onClick={() => setIsTypeDropdownOpen(false)}
               />
-              <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-700 rounded shadow-lg z-20 min-w-[160px]">
+              <div className="absolute top-full left-0 mt-1 bg-terminal-card border border-terminal-border rounded shadow-lg z-20 min-w-[160px]">
                 {eventTypes.map((type) => (
                   <button
                     key={type.value}
@@ -209,8 +209,8 @@ return (
                       setIsTypeDropdownOpen(false);
                     }}
                     className={clsx(
-                      'w-full text-left px-3 py-2 text-xs hover:bg-slate-700 transition',
-                      selectedType === type.value ? 'text-blue-400' : 'text-slate-400'
+                      'w-full text-left px-3 py-2 text-xs hover:bg-terminal-hover transition',
+                      selectedType === type.value ? 'text-echelon-blue' : 'text-terminal-text-secondary'
                     )}
                   >
                     {type.label}
@@ -227,7 +227,7 @@ return (
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search timeline, agent, wallet..."
-          className="flex-1 px-3 py-2 text-xs bg-slate-900/50 border border-slate-700/50 rounded text-slate-300 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:text-blue-400"
+          className="flex-1 px-3 py-2 text-xs bg-terminal-panel border border-terminal-border rounded text-terminal-text placeholder-slate-500 focus:outline-none focus:border-echelon-blue focus:text-echelon-blue"
         />
       </div>
 
@@ -235,7 +235,7 @@ return (
       <div className="overflow-x-auto">
         <table className="w-full text-xs font-mono">
           <thead>
-            <tr className="border-b border-slate-700/50 text-slate-500">
+            <tr className="border-b border-terminal-border text-terminal-text-muted">
               <th className="text-left p-2">TIME</th>
               <th className="text-left p-2">TYPE</th>
               <th className="text-left p-2">TIMELINE</th>
@@ -248,7 +248,7 @@ return (
           <tbody>
             {filteredEvents.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-slate-400">
+                <td colSpan={7} className="text-center py-8 text-terminal-text-secondary">
                   No events found
                 </td>
               </tr>
@@ -260,9 +260,9 @@ return (
                 return (
                   <tr
                     key={event.id}
-                    className="border-b border-slate-700/50 hover:bg-slate-800/30 transition"
+                    className="border-b border-terminal-border hover:bg-terminal-card transition"
                   >
-                    <td className="p-2 text-slate-500">{formatTimestamp(event.ts)}</td>
+                    <td className="p-2 text-terminal-text-muted">{formatTimestamp(event.ts)}</td>
                     <td className="p-2">
                       <span
                         className="px-2 py-0.5 rounded text-[10px] font-bold"
@@ -274,31 +274,31 @@ return (
                         {typeBadge.label}
                       </span>
                     </td>
-                    <td className="p-2 text-slate-300">
+                    <td className="p-2 text-terminal-text">
                       {event.timelineTitle || event.timelineId || '-'}
                     </td>
-                    <td className="p-2 text-slate-300">
+                    <td className="p-2 text-terminal-text">
                       {event.agentName || event.wallet?.slice(0, 8) + '...' || '-'}
                     </td>
-                    <td className="p-2 text-slate-400 max-w-md truncate">{event.summary}</td>
+                    <td className="p-2 text-terminal-text-secondary max-w-md truncate">{event.summary}</td>
                     <td className="p-2">
                       <div className="flex items-center gap-1 flex-wrap">
                         {event.impact?.stabilityDelta !== undefined && (
-                          <span className="px-1.5 py-0.5 bg-slate-800/50 rounded text-[10px]">
+                          <span className="px-1.5 py-0.5 bg-terminal-card rounded text-[10px]">
                             S{formatImpact(event.impact.stabilityDelta)}
                           </span>
                         )}
                         {event.impact?.logicGapDelta !== undefined && (
-                          <span className="px-1.5 py-0.5 bg-slate-800/50 rounded text-[10px]">
+                          <span className="px-1.5 py-0.5 bg-terminal-card rounded text-[10px]">
                             L{formatImpact(event.impact.logicGapDelta)}
                           </span>
                         )}
                         {event.impact?.priceDelta !== undefined && (
-                          <span className="px-1.5 py-0.5 bg-slate-800/50 rounded text-[10px]">
+                          <span className="px-1.5 py-0.5 bg-terminal-card rounded text-[10px]">
                             P{formatImpact(event.impact.priceDelta, '$')}
                           </span>
                         )}
-                        {!event.impact && <span className="text-slate-600">-</span>}
+                        {!event.impact && <span className="text-terminal-text-muted">-</span>}
                       </div>
                     </td>
                     <td className="p-2">
@@ -306,7 +306,7 @@ return (
                         {event.timelineId && (
                           <button
                             onClick={() => handleOpenTimeline(event.timelineId!)}
-                            className="px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded hover:border-blue-500 hover:text-blue-400 transition text-[10px]"
+                            className="px-2 py-1 bg-terminal-card border border-terminal-border rounded hover:border-echelon-blue hover:text-echelon-blue transition text-[10px]"
                             title="Open timeline"
                           >
                             <ExternalLink className="w-3 h-3" />
@@ -315,7 +315,7 @@ return (
                         {event.replayPointer && (
                           <button
                             onClick={() => handleReplay(event.replayPointer!)}
-                            className="px-2 py-1 bg-slate-800/50 border border-slate-700/50 rounded hover:border-blue-500 hover:text-blue-400 transition text-[10px]"
+                            className="px-2 py-1 bg-terminal-card border border-terminal-border rounded hover:border-echelon-blue hover:text-echelon-blue transition text-[10px]"
                             title="View replay"
                           >
                             <Play className="w-3 h-3" />
@@ -327,8 +327,8 @@ return (
                             className={clsx(
                               'px-2 py-1 border rounded transition text-[10px] flex items-center gap-1',
                               tracked
-                                ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
-                                : 'bg-slate-800/50 border-slate-700/50 hover:border-emerald-500 hover:text-emerald-400'
+                                ? 'bg-echelon-green/20 border-echelon-green text-echelon-green'
+                                : 'bg-terminal-card border-terminal-border hover:border-echelon-green hover:text-echelon-green'
                             )}
                             title={tracked ? 'Untrack timeline' : 'Track timeline'}
                           >

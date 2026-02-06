@@ -19,17 +19,17 @@ function DemoPositionsPanel() {
   const totalPnl = rows.reduce((acc, r) => acc + r.pnl, 0);
 
   return (
-    <div className="bg-[#0D0D0D] border border-purple-500/20 rounded-lg overflow-hidden">
-      <div className="px-3 py-2 border-b border-purple-500/20 flex items-center justify-between">
+    <div className="bg-terminal-panel border border-status-paradox/20 rounded-lg overflow-hidden">
+      <div className="px-3 py-2 border-b border-status-paradox/20 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <DollarSign className="w-3.5 h-3.5 text-purple-400" />
-          <span className="text-xs font-medium text-slate-200">Demo Positions</span>
-          <span className="text-xs text-slate-500">({positions.length})</span>
+          <DollarSign className="w-3.5 h-3.5 text-status-paradox" />
+          <span className="text-xs font-medium text-terminal-text">Demo Positions</span>
+          <span className="text-xs text-terminal-text-muted">({positions.length})</span>
         </div>
-        <div className="text-xs text-slate-400">
-          <span className="text-slate-200 font-mono">£{rows.reduce((acc, r) => acc + r.p.stake, 0).toFixed(0)}</span>
-          <span className={clsx('ml-2 font-mono', totalPnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-            {totalPnl >= 0 ? '+' : ''}£{totalPnl.toFixed(2)}
+        <div className="text-xs text-terminal-text-secondary">
+          <span className="text-terminal-text font-mono">{'\u00A3'}{rows.reduce((acc, r) => acc + r.p.stake, 0).toFixed(0)}</span>
+          <span className={clsx('ml-2 font-mono', totalPnl >= 0 ? 'text-echelon-green' : 'text-echelon-red')}>
+            {totalPnl >= 0 ? '+' : ''}{'\u00A3'}{totalPnl.toFixed(2)}
           </span>
         </div>
       </div>
@@ -38,26 +38,26 @@ function DemoPositionsPanel() {
         {rows.map(({ p, pnl, markPerShare }) => (
           <div
             key={p.id}
-            className="rounded-lg border border-purple-500/20 bg-[#0D0D0D]/70 px-3 py-2"
+            className="rounded-lg border border-status-paradox/20 bg-terminal-bg/70 px-3 py-2"
           >
             <div className="flex items-center justify-between">
-              <div className="text-sm text-slate-100">{p.marketTitle}</div>
-              <div className={clsx('text-sm tabular-nums', pnl >= 0 ? 'text-emerald-400' : 'text-red-400')}>
-                £{pnl.toFixed(2)}
+              <div className="text-sm text-terminal-text">{p.marketTitle}</div>
+              <div className={clsx('text-sm tabular-nums', pnl >= 0 ? 'text-echelon-green' : 'text-echelon-red')}>
+                {'\u00A3'}{pnl.toFixed(2)}
               </div>
             </div>
 
-            <div className="mt-1 flex items-center justify-between text-xs text-slate-400">
+            <div className="mt-1 flex items-center justify-between text-xs text-terminal-text-secondary">
               <div className="tabular-nums">
                 {p.outcomeId} Entry {(p.entryPrice * 100).toFixed(1)}% Mark {(markPerShare * 100).toFixed(1)}%
               </div>
-              <div className="tabular-nums">Stake £{p.stake.toFixed(2)}</div>
+              <div className="tabular-nums">Stake {'\u00A3'}{p.stake.toFixed(2)}</div>
             </div>
           </div>
         ))}
 
         {rows.length === 0 ? (
-          <div className="rounded-lg border border-purple-500/15 bg-[#0D0D0D]/40 px-3 py-3 text-xs text-slate-500 text-center">
+          <div className="rounded-lg border border-status-paradox/15 bg-terminal-bg/40 px-3 py-3 text-xs text-terminal-text-muted text-center">
             No demo positions yet. Place a bet in demo mode!
           </div>
         ) : null}
@@ -78,9 +78,9 @@ export function PositionsPanel() {
 
   if (loading) {
     return (
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-3">
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3">
         <div className="flex items-center justify-center h-8">
-          <span className="text-slate-400 text-xs">Loading positions...</span>
+          <span className="text-terminal-text-secondary text-xs">Loading positions...</span>
         </div>
       </div>
     );
@@ -88,11 +88,11 @@ export function PositionsPanel() {
 
   if (error) {
     return (
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-3">
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3">
         <div className="flex items-center justify-center h-8">
           <button
             onClick={refresh}
-            className="text-red-400 text-xs hover:underline"
+            className="text-echelon-red text-xs hover:underline"
           >
             Error loading positions. Click to retry
           </button>
@@ -103,8 +103,8 @@ export function PositionsPanel() {
 
   if (positions.length === 0) {
     return (
-      <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg p-3">
-        <div className="flex flex-col items-center justify-center h-8 text-slate-400 text-xs">
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3">
+        <div className="flex flex-col items-center justify-center h-8 text-terminal-text-secondary text-xs">
           <PieChart className="w-4 h-4 mb-1 opacity-50" />
           <span>No active positions</span>
         </div>
@@ -113,28 +113,28 @@ export function PositionsPanel() {
   }
 
   return (
-    <div className="bg-slate-900/50 border border-slate-700/50 rounded-lg overflow-hidden transition-all duration-200">
+    <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden transition-all duration-200">
       {/* Compact Header */}
       <button
         onClick={toggleCollapse}
-        className="w-full flex items-center justify-between px-3 py-2 bg-slate-800/50 hover:bg-slate-800/70 transition-colors border-b border-slate-700/50"
+        className="w-full flex items-center justify-between px-3 py-2 bg-terminal-header hover:bg-terminal-hover transition-colors border-b border-terminal-border"
       >
         <div className="flex items-center gap-2">
-          <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-          <span className="text-xs font-medium text-slate-200">Your Positions</span>
-          <span className="text-xs text-slate-500">({positions.length})</span>
+          <DollarSign className="w-3.5 h-3.5 text-echelon-green" />
+          <span className="text-xs font-medium text-terminal-text">Your Positions</span>
+          <span className="text-xs text-terminal-text-muted">({positions.length})</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-400">
-            <span className="text-slate-200 font-mono">${totals.totalValue.toLocaleString()}</span>
-            <span className={clsx('ml-2 font-mono', totals.totalPnL >= 0 ? 'text-emerald-400' : 'text-red-400')}>
+          <span className="text-xs text-terminal-text-secondary">
+            <span className="text-terminal-text font-mono">${totals.totalValue.toLocaleString()}</span>
+            <span className={clsx('ml-2 font-mono', totals.totalPnL >= 0 ? 'text-echelon-green' : 'text-echelon-red')}>
               {totals.totalPnL >= 0 ? '+' : ''}{totals.totalPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </span>
           {isCollapsed ? (
-            <ChevronDown className="w-4 h-4 text-slate-500" />
+            <ChevronDown className="w-4 h-4 text-terminal-text-muted" />
           ) : (
-            <ChevronUp className="w-4 h-4 text-slate-500" />
+            <ChevronUp className="w-4 h-4 text-terminal-text-muted" />
           )}
         </div>
       </button>
@@ -147,83 +147,83 @@ export function PositionsPanel() {
             <div
               key={position.timelineId}
               onClick={() => navigate(`/timeline/${position.timelineId}`)}
-              className="flex-shrink-0 flex items-center gap-1.5 px-2 py-1 bg-slate-800/30 rounded border border-slate-700/30 hover:bg-slate-800/60 hover:border-slate-600/50 transition-all cursor-pointer"
+              className="flex-shrink-0 flex items-center gap-1.5 px-2 py-1 bg-terminal-card rounded border border-terminal-border hover:bg-terminal-hover hover:border-terminal-border-light transition-all cursor-pointer"
             >
               <span className={clsx(
                 'text-[10px] font-medium px-1.5 py-0.5 rounded',
-                position.netDirection === 'YES' && 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
-                position.netDirection === 'NO' && 'bg-red-500/10 text-red-400 border border-red-500/20',
-                position.netDirection === 'NEUTRAL' && 'bg-slate-700/30 text-slate-400 border border-slate-600/30'
+                position.netDirection === 'YES' && 'bg-echelon-green/10 text-echelon-green border border-echelon-green/20',
+                position.netDirection === 'NO' && 'bg-echelon-red/10 text-echelon-red border border-echelon-red/20',
+                position.netDirection === 'NEUTRAL' && 'bg-terminal-card text-terminal-text-secondary border border-terminal-border'
               )}>
                 {position.netDirection}
               </span>
-              <span className="text-[10px] text-slate-300 font-mono max-w-[60px] truncate">
+              <span className="text-[10px] text-terminal-text font-mono max-w-[60px] truncate">
                 ${(position.totalNotional / 1000).toFixed(0)}k
               </span>
               <span className={clsx(
                 'text-[10px] font-mono',
-                position.pnlPercent >= 0 ? 'text-emerald-400' : 'text-red-400'
+                position.pnlPercent >= 0 ? 'text-echelon-green' : 'text-echelon-red'
               )}>
                 {position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent.toFixed(0)}%
               </span>
             </div>
           ))}
           {positions.length > 5 && (
-            <span className="flex-shrink-0 text-xs text-slate-500">
+            <span className="flex-shrink-0 text-xs text-terminal-text-muted">
               +{positions.length - 5} more
             </span>
           )}
         </div>
       ) : (
         // Expanded Full Table View
-        <div className="max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
-          <table className="w-full text-xs">
-            <thead className="bg-slate-800/30 sticky top-0">
-              <tr className="border-b border-slate-700/30">
-                <th className="text-left p-2.5 text-slate-500 font-medium uppercase text-[10px]">Timeline</th>
-                <th className="text-right p-2.5 text-slate-500 font-medium uppercase text-[10px]">Stake</th>
-                <th className="text-center p-2.5 text-slate-500 font-medium uppercase text-[10px]">Side</th>
-                <th className="text-right p-2.5 text-slate-500 font-medium uppercase text-[10px]">PnL</th>
-                <th className="text-right p-2.5 text-slate-500 font-medium uppercase text-[10px]"></th>
+        <div className="max-h-48 overflow-y-auto scrollbar-thin">
+          <table className="terminal-table">
+            <thead className="sticky top-0">
+              <tr>
+                <th className="text-left">Timeline</th>
+                <th className="text-right">Stake</th>
+                <th className="text-center">Side</th>
+                <th className="text-right">PnL</th>
+                <th className="text-right"></th>
               </tr>
             </thead>
             <tbody>
               {positions.map((position) => (
                 <tr
                   key={position.timelineId}
-                  className="border-b border-slate-700/20 hover:bg-slate-800/40 transition-colors cursor-pointer"
+                  className="cursor-pointer"
                   onClick={() => navigate(`/timeline/${position.timelineId}`)}
                 >
-                  <td className="p-2.5">
-                    <div className="font-mono text-slate-300 text-[10px] truncate max-w-[120px]" title={position.timelineId}>
+                  <td>
+                    <div className="font-mono text-terminal-text text-[10px] truncate max-w-[120px]" title={position.timelineId}>
                       {position.timelineId}
                     </div>
                   </td>
-                  <td className="p-2.5 text-right">
-                    <span className="text-slate-200 font-mono">
+                  <td className="text-right">
+                    <span className="text-terminal-text font-mono">
                       ${position.totalNotional.toLocaleString()}
                     </span>
                   </td>
-                  <td className="p-2.5 text-center">
+                  <td className="text-center">
                     <span className={clsx(
                       'px-2 py-0.5 rounded text-[10px] font-medium',
-                      position.netDirection === 'YES' && 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
-                      position.netDirection === 'NO' && 'bg-red-500/10 text-red-400 border border-red-500/20',
-                      position.netDirection === 'NEUTRAL' && 'bg-slate-700/30 text-slate-400 border border-slate-600/30'
+                      position.netDirection === 'YES' && 'bg-echelon-green/10 text-echelon-green border border-echelon-green/20',
+                      position.netDirection === 'NO' && 'bg-echelon-red/10 text-echelon-red border border-echelon-red/20',
+                      position.netDirection === 'NEUTRAL' && 'bg-terminal-card text-terminal-text-secondary border border-terminal-border'
                     )}>
                       {position.netDirection}
                     </span>
                   </td>
-                  <td className="p-2.5 text-right">
+                  <td className="text-right">
                     <span className={clsx(
                       'font-mono font-medium',
-                      position.pnlPercent >= 0 ? 'text-emerald-400' : 'text-red-400'
+                      position.pnlPercent >= 0 ? 'text-echelon-green' : 'text-echelon-red'
                     )}>
                       {position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent.toFixed(1)}%
                     </span>
                   </td>
-                  <td className="p-2.5 text-right">
-                    <ExternalLink className="w-3 h-3 text-slate-500 hover:text-blue-400 ml-auto" />
+                  <td className="text-right">
+                    <ExternalLink className="w-3 h-3 text-terminal-text-muted hover:text-echelon-blue ml-auto" />
                   </td>
                 </tr>
               ))}
@@ -233,13 +233,13 @@ export function PositionsPanel() {
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-800/30 border-t border-slate-700/30">
-        <span className="text-[10px] text-slate-500">
-          <span className="text-slate-400">{totals.winningPositions}</span> / <span className="text-red-400">{totals.losingPositions}</span>
+      <div className="flex items-center justify-between px-3 py-1.5 bg-terminal-header border-t border-terminal-border">
+        <span className="text-[10px] text-terminal-text-muted">
+          <span className="text-terminal-text-secondary">{totals.winningPositions}</span> / <span className="text-echelon-red">{totals.losingPositions}</span>
         </span>
         <button
           onClick={() => navigate('/fieldkit')}
-          className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+          className="text-[10px] text-echelon-blue hover:text-echelon-blue/80 flex items-center gap-1 transition-colors"
         >
           Full portfolio
           <ExternalLink className="w-2.5 h-2.5" />

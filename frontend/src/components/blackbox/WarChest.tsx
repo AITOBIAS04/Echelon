@@ -68,8 +68,8 @@ export function WarChest() {
     return (
       <div className="flex items-center justify-center h-32">
         <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-blue-400 animate-pulse" />
-          <span className="text-slate-400 text-xs">Loading war data...</span>
+          <Activity className="w-4 h-4 text-echelon-blue animate-pulse" />
+          <span className="text-terminal-text-secondary text-xs">Loading war data...</span>
         </div>
       </div>
     );
@@ -77,8 +77,8 @@ export function WarChest() {
 
   if (warData.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 text-slate-400">
-        <Swords className="w-8 h-8 mb-2 text-slate-600 opacity-50" />
+      <div className="flex flex-col items-center justify-center h-48 text-terminal-text-secondary">
+        <Swords className="w-8 h-8 mb-2 text-terminal-text-muted opacity-50" />
         <span className="text-xs">No active conflicts</span>
       </div>
     );
@@ -107,16 +107,16 @@ function WarCard({ war, onClick }: { war: WarData; onClick: () => void }) {
   return (
     <div
       className={clsx(
-        'bg-slate-900/50 border border-slate-700/50 rounded p-3',
-        isUnderSiege ? 'border-red-500/30' :
-        isDefended ? 'border-emerald-500/30' :
-        'border-amber-500/30'
+        'bg-terminal-panel border border-terminal-border rounded p-3',
+        isUnderSiege ? 'border-echelon-red/30' :
+        isDefended ? 'border-echelon-green/30' :
+        'border-echelon-amber/30'
       )}
     >
       {/* Header Row */}
       <div className="flex items-start gap-3 mb-3">
         {/* Timeline Image Tile - 40x40px */}
-        <div className="flex-shrink-0 w-10 h-10 border border-slate-700/50 rounded bg-slate-800/30 flex items-center justify-center overflow-hidden">
+        <div className="flex-shrink-0 w-10 h-10 border border-terminal-border rounded bg-terminal-card flex items-center justify-center overflow-hidden">
           {war.image_url ? (
             <img 
               src={war.image_url} 
@@ -124,23 +124,23 @@ function WarCard({ war, onClick }: { war: WarData; onClick: () => void }) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <Swords className="w-4 h-4 text-slate-600" />
+            <Swords className="w-4 h-4 text-terminal-text-muted" />
           )}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-slate-200 text-sm truncate cursor-pointer hover:text-blue-400" onClick={onClick}>
+              <h3 className="font-semibold text-terminal-text text-sm truncate cursor-pointer hover:text-echelon-blue" onClick={onClick}>
                 {war.timeline_name}
               </h3>
-              <span className="text-[10px] text-slate-500 font-mono">${war.total_pool.toLocaleString()} pool</span>
+              <span className="text-[10px] text-terminal-text-muted font-mono">${war.total_pool.toLocaleString()} pool</span>
             </div>
             <span className={clsx(
               'text-[10px] flex items-center gap-1 flex-shrink-0',
-              isUnderSiege ? 'text-red-400' :
-              isDefended ? 'text-emerald-400' :
-              'text-amber-400'
+              isUnderSiege ? 'text-echelon-red' :
+              isDefended ? 'text-echelon-green' :
+              'text-echelon-amber'
             )}>
               {isUnderSiege && <Skull className="w-3 h-3" />}
               {isDefended && <Shield className="w-3 h-3" />}
@@ -152,20 +152,20 @@ function WarCard({ war, onClick }: { war: WarData; onClick: () => void }) {
           {/* User Position */}
           {position && position.totalNotional > 0 && (
             <div className="flex items-center gap-2 mt-1.5">
-              <User className="w-3 h-3 text-blue-400" />
-              <span className="text-[10px] text-slate-400">
-                <span className="text-slate-200 font-mono">${position.totalNotional.toLocaleString()}</span>
+              <User className="w-3 h-3 text-echelon-blue" />
+              <span className="text-[10px] text-terminal-text-secondary">
+                <span className="text-terminal-text font-mono">${position.totalNotional.toLocaleString()}</span>
               </span>
               <span className={clsx(
                 'text-[10px] px-1.5 py-0.5 rounded',
-                position.netDirection === 'YES' && 'bg-emerald-500/10 text-emerald-400',
-                position.netDirection === 'NO' && 'bg-red-500/10 text-red-400'
+                position.netDirection === 'YES' && 'bg-echelon-green/10 text-echelon-green',
+                position.netDirection === 'NO' && 'bg-echelon-red/10 text-echelon-red'
               )}>
                 {position.netDirection}
               </span>
               <span className={clsx(
                 'text-[10px] font-mono',
-                position.pnlValue >= 0 ? 'text-emerald-400' : 'text-red-400'
+                position.pnlValue >= 0 ? 'text-echelon-green' : 'text-echelon-red'
               )}>
                 {position.pnlPercent >= 0 ? '+' : ''}{position.pnlPercent.toFixed(1)}%
               </span>
@@ -175,7 +175,7 @@ function WarCard({ war, onClick }: { war: WarData; onClick: () => void }) {
       </div>
 
       {/* Tug of War Bar - Compact */}
-      <div className="relative h-6 rounded overflow-hidden mb-2 bg-slate-800/50 border border-slate-700/50">
+      <div className="relative h-6 rounded overflow-hidden mb-2 bg-terminal-card border border-terminal-border">
         <div className="absolute inset-0 flex">
           {/* Sabotage (Red) Side */}
           <div
@@ -213,49 +213,49 @@ function WarCard({ war, onClick }: { war: WarData; onClick: () => void }) {
 
       {/* Pool Values */}
       <div className="flex justify-between items-center text-xs mb-2">
-        <span className="text-red-400 font-mono flex items-center gap-1">
+        <span className="text-echelon-red font-mono flex items-center gap-1">
           <Skull className="w-3 h-3" />
           ${war.sabotage_pool.toLocaleString()}
         </span>
         <span className={clsx(
           'text-[10px]',
-          isUnderSiege ? 'text-red-400 font-bold' : 'text-slate-500'
+          isUnderSiege ? 'text-echelon-red font-bold' : 'text-terminal-text-muted'
         )}>
           {war.sabotage_pct.toFixed(0)}%
         </span>
-        <span className="text-slate-500 text-[10px]">
+        <span className="text-terminal-text-muted text-[10px]">
           {Math.round(war.sabotage_pct / 10)} / 10
         </span>
         <span className={clsx(
           'text-[10px]',
-          isDefended ? 'text-emerald-400 font-bold' : 'text-slate-500'
+          isDefended ? 'text-echelon-green font-bold' : 'text-terminal-text-muted'
         )}>
           {(100 - war.sabotage_pct).toFixed(0)}%
         </span>
-        <span className="text-emerald-400 font-mono flex items-center gap-1">
+        <span className="text-echelon-green font-mono flex items-center gap-1">
           ${war.shield_pool.toLocaleString()}
           <Shield className="w-3 h-3" />
         </span>
       </div>
 
       {/* Activity Preview */}
-      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-700/30">
+      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-terminal-border">
         {/* Attackers */}
         <div>
           <div className="flex items-center gap-1 mb-1">
-            <Skull className="w-3 h-3 text-red-400" />
-            <span className="text-[10px] text-red-400 font-medium">Attackers</span>
+            <Skull className="w-3 h-3 text-echelon-red" />
+            <span className="text-[10px] text-echelon-red font-medium">Attackers</span>
           </div>
           <div className="space-y-0.5">
             {war.recent_attacks.slice(0, 2).map((attack, i) => (
               <div key={i} className="flex items-center gap-1.5">
-                <span className="text-[10px] text-red-400">💀</span>
-                <span className="text-[10px] text-slate-400 truncate flex-1">{attack.agent_name}</span>
-                <span className="text-[10px] text-slate-500 font-mono">${(attack.amount / 1000).toFixed(0)}K</span>
+                <span className="text-[10px] text-echelon-red">💀</span>
+                <span className="text-[10px] text-terminal-text-secondary truncate flex-1">{attack.agent_name}</span>
+                <span className="text-[10px] text-terminal-text-muted font-mono">${(attack.amount / 1000).toFixed(0)}K</span>
               </div>
             ))}
             {war.recent_attacks.length === 0 && (
-              <span className="text-[10px] text-slate-600">No attacks</span>
+              <span className="text-[10px] text-terminal-text-muted">No attacks</span>
             )}
           </div>
         </div>
@@ -263,19 +263,19 @@ function WarCard({ war, onClick }: { war: WarData; onClick: () => void }) {
         {/* Defenders */}
         <div>
           <div className="flex items-center gap-1 mb-1">
-            <Shield className="w-3 h-3 text-emerald-400" />
-            <span className="text-[10px] text-emerald-400 font-medium">Defenders</span>
+            <Shield className="w-3 h-3 text-echelon-green" />
+            <span className="text-[10px] text-echelon-green font-medium">Defenders</span>
           </div>
           <div className="space-y-0.5">
             {war.recent_shields.slice(0, 2).map((shield, i) => (
               <div key={i} className="flex items-center gap-1.5">
-                <span className="text-[10px] text-emerald-400">🛡️</span>
-                <span className="text-[10px] text-slate-400 truncate flex-1">{shield.agent_name}</span>
-                <span className="text-[10px] text-slate-500 font-mono">${(shield.amount / 1000).toFixed(0)}K</span>
+                <span className="text-[10px] text-echelon-green">🛡️</span>
+                <span className="text-[10px] text-terminal-text-secondary truncate flex-1">{shield.agent_name}</span>
+                <span className="text-[10px] text-terminal-text-muted font-mono">${(shield.amount / 1000).toFixed(0)}K</span>
               </div>
             ))}
             {war.recent_shields.length === 0 && (
-              <span className="text-[10px] text-slate-600">No shields</span>
+              <span className="text-[10px] text-terminal-text-muted">No shields</span>
             )}
           </div>
         </div>
