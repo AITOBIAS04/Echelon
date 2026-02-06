@@ -31,7 +31,7 @@
 @layer components {
   .terminal-panel {
     @apply bg-terminal-panel border border-terminal-border rounded-lg;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 3px rgba(0,0,0,0.4);
   }
   
   .terminal-header {
@@ -45,7 +45,7 @@
   }
 
   .terminal-card:hover {
-    @apply border-terminal-border-light shadow-elevation-2;
+    @apply border-terminal-border-light shadow-elevation-2 bg-terminal-elevated;
   }
 
   /* Elevated card (highest non-overlay tier) */
@@ -170,7 +170,7 @@
   }
   .terminal-table thead th {
     @apply text-[10px] font-semibold uppercase tracking-[0.06em] text-terminal-text-muted
-           px-3 py-2.5 text-left border-b border-terminal-border bg-terminal-panel;
+           px-3 py-2.5 text-left border-b border-terminal-border bg-terminal-header;
   }
   .terminal-table tbody tr {
     @apply border-b border-terminal-border/50 transition-all duration-150;
@@ -195,6 +195,13 @@
   }
   .metric-value {
     @apply text-sm font-semibold text-terminal-text font-mono tabular-nums;
+  }
+
+  /* ── Form input ── */
+  .terminal-input {
+    @apply px-2.5 py-1.5 text-xs bg-terminal-bg border border-terminal-border rounded-lg
+           text-terminal-text placeholder-terminal-text-muted outline-none
+           focus:border-echelon-cyan/30 focus:ring-1 focus:ring-echelon-cyan/20 transition-all;
   }
 }
 
