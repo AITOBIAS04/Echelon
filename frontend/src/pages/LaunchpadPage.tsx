@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, Clock, ArrowLeft, Rocket, Flame, AlertTriangle, Shield } from 'lucide-react';
+import { TrendingUp, Clock, Rocket, Flame, AlertTriangle, Shield, Copy, SlidersHorizontal, ArrowRight } from 'lucide-react';
 import { listLaunches } from '../api/launchpad';
 import { LaunchCardMini } from '../components/home/LaunchCardMini';
-import { getHomePreference } from '../lib/userPrefs';
 import type { LaunchPhase, LaunchCard } from '../types/launchpad';
 import { useDemoEnabled, useDemoLaunchFeed } from '../demo/hooks';
 import { demoStore } from '../demo/demoStore';
@@ -24,9 +23,6 @@ export function LaunchpadPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const homePref = getHomePreference();
-  const showGoToMarkets = homePref === 'launchpad';
-
   // Demo hooks
   const demoEnabled = useDemoEnabled();
   const liveFeed = useDemoLaunchFeed();
@@ -86,23 +82,8 @@ export function LaunchpadPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
-          {showGoToMarkets && (
-            <button
-              onClick={() => navigate('/home')}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs bg-terminal-bg border border-terminal-border rounded hover:border-echelon-cyan hover:text-echelon-cyan transition"
-              title="Go to Markets"
-            >
-              <ArrowLeft className="w-3 h-3" />
-              Go to Markets
-            </button>
-          )}
           <div>
-            <h1 className="text-2xl font-bold text-terminal-text uppercase tracking-wide">
-              Launchpad
-            </h1>
-            <p className="text-sm text-terminal-text-muted mt-1">
-              Discover and launch new timeline markets
-            </p>
+            {/* Launchpad header removed - clean slate */}
           </div>
         </div>
       </div>
@@ -171,63 +152,56 @@ export function LaunchpadPage() {
       </div>
 
       {/* Clone CTA */}
-      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">Clone top yielding fork</h3>
-            <p className="text-xs text-terminal-text-secondary mt-1">
-              Fast path to launch. Clones inherit baseline parameters and require active management.
-            </p>
-          </div>
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
+        <div className="px-4 py-3 border-b border-terminal-border">
+          <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">Quick Launch</h3>
         </div>
 
         {sortedLaunches.length > 0 ? (
-          <div className="bg-terminal-card border border-terminal-border rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <div className="text-base font-semibold text-terminal-text truncate">{sortedLaunches[0].title}</div>
-                <div className="text-xs text-terminal-text-secondary mt-1">
-                  Quality score: <span className="text-terminal-text tabular-nums">{sortedLaunches[0].qualityScore}</span>
-                  {" "}•{" "}
-                  Estimated yield:{" "}
-                  <span className="text-terminal-text tabular-nums">
-                    ${Math.max(40, Math.floor(sortedLaunches[0].qualityScore * 6))}/hour
-                  </span>
+          <button
+            onClick={() => {
+              demoStore.pushToast("Fork cloned", "Draft created in Launchpad");
+              navigate('/launchpad/new');
+            }}
+            className="w-full group flex items-center justify-between p-4 hover:bg-terminal-card/50 transition-colors text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-status-entropy/10 border border-status-entropy/20 flex items-center justify-center">
+                <Copy className="w-5 h-5 text-status-entropy" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-terminal-text">Clone & configure</div>
+                <div className="text-xs text-terminal-muted mt-0.5">
+                  Fast path using top performer: {sortedLaunches[0].title}
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  demoStore.pushToast("Fork cloned", "Draft created in Launchpad");
-                  navigate('/launchpad/new');
-                }}
-                className="px-4 py-2 rounded-md font-semibold text-sm border border-status-entropy/40 bg-status-entropy/10 hover:bg-status-entropy/15 text-terminal-text transition"
-              >
-                Clone & configure
-              </button>
+            </div>
+            <ArrowRight className="w-4 h-4 text-terminal-muted group-hover:text-status-entropy transition-colors" />
+          </button>
+        ) : (
+          <div className="p-4 text-xs text-terminal-muted">No candidate forks available.</div>
+        )}
+
+        <div className="h-px bg-terminal-border" />
+
+        <button
+          onClick={() => navigate('/launchpad/new')}
+          className="w-full group flex items-center justify-between p-4 hover:bg-terminal-card/50 transition-colors text-left"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-status-info/10 border border-status-info/20 flex items-center justify-center">
+              <SlidersHorizontal className="w-5 h-5 text-status-info" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-terminal-text">Open advanced</div>
+              <div className="text-xs text-terminal-muted mt-0.5">
+                Define risk, oracle composition, and fork parameters
+              </div>
             </div>
           </div>
-        ) : (
-          <div className="text-xs text-terminal-text-muted">No candidate forks available.</div>
-        )}
+          <ArrowRight className="w-4 h-4 text-terminal-muted group-hover:text-status-info transition-colors" />
+        </button>
       </div>
-
-      {/* Create from scratch (Advanced) */}
-      <details className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-        <summary className="cursor-pointer select-none text-sm font-semibold text-terminal-text uppercase tracking-wide">
-          Create from scratch (Advanced)
-        </summary>
-        <div className="mt-3 text-xs text-terminal-text-secondary">
-          Use the advanced flow to define risk, oracle composition, and fork parameters.
-        </div>
-        <div className="mt-3">
-          <button
-            onClick={() => navigate('/launchpad/new')}
-            className="px-4 py-2 text-xs border border-terminal-border rounded hover:border-status-info/60 hover:text-status-info transition"
-          >
-            Open advanced create
-          </button>
-        </div>
-      </details>
 
       {/* Tabs and Sort Toggle */}
       <div className="flex items-center justify-between flex-shrink-0">

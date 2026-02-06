@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Search, AlertTriangle, Crosshair, Globe, MessageSquare, FileText, Zap } from 'lucide-react';
+import { X, Search, AlertTriangle, Crosshair, Globe, MessageSquare, FileText, Zap, Activity, ShieldAlert } from 'lucide-react';
 
 interface Agent {
   id: string;
@@ -87,65 +87,140 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
 
   return (
     <>
-      {/* Dark overlay - blocks all background content and pointer events */}
+      {/* Glassmorphism Overlay */}
       <div 
-        className="fixed inset-0 bg-black/95 backdrop-blur-md z-[9990]"
+        className="fixed inset-0 bg-[#030305]/80 backdrop-blur-sm z-[9990]"
         style={{ pointerEvents: 'auto' }}
         onClick={onClose}
       />
       
-      {/* Modal content - above overlay */}
+      {/* Modal content */}
       <div 
         className="fixed inset-0 z-[9995] flex items-center justify-center p-4 pointer-events-none"
         onClick={(e) => {
-          // Close on backdrop click
           if (e.target === e.currentTarget) onClose();
         }}
       >
         <div 
-          className="bg-[#0D0D0D] border border-purple-500/50 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto"
+          className="bg-[#030305] border border-glass-border rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
         {/* Header */}
-        <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+        <div className="p-5 border-b border-glass-border flex items-center justify-between bg-glass-card backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-900/50 rounded-full flex items-center justify-center border border-purple-500/30">
-              <Search className="w-5 h-5 text-purple-400" />
+            <div className="w-10 h-10 bg-signal-action/10 rounded-full flex items-center justify-center border border-signal-action/20">
+              <Search className="w-5 h-5 text-signal-action" />
             </div>
             <div>
-              <h3 className="text-purple-400 font-bold">TASK AGENT</h3>
-              <p className="text-gray-500 text-xs">Deploy {agent.name} on intelligence mission</p>
+              <h3 className="text-white font-sans font-bold tracking-tight text-lg">TASK AGENT</h3>
+              <p className="text-signal-muted text-xs font-sans">Deploy {agent.name} on intelligence mission</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-signal-muted hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-4 overflow-y-auto flex-1">
-          {/* Agent Status */}
-          <div className="bg-gray-900/50 rounded-lg p-3 mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-cyan-400 font-bold">{agent.name}</span>
-              <span className="text-gray-500 text-xs uppercase">{agent.archetype}</span>
+        {/* Content - Bento Grid Layout */}
+        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+            
+            {/* Bento Grid Top Section: Mission Map & Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                {/* Large Card: Active Mission Map */}
+                <div className="md:col-span-2 bg-glass-card border border-glass-border rounded-xl p-5 relative overflow-hidden backdrop-blur-md group hover:border-glass-border-light transition-all duration-300">
+                    <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                        <Globe className="w-32 h-32" />
+                    </div>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-sans font-medium text-gray-400 flex items-center gap-2">
+                            <Globe className="w-4 h-4 text-signal-action" />
+                            ACTIVE MISSION MAP
+                        </h3>
+                        <span className="text-[10px] font-mono text-signal-success border border-signal-success/30 px-2 py-0.5 rounded-full bg-signal-success/10">
+                            ONLINE
+                        </span>
+                    </div>
+                    
+                    {/* Visual Placeholder for Map */}
+                    <div className="h-32 w-full rounded-lg border border-glass-border bg-black/40 relative overflow-hidden flex items-center justify-center">
+                        <div className="absolute inset-0 grid grid-cols-12 grid-rows-6 opacity-20 pointer-events-none">
+                            {Array.from({length: 72}).map((_, i) => (
+                                <div key={i} className="border-[0.5px] border-signal-action/10" />
+                            ))}
+                        </div>
+                        {/* Radar Scan Effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-signal-action/5 to-transparent w-full h-full animate-[shimmer_3s_infinite] -skew-x-12 translate-x-[-100%]" />
+                        
+                        <div className="flex items-center gap-3 z-10">
+                            <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-signal-action opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-signal-action"></span>
+                            </span>
+                            <span className="font-mono text-xs text-signal-action tracking-widest">GLOBAL_INTEL_LAYER_V4</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Column: Stats Cards */}
+                <div className="space-y-4">
+                    {/* Net APY Card */}
+                    <div className="bg-glass-card border border-glass-border rounded-xl p-4 backdrop-blur-md flex flex-col justify-center h-[calc(50%-0.5rem)] hover:border-glass-border-light transition-colors">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-sans text-gray-400">NET APY</span>
+                            <Activity className="w-4 h-4 text-signal-success opacity-80" />
+                        </div>
+                        <div className="text-2xl font-mono font-bold text-signal-success tracking-tight">
+                            +24.5%
+                        </div>
+                    </div>
+
+                    {/* Paradox Level Card */}
+                    <div className="bg-glass-card border border-glass-border rounded-xl p-4 backdrop-blur-md flex flex-col justify-center h-[calc(50%-0.5rem)] hover:border-glass-border-light transition-colors">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-sans text-gray-400">PARADOX LEVEL</span>
+                            <ShieldAlert className="w-4 h-4 text-signal-risk opacity-80" />
+                        </div>
+                        <div className="text-2xl font-mono font-bold text-signal-risk tracking-tight">
+                            12.4%
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">Sanity:</span>
-              <div className="w-20 h-2 bg-gray-800 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full ${agentSanity > 50 ? 'bg-green-500' : agentSanity > 25 ? 'bg-amber-500' : 'bg-red-500'}`}
-                  style={{ width: `${agentSanity}%` }}
-                />
+
+          {/* Agent Identity & Status */}
+          <div className="bg-glass-card border border-glass-border rounded-xl p-4 mb-8 backdrop-blur-md">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-signal-action/10 flex items-center justify-center border border-signal-action/20 text-lg">
+                  🤖
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                      <span className="text-sm font-sans font-bold text-white">{agent.name}</span>
+                      <span className="text-[10px] font-mono text-signal-muted uppercase tracking-wider border border-glass-border px-1.5 rounded">{agent.archetype}</span>
+                  </div>
+                </div>
               </div>
-              <span className="text-xs font-mono text-gray-400">{agentSanity}%</span>
+              <div className="text-right">
+                <span className="text-xs font-sans text-gray-400 mr-2">SANITY INTEGRITY</span>
+                <span className={`font-mono font-bold ${agentSanity > 50 ? 'text-signal-success' : 'text-signal-risk'}`}>
+                    {agentSanity}%
+                </span>
+              </div>
+            </div>
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-800/50 rounded-full h-1.5 overflow-hidden">
+               <div 
+                  className={`h-full rounded-full transition-all duration-500 ${agentSanity > 50 ? 'bg-signal-success' : agentSanity > 25 ? 'bg-signal-risk' : 'bg-signal-sabotage'}`}
+                  style={{ width: `${agentSanity}%` }}
+               />
             </div>
           </div>
 
-          {/* Mission Templates */}
+          {/* Mission Selection Grid */}
           <div className="mb-4">
-            <h4 className="text-xs text-gray-500 uppercase tracking-wide mb-3">Select Mission Type</h4>
-            <div className="grid grid-cols-1 gap-2">
+            <h4 className="text-xs font-sans font-semibold text-gray-500 uppercase tracking-widest mb-4 ml-1">Select Operation</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {MISSION_TEMPLATES.map((template) => {
                 const Icon = template.icon;
                 const isSelected = selectedTemplate === template.id;
@@ -153,28 +228,37 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
                   <button
                     key={template.id}
                     onClick={() => setSelectedTemplate(template.id)}
-                    className={`p-3 rounded-lg border text-left transition-all ${
+                    className={`p-4 rounded-xl border text-left transition-all duration-200 group relative overflow-hidden ${
                       isSelected 
-                        ? 'bg-purple-900/30 border-purple-500/50' 
-                        : 'bg-gray-900/30 border-gray-800 hover:border-gray-700'
+                        ? 'bg-signal-action/10 border-signal-action/50 shadow-[0_0_15px_rgba(59,130,246,0.15)]' 
+                        : 'bg-glass-card border-glass-border hover:border-signal-action/30 hover:bg-glass-card/80'
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div className={`w-8 h-8 rounded flex items-center justify-center ${isSelected ? 'bg-purple-500/20' : 'bg-gray-800'}`}>
-                        <Icon className={`w-4 h-4 ${isSelected ? 'text-purple-400' : 'text-gray-500'}`} />
+                    <div className="flex items-start gap-4 relative z-10">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isSelected ? 'bg-signal-action/20' : 'bg-white/5 group-hover:bg-white/10'}`}>
+                        <Icon className={`w-5 h-5 ${isSelected ? 'text-signal-action' : 'text-gray-400 group-hover:text-gray-200'}`} />
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className={`font-bold text-sm ${isSelected ? 'text-purple-400' : 'text-gray-300'}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`font-sans font-semibold text-sm truncate pr-2 ${isSelected ? 'text-white' : 'text-gray-300 group-hover:text-white'}`}>
                             {template.name}
                           </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-amber-400 text-xs font-mono">{template.cost} $ECH</span>
-                            <span className="text-purple-400 text-xs font-mono">-{template.sanityCost} SAN</span>
-                          </div>
                         </div>
-                        <p className="text-gray-500 text-xs mt-1">{template.description}</p>
-                        <p className="text-gray-600 text-xs mt-1">Duration: {template.duration}</p>
+                        <p className="text-signal-muted text-xs line-clamp-2 mb-3 font-sans h-8">{template.description}</p>
+                        
+                        <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+                            <span className="text-signal-risk text-xs font-mono flex items-center gap-1">
+                                <Zap className="w-3 h-3" />
+                                {template.cost}
+                            </span>
+                            <span className={`text-xs font-mono flex items-center gap-1 ${isSelected ? 'text-signal-action' : 'text-gray-500'}`}>
+                                <Activity className="w-3 h-3" />
+                                -{template.sanityCost} SAN
+                            </span>
+                            <span className="text-gray-600 text-[10px] font-sans ml-auto">
+                                {template.duration}
+                            </span>
+                        </div>
                       </div>
                     </div>
                   </button>
@@ -183,89 +267,92 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
             </div>
           </div>
 
-          {/* Custom Query Input (for custom missions) */}
+          {/* Custom Query Input */}
           {selectedTemplate === 'custom' && (
-            <div className="mb-4 space-y-3">
-              <div>
-                <label className="text-xs text-gray-500 uppercase tracking-wide block mb-2">Target URL (Optional)</label>
-                <input
-                  type="text"
-                  value={targetUrl}
-                  onChange={(e) => setTargetUrl(e.target.value)}
-                  placeholder="https://twitter.com/... or https://discord.gg/..."
-                  className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 uppercase tracking-wide block mb-2">Intelligence Query</label>
-                <textarea
-                  value={customQuery}
-                  onChange={(e) => setCustomQuery(e.target.value)}
-                  placeholder="e.g., Monitor all mentions of 'Project Titan' in Apple-related Discord servers..."
-                  rows={3}
-                  className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-purple-500 focus:outline-none resize-none"
-                />
+            <div className="mb-6 p-4 bg-glass-card border border-glass-border rounded-xl backdrop-blur-md animate-fade-in">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-sans text-gray-500 uppercase tracking-wide block mb-2">Target URL (Optional)</label>
+                  <input
+                    type="text"
+                    value={targetUrl}
+                    onChange={(e) => setTargetUrl(e.target.value)}
+                    placeholder="https://twitter.com/... or https://discord.gg/..."
+                    className="w-full bg-[#050507] border border-glass-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-signal-action focus:outline-none focus:ring-1 focus:ring-signal-action/50 transition-all font-sans"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-sans text-gray-500 uppercase tracking-wide block mb-2">Intelligence Query</label>
+                  <textarea
+                    value={customQuery}
+                    onChange={(e) => setCustomQuery(e.target.value)}
+                    placeholder="e.g., Monitor all mentions of 'Project Titan' in Apple-related Discord servers..."
+                    rows={3}
+                    className="w-full bg-[#050507] border border-glass-border rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-signal-action focus:outline-none focus:ring-1 focus:ring-signal-action/50 transition-all resize-none font-sans"
+                  />
+                </div>
               </div>
             </div>
           )}
 
-          {/* Cost Summary */}
+          {/* Cost Summary & Warning */}
           {selectedMission && (
-            <div className="bg-gray-900 rounded-lg p-4 mb-4">
-              <h4 className="text-xs text-gray-500 uppercase tracking-wide mb-3">Mission Cost</h4>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Token Cost</span>
-                  <span className="text-amber-400 font-bold flex items-center gap-1">
-                    <Zap className="w-3 h-3" />
-                    {selectedMission.cost} $ECHELON
-                  </span>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="bg-glass-card border border-glass-border rounded-xl p-4 backdrop-blur-md">
+                    <h4 className="text-xs text-gray-500 font-sans uppercase tracking-wide mb-3">Mission Analysis</h4>
+                     <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                        <span className="text-gray-400 font-sans">Token Cost</span>
+                        <span className="text-signal-risk font-mono font-bold flex items-center gap-1">
+                            <Zap className="w-3 h-3" />
+                            {selectedMission.cost} $ECH
+                        </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                        <span className="text-gray-400 font-sans">Sanity Impact</span>
+                        <span className={`font-mono font-bold ${canAffordSanity ? 'text-signal-action' : 'text-signal-sabotage'}`}>
+                            -{selectedMission.sanityCost} SAN
+                        </span>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Agent Sanity Cost</span>
-                  <span className={`font-bold ${canAffordSanity ? 'text-purple-400' : 'text-red-400'}`}>
-                    -{selectedMission.sanityCost} Sanity
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Estimated Duration</span>
-                  <span className="text-gray-300">{selectedMission.duration}</span>
-                </div>
+
                 {!canAffordSanity && (
-                  <div className="flex items-center gap-2 text-red-400 text-xs mt-2 pt-2 border-t border-gray-800">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span>Agent sanity too low for this mission</span>
-                  </div>
+                    <div className="bg-signal-sabotage/10 border border-signal-sabotage/20 rounded-xl p-4 flex items-center justify-center text-center">
+                        <div className="flex flex-col items-center gap-1">
+                            <AlertTriangle className="w-5 h-5 text-signal-sabotage mb-1" />
+                            <span className="text-sm font-bold text-signal-sabotage font-sans">Insufficient Sanity</span>
+                            <span className="text-xs text-signal-sabotage/80">Recover agent before deploying</span>
+                        </div>
+                    </div>
                 )}
-              </div>
-            </div>
+             </div>
           )}
 
-          {/* Warning */}
-          <div className="bg-amber-900/20 border border-amber-500/30 rounded p-3">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-amber-400 text-sm font-bold">Wallet Connection Required</p>
-                <p className="text-gray-400 text-xs mt-1">
-                  Connect wallet and hold $ECHELON to deploy intelligence missions. Available Q1 2025.
-                </p>
-              </div>
-            </div>
+          {/* Warning Banner */}
+          <div className="bg-signal-risk/5 border border-signal-risk/20 rounded-lg p-3 flex items-start gap-3">
+             <AlertTriangle className="w-4 h-4 text-signal-risk mt-0.5 flex-shrink-0" />
+             <div>
+               <p className="text-signal-risk text-sm font-bold font-sans">Wallet Connection Required</p>
+               <p className="text-gray-400 text-xs mt-0.5 font-sans">
+                 Connect wallet and hold $ECHELON to deploy intelligence missions.
+               </p>
+             </div>
           </div>
+
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-800 flex gap-3">
+        <div className="p-5 border-t border-glass-border bg-glass-card backdrop-blur-md flex gap-3 rounded-b-xl">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-3 bg-gray-800 text-gray-300 rounded font-bold hover:bg-gray-700 transition-colors"
+            className="flex-1 px-4 py-3 bg-white/5 text-gray-300 rounded-lg font-bold hover:bg-white/10 transition-colors font-sans text-sm"
           >
             CANCEL
           </button>
           <button
             disabled
-            className="flex-1 px-4 py-3 bg-purple-900/30 border border-purple-500/30 text-purple-400/50 rounded font-bold cursor-not-allowed flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-3 bg-signal-action/10 border border-signal-action/20 text-signal-action/50 rounded-lg font-bold cursor-not-allowed flex items-center justify-center gap-2 font-sans text-sm"
           >
             <Search className="w-4 h-4" />
             CONNECT WALLET TO DEPLOY
@@ -278,4 +365,3 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
 }
 
 export default TaskAgentModal;
-

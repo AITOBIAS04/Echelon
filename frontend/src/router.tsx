@@ -10,6 +10,7 @@ import { LaunchpadNewPage } from './pages/LaunchpadNewPage';
 import { AgentRoster } from './components/agents/AgentRoster';
 import { AgentDetail } from './components/agents/AgentDetail';
 import { ErrorBoundary } from './components/system/ErrorBoundary';
+import { RouteErrorBoundary } from './components/common/RouteErrorBoundary';
 import { VRFPage } from './pages/VRFPage';
 import { RLMFPage } from './pages/RLMFPage';
 import { BreachConsolePage } from './pages/BreachConsolePage';
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <AppLayout />,
+    errorElement: <RouteErrorBoundary />,
     children: [
       // Default route → Marketplace
       {

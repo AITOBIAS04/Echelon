@@ -1,15 +1,16 @@
 import React, { useState, useCallback } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
-import { 
-  LayoutDashboard, 
-  BarChart3, 
-  Briefcase, 
-  Cpu, 
-  Shield, 
+import {
+  LayoutDashboard,
+  BarChart3,
+  Briefcase,
+  Cpu,
+  Shield,
   Users,
+  Rocket,
   AlertTriangle,
-  Download
+  Upload
 } from 'lucide-react';
 
 interface NavItem {
@@ -19,18 +20,25 @@ interface NavItem {
   matchPrefixes?: string[];
 }
 
+interface SubNavItem {
+  path: string;
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+}
+
 const NAV_ITEMS: NavItem[] = [
   { path: '/marketplace', label: 'Marketplace', icon: LayoutDashboard },
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
   { path: '/portfolio', label: 'Portfolio', icon: Briefcase },
   { path: '/rlmf', label: 'RLMF', icon: Cpu },
+  { path: '/launchpad', label: 'Launchpad', icon: Rocket },
   { path: '/vrf', label: 'VRF', icon: Shield },
   { path: '/agents', label: 'Agents', icon: Users, matchPrefixes: ['/agents', '/agent/'] },
 ];
 
-const AGENTS_SUBNAV: NavItem[] = [
+const AGENTS_SUBNAV: SubNavItem[] = [
   { path: '/agents/breach', label: 'Breach Console', icon: AlertTriangle },
-  { path: '/agents/export', label: 'Export Console', icon: Download },
+  { path: '/agents/export', label: 'Export Console', icon: Upload },
 ];
 
 export function Sidebar() {
@@ -46,6 +54,7 @@ export function Sidebar() {
     return false;
   }, [location.pathname]);
 
+  // Check if we're in the Agents section
   const isAgentsSection = location.pathname.startsWith('/agents') || location.pathname.startsWith('/agent/');
 
   const handleMouseEnter = useCallback(() => {
@@ -68,9 +77,9 @@ export function Sidebar() {
   };
 
   return (
-    <aside 
+    <aside
       className="h-full flex-shrink-0 bg-slate-950 border-r border-terminal-border flex flex-col py-3 gap-2 overflow-hidden transition-all duration-300 ease-out"
-      style={{ 
+      style={{
         width: isExpanded ? '180px' : '64px',
         marginLeft: isExpanded ? '0' : '0'
       }}
@@ -136,39 +145,25 @@ export function Sidebar() {
           );
         })}
 
-        {/* Agents subnav — visible when Agents section is active */}
-        {isAgentsSection && (
-          <div className={clsx(
-            "flex flex-col gap-1 transition-all duration-300 overflow-hidden",
-            isExpanded ? "pl-3 mt-1" : "pl-0 mt-0"
-          )}>
-            {isExpanded && (
-              <span className="text-[10px] tracking-[0.08em] uppercase text-terminal-text-muted mt-2 mb-1">
-                Agents
-              </span>
-            )}
-            {AGENTS_SUBNAV.map((sub) => {
-              const subActive = location.pathname === sub.path;
+        {/* Agents Subnav - shown when expanded and in Agents section */}
+        {isExpanded && isAgentsSection && (
+          <div className="mt-2 flex flex-col gap-1 pl-2 border-l border-terminal-border ml-3">
+            {AGENTS_SUBNAV.map((item) => {
+              const active = location.pathname === item.path;
+              const Icon = item.icon;
               return (
                 <NavLink
-                  key={sub.path}
-                  to={sub.path}
+                  key={item.path}
+                  to={item.path}
                   className={clsx(
-                    'px-2.5 py-2 rounded-lg border text-[11px] font-semibold transition-all duration-200',
-                    subActive
-                      ? 'bg-terminal-panel border-terminal-border text-terminal-text'
-                      : 'border-transparent text-terminal-text-secondary hover:bg-terminal-panel hover:border-terminal-border hover:text-terminal-text'
+                    'flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-200',
+                    active
+                      ? 'text-status-info bg-status-info/10'
+                      : 'text-terminal-text-muted hover:text-terminal-text-secondary hover:bg-terminal-panel'
                   )}
-                  style={{ justifyContent: isExpanded ? 'flex-start' : 'center' }}
                 >
-                  {isExpanded ? (
-                    <>
-                      <sub.icon className="w-3.5 h-3.5" />
-                      <span>{sub.label}</span>
-                    </>
-                  ) : (
-                    <sub.icon className="w-4 h-4" />
-                  )}
+                  {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0" />}
+                  <span>{item.label}</span>
                 </NavLink>
               );
             })}

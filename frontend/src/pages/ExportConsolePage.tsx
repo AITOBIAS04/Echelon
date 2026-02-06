@@ -81,79 +81,104 @@ export function ExportConsolePage() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col gap-4">
-      <div className="flex items-center justify-between flex-shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-terminal-text uppercase tracking-wide">Export Console</h1>
-          <p className="text-sm text-terminal-text-secondary mt-1">
-            Manage RLMF exports, partner access, and pipeline configuration
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 min-h-0">
-        {/* Active exports */}
-        <div className="xl:col-span-2 bg-terminal-panel border border-terminal-border rounded-lg p-4 min-h-0 flex flex-col">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Download className="w-4 h-4 text-status-entropy" />
-              <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">
-                Active Exports ({active.length})
-              </h3>
+    <div className="h-full flex flex-col gap-4 pt-4 pb-6 px-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 min-h-0 flex-1">
+        {/* Left Column: Active Exports + Partners */}
+        <div className="xl:col-span-2 flex flex-col gap-4 min-h-0">
+          {/* Active exports */}
+          <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4 flex flex-col min-h-[320px] flex-shrink-0">
+            <div className="flex items-center justify-between mb-3 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <Download className="w-4 h-4 text-status-entropy" />
+                <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">
+                  Active Exports ({active.length})
+                </h3>
+              </div>
             </div>
-          </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent space-y-3 pr-1">
-            {active.map((x: any) => (
-              <div key={x.id} className="bg-terminal-card border border-terminal-border rounded-lg p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-terminal-text">{x.partner}</span>
-                      <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
-                        x.status === "PROCESSING"
-                          ? "bg-status-info/10 border-status-info/25 text-status-info"
-                          : x.status === "QUEUED"
-                          ? "bg-terminal-bg border-terminal-border text-terminal-text-muted"
-                          : x.status === "COMPLETED"
-                          ? "bg-status-success/10 border-status-success/25 text-status-success"
-                          : "bg-status-danger/10 border-status-danger/25 text-status-danger"
-                      }`}>
-                        {x.status}
-                      </span>
+            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent space-y-3 pr-1">
+              {active.map((x: any) => (
+                <div key={x.id} className="bg-terminal-card border border-terminal-border rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold text-terminal-text">{x.partner}</span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                          x.status === "PROCESSING"
+                            ? "bg-status-info/10 border-status-info/25 text-status-info"
+                            : x.status === "QUEUED"
+                            ? "bg-terminal-bg border-terminal-border text-terminal-text-muted"
+                            : x.status === "COMPLETED"
+                            ? "bg-status-success/10 border-status-success/25 text-status-success"
+                            : "bg-status-danger/10 border-status-danger/25 text-status-danger"
+                        }`}>
+                          {x.status}
+                        </span>
+                      </div>
+
+                      <div className="mt-2 text-xs text-terminal-text-secondary space-y-0.5">
+                        <div>Theatre: <span className="text-terminal-text">{x.theatre}</span></div>
+                        <div>Episodes: <span className="text-terminal-text tabular-nums">{x.episodes.toLocaleString("en-GB")}</span> (Sampling: <span className="text-terminal-text tabular-nums">{Math.round(x.samplingRate * 100)}%</span>)</div>
+                        <div>Format: <span className="text-terminal-text">{x.format}</span></div>
+                        <div>Size: <span className="text-terminal-text tabular-nums">{x.sizeGb.toFixed(1)}GB</span> • ETA: <span className="text-terminal-text tabular-nums">{fmtEta(x.etaSec)}</span></div>
+                      </div>
                     </div>
 
-                    <div className="mt-2 text-xs text-terminal-text-secondary space-y-0.5">
-                      <div>Theatre: <span className="text-terminal-text">{x.theatre}</span></div>
-                      <div>Episodes: <span className="text-terminal-text tabular-nums">{x.episodes.toLocaleString("en-GB")}</span> (Sampling: <span className="text-terminal-text tabular-nums">{Math.round(x.samplingRate * 100)}%</span>)</div>
-                      <div>Format: <span className="text-terminal-text">{x.format}</span></div>
-                      <div>Size: <span className="text-terminal-text tabular-nums">{x.sizeGb.toFixed(1)}GB</span> • ETA: <span className="text-terminal-text tabular-nums">{fmtEta(x.etaSec)}</span></div>
-                    </div>
-                  </div>
-
-                  <div className="w-[220px] flex-shrink-0">
-                    <div className="flex items-center justify-between text-xs text-terminal-text-muted">
-                      <span className="flex items-center gap-1">
-                        <Activity className="w-3.5 h-3.5" />
-                        Progress
-                      </span>
-                      <span className="tabular-nums">{x.progress}%</span>
-                    </div>
-                    <div className="mt-1 h-2 rounded bg-terminal-bg border border-terminal-border overflow-hidden">
-                      <div
-                        className="h-full bg-status-entropy/70"
-                        style={{ width: `${Math.max(0, Math.min(100, x.progress))}%` }}
-                      />
+                    <div className="w-[220px] flex-shrink-0">
+                      <div className="flex items-center justify-between text-xs text-terminal-text-muted">
+                        <span className="flex items-center gap-1">
+                          <Activity className="w-3.5 h-3.5" />
+                          Progress
+                        </span>
+                        <span className="tabular-nums">{x.progress}%</span>
+                      </div>
+                      <div className="mt-1 h-2 rounded bg-terminal-bg border border-terminal-border overflow-hidden">
+                        <div
+                          className="h-full bg-status-entropy/70"
+                          style={{ width: `${Math.max(0, Math.min(100, x.progress))}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+
+          {/* Partners */}
+          <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4 flex-shrink-0">
+            <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-3">Robotics Partners</h3>
+            <div className="overflow-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+              <table className="w-full text-xs">
+                <thead className="text-terminal-text-muted">
+                  <tr className="border-b border-terminal-border">
+                    <th className="text-left py-2 pr-3 font-medium">Partner</th>
+                    <th className="text-left py-2 pr-3 font-medium">Access</th>
+                    <th className="text-left py-2 pr-3 font-medium">Exports (30d)</th>
+                    <th className="text-left py-2 pr-3 font-medium">Data volume</th>
+                    <th className="text-left py-2 pr-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {partners.map((p: any) => (
+                    <tr key={p.name} className="border-b border-terminal-border/60">
+                      <td className="py-2 pr-3 text-terminal-text">{p.name}</td>
+                      <td className="py-2 pr-3 text-terminal-text-secondary">{p.access}</td>
+                      <td className="py-2 pr-3 text-terminal-text-secondary tabular-nums">{p.exports30d}</td>
+                      <td className="py-2 pr-3 text-terminal-text-secondary tabular-nums">{p.dataVolumeGb}GB</td>
+                      <td className={`py-2 pr-3 font-semibold ${p.status === "Active" ? "text-status-success" : "text-terminal-text-muted"}`}>
+                        {p.status}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        {/* Metrics + Config */}
-        <div className="space-y-4">
+        {/* Right Column: Metrics + Config */}
+        <div className="space-y-4 flex-shrink-0 xl:flex-1 xl:min-h-0 xl:flex xl:flex-col">
           <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
             <div className="flex items-center gap-2 mb-3">
               <Database className="w-4 h-4 text-status-info" />
@@ -239,37 +264,6 @@ export function ExportConsolePage() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Partners */}
-      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4 min-h-0">
-        <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-3">Robotics Partners</h3>
-        <div className="max-h-[240px] overflow-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-<table className="w-full text-xs">
-            <thead className="text-terminal-text-muted">
-              <tr className="border-b border-terminal-border">
-                <th className="text-left py-2 pr-3 font-medium">Partner</th>
-                <th className="text-left py-2 pr-3 font-medium">Access</th>
-                <th className="text-left py-2 pr-3 font-medium">Exports (30d)</th>
-                <th className="text-left py-2 pr-3 font-medium">Data volume</th>
-                <th className="text-left py-2 pr-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {partners.map((p: any) => (
-                <tr key={p.name} className="border-b border-terminal-border/60">
-                  <td className="py-2 pr-3 text-terminal-text">{p.name}</td>
-                  <td className="py-2 pr-3 text-terminal-text-secondary">{p.access}</td>
-                  <td className="py-2 pr-3 text-terminal-text-secondary tabular-nums">{p.exports30d}</td>
-                  <td className="py-2 pr-3 text-terminal-text-secondary tabular-nums">{p.dataVolumeGb}GB</td>
-                  <td className={`py-2 pr-3 font-semibold ${p.status === "Active" ? "text-status-success" : "text-terminal-text-muted"}`}>
-                    {p.status}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
