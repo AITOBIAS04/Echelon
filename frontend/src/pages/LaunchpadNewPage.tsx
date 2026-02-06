@@ -144,7 +144,7 @@ export function LaunchpadNewPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
                 onClick={() => setCategory('theatre')}
-                className={`p-6 bg-slate-900 border-2 rounded-lg transition text-left ${
+                className={`p-6 bg-terminal-panel border-2 rounded-lg transition text-left ${
                   category === 'theatre'
                     ? 'border-echelon-cyan bg-echelon-cyan/10'
                     : 'border-terminal-border hover:border-terminal-border-light'
@@ -163,7 +163,7 @@ export function LaunchpadNewPage() {
 
               <button
                 onClick={() => setCategory('osint')}
-                className={`p-6 bg-slate-900 border-2 rounded-lg transition text-left ${
+                className={`p-6 bg-terminal-panel border-2 rounded-lg transition text-left ${
                   category === 'osint'
                     ? 'border-status-paradox bg-status-paradox/10'
                     : 'border-terminal-border hover:border-terminal-border-light'
@@ -229,7 +229,7 @@ export function LaunchpadNewPage() {
               Review
             </h2>
 
-            <div className="bg-slate-900 border border-terminal-border rounded-lg p-6 space-y-4">
+            <div className="bg-terminal-panel border border-terminal-border rounded-lg p-6 space-y-4">
               <div>
                 <span className="text-xs text-terminal-text-muted uppercase tracking-wide">Category</span>
                 <p className="text-lg font-semibold text-terminal-text mt-1">

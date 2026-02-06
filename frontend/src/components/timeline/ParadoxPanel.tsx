@@ -44,8 +44,8 @@ function getSeverityStyles(severity: TimelineParadoxStatus['severity']) {
   switch (severity) {
     case 'CLASS_1_CRITICAL':
       return {
-        bg: 'bg-red-500/20',
-        border: 'border-red-500',
+        bg: 'bg-echelon-red/20',
+        border: 'border-echelon-red',
         text: 'text-red-500',
         pulse: 'animate-pulse',
       };
@@ -58,8 +58,8 @@ function getSeverityStyles(severity: TimelineParadoxStatus['severity']) {
       };
     case 'CLASS_3_MODERATE':
       return {
-        bg: 'bg-amber-500/20',
-        border: 'border-amber-500',
+        bg: 'bg-echelon-amber/20',
+        border: 'border-echelon-amber',
         text: 'text-amber-500',
         pulse: '',
       };
@@ -109,8 +109,8 @@ export function ParadoxPanel({
 
   return (
     <div
-      className={`bg-slate-900 rounded-lg p-4 border ${
-        hasParadox ? 'border-red-500' : 'border-green-500/50'
+      className={`bg-terminal-panel rounded-lg p-4 border ${
+        hasParadox ? 'border-echelon-red' : 'border-green-500/50'
       }`}
     >
       {!hasParadox ? (
@@ -161,7 +161,7 @@ export function ParadoxPanel({
             <div className="text-xs text-terminal-text-muted mb-1 uppercase tracking-wide">
               DETONATION IN:
             </div>
-            <div className="text-3xl font-mono font-bold text-[#FF3B3B]">
+            <div className="text-3xl font-mono font-bold text-echelon-red">
               {formatCountdown(countdown)}
             </div>
           </div>
@@ -220,7 +220,7 @@ export function ParadoxPanel({
             className={`w-full py-3 px-4 rounded font-semibold text-sm uppercase transition ${
               onExtract
                 ? 'bg-red-500 text-white hover:bg-red-600'
-                : 'bg-[#333] text-[#666] cursor-not-allowed'
+                : 'bg-terminal-card text-terminal-text-muted cursor-not-allowed'
             }`}
           >
             EXTRACT NOW

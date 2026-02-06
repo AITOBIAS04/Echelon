@@ -68,7 +68,7 @@ export function ExportJobTable({ jobs, onJobClick }: ExportJobTableProps) {
 
   if (jobs.length === 0) {
     return (
-      <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4">
+      <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
           Export Jobs
         </h3>
@@ -80,7 +80,7 @@ export function ExportJobTable({ jobs, onJobClick }: ExportJobTableProps) {
   }
 
   return (
-    <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4">
+    <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4">
       <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
         Export Jobs
       </h3>
@@ -88,7 +88,7 @@ export function ExportJobTable({ jobs, onJobClick }: ExportJobTableProps) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-[#1A1A1A]">
+            <tr className="border-b border-terminal-border">
               <th className="text-left py-2 text-terminal-text-muted font-semibold text-xs uppercase">
                 ID
               </th>
@@ -117,7 +117,7 @@ export function ExportJobTable({ jobs, onJobClick }: ExportJobTableProps) {
                   key={job.id}
                   onClick={() => handleRowClick(job)}
                   className={`
-                    border-b border-[#1A1A1A] transition-colors
+                    border-b border-terminal-border transition-colors
                     ${isClickable ? 'cursor-pointer hover:bg-terminal-panel/50' : ''}
                   `}
                 >

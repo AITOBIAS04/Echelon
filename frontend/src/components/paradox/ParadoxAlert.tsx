@@ -200,7 +200,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
             }}
           >
             <div 
-              className="relative bg-[#0D0D0D] border border-echelon-cyan/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto pointer-events-auto"
+              className="relative bg-terminal-panel border border-echelon-cyan/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
             <button 
@@ -302,7 +302,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
             }}
           >
             <div 
-              className="relative bg-[#0D0D0D] border border-echelon-red/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto pointer-events-auto"
+              className="relative bg-terminal-panel border border-echelon-red/50 rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
             <button 

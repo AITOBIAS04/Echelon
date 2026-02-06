@@ -228,7 +228,7 @@ export function EntityGraphView() {
       {/* Main Content: Three Columns */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] gap-4">
         {/* Left: Node List */}
-        <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+        <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
             Nodes
           </h3>
@@ -274,7 +274,7 @@ export function EntityGraphView() {
         </div>
 
         {/* Centre: Selected Node Detail */}
-        <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+        <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           {selectedNode ? (
             <>
               <div className="flex items-center justify-between mb-4">
@@ -299,14 +299,14 @@ export function EntityGraphView() {
               </div>
 
               {/* Node ID */}
-              <div className="mb-4 pb-4 border-b border-[#1A1A1A]">
+              <div className="mb-4 pb-4 border-b border-terminal-border">
                 <div className="text-xs text-terminal-text-muted mb-1">Node ID</div>
                 <div className="text-xs font-mono text-terminal-text">{selectedNode.id}</div>
               </div>
 
               {/* Metadata */}
               {selectedNode.meta && Object.keys(selectedNode.meta).length > 0 && (
-                <div className="mb-4 pb-4 border-b border-[#1A1A1A]">
+                <div className="mb-4 pb-4 border-b border-terminal-border">
                   <h4 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-2">
                     Metadata
                   </h4>
@@ -324,7 +324,7 @@ export function EntityGraphView() {
               )}
 
               {/* Connections Summary */}
-              <div className="mb-4 pb-4 border-b border-[#1A1A1A]">
+              <div className="mb-4 pb-4 border-b border-terminal-border">
                 <h4 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-2">
                   Connections
                 </h4>
@@ -388,7 +388,7 @@ export function EntityGraphView() {
         </div>
 
         {/* Right: Edge List */}
-        <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+        <div className="bg-terminal-panel rounded-lg border border-terminal-border p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           <h3 className="text-xs font-semibold text-terminal-text-muted uppercase tracking-wide mb-3">
             Edges
             {selectedNode && (

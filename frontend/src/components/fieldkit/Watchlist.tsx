@@ -20,24 +20,24 @@ import { evaluateAlerts, type AlertTrigger } from '../../utils/alertEvaluator';
  */
 function SkeletonRow() {
   return (
-    <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-3 animate-pulse">
+    <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3 animate-pulse">
       <div className="flex justify-between items-center mb-3">
-        <div className="h-5 bg-[#1A1A1A] rounded w-48"></div>
+        <div className="h-5 bg-terminal-card rounded w-48"></div>
         <div className="flex items-center gap-2">
-          <div className="h-6 bg-[#1A1A1A] rounded w-16"></div>
-          <div className="h-6 bg-[#1A1A1A] rounded w-20"></div>
+          <div className="h-6 bg-terminal-card rounded w-16"></div>
+          <div className="h-6 bg-terminal-card rounded w-20"></div>
         </div>
       </div>
       <div className="flex items-center gap-4 mb-3">
-        <div className="h-4 bg-[#1A1A1A] rounded w-32"></div>
-        <div className="flex-1 h-1 bg-[#1A1A1A] rounded"></div>
+        <div className="h-4 bg-terminal-card rounded w-32"></div>
+        <div className="flex-1 h-1 bg-terminal-card rounded"></div>
       </div>
       <div className="flex justify-between items-center">
-        <div className="h-5 bg-[#1A1A1A] rounded w-16"></div>
-        <div className="h-4 bg-[#1A1A1A] rounded w-20"></div>
+        <div className="h-5 bg-terminal-card rounded w-16"></div>
+        <div className="h-4 bg-terminal-card rounded w-20"></div>
         <div className="flex gap-2">
-          <div className="h-6 w-6 bg-[#1A1A1A] rounded"></div>
-          <div className="h-6 w-6 bg-[#1A1A1A] rounded"></div>
+          <div className="h-6 w-6 bg-terminal-card rounded"></div>
+          <div className="h-6 w-6 bg-terminal-card rounded"></div>
         </div>
       </div>
     </div>
@@ -247,10 +247,10 @@ export function Watchlist() {
 
       {/* Alert Banner */}
       {alerts.length > 0 && (
-        <div className="bg-red-500/20 border border-red-500/50 rounded p-3 space-y-1">
+        <div className="bg-echelon-red/20 border border-echelon-red/50 rounded p-3 space-y-1">
           {alerts.slice(0, 3).map((alert) => (
             <div key={`${alert.ruleId}-${alert.timelineId}`} className="text-sm">
-              <span className="text-red-400 font-semibold">ALERT:</span>{' '}
+              <span className="text-echelon-red font-semibold">ALERT:</span>{' '}
               <span className="text-terminal-text">{alert.ruleName}</span>{' '}
               triggered on{' '}
               <span className="text-terminal-text font-medium">{alert.timelineName}</span>

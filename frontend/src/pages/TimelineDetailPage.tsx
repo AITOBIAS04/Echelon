@@ -14,12 +14,12 @@ import { useMemo } from 'react';
  */
 function SkeletonPanel({ className = '' }: { className?: string }) {
   return (
-    <div className={`bg-slate-900 rounded-lg p-4 border border-[#1A1A1A] animate-pulse ${className}`}>
-      <div className="h-4 bg-[#1A1A1A] rounded w-1/3 mb-4"></div>
+    <div className={`bg-terminal-panel rounded-lg p-4 border border-terminal-border animate-pulse ${className}`}>
+      <div className="h-4 bg-terminal-card rounded w-1/3 mb-4"></div>
       <div className="space-y-2">
-        <div className="h-3 bg-[#1A1A1A] rounded w-full"></div>
-        <div className="h-3 bg-[#1A1A1A] rounded w-5/6"></div>
-        <div className="h-3 bg-[#1A1A1A] rounded w-4/6"></div>
+        <div className="h-3 bg-terminal-card rounded w-full"></div>
+        <div className="h-3 bg-terminal-card rounded w-5/6"></div>
+        <div className="h-3 bg-terminal-card rounded w-4/6"></div>
       </div>
     </div>
   );
@@ -101,7 +101,7 @@ export function TimelineDetailPage() {
   }, [data]);
 
   return (
-    <div className="h-full overflow-y-auto bg-[#0D0D0D] p-6 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+    <div className="h-full overflow-y-auto bg-terminal-panel p-6 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -114,7 +114,7 @@ export function TimelineDetailPage() {
               Back to Watchlist
             </button>
             {isLoading ? (
-              <div className="h-8 bg-[#1A1A1A] rounded w-64 animate-pulse"></div>
+              <div className="h-8 bg-terminal-card rounded w-64 animate-pulse"></div>
             ) : (
               <h1 className="text-2xl font-bold text-terminal-text">
                 {data?.name || 'Timeline'}
@@ -128,7 +128,7 @@ export function TimelineDetailPage() {
 
         {/* Error State */}
         {isError && (
-          <div className="bg-slate-900 border border-red-500 rounded-lg p-6 text-center">
+          <div className="bg-terminal-panel border border-echelon-red rounded-lg p-6 text-center">
             <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-terminal-text mb-2">
               Failed to load timeline
@@ -195,7 +195,7 @@ export function TimelineDetailPage() {
 
             {/* Optional Row: User Position */}
             {data.userPosition && (
-              <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
+              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
                   Your Position
                 </h3>
@@ -240,7 +240,7 @@ export function TimelineDetailPage() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/50 rounded text-xs text-red-500">
+                <div className="mt-4 p-3 bg-echelon-red/10 border border-echelon-red/50 rounded text-xs text-red-500">
                   <AlertTriangle className="w-4 h-4 inline mr-2" />
                   If this timeline collapses, you will lose ${data.userPosition.burnAtCollapse.toFixed(2)}
                 </div>

@@ -60,7 +60,7 @@ export function BreachesPanel({ maxItems = 8 }: { maxItems?: number }) {
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center justify-between px-3 py-2 border-b border-terminal-border/50 bg-terminal-bg/95 backdrop-blur-sm">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-[#AA66FF]" />
+          <div className="w-2 h-2 rounded-full bg-status-paradox" />
           <h3 className="text-sm font-bold text-terminal-text uppercase tracking-wide">Breaches</h3>
         </div>
         <button

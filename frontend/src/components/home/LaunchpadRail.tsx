@@ -91,7 +91,7 @@ export function LaunchpadRail({ hideCreateCard = false }: LaunchpadRailProps) {
           </h2>
         </div>
         {feed.drafts.length === 0 ? (
-          <div className="bg-slate-900 border border-terminal-border rounded-lg p-8 text-center">
+          <div className="bg-terminal-panel border border-terminal-border rounded-lg p-8 text-center">
             <FileText className="w-12 h-12 text-terminal-text-muted mx-auto mb-3 opacity-50" />
             <p className="text-sm text-terminal-text-muted mb-2">No drafts yet</p>
             <p className="text-xs text-terminal-text-muted">

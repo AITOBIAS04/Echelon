@@ -66,8 +66,8 @@ function formatTimestamp(timestamp: string, range: TimeRange): string {
 function CustomTooltip({ active, payload, label }: any) {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#1A1A1A] border border-[#333] rounded p-2 text-xs">
-        <p className="text-[#666] mb-1">{label}</p>
+      <div className="bg-terminal-card border border-terminal-border rounded p-2 text-xs">
+        <p className="text-terminal-text-muted mb-1">{label}</p>
         <p className="text-white font-mono">
           {payload[0].value.toFixed(1)}
           {payload[0].dataKey === 'entropyRate' ? '%/hr' : '%'}
@@ -112,7 +112,7 @@ export function HealthMetricsPanel({
   const logicGapColor = currentLogicGap >= 50 ? '#FF3B3B' : '#FF9500';
   
   return (
-    <div className="bg-slate-900 rounded-lg p-4">
+    <div className="bg-terminal-panel rounded-lg p-4">
       {/* Header with time range toggle */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">
@@ -123,8 +123,8 @@ export function HealthMetricsPanel({
             onClick={() => setTimeRange('24H')}
             className={`px-3 py-1 text-xs rounded transition ${
               timeRange === '24H'
-                ? 'bg-terminal-panel border border-[#00FF41] text-[#00FF41]'
-                : 'bg-terminal-bg border border-[#333] text-terminal-text-muted hover:text-terminal-text'
+                ? 'bg-terminal-panel border border-echelon-green text-echelon-green'
+                : 'bg-terminal-bg border border-terminal-border text-terminal-text-muted hover:text-terminal-text'
             }`}
           >
             24H
@@ -133,8 +133,8 @@ export function HealthMetricsPanel({
             onClick={() => setTimeRange('7D')}
             className={`px-3 py-1 text-xs rounded transition ${
               timeRange === '7D'
-                ? 'bg-terminal-panel border border-[#00FF41] text-[#00FF41]'
-                : 'bg-terminal-bg border border-[#333] text-terminal-text-muted hover:text-terminal-text'
+                ? 'bg-terminal-panel border border-echelon-green text-echelon-green'
+                : 'bg-terminal-bg border border-terminal-border text-terminal-text-muted hover:text-terminal-text'
             }`}
           >
             7D
@@ -148,7 +148,7 @@ export function HealthMetricsPanel({
         <div className="relative">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-semibold text-terminal-text uppercase">STABILITY</h4>
-            <span className="text-xs font-mono text-[#00FF41]">
+            <span className="text-xs font-mono text-echelon-green">
               {currentStability.toFixed(1)}%
             </span>
           </div>
@@ -254,7 +254,7 @@ export function HealthMetricsPanel({
         <div className="relative">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-xs font-semibold text-terminal-text uppercase">ENTROPY</h4>
-            <span className="text-xs font-mono text-[#9932CC]">
+            <span className="text-xs font-mono text-status-paradox">
               {currentEntropyRate.toFixed(1)}%/hr
             </span>
           </div>
