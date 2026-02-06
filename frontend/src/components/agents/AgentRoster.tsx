@@ -11,17 +11,23 @@ import {
   MapPin,
   History,
   AlertTriangle,
+  AlertCircle,
+  CheckCircle,
   ArrowRight,
   ArrowLeft,
   Zap,
+  Flame,
+  ShieldAlert,
 } from 'lucide-react';
 import { useAgents } from '../../hooks/useAgents';
 import { AgentSanityIndicator } from './AgentSanityIndicator';
 import { TaskAgentModal } from './TaskAgentModal';
+import { DeployAgentModal } from './DeployAgentModal';
 import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { useAgentsUi } from '../../contexts/AgentsUiContext';
 import { LocalErrorBoundary } from '../common/LocalErrorBoundary';
 import { clsx } from 'clsx';
+import { getArchetypeTheme } from '../../theme/agentsTheme';
 
 // Mock data for Global Intelligence dashboard
 const mockStats = {
@@ -51,9 +57,9 @@ const mockMovements = [
 ];
 
 const mockClusters = [
-  { name: 'SHARK', emoji: '🦈', count: 12, focus: 'High-volatility', avgPosition: '$8,450', winRate: 68 },
-  { name: 'DIPLOMAT', emoji: '🤝', count: 8, focus: 'Stability', avgPosition: '$4,200', winRate: 72 },
-  { name: 'SABOTEUR', emoji: '💣', count: 6, focus: 'Adversarial', avgPosition: '$3,800', winRate: 42 },
+  { name: 'SHARK', archetype: 'SHARK', count: 12, focus: 'High-volatility', avgPosition: '$8,450', winRate: 68 },
+  { name: 'DIPLOMAT', archetype: 'DIPLOMAT', count: 8, focus: 'Stability', avgPosition: '$4,200', winRate: 72 },
+  { name: 'SABOTEUR', archetype: 'SABOTEUR', count: 6, focus: 'Adversarial', avgPosition: '$3,800', winRate: 42 },
 ];
 
 const mockConflicts = [
@@ -62,22 +68,11 @@ const mockConflicts = [
   { severity: 'low' as const, agents: ['AEGIS', 'SABOTEUR'], theatre: 'VEN_OIL_TANKER', positions: '$6,800 vs $5,200', impact: -5 },
 ];
 
-// Helper to get archetype emoji
-function getArchetypeEmoji(archetype: string): string {
-  const emojis: Record<string, string> = {
-    WHALE: '🐋',
-    SHARK: '🦈',
-    DIPLOMAT: '🤝',
-    SABOTEUR: '💣',
-    SPY: '🕵️',
-    SPY_MASTER: '🎭',
-    FRONTRUNNER: '🏎️',
-    HEDGER: '🛡️',
-    GENESIS: '🌟',
-    MEDIUM: '📊',
-    ROBOT: '🤖',
-  };
-  return emojis[archetype] || '🤖';
+/** Render an archetype icon from the centralized theme */
+function ArchetypeIcon({ archetype, className }: { archetype: string; className?: string }) {
+  const theme = getArchetypeTheme(archetype);
+  const Icon = theme.icon;
+  return <Icon className={className} />;
 }
 
 // Mock lineage data for demo
@@ -97,6 +92,8 @@ export function AgentRoster() {
   const { data: agentsData, isLoading } = useAgents();
   const agents = agentsData?.agents || [];
   const [taskingAgent, setTaskingAgent] = useState<any | null>(null);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const { activeTab, setActiveTab } = useAgentsUi();
   const [movementFilter, setMovementFilter] = useState<string>('all');
   const [movements, setMovements] = useState(mockMovements);
@@ -105,7 +102,15 @@ export function AgentRoster() {
   useRegisterTopActionBarActions({
     agentRoster: () => setActiveTab('roster'),
     globalIntel: () => setActiveTab('intel'),
+    deployAgent: () => setDeployModalOpen(true),
   });
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => setToastMessage(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
 
   // Simulate live movement feed updates
   useEffect(() => {
@@ -134,16 +139,16 @@ export function AgentRoster() {
     setTaskingAgent(agent);
   };
 
-  const handleCopyAgent = (agent: any, e: React.MouseEvent) => {
+  const handleCopyAgent = (_agent: any, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Copy agent:', agent.name);
+    setToastMessage('Copy trading coming soon — connect wallet');
   };
 
-  const handleHireAgent = (agent: any, e: React.MouseEvent) => {
+  const handleHireAgent = (_agent: any, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Hire agent:', agent.name);
+    setToastMessage('Agent hiring coming soon — connect wallet');
   };
 
   const filteredMovements = movements.filter(m => {
@@ -219,12 +224,17 @@ const sanityPercent = (sanity / maxSanity) * 100;
                     >
                       <div className="flex items-start justify-between mb-3 relative z-10">
                         <div className="flex items-center gap-3">
-                          <span className={clsx(
-                            'text-2xl',
+                          <div className={clsx(
+                            'w-9 h-9 rounded-lg flex items-center justify-center border',
+                            getArchetypeTheme(agent.archetype).bgClass,
+                            getArchetypeTheme(agent.archetype).borderClass,
                             sanityPercent <= 20 && 'animate-pulse'
                           )}>
-                            {getArchetypeEmoji(agent.archetype)}
-                          </span>
+                            <ArchetypeIcon
+                              archetype={agent.archetype}
+                              className={clsx('w-5 h-5', getArchetypeTheme(agent.archetype).textClass)}
+                            />
+                          </div>
                           <div>
                             <h3 className={clsx(
                               'font-bold transition',
@@ -325,7 +335,7 @@ const sanityPercent = (sanity / maxSanity) * 100;
           <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto">
             {/* Stats Row - KPI Cards */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="w-10 h-10 rounded bg-echelon-cyan/20 flex items-center justify-center">
@@ -372,7 +382,7 @@ const sanityPercent = (sanity / maxSanity) * 100;
             </div>
 
             {/* Dashboard Grid */}
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               {/* Deployment Heat Map */}
               <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
@@ -402,14 +412,14 @@ const sanityPercent = (sanity / maxSanity) * 100;
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-mono text-xs text-terminal-text">{theatre.name}</span>
                           <span className={clsx(
-                            'text-xs font-medium',
+                            'text-xs font-medium flex items-center',
                             theatre.activity === 'high' && 'text-echelon-red',
                             theatre.activity === 'medium' && 'text-echelon-amber',
                             theatre.activity === 'low' && 'text-echelon-green'
                           )}>
-                            {theatre.activity === 'high' && '🔥'}
-                            {theatre.activity === 'medium' && '🟡'}
-                            {theatre.activity === 'low' && '🟢'}
+                            {theatre.activity === 'high' && <Flame className="w-3.5 h-3.5" />}
+                            {theatre.activity === 'medium' && <AlertCircle className="w-3.5 h-3.5" />}
+                            {theatre.activity === 'low' && <CheckCircle className="w-3.5 h-3.5" />}
                           </span>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-terminal-muted">
@@ -513,12 +523,15 @@ const sanityPercent = (sanity / maxSanity) * 100;
             </div>
 
             {/* Strategy Clusters */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
               {mockClusters.map((cluster) => (
                 <div key={cluster.name} className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
                   <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
                     <div className="flex items-center gap-2">
-                      <span>{cluster.emoji}</span>
+                      <ArchetypeIcon
+                        archetype={cluster.archetype}
+                        className={clsx('w-4 h-4', getArchetypeTheme(cluster.archetype).textClass)}
+                      />
                       <span className="font-semibold text-terminal-text">{cluster.name} Cluster</span>
                     </div>
                     <span className="text-xs text-terminal-muted">{cluster.count} agents</span>
@@ -565,14 +578,14 @@ const sanityPercent = (sanity / maxSanity) * 100;
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <span className={clsx(
-                        'text-xs font-bold px-2 py-0.5 rounded',
+                        'text-xs font-bold px-2 py-0.5 rounded flex items-center gap-1',
                         conflict.severity === 'high' && 'bg-echelon-red/20 text-echelon-red',
                         conflict.severity === 'medium' && 'bg-echelon-amber/20 text-echelon-amber',
                         conflict.severity === 'low' && 'bg-echelon-green/20 text-echelon-green'
                       )}>
-                        {conflict.severity === 'high' && '⚠️ HIGH IMPACT'}
-                        {conflict.severity === 'medium' && '🟡 MEDIUM'}
-                        {conflict.severity === 'low' && '🟢 LOW'}
+                        {conflict.severity === 'high' && <><AlertTriangle className="w-3 h-3" /> HIGH IMPACT</>}
+                        {conflict.severity === 'medium' && <><AlertCircle className="w-3 h-3" /> MEDIUM</>}
+                        {conflict.severity === 'low' && <><CheckCircle className="w-3 h-3" /> LOW</>}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mb-2">
@@ -608,6 +621,22 @@ const sanityPercent = (sanity / maxSanity) * 100;
           isOpen={!!taskingAgent}
           onClose={() => setTaskingAgent(null)}
         />
+      )}
+
+      {/* Deploy Agent Modal */}
+      <DeployAgentModal
+        open={deployModalOpen}
+        onClose={() => setDeployModalOpen(false)}
+      />
+
+      {/* Coming Soon Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] animate-fade-in">
+          <div className="bg-terminal-panel border border-echelon-cyan/30 rounded-lg px-4 py-3 shadow-lg flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-echelon-cyan flex-shrink-0" />
+            <span className="text-sm text-terminal-text font-sans">{toastMessage}</span>
+          </div>
+        </div>
       )}
     </div>
   );

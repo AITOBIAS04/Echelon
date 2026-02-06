@@ -1,4 +1,5 @@
 import { clsx } from 'clsx';
+import { Brain, AlertTriangle } from 'lucide-react';
 
 interface AgentSanityProps {
   sanity: number;  // 0-100
@@ -8,21 +9,21 @@ interface AgentSanityProps {
 
 export function AgentSanityIndicator({ sanity, maxSanity = 100, name }: AgentSanityProps) {
   const percentage = (sanity / maxSanity) * 100;
-  
+
   const getSanityStatus = () => {
     if (percentage > 70) return { label: 'STABLE', color: 'green', glow: false };
     if (percentage > 40) return { label: 'STRESSED', color: 'amber', glow: false };
     if (percentage > 20) return { label: 'CRITICAL', color: 'red', glow: true };
     return { label: 'BREAKDOWN', color: 'red', glow: true };
   };
-  
+
   const status = getSanityStatus();
-  
+
   return (
     <div className="mt-3">
       <div className="flex justify-between items-center mb-1">
         <span className="text-xs text-terminal-text-muted flex items-center gap-1">
-          <span>🧠</span> SANITY
+          <Brain className="w-3 h-3" /> SANITY
         </span>
         <span className={clsx(
           'text-xs font-bold',
@@ -34,9 +35,9 @@ export function AgentSanityIndicator({ sanity, maxSanity = 100, name }: AgentSan
           {status.label}
         </span>
       </div>
-      
+
       <div className="h-2 bg-terminal-bg rounded-full overflow-hidden">
-        <div 
+        <div
           className={clsx(
             'h-full rounded-full transition-all duration-500',
             status.color === 'green' && 'bg-echelon-green',
@@ -47,7 +48,7 @@ export function AgentSanityIndicator({ sanity, maxSanity = 100, name }: AgentSan
           style={{ width: `${percentage}%` }}
         />
       </div>
-      
+
       <div className="flex justify-between text-xs mt-1">
         <span className={clsx(
           'font-mono',
@@ -57,29 +58,31 @@ export function AgentSanityIndicator({ sanity, maxSanity = 100, name }: AgentSan
         )}>
           {sanity}/{maxSanity}
         </span>
-        
+
         {percentage <= 20 && (
           <span className="text-echelon-red animate-pulse flex items-center gap-1">
-            <span>⚠️</span> BREAKDOWN RISK
+            <AlertTriangle className="w-3 h-3" /> BREAKDOWN RISK
           </span>
         )}
       </div>
-      
+
       {/* Critical Warning Banner */}
       {percentage <= 40 && (
         <div className={clsx(
-          'mt-2 p-2 rounded text-xs',
-          percentage <= 20 
+          'mt-2 p-2 rounded text-xs flex items-start gap-1.5',
+          percentage <= 20
             ? 'bg-echelon-red/20 border border-echelon-red/50 text-echelon-red'
             : 'bg-echelon-amber/20 border border-echelon-amber/50 text-echelon-amber'
         )}>
-          {percentage <= 20 
-            ? `⚠️ ${name} is near psychological breakdown. High-risk missions may cause permanent damage.`
-            : `${name} is under stress. Consider rest or support missions.`
-          }
+          {percentage <= 20 && <AlertTriangle className="w-3 h-3 flex-shrink-0 mt-0.5" />}
+          <span>
+            {percentage <= 20
+              ? `${name} is near psychological breakdown. High-risk missions may cause permanent damage.`
+              : `${name} is under stress. Consider rest or support missions.`
+            }
+          </span>
         </div>
       )}
     </div>
   );
 }
-

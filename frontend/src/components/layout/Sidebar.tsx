@@ -10,7 +10,8 @@ import {
   Users,
   Rocket,
   AlertTriangle,
-  Upload
+  Upload,
+  X,
 } from 'lucide-react';
 
 interface NavItem {
@@ -24,6 +25,13 @@ interface SubNavItem {
   path: string;
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
+}
+
+interface SidebarProps {
+  /** Whether the mobile drawer is open */
+  mobileOpen?: boolean;
+  /** Callback to close the mobile drawer */
+  onMobileClose?: () => void;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -41,51 +49,29 @@ const AGENTS_SUBNAV: SubNavItem[] = [
   { path: '/agents/export', label: 'Export Console', icon: Upload },
 ];
 
-export function Sidebar() {
-  const location = useLocation();
-  const [isExpanded, setIsExpanded] = useState(false);
-  const collapseTimeoutRef = React.useRef<number | null>(null);
-
-  const isActive = useCallback((item: NavItem) => {
-    if (location.pathname === item.path) return true;
-    if (item.matchPrefixes) {
-      return item.matchPrefixes.some((p) => location.pathname.startsWith(p));
-    }
-    return false;
-  }, [location.pathname]);
-
-  // Check if we're in the Agents section
-  const isAgentsSection = location.pathname.startsWith('/agents') || location.pathname.startsWith('/agent/');
-
-  const handleMouseEnter = useCallback(() => {
-    if (collapseTimeoutRef.current) {
-      window.clearTimeout(collapseTimeoutRef.current);
-      collapseTimeoutRef.current = null;
-    }
-    setIsExpanded(true);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    collapseTimeoutRef.current = window.setTimeout(() => {
-      setIsExpanded(false);
-    }, 250);
-  }, []);
-
+/**
+ * Shared navigation content rendered in both desktop and mobile sidebar
+ */
+function NavContent({
+  isExpanded,
+  isActive,
+  isAgentsSection,
+  location,
+  onLinkClick,
+}: {
+  isExpanded: boolean;
+  isActive: (item: NavItem) => boolean;
+  isAgentsSection: boolean;
+  location: { pathname: string };
+  onLinkClick?: () => void;
+}) {
   const NavIcon = ({ item, className }: { item: NavItem; className?: string }) => {
     const Icon = item.icon;
     return <Icon className={className} />;
   };
 
   return (
-    <aside
-      className="h-full flex-shrink-0 bg-terminal-panel border-r border-terminal-border flex flex-col py-3 gap-2 overflow-hidden transition-all duration-300 ease-out"
-      style={{
-        width: isExpanded ? '180px' : '64px',
-        boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.04), 2px 0 8px rgba(0,0,0,0.3)',
-      }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <>
       {/* Brand */}
       <div className={clsx(
         "flex items-center px-3 py-2 border border-terminal-border rounded-lg transition-all duration-300",
@@ -125,6 +111,7 @@ export function Sidebar() {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={onLinkClick}
               className={clsx(
                 'flex items-center gap-2.5 py-2.5 rounded-r-lg text-xs font-semibold transition-all duration-200 select-none',
                 isExpanded ? 'px-3' : 'px-2.5 justify-center',
@@ -134,7 +121,10 @@ export function Sidebar() {
               )}
             >
               {isExpanded ? (
-                <span className="whitespace-nowrap">{item.label}</span>
+                <>
+                  <NavIcon item={item} className="w-4 h-4 flex-shrink-0" />
+                  <span className="whitespace-nowrap">{item.label}</span>
+                </>
               ) : (
                 <div className={clsx(
                   'p-1.5 rounded-lg transition-all duration-200',
@@ -159,6 +149,7 @@ export function Sidebar() {
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  onClick={onLinkClick}
                   className={clsx(
                     'flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-200',
                     active
@@ -175,7 +166,100 @@ export function Sidebar() {
           </>
         )}
       </nav>
-    </aside>
+    </>
+  );
+}
+
+export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
+  const location = useLocation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const collapseTimeoutRef = React.useRef<number | null>(null);
+
+  const isActive = useCallback((item: NavItem) => {
+    if (location.pathname === item.path) return true;
+    if (item.matchPrefixes) {
+      return item.matchPrefixes.some((p) => location.pathname.startsWith(p));
+    }
+    return false;
+  }, [location.pathname]);
+
+  const isAgentsSection = location.pathname.startsWith('/agents') || location.pathname.startsWith('/agent/');
+
+  const handleMouseEnter = useCallback(() => {
+    if (collapseTimeoutRef.current) {
+      window.clearTimeout(collapseTimeoutRef.current);
+      collapseTimeoutRef.current = null;
+    }
+    setIsExpanded(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    collapseTimeoutRef.current = window.setTimeout(() => {
+      setIsExpanded(false);
+    }, 250);
+  }, []);
+
+  return (
+    <>
+      {/* ═══════════ DESKTOP SIDEBAR (md and above) ═══════════ */}
+      <aside
+        className="hidden md:flex h-full flex-shrink-0 bg-terminal-panel border-r border-terminal-border flex-col py-3 gap-2 overflow-hidden transition-all duration-300 ease-out"
+        style={{
+          width: isExpanded ? '180px' : '64px',
+          boxShadow: 'inset -1px 0 0 rgba(255,255,255,0.04), 2px 0 8px rgba(0,0,0,0.3)',
+        }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <NavContent
+          isExpanded={isExpanded}
+          isActive={isActive}
+          isAgentsSection={isAgentsSection}
+          location={location}
+        />
+      </aside>
+
+      {/* ═══════════ MOBILE DRAWER (below md) ═══════════ */}
+      {/* Overlay */}
+      <div
+        className={clsx(
+          'md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300',
+          mobileOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        )}
+        onClick={onMobileClose}
+      />
+
+      {/* Drawer */}
+      <aside
+        className={clsx(
+          'md:hidden fixed inset-y-0 left-0 z-50 w-[240px] bg-terminal-panel border-r border-terminal-border flex flex-col py-3 gap-2 overflow-y-auto transition-transform duration-300 ease-out',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+        style={{ boxShadow: mobileOpen ? '4px 0 16px rgba(0,0,0,0.5)' : 'none' }}
+      >
+        {/* Close button */}
+        <div className="flex items-center justify-between px-3 mb-1">
+          <span className="font-extrabold tracking-[0.14em] text-sm text-terminal-text">ECHELON</span>
+          <button
+            onClick={onMobileClose}
+            className="p-1.5 rounded-lg text-terminal-text-muted hover:text-terminal-text hover:bg-terminal-card transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Separator */}
+        <div className="h-px bg-terminal-border/40 mx-3 my-1" />
+
+        <NavContent
+          isExpanded={true}
+          isActive={isActive}
+          isAgentsSection={isAgentsSection}
+          location={location}
+          onLinkClick={onMobileClose}
+        />
+      </aside>
+    </>
   );
 }
 

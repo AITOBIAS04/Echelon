@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Search, AlertTriangle, Crosshair, Globe, MessageSquare, FileText, Zap, Activity, ShieldAlert } from 'lucide-react';
+import { getArchetypeTheme } from '../../theme/agentsTheme';
 
 interface Agent {
   id: string;
@@ -191,8 +192,8 @@ export function TaskAgentModal({ agent, isOpen, onClose }: TaskAgentModalProps) 
           <div className="bg-glass-card border border-glass-border rounded-xl p-4 mb-8 backdrop-blur-md">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-signal-action/10 flex items-center justify-center border border-signal-action/20 text-lg">
-                  🤖
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${getArchetypeTheme(agent.archetype).bgClass} ${getArchetypeTheme(agent.archetype).borderClass}`}>
+                  {(() => { const theme = getArchetypeTheme(agent.archetype); const Icon = theme.icon; return <Icon className={`w-4 h-4 ${theme.textClass}`} />; })()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
