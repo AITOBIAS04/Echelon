@@ -1,5 +1,6 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
 import { useOrderBook } from '../../hooks/useBlackbox';
+import { CHART } from '../../constants/colors';
 
 export function DepthChartPanel() {
   const orderBook = useOrderBook();
@@ -96,7 +97,7 @@ export function DepthChartPanel() {
   }, [size, bidsCum, asksCum, xMin, xMax, yMax, orderBook]);
 
   return (
-    <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4 flex flex-col gap-4 min-h-[300px]" style={{ flex: '1 1 400px' }}>
+    <div className="chart-container flex flex-col gap-4 min-h-[300px]" style={{ flex: '1 1 400px' }}>
       <div className="flex items-center justify-between flex-shrink-0">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">Depth Chart</h3>
         {orderBook ? (
@@ -113,21 +114,21 @@ export function DepthChartPanel() {
           <svg width="100%" height="100%" className="overflow-visible">
             <defs>
               <linearGradient id="gradBids" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22c55e" stopOpacity="0.2" />
-                <stop offset="100%" stopColor="#22c55e" stopOpacity="0.05" />
+                <stop offset="0%" stopColor={CHART.BID} stopOpacity="0.2" />
+                <stop offset="100%" stopColor={CHART.BID} stopOpacity="0.05" />
               </linearGradient>
               <linearGradient id="gradAsks" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ef4444" stopOpacity="0.2" />
-                <stop offset="100%" stopColor="#ef4444" stopOpacity="0.05" />
+                <stop offset="0%" stopColor={CHART.ASK} stopOpacity="0.2" />
+                <stop offset="100%" stopColor={CHART.ASK} stopOpacity="0.05" />
               </linearGradient>
             </defs>
 
             {/* Legend */}
             <g transform={`translate(${size.width - 100}, ${chart.pad.t - 15})`}>
-              <rect width="10" height="10" fill="#22c55e" fillOpacity="0.8" rx="2" />
+              <rect width="10" height="10" fill={CHART.BID} fillOpacity="0.8" rx="2" />
               <text x="14" y="9" className="fill-terminal-text text-[10px] font-medium">Bids</text>
               
-              <rect x="45" width="10" height="10" fill="#ef4444" fillOpacity="0.8" rx="2" />
+              <rect x="45" width="10" height="10" fill={CHART.ASK} fillOpacity="0.8" rx="2" />
               <text x="59" y="9" className="fill-terminal-text text-[10px] font-medium">Asks</text>
             </g>
 
@@ -139,7 +140,7 @@ export function DepthChartPanel() {
                 x2={chart.pad.l + chart.w}
                 y1={y}
                 y2={y}
-                stroke="#334155"
+                stroke={CHART.GRID}
                 strokeWidth={1}
                 strokeDasharray="4 4"
                 strokeOpacity={0.4}
@@ -207,8 +208,8 @@ export function DepthChartPanel() {
             <path d={chart.asksFill} fill="url(#gradAsks)" />
 
             {/* lines */}
-            <path d={chart.bidsPath} fill="none" stroke="#22c55e" strokeWidth={2} strokeLinejoin="round" />
-            <path d={chart.asksPath} fill="none" stroke="#ef4444" strokeWidth={2} strokeLinejoin="round" />
+            <path d={chart.bidsPath} fill="none" stroke={CHART.BID} strokeWidth={2} strokeLinejoin="round" />
+            <path d={chart.asksPath} fill="none" stroke={CHART.ASK} strokeWidth={2} strokeLinejoin="round" />
           </svg>
         )}
       </div>

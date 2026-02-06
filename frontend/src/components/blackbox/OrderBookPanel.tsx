@@ -11,12 +11,12 @@ interface OrderBookProps {
 export function OrderBookPanel({ orderBook, currentPrice }: OrderBookProps) {
   if (!orderBook) {
     return (
-      <div className="rounded-2xl border border-[#26292E] bg-[#0F1113] flex flex-col min-h-0">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#26292E]">
-          <span className="text-sm font-semibold text-[#F1F5F9]">ORDER BOOK</span>
-          <span className="text-xs font-mono text-[#64748B]">$--</span>
+      <div className="rounded-2xl border border-terminal-border bg-terminal-panel flex flex-col min-h-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
+          <span className="text-sm font-semibold text-terminal-text">ORDER BOOK</span>
+          <span className="text-xs font-mono tabular-nums text-terminal-text-muted">$--</span>
         </div>
-        <div className="flex-1 flex items-center justify-center text-xs text-[#64748B]">
+        <div className="flex-1 flex items-center justify-center text-xs text-terminal-text-muted">
           Loading order book...
         </div>
       </div>
@@ -24,17 +24,17 @@ export function OrderBookPanel({ orderBook, currentPrice }: OrderBookProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-[#26292E] bg-[#0F1113] flex flex-col min-h-0">
+    <div className="rounded-2xl border border-terminal-border bg-terminal-panel flex flex-col min-h-0">
       {/* Card Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#26292E]">
-        <span className="text-sm font-semibold text-[#F1F5F9]">ORDER BOOK</span>
-        <span className="text-xs font-mono text-[#64748B]">${currentPrice.toFixed(2)}</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
+        <span className="text-sm font-semibold text-terminal-text">ORDER BOOK</span>
+        <span className="text-xs font-mono tabular-nums text-terminal-text-muted">${currentPrice.toFixed(2)}</span>
       </div>
 
       {/* Order Book Body */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {/* Asks Header */}
-        <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-[#64748B]">
+        <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-terminal-text-muted">
           <span>ASKS</span>
           <span>Total: ${(orderBook.totalAsks / 1000).toFixed(1)}K</span>
         </div>
@@ -44,13 +44,13 @@ export function OrderBookPanel({ orderBook, currentPrice }: OrderBookProps) {
           {orderBook.asks.map((ask, i) => (
             <div key={i} className="relative flex items-center h-5 text-xs">
               <div
-                className="absolute inset-0 bg-[#FB7185]"
+                className="absolute inset-0 bg-echelon-red"
                 style={{ opacity: 0.15, width: `${ask.depth}%` }}
               />
-              <span className="z-10 w-16 px-3 py-0.5 text-[#FB7185] font-mono">
+              <span className="z-10 w-16 px-3 py-0.5 text-echelon-red font-mono tabular-nums">
                 ${ask.price.toFixed(2)}
               </span>
-              <span className="z-10 flex-1 px-3 py-0.5 text-[#F1F5F9] font-mono text-right">
+              <span className="z-10 flex-1 px-3 py-0.5 text-terminal-text font-mono tabular-nums text-right">
                 {(ask.size / 1000).toFixed(1)}K
               </span>
             </div>
@@ -58,11 +58,11 @@ export function OrderBookPanel({ orderBook, currentPrice }: OrderBookProps) {
         </div>
 
         {/* Spread */}
-        <div className="flex items-center justify-between px-3 py-1.5 text-xs border-y border-[#26292E]">
-          <span className="text-[#64748B]">SPREAD</span>
+        <div className="flex items-center justify-between px-3 py-1.5 text-xs border-y border-terminal-border">
+          <span className="text-terminal-text-muted">SPREAD</span>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-[#F1F5F9]">{orderBook.spread.toFixed(3)}</span>
-            <span className="text-[#64748B]">{orderBook.spreadPercent.toFixed(2)}%</span>
+            <span className="font-mono tabular-nums text-terminal-text">{orderBook.spread.toFixed(3)}</span>
+            <span className="text-terminal-text-muted">{orderBook.spreadPercent.toFixed(2)}%</span>
           </div>
         </div>
 
@@ -71,13 +71,13 @@ export function OrderBookPanel({ orderBook, currentPrice }: OrderBookProps) {
           {orderBook.bids.map((bid, i) => (
             <div key={i} className="relative flex items-center h-5 text-xs">
               <div
-                className="absolute inset-0 bg-[#4ADE80]"
+                className="absolute inset-0 bg-echelon-green"
                 style={{ opacity: 0.15, width: `${bid.depth}%` }}
               />
-              <span className="z-10 w-16 px-3 py-0.5 text-[#4ADE80] font-mono">
+              <span className="z-10 w-16 px-3 py-0.5 text-echelon-green font-mono tabular-nums">
                 ${bid.price.toFixed(2)}
               </span>
-              <span className="z-10 flex-1 px-3 py-0.5 text-[#F1F5F9] font-mono text-right">
+              <span className="z-10 flex-1 px-3 py-0.5 text-terminal-text font-mono tabular-nums text-right">
                 {(bid.size / 1000).toFixed(1)}K
               </span>
             </div>
@@ -85,7 +85,7 @@ export function OrderBookPanel({ orderBook, currentPrice }: OrderBookProps) {
         </div>
 
         {/* Bids Header */}
-        <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-[#64748B] border-t border-[#26292E]">
+        <div className="flex items-center justify-between px-3 py-1.5 text-[10px] text-terminal-text-muted border-t border-terminal-border">
           <span>BIDS</span>
           <span>Total: ${(orderBook.totalBids / 1000).toFixed(1)}K</span>
         </div>

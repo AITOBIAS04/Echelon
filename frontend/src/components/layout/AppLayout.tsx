@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TopActionBar } from './TopActionBar';
 import { TopActionBarActionsProvider } from '../../contexts/TopActionBarActionsContext';
@@ -8,6 +8,8 @@ import { DemoEngine } from '../../demo/DemoEngine';
 import { DemoToastHost } from '../../demo/DemoToastHost';
 
 export function AppLayout() {
+  const location = useLocation();
+
   return (
     <TopActionBarActionsProvider>
       <AgentsUiProvider>
@@ -24,7 +26,9 @@ export function AppLayout() {
 
                 {/* Viewport — each page fills this area and manages its own scroll */}
                 <div className="flex-1 min-h-0 relative bg-slate-950 overflow-auto">
-                  <Outlet />
+                  <div key={location.pathname} className="page-enter h-full">
+                    <Outlet />
+                  </div>
                 </div>
               </section>
             </div>

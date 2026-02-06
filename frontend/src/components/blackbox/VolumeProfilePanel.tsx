@@ -1,6 +1,7 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
 import { useTimeSales } from '../../hooks/useBlackbox';
 import type { Trade } from '../../types/blackbox';
+import { CHART } from '../../constants/colors';
 
 type Bin = { priceMid: number; volume: number };
 
@@ -52,7 +53,7 @@ export function VolumeProfilePanel() {
   const displayBins = useMemo(() => [...bins].sort((a, b) => b.priceMid - a.priceMid), [bins]);
 
   return (
-    <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4 flex flex-col gap-4 min-h-[300px]" style={{ flex: '1 1 400px' }}>
+    <div className="chart-container flex flex-col gap-4 min-h-[300px]" style={{ flex: '1 1 400px' }}>
       <div className="flex items-center justify-between flex-shrink-0">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">Volume Profile</h3>
         {poc ? (
@@ -69,15 +70,15 @@ export function VolumeProfilePanel() {
           <svg width="100%" height="100%" className="overflow-visible">
             <defs>
               <linearGradient id="gradVolNormal" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#475569" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#475569" stopOpacity="0.15" />
+                <stop offset="0%" stopColor={CHART.LABEL} stopOpacity="0.4" />
+                <stop offset="100%" stopColor={CHART.LABEL} stopOpacity="0.15" />
               </linearGradient>
               <linearGradient id="gradPoc" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#22d3ee" stopOpacity="0.2" />
+                <stop offset="0%" stopColor={CHART.CYAN} stopOpacity="0.5" />
+                <stop offset="100%" stopColor={CHART.CYAN} stopOpacity="0.2" />
               </linearGradient>
               <pattern id="bgBands" x="0" y="0" width="100%" height="18" patternUnits="userSpaceOnUse">
-                <rect x="0" y="0" width="100%" height="9" fill="#0f172a" fillOpacity="0.3" />
+                <rect x="0" y="0" width="100%" height="9" fill="#080A0E" fillOpacity="0.3" />
               </pattern>
             </defs>
 
@@ -94,7 +95,7 @@ export function VolumeProfilePanel() {
                   x2={size.width - 16}
                   y1={y}
                   y2={y}
-                  stroke="#334155"
+                  stroke={CHART.GRID}
                   strokeDasharray="2 4"
                   strokeOpacity={0.4}
                 />
@@ -134,7 +135,7 @@ export function VolumeProfilePanel() {
                     height={Math.max(1, rowH - 2)}
                     rx={2}
                     fill={isPoc ? 'url(#gradPoc)' : 'url(#gradVolNormal)'}
-                    stroke={isPoc ? '#22d3ee' : 'transparent'}
+                    stroke={isPoc ? CHART.CYAN : 'transparent'}
                     strokeWidth={isPoc ? 1 : 0}
                   />
                   {/* Price labels on left */}
@@ -159,7 +160,7 @@ export function VolumeProfilePanel() {
                 x2={size.width - 16}
                 y1={10 + (displayBins.findIndex(b => Math.abs(b.priceMid - poc.priceMid) < 1e-9) / displayBins.length) * (size.height - 40) + (size.height - 40) / displayBins.length / 2}
                 y2={10 + (displayBins.findIndex(b => Math.abs(b.priceMid - poc.priceMid) < 1e-9) / displayBins.length) * (size.height - 40) + (size.height - 40) / displayBins.length / 2}
-                stroke="#22d3ee"
+                stroke={CHART.CYAN}
                 strokeWidth={1}
                 strokeDasharray="3 3"
                 strokeOpacity={0.4}
