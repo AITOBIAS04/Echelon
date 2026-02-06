@@ -88,16 +88,25 @@ export function Sidebar() {
     >
       {/* Brand */}
       <div className={clsx(
-        "flex items-center px-3 py-2 border border-terminal-border rounded-lg bg-slate-850/80 transition-all duration-300",
-        isExpanded ? "justify-start gap-2.5" : "justify-center"
-      )}>
-        <span className="font-extrabold tracking-[0.14em] text-sm text-terminal-text whitespace-nowrap">
-          {isExpanded && "ECHELON"}
-        </span>
-        {!isExpanded && (
-          <span className="font-extrabold tracking-[0.14em] text-sm text-terminal-text">E</span>
+        "flex items-center px-3 py-2 border border-terminal-border rounded-lg transition-all duration-300",
+        "bg-gradient-to-r from-echelon-cyan/[0.06] to-transparent",
+        isExpanded ? "justify-start gap-2.5 mx-2" : "justify-center mx-1.5"
+      )}
+        style={{ boxShadow: '0 0 12px rgba(34,211,238,0.06)' }}
+      >
+        {isExpanded ? (
+          <span className="font-extrabold tracking-[0.14em] text-sm text-terminal-text whitespace-nowrap">
+            ECHELON
+          </span>
+        ) : (
+          <span className="w-8 h-8 rounded-lg bg-echelon-cyan/[0.08] border border-echelon-cyan/20 flex items-center justify-center font-extrabold tracking-[0.14em] text-sm text-terminal-text">
+            E
+          </span>
         )}
       </div>
+
+      {/* Separator */}
+      <div className="h-px bg-terminal-border/40 mx-3 my-1" />
 
       {/* Nav group */}
       <nav className={clsx(
@@ -117,28 +126,21 @@ export function Sidebar() {
               key={item.path}
               to={item.path}
               className={clsx(
-                'flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg border text-xs font-semibold transition-all duration-200 select-none',
+                'flex items-center gap-2.5 py-2.5 rounded-r-lg text-xs font-semibold transition-all duration-200 select-none',
+                isExpanded ? 'px-3' : 'px-2.5 justify-center',
                 active
-                  ? 'bg-slate-800/90 border-terminal-border text-terminal-text'
-                  : 'border-transparent text-terminal-text-secondary hover:bg-terminal-panel hover:border-terminal-border hover:text-terminal-text'
+                  ? 'border-l-[3px] border-l-echelon-cyan bg-echelon-cyan/[0.06] text-terminal-text'
+                  : 'border-l-[3px] border-l-transparent text-terminal-text-secondary hover:bg-terminal-card hover:text-terminal-text'
               )}
-              style={{ justifyContent: isExpanded ? 'flex-start' : 'center' }}
             >
-              <span
-                className={clsx(
-                  'w-1.5 h-1.5 rounded-full flex-shrink-0 transition-all duration-200',
-                  active
-                    ? 'bg-status-info shadow-[0_0_8px_rgba(59,130,246,0.3)]'
-                    : 'bg-slate-600'
-                )}
-              />
-              {isExpanded && <span className="whitespace-nowrap">{item.label}</span>}
-              {!isExpanded && (
-                <div className="relative">
+              {isExpanded ? (
+                <span className="whitespace-nowrap">{item.label}</span>
+              ) : (
+                <div className={clsx(
+                  'p-1.5 rounded-lg transition-all duration-200',
+                  active && 'ring-1 ring-echelon-cyan/25'
+                )}>
                   <NavIcon item={item} className="w-4 h-4" />
-                  {active && (
-                    <span className="absolute -right-1 -top-1 w-1.5 h-1.5 rounded-full bg-status-info" />
-                  )}
                 </div>
               )}
             </NavLink>
@@ -147,7 +149,9 @@ export function Sidebar() {
 
         {/* Agents Subnav - shown when expanded and in Agents section */}
         {isExpanded && isAgentsSection && (
-          <div className="mt-2 flex flex-col gap-1 pl-2 border-l border-terminal-border ml-3">
+          <>
+          <div className="h-px bg-terminal-border/40 mx-3 my-1" />
+          <div className="mt-1 flex flex-col gap-1 pl-2 border-l border-terminal-border ml-3">
             {AGENTS_SUBNAV.map((item) => {
               const active = location.pathname === item.path;
               const Icon = item.icon;
@@ -168,6 +172,7 @@ export function Sidebar() {
               );
             })}
           </div>
+          </>
         )}
       </nav>
     </aside>

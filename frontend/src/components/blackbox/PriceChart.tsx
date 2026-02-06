@@ -3,6 +3,7 @@
 
 import { useMemo, useRef, useEffect, useState } from 'react';
 import type { Candle, ChartIndicators, Timeframe } from '../../types/blackbox';
+import { CHART } from '../../constants/colors';
 
 interface PriceChartProps {
   candles: Candle[];
@@ -78,7 +79,7 @@ export function PriceChart({
       const bodyTop = ((priceRange.max - Math.max(candle.open, candle.close)) / range) * chartHeight;
       const bodyHeight = Math.max(1, (Math.abs(candle.close - candle.open) / range) * chartHeight);
       const isUp = candle.close > candle.open;
-      const color = isUp ? '#4ADE80' : '#FB7185';
+      const color = isUp ? CHART.BID : CHART.ASK;
 
       return (
         <g key={i}>
@@ -115,7 +116,7 @@ export function PriceChart({
       const x = i * (containerSize.width / candles.length);
       const barH = (candle.volume / maxVolume) * volumeHeight;
       const isUp = candle.close > candle.open;
-      const color = isUp ? 'rgba(74, 222, 128, 0.3)' : 'rgba(251, 113, 133, 0.3)';
+      const color = isUp ? 'rgba(74, 222, 128, 0.3)' : 'rgba(239, 68, 68, 0.3)';
 
       return (
         <rect
@@ -140,10 +141,10 @@ export function PriceChart({
   const isPositive = currentPrice >= 3.74;
 
   return (
-    <div className="rounded-2xl border border-[#26292E] bg-[#0F1113] flex flex-col min-h-0">
+    <div className="rounded-2xl border border-terminal-border bg-terminal-panel flex flex-col min-h-0">
       {/* Card Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#26292E]">
-        <span className="text-sm font-semibold text-[#F1F5F9]">PRICE ACTION</span>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
+        <span className="text-sm font-semibold text-terminal-text">PRICE ACTION</span>
         <div className="flex items-center gap-1">
           {(Object.keys(TIMEFRAME_LABELS) as Timeframe[]).map((tf) => (
             <button
@@ -151,8 +152,8 @@ export function PriceChart({
               onClick={() => onTimeframeChange(tf)}
               className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                 timeframe === tf
-                  ? 'bg-[#1A1D23] text-[#F1F5F9]'
-                  : 'text-[#64748B] hover:text-[#94A3B8] hover:bg-[#1A1D23]'
+                  ? 'bg-terminal-card text-terminal-text'
+                  : 'text-terminal-text-muted hover:text-terminal-text-secondary hover:bg-terminal-card'
               }`}
             >
               {TIMEFRAME_LABELS[tf]}
@@ -179,7 +180,7 @@ export function PriceChart({
               y1={line.y}
               x2="100%"
               y2={line.y}
-              stroke="rgba(54, 58, 64, 0.5)"
+              stroke={CHART.GRID}
               strokeDasharray="2 4"
             />
           ))}
@@ -189,7 +190,7 @@ export function PriceChart({
               key={`label-${i}`}
               x="4"
               y={parseFloat(line.y) - 2}
-              fill="#64748B"
+              fill={CHART.LABEL}
               fontSize="10"
               fontFamily="JetBrains Mono"
             >
@@ -211,13 +212,13 @@ export function PriceChart({
           className="absolute left-0 right-0 border-t border-dashed flex items-center"
           style={{
             top: priceLineY,
-            borderColor: isPositive ? '#4ADE80' : '#FB7185',
+            borderColor: isPositive ? CHART.BID : CHART.ASK,
           }}
         >
           <span
             className="ml-auto px-2 py-0.5 text-xs text-white rounded"
             style={{
-              background: isPositive ? '#4ADE80' : '#FB7185',
+              background: isPositive ? CHART.BID : CHART.ASK,
             }}
           >
             ${currentPrice.toFixed(2)}
@@ -229,7 +230,7 @@ export function PriceChart({
       <div
         className="h-10 flex items-end gap-0.5 pt-1"
         style={{
-          borderTop: '1px solid rgba(54, 58, 64, 0.5)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
         }}
       >
         <svg width="100%" height="40" preserveAspectRatio="none">
@@ -241,29 +242,29 @@ export function PriceChart({
       <div
         className="flex items-center justify-between px-4 py-2 text-xs"
         style={{
-          borderTop: '1px solid #26292E',
-          background: 'rgba(18, 20, 23, 0.5)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'rgba(8, 10, 14, 0.5)',
         }}
       >
         <div className="flex items-center gap-4">
-          <span className="text-[#64748B]">
-            RSI <span className="text-[#F1F5F9]">{indicators.rsi.toFixed(1)}</span>
+          <span className="text-terminal-text-muted">
+            RSI <span className="text-terminal-text">{indicators.rsi.toFixed(1)}</span>
           </span>
-          <span className="text-[#64748B]">
-            MACD <span className={indicators.macd >= 0 ? 'text-[#4ADE80]' : 'text-[#FB7185]'}>
+          <span className="text-terminal-text-muted">
+            MACD <span className={indicators.macd >= 0 ? 'text-echelon-green' : 'text-echelon-red'}>
               {indicators.macd >= 0 ? '+' : ''}{indicators.macd.toFixed(2)}
             </span>
           </span>
-          <span className="text-[#64748B]">
-            VOL <span className="text-[#F1F5F9]">{(indicators.volume / 1000).toFixed(0)}K</span>
+          <span className="text-terminal-text-muted">
+            VOL <span className="text-terminal-text">{(indicators.volume / 1000).toFixed(0)}K</span>
           </span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-[#64748B]">
-            H <span className="text-[#F1F5F9]">${indicators.high.toFixed(2)}</span>
+          <span className="text-terminal-text-muted">
+            H <span className="text-terminal-text">${indicators.high.toFixed(2)}</span>
           </span>
-          <span className="text-[#64748B]">
-            L <span className="text-[#F1F5F9]">${indicators.low.toFixed(2)}</span>
+          <span className="text-terminal-text-muted">
+            L <span className="text-terminal-text">${indicators.low.toFixed(2)}</span>
           </span>
         </div>
       </div>

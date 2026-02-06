@@ -28,7 +28,7 @@ export default {
         // Glassmorphism System (New Deck Aligned)
         'glass': {
           'bg': '#030305',      // Deep Charcoal Background
-          'card': 'rgba(255, 255, 255, 0.03)', // Semi-transparent card
+          'card': '#0E1014', // Opaque card — matches terminal.card
           'border': 'rgba(255, 255, 255, 0.1)', // Razor-thin border
           'border-light': 'rgba(255, 255, 255, 0.2)',
           'text': '#F3F4F6',
@@ -45,13 +45,15 @@ export default {
         },
         // Professional trading terminal palette (Legacy compatibility mapped to new style)
         'terminal': {
-          'bg': '#030305',      // Deep Charcoal
-          'panel': 'rgba(255, 255, 255, 0.03)',
-          'card': 'rgba(255, 255, 255, 0.03)',
-          'overlay': '#121417', // Solid surface for overlays/modals/drawers
+          'bg': '#030305',        // Deep Charcoal — base layer
+          'surface': '#0A0C10',   // Intermediate between bg and panel
+          'panel': '#080A0E',     // Opaque panel — visibly distinct from bg
+          'card': '#0E1014',      // Card surface — step up from panel
+          'elevated': '#161A1E',  // Highest non-overlay tier
+          'overlay': '#121417',   // Solid surface for overlays/modals/drawers
           'border': 'rgba(255, 255, 255, 0.1)',
           'border-light': 'rgba(255, 255, 255, 0.2)',
-          'text': '#F3F4F6',    // Primary text
+          'text': '#F3F4F6',      // Primary text
           'text-secondary': '#9CA3AF',  // Secondary text
           'text-muted': '#6B7280',  // Muted text
         },
@@ -89,10 +91,18 @@ export default {
         'mono': ['JetBrains Mono', 'Fira Code', 'monospace'],
         'sans': ['Inter', 'system-ui', 'sans-serif'],
       },
+      boxShadow: {
+        'elevation-1': '0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03)',
+        'elevation-2': '0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+        'elevation-3': '0 4px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
+        'glow-cyan': '0 0 12px rgba(34,211,238,0.15)',
+        'glow-blue': '0 0 12px rgba(59,130,246,0.15)',
+      },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'fade-in': 'fadeIn 0.3s ease-out',
         'slide-up': 'slideUp 0.3s ease-out',
+        'stagger-in': 'staggerIn 0.35s ease-out both',
       },
       keyframes: {
         fadeIn: {
@@ -101,6 +111,10 @@ export default {
         },
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        staggerIn: {
+          '0%': { opacity: '0', transform: 'translateY(6px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },
