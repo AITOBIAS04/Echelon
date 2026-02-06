@@ -31,7 +31,14 @@
 @layer components {
   .terminal-panel {
     @apply bg-terminal-panel border border-terminal-border rounded-lg;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 3px rgba(0,0,0,0.4);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.4);
+    border-color: rgba(255, 255, 255, 0.13);
+  }
+
+  /* ── Canary class — visible proof new CSS is active. Remove after deploy confirmed ── */
+  .canary-active .terminal-panel,
+  .canary-active .terminal-card {
+    border-top: 1px solid rgba(34, 211, 238, 0.12);
   }
   
   .terminal-header {
@@ -285,6 +292,28 @@
       opacity: 1; 
       transform: scale(1); 
     }
+  }
+
+  /* ── Card flip (MarketCard bet interaction) ── */
+  .card-flip-container {
+    perspective: 1200px;
+  }
+  .card-flip-inner {
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+    position: relative;
+  }
+  .card-flip-inner.flipped {
+    transform: rotateY(180deg);
+  }
+  .card-flip-front,
+  .card-flip-back {
+    backface-visibility: hidden;
+  }
+  .card-flip-back {
+    transform: rotateY(180deg);
+    position: absolute;
+    inset: 0;
   }
 
   /* Ensure header dropdowns can overflow */
