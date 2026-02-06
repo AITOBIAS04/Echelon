@@ -20,11 +20,11 @@ export function SignalInterceptsPanel({ intercepts }: SignalInterceptsPanelProps
   };
 
   return (
-    <div className="rounded-2xl border border-[#26292E] bg-[#0F1113] flex flex-col min-h-0">
+    <div className="terminal-panel rounded-2xl flex flex-col min-h-0">
       {/* Card Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#26292E]">
-        <span className="text-sm font-semibold text-[#F1F5F9]">SIGNAL INTERCEPTS</span>
-        <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-[rgba(251,113,133,0.15)] text-[#FB7185] rounded">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
+        <span className="text-sm font-semibold text-terminal-text">SIGNAL INTERCEPTS</span>
+        <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-echelon-red/15 text-echelon-red rounded">
           LIVE
         </span>
       </div>
@@ -38,7 +38,7 @@ export function SignalInterceptsPanel({ intercepts }: SignalInterceptsPanelProps
             return (
               <div
                 key={intercept.id}
-                className="flex items-start gap-2.5 p-2.5 rounded-lg border-l-2 cursor-pointer hover:bg-[#1A1D23] transition-colors"
+                className="flex items-start gap-2.5 p-2.5 rounded-lg border-l-2 cursor-pointer hover:bg-terminal-hover transition-colors"
                 style={{
                   borderLeftColor: style.border,
                   background: style.bg,
@@ -55,13 +55,13 @@ export function SignalInterceptsPanel({ intercepts }: SignalInterceptsPanelProps
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-xs font-semibold text-[#F1F5F9]">{intercept.title}</span>
-                    <span className="text-[10px] font-mono text-[#64748B] flex-shrink-0">
+                    <span className="text-xs font-semibold text-terminal-text">{intercept.title}</span>
+                    <span className="text-[10px] font-mono text-terminal-text-muted flex-shrink-0">
                       {formatTime(intercept.timestamp)}
                     </span>
                   </div>
-                  <div className="text-[10px] text-[#94A3B8] mt-0.5">{intercept.details}</div>
-                  <div className="flex items-center gap-2 mt-1.5 text-[9px] text-[#64748B]">
+                  <div className="text-[10px] text-terminal-text-secondary mt-0.5">{intercept.details}</div>
+                  <div className="flex items-center gap-2 mt-1.5 text-[9px] text-terminal-text-muted">
                     <span>Source: {intercept.source}</span>
                     <span
                       className="px-1 py-0.5 rounded font-semibold uppercase"

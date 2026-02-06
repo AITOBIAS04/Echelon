@@ -100,9 +100,9 @@ export function LiveRibbon() {
 
   if (isLoading) {
     return (
-      <div className="flex-shrink-0 border-b border-slate-700/50 py-2 px-4 relative z-20">
+      <div className="flex-shrink-0 border-b border-terminal-border py-2 px-4 relative z-20">
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-          <div className="text-xs text-slate-500 animate-pulse">Loading events...</div>
+          <div className="text-xs text-terminal-text-muted animate-pulse">Loading events...</div>
         </div>
       </div>
     );
@@ -115,7 +115,7 @@ export function LiveRibbon() {
   }
 
   return (
-    <div className="flex-shrink-0 border-b border-slate-700/50 py-2 px-4 relative z-20 bg-slate-950">
+    <div className="flex-shrink-0 border-b border-terminal-border py-2 px-4 relative z-20 bg-terminal-bg">
       <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
         {recentEvents.map((event) => {
           const Icon = getEventIcon(event.type);
@@ -127,14 +127,14 @@ export function LiveRibbon() {
             <button
               key={event.id}
               onClick={() => handleEventClick(event)}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/50 border border-slate-700/50 rounded hover:border-slate-600/50 hover:bg-slate-800/50 transition-all flex-shrink-0 group"
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-terminal-panel border border-terminal-border rounded hover:border-terminal-border-light hover:bg-terminal-card transition-all flex-shrink-0 group"
             >
               {/* Event Icon */}
               <Icon className="w-3 h-3 flex-shrink-0" style={{ color }} />
 
               {/* Agent */}
               {event.agentName && (
-                <span className="text-[10px] font-mono text-slate-400 group-hover:text-emerald-400 transition">
+                <span className="text-[10px] font-mono text-terminal-text-secondary group-hover:text-echelon-green transition">
                   {event.agentName}
                 </span>
               )}
@@ -146,20 +146,20 @@ export function LiveRibbon() {
 
               {/* Timeline */}
               {event.timelineTitle && (
-                <span className="text-[10px] text-slate-500 truncate max-w-[80px]">
+                <span className="text-[10px] text-terminal-text-muted truncate max-w-[80px]">
                   {event.timelineTitle}
                 </span>
               )}
 
               {/* Delta */}
               {delta && (
-                <span className="text-[10px] font-mono text-emerald-400">
+                <span className="text-[10px] font-mono text-echelon-green">
                   {delta}
                 </span>
               )}
 
               {/* Time Ago */}
-              <span className="text-[10px] text-slate-600 font-mono">
+              <span className="text-[10px] text-terminal-text-muted font-mono">
                 {timeAgo}
               </span>
             </button>
