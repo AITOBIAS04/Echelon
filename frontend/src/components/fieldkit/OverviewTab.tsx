@@ -14,7 +14,7 @@ function ActiveBreachesWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-4">
+      <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
         <div className="animate-pulse">
           <div className="h-4 bg-[#1A1A1A] rounded w-32 mb-2"></div>
           <div className="h-6 bg-[#1A1A1A] rounded w-16"></div>
@@ -28,7 +28,7 @@ function ActiveBreachesWidget() {
   const highCount = activeBreaches.filter((b) => b.severity === 'high').length;
 
   return (
-    <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-4">
+    <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-red-500" />
@@ -44,14 +44,14 @@ function ActiveBreachesWidget() {
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-terminal-muted">Total Active</span>
+          <span className="text-xs text-terminal-text-muted">Total Active</span>
           <span className="text-lg font-mono font-bold text-terminal-text">
             {activeBreaches.length}
           </span>
         </div>
         {criticalCount > 0 && (
           <div className="flex items-center justify-between">
-            <span className="text-xs text-terminal-muted">Critical</span>
+            <span className="text-xs text-terminal-text-muted">Critical</span>
             <span className="text-sm font-mono font-semibold text-red-500">
               {criticalCount}
             </span>
@@ -59,14 +59,14 @@ function ActiveBreachesWidget() {
         )}
         {highCount > 0 && (
           <div className="flex items-center justify-between">
-            <span className="text-xs text-terminal-muted">High</span>
+            <span className="text-xs text-terminal-text-muted">High</span>
             <span className="text-sm font-mono font-semibold text-amber-500">
               {highCount}
             </span>
           </div>
         )}
         {activeBreaches.length === 0 && (
-          <div className="text-xs text-terminal-muted text-center py-2">
+          <div className="text-xs text-terminal-text-muted text-center py-2">
             No active breaches
           </div>
         )}
@@ -86,7 +86,7 @@ function BrittleTimelinesWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-4">
+      <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
         <div className="animate-pulse space-y-2">
           <div className="h-4 bg-[#1A1A1A] rounded w-32 mb-3"></div>
           {Array.from({ length: 3 }).map((_, i) => (
@@ -103,7 +103,7 @@ function BrittleTimelinesWidget() {
   );
 
   return (
-    <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-4">
+    <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">
           Brittle Timelines
@@ -117,7 +117,7 @@ function BrittleTimelinesWidget() {
         </a>
       </div>
       {brittleTimelines.length === 0 ? (
-        <div className="text-xs text-terminal-muted text-center py-4">
+        <div className="text-xs text-terminal-text-muted text-center py-4">
           No brittle timelines
         </div>
       ) : (
@@ -136,13 +136,13 @@ function BrittleTimelinesWidget() {
                   {timeline.logicGap.toFixed(0)}%
                 </span>
               </div>
-              <div className="text-xs text-terminal-muted mt-1">
+              <div className="text-xs text-terminal-text-muted mt-1">
                 Stability: {timeline.stability.toFixed(1)}% • Paradox: {timeline.paradoxProximity.toFixed(0)}%
               </div>
             </button>
           ))}
           {brittleTimelines.length > 5 && (
-            <div className="text-xs text-terminal-muted text-center pt-2">
+            <div className="text-xs text-terminal-text-muted text-center pt-2">
               +{brittleTimelines.length - 5} more
             </div>
           )}

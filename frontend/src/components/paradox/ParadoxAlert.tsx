@@ -65,19 +65,19 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
             <h3 className="text-base sm:text-lg font-medium text-terminal-text truncate">
               {paradox.timeline_name}
             </h3>
-            <span className="text-xs text-terminal-muted whitespace-nowrap">
+            <span className="text-xs text-terminal-text-muted whitespace-nowrap">
               Gap {((paradox.logic_gap || 0) * 100).toFixed(0)}% • {paradox.decay_multiplier}x
             </span>
           </div>
         </div>
 
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
-          <div className="text-[10px] sm:text-xs text-terminal-muted max-w-[140px] sm:max-w-[220px] truncate">
+          <div className="text-[10px] sm:text-xs text-terminal-text-muted max-w-[140px] sm:max-w-[220px] truncate">
             {paradox.id}
           </div>
           <button
             onClick={() => setIsExpanded((v) => !v)}
-            className="text-[10px] px-2 py-1 rounded bg-terminal-bg border border-terminal-border text-terminal-muted hover:text-terminal-text hover:border-gray-600 transition-colors whitespace-nowrap"
+            className="text-[10px] px-2 py-1 rounded bg-terminal-bg border border-terminal-border text-terminal-text-muted hover:text-terminal-text hover:border-gray-600 transition-colors whitespace-nowrap"
           >
             {isExpanded ? 'HIDE DETAILS' : 'DETAILS'}
           </button>
@@ -93,7 +93,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
               <span className="font-mono text-xl sm:text-2xl text-echelon-red glow-red">
                 {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
               </span>
-              <span className="text-[10px] text-terminal-muted hidden sm:inline">until detonation</span>
+              <span className="text-[10px] text-terminal-text-muted hidden sm:inline">until detonation</span>
             </div>
             <div className="flex items-center gap-3 text-[10px] sm:text-xs">
               <span className="text-echelon-green font-mono whitespace-nowrap">
@@ -136,25 +136,25 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
             <span className="font-mono text-2xl sm:text-3xl text-echelon-red glow-red">
               {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
             </span>
-            <span className="text-xs text-terminal-muted ml-2">until detonation</span>
+            <span className="text-xs text-terminal-text-muted ml-2">until detonation</span>
           </div>
 
           {/* Extraction Costs */}
           <div className="grid grid-cols-3 gap-3 mb-3 text-center">
             <div className="p-2 bg-terminal-bg rounded">
-              <div className="text-xs text-terminal-muted mb-1">USDC Cost</div>
+              <div className="text-xs text-terminal-text-muted mb-1">USDC Cost</div>
               <div className="text-sm font-mono text-echelon-green">
                 ${paradox.extraction_cost_usdc.toFixed(0)}
               </div>
             </div>
             <div className="p-2 bg-terminal-bg rounded">
-              <div className="text-xs text-terminal-muted mb-1">$ECHELON</div>
+              <div className="text-xs text-terminal-text-muted mb-1">$ECHELON</div>
               <div className="text-sm font-mono text-echelon-purple">
                 {paradox.extraction_cost_echelon}
               </div>
             </div>
             <div className="p-2 bg-terminal-bg rounded">
-              <div className="text-xs text-terminal-muted mb-1">Sanity Cost</div>
+              <div className="text-xs text-terminal-text-muted mb-1">Sanity Cost</div>
               <div className="text-sm font-mono text-echelon-amber">
                 {paradox.carrier_sanity_cost}
               </div>
@@ -205,7 +205,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
             >
             <button 
               onClick={() => setShowExtractionModal(false)}
-              className="absolute top-4 right-4 text-terminal-muted hover:text-terminal-text transition-colors"
+              className="absolute top-4 right-4 text-terminal-text-muted hover:text-terminal-text transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -216,7 +216,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
               </div>
               <div>
                 <h3 className="text-echelon-cyan font-bold text-lg">EXTRACTION PROTOCOL</h3>
-                <p className="text-terminal-muted text-xs">Deploy agent to contain paradox breach</p>
+                <p className="text-terminal-text-muted text-xs">Deploy agent to contain paradox breach</p>
               </div>
             </div>
             
@@ -225,7 +225,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
                 <span className="text-echelon-red font-bold text-sm">
                   {paradox.severity_class || 'CLASS_2_SEVERE'}
                 </span>
-                <span className="text-terminal-muted text-xs">
+                <span className="text-terminal-text-muted text-xs">
                   Logic Gap: {((paradox.logic_gap || 0.45) * 100).toFixed(0)}%
                 </span>
               </div>
@@ -236,20 +236,20 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
             
             <div className="space-y-2 mb-4 bg-terminal-bg/50 rounded p-3">
               <div className="flex justify-between text-sm">
-                <span className="text-terminal-muted">Extraction Cost</span>
+                <span className="text-terminal-text-muted">Extraction Cost</span>
                 <span className="text-echelon-amber font-bold">500 $ECHELON</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-terminal-muted">Agent Sanity Cost</span>
+                <span className="text-terminal-text-muted">Agent Sanity Cost</span>
                 <span className="text-echelon-purple">-15 Sanity</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-terminal-muted">Success Probability</span>
+                <span className="text-terminal-text-muted">Success Probability</span>
                 <span className="text-echelon-green">72%</span>
               </div>
               <div className="border-t border-terminal-border pt-2 mt-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-terminal-muted">Success Reward</span>
+                  <span className="text-terminal-text-muted">Success Reward</span>
                   <span className="text-echelon-cyan font-bold">+250 $ECHELON + Rep</span>
                 </div>
               </div>
@@ -260,7 +260,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
                 <AlertTriangle className="w-4 h-4 text-echelon-amber mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-echelon-amber text-sm font-bold">Wallet Connection Required</p>
-                  <p className="text-terminal-muted text-xs mt-1">
+                  <p className="text-terminal-text-muted text-xs mt-1">
                     Connect wallet and hold $ECHELON to execute extractions. Available Q1 2025.
                   </p>
                 </div>
@@ -275,7 +275,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
               CONNECT WALLET TO EXTRACT
             </button>
             
-            <p className="text-center text-terminal-muted text-xs mt-4">
+            <p className="text-center text-terminal-text-muted text-xs mt-4">
               Join waitlist at <span className="text-echelon-cyan">playechelon.io</span>
             </p>
             </div>
@@ -307,7 +307,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
             >
             <button 
               onClick={() => setShowAbandonModal(false)}
-              className="absolute top-4 right-4 text-terminal-muted hover:text-terminal-text transition-colors"
+              className="absolute top-4 right-4 text-terminal-text-muted hover:text-terminal-text transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -318,7 +318,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
               </div>
               <div>
                 <h3 className="text-echelon-red font-bold text-lg">ABANDON TIMELINE</h3>
-                <p className="text-terminal-muted text-xs">Allow paradox detonation</p>
+                <p className="text-terminal-text-muted text-xs">Allow paradox detonation</p>
               </div>
             </div>
             
@@ -345,7 +345,7 @@ export function ParadoxAlert({ paradox }: ParadoxAlertProps) {
             </div>
             
             <div className="bg-terminal-bg rounded p-3 mb-6">
-              <span className="text-terminal-muted text-xs uppercase tracking-wide">Your Exposure</span>
+              <span className="text-terminal-text-muted text-xs uppercase tracking-wide">Your Exposure</span>
               <div className="flex justify-between items-center mt-2">
                 <span className="text-terminal-text">500 YES Shards</span>
                 <span className="text-echelon-red font-bold">-$340.00 loss</span>

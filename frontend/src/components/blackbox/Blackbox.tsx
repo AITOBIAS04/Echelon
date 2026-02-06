@@ -42,7 +42,7 @@ export function Blackbox() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-[#0B0C0E]">
+    <div className="h-full flex flex-col overflow-hidden bg-slate-950">
       {/* Your Positions Panel */}
       <div className="flex-shrink-0 p-4 pb-0">
         <PositionsPanel />

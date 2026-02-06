@@ -94,7 +94,7 @@ export function SavedViewEditorModal({
             onClick={onClose}
             className="p-1 hover:bg-terminal-panel rounded transition"
           >
-            <X className="w-5 h-5 text-terminal-muted" />
+            <X className="w-5 h-5 text-terminal-text-muted" />
           </button>
         </div>
 
@@ -150,7 +150,7 @@ export function SavedViewEditorModal({
             <div className="space-y-4">
               {/* Query */}
               <div>
-                <label className="block text-xs text-terminal-muted mb-1">
+                <label className="block text-xs text-terminal-text-muted mb-1">
                   Search Query
                 </label>
                 <input
@@ -165,7 +165,7 @@ export function SavedViewEditorModal({
               {/* Stability Range */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-terminal-muted mb-1">
+                  <label className="block text-xs text-terminal-text-muted mb-1">
                     Min Stability
                   </label>
                   <input
@@ -179,7 +179,7 @@ export function SavedViewEditorModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-terminal-muted mb-1">
+                  <label className="block text-xs text-terminal-text-muted mb-1">
                     Max Stability
                   </label>
                   <input
@@ -197,7 +197,7 @@ export function SavedViewEditorModal({
               {/* Logic Gap Range */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-terminal-muted mb-1">
+                  <label className="block text-xs text-terminal-text-muted mb-1">
                     Min Logic Gap
                   </label>
                   <input
@@ -211,7 +211,7 @@ export function SavedViewEditorModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-terminal-muted mb-1">
+                  <label className="block text-xs text-terminal-text-muted mb-1">
                     Max Logic Gap
                   </label>
                   <input
@@ -250,7 +250,7 @@ export function SavedViewEditorModal({
 
               {/* Sabotage Heat */}
               <div>
-                <label className="block text-xs text-terminal-muted mb-1">
+                <label className="block text-xs text-terminal-text-muted mb-1">
                   Min Sabotage Heat (24h)
                 </label>
                 <input
@@ -265,7 +265,7 @@ export function SavedViewEditorModal({
 
               {/* Max Next Fork ETA */}
               <div>
-                <label className="block text-xs text-terminal-muted mb-1">
+                <label className="block text-xs text-terminal-text-muted mb-1">
                   Max Next Fork ETA (seconds)
                 </label>
                 <input

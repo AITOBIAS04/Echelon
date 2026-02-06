@@ -12,7 +12,7 @@ const archetypeColors: Record<AgentArchetype, string> = {
   DIPLOMAT: 'text-agent-diplomat',
   SABOTEUR: 'text-agent-saboteur',
   WHALE: 'text-agent-whale',
-  DEGEN: 'text-terminal-muted',
+  DEGEN: 'text-terminal-text-muted',
 };
 
 const flapTypeIcons: Record<string, string> = {
@@ -37,7 +37,7 @@ export function WingFlapFeed({ flaps, isLoading }: WingFlapFeedProps) {
 
   if (flaps.length === 0) {
     return (
-      <div className="p-4 text-center text-terminal-muted">
+      <div className="p-4 text-center text-terminal-text-muted">
         No recent activity
       </div>
     );
@@ -65,11 +65,11 @@ function WingFlapItem({ flap }: { flap: WingFlap }) {
           <span className={clsx('font-medium', archetypeColors[flap.agent_archetype])}>
             {flap.agent_name}
           </span>
-          <span className="text-xs px-1.5 py-0.5 bg-terminal-bg rounded text-terminal-muted">
+          <span className="text-xs px-1.5 py-0.5 bg-terminal-bg rounded text-terminal-text-muted">
             {flap.agent_archetype}
           </span>
         </div>
-        <span className="text-xs text-terminal-muted">{timeAgo}</span>
+        <span className="text-xs text-terminal-text-muted">{timeAgo}</span>
       </div>
 
       {/* Action */}
@@ -85,10 +85,10 @@ function WingFlapItem({ flap }: { flap: WingFlap }) {
         )}>
           {flap.direction === 'ANCHOR' ? '+' : ''}{flap.stability_delta.toFixed(2)}%
         </span>
-        <span className="text-terminal-muted">
+        <span className="text-terminal-text-muted">
           ${flap.volume_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}
         </span>
-        <span className="text-terminal-muted truncate flex-1">
+        <span className="text-terminal-text-muted truncate flex-1">
           → {flap.timeline_name}
         </span>
         {flap.spawned_ripple && (

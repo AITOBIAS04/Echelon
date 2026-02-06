@@ -225,7 +225,7 @@ export function AlertPanel({ isOpen, onClose }: AlertPanelProps) {
             </button>
             <button
               onClick={onClose}
-              className="p-1 text-terminal-muted hover:text-terminal-text transition-colors"
+              className="p-1 text-terminal-text-muted hover:text-terminal-text transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -242,7 +242,7 @@ export function AlertPanel({ isOpen, onClose }: AlertPanelProps) {
                 'px-2 py-1 text-[10px] font-medium rounded transition-all',
                 filter === f
                   ? 'bg-status-info text-white'
-                  : 'text-terminal-muted hover:text-terminal-text hover:bg-terminal-bg'
+                  : 'text-terminal-text-muted hover:text-terminal-text hover:bg-terminal-bg'
               )}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -253,7 +253,7 @@ export function AlertPanel({ isOpen, onClose }: AlertPanelProps) {
         {/* Alert List */}
         <div className="flex-1 overflow-y-auto">
           {filteredAlerts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-terminal-muted">
+            <div className="flex flex-col items-center justify-center py-12 text-terminal-text-muted">
               <Bell className="w-8 h-8 mb-2 opacity-50" />
               <p className="text-sm">No alerts</p>
             </div>
@@ -300,7 +300,7 @@ export function AlertPanel({ isOpen, onClose }: AlertPanelProps) {
                       </p>
 
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-[10px] text-terminal-muted">
+                        <div className="flex items-center gap-2 text-[10px] text-terminal-text-muted">
                           <span className="font-mono">{alert.theatre}</span>
                           <span>{alert.time}</span>
                         </div>

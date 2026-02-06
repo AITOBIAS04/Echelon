@@ -138,7 +138,7 @@ export function CompareSidebar({ isOpen, onClose }: CompareSidebarProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-terminal-muted hover:text-terminal-text transition-colors"
+            className="p-1 text-terminal-text-muted hover:text-terminal-text transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
@@ -169,7 +169,7 @@ export function CompareSidebar({ isOpen, onClose }: CompareSidebarProps) {
                         </span>
                         <button
                           onClick={() => removeFromSlot(slotId)}
-                          className="p-0.5 text-terminal-muted hover:text-terminal-text transition-colors"
+                          className="p-0.5 text-terminal-text-muted hover:text-terminal-text transition-colors"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -184,45 +184,45 @@ export function CompareSidebar({ isOpen, onClose }: CompareSidebarProps) {
                       {/* Metrics */}
                       <div className="p-3 space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-terminal-muted uppercase">Price</span>
+                          <span className="text-[10px] text-terminal-text-muted uppercase">Price</span>
                           <span className="text-xs font-mono font-semibold text-terminal-text">
                             ${theatre.price.toFixed(2)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-terminal-muted uppercase">24h</span>
+                          <span className="text-[10px] text-terminal-text-muted uppercase">24h</span>
                           <span className={clsx('text-xs font-mono font-semibold', getChangeClass(theatre.change))}>
                             {theatre.change}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-terminal-muted uppercase">Stability</span>
+                          <span className="text-[10px] text-terminal-text-muted uppercase">Stability</span>
                           <span className={clsx('text-xs font-mono font-semibold', getStabilityColorClass(theatre.stability))}>
                             {theatre.stability}%
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-terminal-muted uppercase">Logic Gap</span>
+                          <span className="text-[10px] text-terminal-text-muted uppercase">Logic Gap</span>
                           <span className={clsx('text-xs font-mono font-semibold', getGapColorClass(theatre.gap))}>
                             {theatre.gap}%
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-terminal-muted uppercase">Prob.</span>
+                          <span className="text-[10px] text-terminal-text-muted uppercase">Prob.</span>
                           <span className="text-xs font-mono font-semibold text-terminal-text">
                             {theatre.probability}%
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-terminal-muted uppercase">Volume</span>
+                          <span className="text-[10px] text-terminal-text-muted uppercase">Volume</span>
                           <span className="text-xs font-mono font-semibold text-terminal-text">
                             {theatre.volume}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-terminal-muted uppercase">Fork In</span>
+                          <span className="text-[10px] text-terminal-text-muted uppercase">Fork In</span>
                           <span className="text-xs font-mono font-semibold text-terminal-text flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-terminal-muted" />
+                            <Clock className="w-3 h-3 text-terminal-text-muted" />
                             {theatre.forkIn}
                           </span>
                         </div>
@@ -240,7 +240,7 @@ export function CompareSidebar({ isOpen, onClose }: CompareSidebarProps) {
                           <option key={t.id} value={t.id}>{t.name}</option>
                         ))}
                       </select>
-                      <span className="text-[10px] text-terminal-muted mt-2">Click to add</span>
+                      <span className="text-[10px] text-terminal-text-muted mt-2">Click to add</span>
                     </div>
                   )}
                 </div>
@@ -251,7 +251,7 @@ export function CompareSidebar({ isOpen, onClose }: CompareSidebarProps) {
           {/* Comparison Charts */}
           {selectedTheatres.length >= 2 && (
             <div className="mt-4 p-3 bg-terminal-bg rounded-lg border border-terminal-border">
-              <h4 className="text-[10px] font-bold text-terminal-muted uppercase tracking-wider mb-3">
+              <h4 className="text-[10px] font-bold text-terminal-text-muted uppercase tracking-wider mb-3">
                 Stability Comparison
               </h4>
               {selectedTheatres.map(theatre => (
@@ -274,7 +274,7 @@ export function CompareSidebar({ isOpen, onClose }: CompareSidebarProps) {
                 </div>
               ))}
 
-              <h4 className="text-[10px] font-bold text-terminal-muted uppercase tracking-wider mt-4 mb-3">
+              <h4 className="text-[10px] font-bold text-terminal-text-muted uppercase tracking-wider mt-4 mb-3">
                 Logic Gap Comparison
               </h4>
               {selectedTheatres.map(theatre => (
@@ -305,7 +305,7 @@ export function CompareSidebar({ isOpen, onClose }: CompareSidebarProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={clearAllSlots}
-              className="flex-1 px-3 py-2 text-xs font-medium text-terminal-muted border border-terminal-border rounded hover:border-status-warning hover:text-status-warning transition-colors"
+              className="flex-1 px-3 py-2 text-xs font-medium text-terminal-text-muted border border-terminal-border rounded hover:border-status-warning hover:text-status-warning transition-colors"
             >
               Clear All
             </button>

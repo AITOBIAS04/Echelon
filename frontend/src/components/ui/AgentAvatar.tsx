@@ -20,7 +20,7 @@ const AgentAvatar = ({ archetype, name, size = 'md' }: AgentAvatarProps) => {
     DIPLOMAT: 'bg-agent-diplomat/20 text-agent-diplomat border-agent-diplomat',
     SABOTEUR: 'bg-agent-saboteur/20 text-agent-saboteur border-agent-saboteur',
     WHALE: 'bg-agent-whale/20 text-agent-whale border-agent-whale',
-    DEGEN: 'bg-echelon-purple/20 text-echelon-purple border-echelon-purple',
+    DEGEN: 'bg-agent-degen/20 text-agent-degen border-agent-degen',
   };
 
   const initials = name

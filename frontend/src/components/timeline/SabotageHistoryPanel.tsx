@@ -79,17 +79,17 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
 
   if (sortedEvents.length === 0) {
     return (
-      <div className="bg-[#111111] rounded-lg p-4 border border-[#1A1A1A]">
+      <div className="bg-slate-900 rounded-lg p-4 border border-[#1A1A1A]">
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <Shield className="w-12 h-12 text-terminal-muted mb-3 opacity-50" />
-          <p className="text-sm text-terminal-muted">No sabotage activity</p>
+          <Shield className="w-12 h-12 text-terminal-text-muted mb-3 opacity-50" />
+          <p className="text-sm text-terminal-text-muted">No sabotage activity</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#111111] rounded-lg p-4 border border-[#1A1A1A]">
+    <div className="bg-slate-900 rounded-lg p-4 border border-[#1A1A1A]">
       <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
         Sabotage History
       </h3>
@@ -143,7 +143,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
                     >
                       {event.phase}
                     </span>
-                    <span className="text-xs text-terminal-muted">
+                    <span className="text-xs text-terminal-text-muted">
                       {formatRelativeTime(event.timestamp)}
                     </span>
                   </div>
@@ -159,7 +159,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
                             <span className="font-medium">'{event.sabotageType}'</span> attack
                           </span>
                         </div>
-                        <div className="text-terminal-muted text-xs ml-6">
+                        <div className="text-terminal-text-muted text-xs ml-6">
                           Stake: <span className="text-terminal-text">${event.stakeAmount.toFixed(2)}</span> | Est.
                           Effect: <span className="text-red-500">-{Math.abs(event.effectSize).toFixed(1)}%</span> stability
                         </div>
@@ -174,7 +174,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
                             <span className="font-medium">{event.saboteurName}</span> committed to attack
                           </span>
                         </div>
-                        <div className="text-terminal-muted text-xs ml-6">
+                        <div className="text-terminal-text-muted text-xs ml-6">
                           Execution window: 30-60s
                         </div>
                       </>
@@ -191,7 +191,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
                           </span>
                         </div>
                         {event.executedAt && (
-                          <div className="text-terminal-muted text-xs ml-6">
+                          <div className="text-terminal-text-muted text-xs ml-6">
                             Executed at: {new Date(event.executedAt).toLocaleTimeString()}
                           </div>
                         )}
@@ -204,7 +204,7 @@ export function SabotageHistoryPanel({ events }: SabotageHistoryPanelProps) {
                           <Shield className="w-4 h-4 text-[#00FF41]" />
                           <span>Timeline recovered. Stake slashed.</span>
                         </div>
-                        <div className="text-terminal-muted text-xs ml-6">
+                        <div className="text-terminal-text-muted text-xs ml-6">
                           Burned:{' '}
                           <span className="text-green-500 font-medium">
                             ${(event.stakeAmount * 0.5).toFixed(2)}

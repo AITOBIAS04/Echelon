@@ -31,7 +31,7 @@ export function LiveNowBar({ liveNow }: LiveNowBarProps) {
   };
 
   return (
-    <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-3 md:p-4 mb-4">
+    <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-3 md:p-4 mb-4">
       <div className="flex items-center gap-2 mb-3">
         <div className="w-2 h-2 bg-status-success rounded-full animate-pulse" />
         <span className="text-xs font-semibold text-terminal-text uppercase tracking-wide">

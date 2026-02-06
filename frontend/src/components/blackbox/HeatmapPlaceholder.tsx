@@ -3,7 +3,7 @@
 
 export function HeatmapPlaceholder() {
   return (
-    <div className="rounded-2xl border border-[#26292E] bg-[#0F1113] flex flex-col min-h-0 h-full">
+    <div className="rounded-2xl border border-[#26292E] bg-slate-950 flex flex-col min-h-0 h-full">
       {/* Card Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#26292E]">
         <span className="text-sm font-semibold text-[#F1F5F9]">HEATMAP</span>

@@ -46,13 +46,13 @@ export function BreachesModal({ paradoxes, onClose }: BreachesModalProps) {
             <h2 className="font-display text-2xl text-echelon-red uppercase tracking-wider">
               Active Containment Breaches
             </h2>
-            <span className="text-sm text-terminal-muted">
+            <span className="text-sm text-terminal-text-muted">
               ({paradoxes.length} total)
             </span>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-terminal-muted hover:text-terminal-text hover:bg-terminal-bg rounded transition"
+            className="p-2 text-terminal-text-muted hover:text-terminal-text hover:bg-terminal-bg rounded transition"
           >
             <X className="w-5 h-5" />
           </button>

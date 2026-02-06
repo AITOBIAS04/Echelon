@@ -299,7 +299,7 @@ export function GhostForks() {
             <div className="space-y-4">
               {/* Fork Name */}
               <div>
-                <label className="text-terminal-muted text-sm block mb-2">Fork Name</label>
+                <label className="text-terminal-text-muted text-sm block mb-2">Fork Name</label>
                 <input
                   type="text"
                   value={forkName}
@@ -311,7 +311,7 @@ export function GhostForks() {
 
               {/* Base Timeline */}
               <div>
-                <label className="text-terminal-muted text-sm block mb-2">Fork From Timeline</label>
+                <label className="text-terminal-text-muted text-sm block mb-2">Fork From Timeline</label>
                 <select
                   value={selectedTimeline}
                   onChange={(e) => setSelectedTimeline(e.target.value)}
@@ -326,7 +326,7 @@ export function GhostForks() {
 
               {/* Pivot Point */}
               <div>
-                <label className="text-terminal-muted text-sm block mb-2">
+                <label className="text-terminal-text-muted text-sm block mb-2">
                   Pivot Point <span className="text-echelon-amber">(The "What If")</span>
                 </label>
                 <textarea
@@ -342,7 +342,7 @@ export function GhostForks() {
               <div className="bg-echelon-purple/20 border border-echelon-purple/30 rounded p-3 text-sm">
                 <span className="text-echelon-purple">💰 Starting Balance:</span>
                 <span className="text-terminal-text ml-2">$10,000 Virtual USDC</span>
-                <p className="text-terminal-muted text-xs mt-1">
+                <p className="text-terminal-text-muted text-xs mt-1">
                   Test your strategy risk-free before committing real capital
                 </p>
               </div>
@@ -356,7 +356,7 @@ export function GhostForks() {
                   'flex-1 px-4 py-2 rounded flex items-center justify-center gap-2 transition-colors',
                   selectedTimeline && pivotPoint && forkName
                     ? 'bg-echelon-cyan/20 border border-echelon-cyan text-echelon-cyan hover:bg-echelon-cyan/30'
-                    : 'bg-terminal-bg border border-terminal-border text-terminal-muted cursor-not-allowed'
+                    : 'bg-terminal-bg border border-terminal-border text-terminal-text-muted cursor-not-allowed'
                 )}
               >
                 <Zap className="w-4 h-4" />
@@ -364,7 +364,7 @@ export function GhostForks() {
               </button>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="px-4 py-2 bg-terminal-bg border border-terminal-border text-terminal-muted rounded hover:bg-terminal-panel transition-colors"
+                className="px-4 py-2 bg-terminal-bg border border-terminal-border text-terminal-text-muted rounded hover:bg-terminal-panel transition-colors"
               >
                 CANCEL
               </button>

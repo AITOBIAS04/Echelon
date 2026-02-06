@@ -27,7 +27,7 @@ export function LaunchpadRail({ hideCreateCard = false }: LaunchpadRailProps) {
     return (
       <div className="w-full py-8">
         <div className="flex items-center justify-center">
-          <div className="text-terminal-muted animate-pulse">Loading launchpad...</div>
+          <div className="text-terminal-text-muted animate-pulse">Loading launchpad...</div>
         </div>
       </div>
     );
@@ -39,7 +39,7 @@ export function LaunchpadRail({ hideCreateCard = false }: LaunchpadRailProps) {
         <div className="flex flex-col items-center justify-center text-center">
           <Sparkles className="w-12 h-12 text-red-500 mb-4 opacity-50" />
           <p className="text-lg font-semibold text-terminal-text mb-2">Error loading launchpad</p>
-          <p className="text-sm text-terminal-muted">{error}</p>
+          <p className="text-sm text-terminal-text-muted">{error}</p>
         </div>
       </div>
     );
@@ -54,7 +54,7 @@ export function LaunchpadRail({ hideCreateCard = false }: LaunchpadRailProps) {
       {/* Create Timeline Card (optional) */}
       {!hideCreateCard && (
         <section>
-          <h2 className="text-sm font-semibold text-terminal-muted uppercase tracking-wide mb-4">
+          <h2 className="text-sm font-semibold text-terminal-text-muted uppercase tracking-wide mb-4">
             Quick Actions
           </h2>
           <CreateTimelineCard />
@@ -64,13 +64,13 @@ export function LaunchpadRail({ hideCreateCard = false }: LaunchpadRailProps) {
       {/* Trending Launches */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <Sparkles className="w-4 h-4 text-[#00D4FF]" />
+          <Sparkles className="w-4 h-4 text-[#22D3EE]" />
           <h2 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">
             Trending Launches
           </h2>
         </div>
         {feed.trending.length === 0 ? (
-          <div className="text-center py-8 text-terminal-muted text-sm">
+          <div className="text-center py-8 text-terminal-text-muted text-sm">
             No trending launches
           </div>
         ) : (
@@ -85,16 +85,16 @@ export function LaunchpadRail({ hideCreateCard = false }: LaunchpadRailProps) {
       {/* Your Drafts */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <FileText className="w-4 h-4 text-terminal-muted" />
+          <FileText className="w-4 h-4 text-terminal-text-muted" />
           <h2 className="text-sm font-semibold text-terminal-text uppercase tracking-wide">
             Your Drafts
           </h2>
         </div>
         {feed.drafts.length === 0 ? (
-          <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-8 text-center">
-            <FileText className="w-12 h-12 text-terminal-muted mx-auto mb-3 opacity-50" />
-            <p className="text-sm text-terminal-muted mb-2">No drafts yet</p>
-            <p className="text-xs text-terminal-muted">
+          <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-8 text-center">
+            <FileText className="w-12 h-12 text-terminal-text-muted mx-auto mb-3 opacity-50" />
+            <p className="text-sm text-terminal-text-muted mb-2">No drafts yet</p>
+            <p className="text-xs text-terminal-text-muted">
               Create your first timeline launch to get started
             </p>
           </div>
@@ -116,7 +116,7 @@ export function LaunchpadRail({ hideCreateCard = false }: LaunchpadRailProps) {
           </h2>
         </div>
         {feed.recentlyGraduated.length === 0 ? (
-          <div className="text-center py-8 text-terminal-muted text-sm">
+          <div className="text-center py-8 text-terminal-text-muted text-sm">
             No recently graduated launches
           </div>
         ) : (

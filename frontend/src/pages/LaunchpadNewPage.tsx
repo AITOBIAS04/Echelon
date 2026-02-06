@@ -98,7 +98,7 @@ export function LaunchpadNewPage() {
         <h1 className="text-2xl font-bold text-terminal-text uppercase tracking-wide mb-2">
           Create New Timeline
         </h1>
-        <p className="text-sm text-terminal-muted">
+        <p className="text-sm text-terminal-text-muted">
           Step {step} of 3: {step === 1 ? 'Choose Category' : step === 2 ? 'Enter Details' : 'Review'}
         </p>
       </div>
@@ -110,10 +110,10 @@ export function LaunchpadNewPage() {
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition ${
                 s < step
-                  ? 'bg-[#00D4FF] text-black'
+                  ? 'bg-[#22D3EE] text-black'
                   : s === step
-                  ? 'bg-[#00D4FF]/20 border-2 border-[#00D4FF] text-[#00D4FF]'
-                  : 'bg-terminal-bg border border-terminal-border text-terminal-muted'
+                  ? 'bg-[#22D3EE]/20 border-2 border-[#22D3EE] text-[#22D3EE]'
+                  : 'bg-terminal-bg border border-terminal-border text-terminal-text-muted'
               }`}
             >
               {s < step ? <Check className="w-4 h-4" /> : s}
@@ -121,7 +121,7 @@ export function LaunchpadNewPage() {
             {s < 3 && (
               <div
                 className={`h-0.5 flex-1 transition ${
-                  s < step ? 'bg-[#00D4FF]' : 'bg-terminal-border'
+                  s < step ? 'bg-[#22D3EE]' : 'bg-terminal-border'
                 }`}
               />
             )}
@@ -140,32 +140,32 @@ export function LaunchpadNewPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
                 onClick={() => setCategory('theatre')}
-                className={`p-6 bg-[#111111] border-2 rounded-lg transition text-left ${
+                className={`p-6 bg-slate-900 border-2 rounded-lg transition text-left ${
                   category === 'theatre'
-                    ? 'border-[#00D4FF] bg-[#00D4FF]/10'
-                    : 'border-[#1A1A1A] hover:border-[#333]'
+                    ? 'border-[#22D3EE] bg-[#22D3EE]/10'
+                    : 'border-terminal-border hover:border-[#333]'
                 }`}
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: `${'#00D4FF'}20` }}
+                    style={{ backgroundColor: `${'#22D3EE'}20` }}
                   >
-                    <Sparkles className="w-6 h-6" style={{ color: '#00D4FF' }} />
+                    <Sparkles className="w-6 h-6" style={{ color: '#22D3EE' }} />
                   </div>
                   <h3 className="text-lg font-bold text-terminal-text">THEATRE</h3>
                 </div>
-                <p className="text-sm text-terminal-muted">
+                <p className="text-sm text-terminal-text-muted">
                   Interactive simulation with agents, forks, and decision points
                 </p>
               </button>
 
               <button
                 onClick={() => setCategory('osint')}
-                className={`p-6 bg-[#111111] border-2 rounded-lg transition text-left ${
+                className={`p-6 bg-slate-900 border-2 rounded-lg transition text-left ${
                   category === 'osint'
                     ? 'border-[#9932CC] bg-[#9932CC]/10'
-                    : 'border-[#1A1A1A] hover:border-[#333]'
+                    : 'border-terminal-border hover:border-[#333]'
                 }`}
               >
                 <div className="flex items-center gap-3 mb-2">
@@ -177,7 +177,7 @@ export function LaunchpadNewPage() {
                   </div>
                   <h3 className="text-lg font-bold text-terminal-text">OSINT</h3>
                 </div>
-                <p className="text-sm text-terminal-muted">
+                <p className="text-sm text-terminal-text-muted">
                   Open source intelligence feed with evidence and sentiment tracking
                 </p>
               </button>
@@ -201,7 +201,7 @@ export function LaunchpadNewPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Enter timeline title..."
-                className="w-full px-4 py-3 bg-terminal-bg border border-terminal-border rounded focus:border-[#00D4FF] focus:outline-none text-terminal-text"
+                className="w-full px-4 py-3 bg-terminal-bg border border-terminal-border rounded focus:border-[#22D3EE] focus:outline-none text-terminal-text"
                 autoFocus
               />
             </div>
@@ -215,9 +215,9 @@ export function LaunchpadNewPage() {
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
                 placeholder="e.g., geopolitics, shipping, middle-east"
-                className="w-full px-4 py-3 bg-terminal-bg border border-terminal-border rounded focus:border-[#00D4FF] focus:outline-none text-terminal-text"
+                className="w-full px-4 py-3 bg-terminal-bg border border-terminal-border rounded focus:border-[#22D3EE] focus:outline-none text-terminal-text"
               />
-              <p className="text-xs text-terminal-muted mt-2">
+              <p className="text-xs text-terminal-text-muted mt-2">
                 Separate multiple tags with commas
               </p>
             </div>
@@ -231,20 +231,20 @@ export function LaunchpadNewPage() {
               Review
             </h2>
 
-            <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-6 space-y-4">
+            <div className="bg-slate-900 border border-terminal-border rounded-lg p-6 space-y-4">
               <div>
-                <span className="text-xs text-terminal-muted uppercase tracking-wide">Category</span>
+                <span className="text-xs text-terminal-text-muted uppercase tracking-wide">Category</span>
                 <p className="text-lg font-semibold text-terminal-text mt-1">
                   {category?.toUpperCase()}
                 </p>
               </div>
               <div>
-                <span className="text-xs text-terminal-muted uppercase tracking-wide">Title</span>
+                <span className="text-xs text-terminal-text-muted uppercase tracking-wide">Title</span>
                 <p className="text-lg font-semibold text-terminal-text mt-1">{title}</p>
               </div>
               {tags.trim() && (
                 <div>
-                  <span className="text-xs text-terminal-muted uppercase tracking-wide">Tags</span>
+                  <span className="text-xs text-terminal-text-muted uppercase tracking-wide">Tags</span>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {tags
                       .split(',')
@@ -273,8 +273,8 @@ export function LaunchpadNewPage() {
           disabled={step === 1}
           className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded transition ${
             step === 1
-              ? 'bg-terminal-bg border border-terminal-border text-terminal-muted cursor-not-allowed'
-              : 'bg-terminal-bg border border-terminal-border text-terminal-text hover:border-[#00D4FF] hover:text-[#00D4FF]'
+              ? 'bg-terminal-bg border border-terminal-border text-terminal-text-muted cursor-not-allowed'
+              : 'bg-terminal-bg border border-terminal-border text-terminal-text hover:border-[#22D3EE] hover:text-[#22D3EE]'
           }`}
         >
           <ArrowLeft className="w-4 h-4" />
@@ -289,8 +289,8 @@ export function LaunchpadNewPage() {
             }
             className={`flex items-center gap-2 px-6 py-2 text-sm font-semibold rounded transition ${
               (step === 1 && !canProceedStep1) || (step === 2 && !canProceedStep2)
-                ? 'bg-terminal-bg border border-terminal-border text-terminal-muted cursor-not-allowed'
-                : 'bg-[#00D4FF]/20 border border-[#00D4FF] text-[#00D4FF] hover:bg-[#00D4FF]/30'
+                ? 'bg-terminal-bg border border-terminal-border text-terminal-text-muted cursor-not-allowed'
+                : 'bg-[#22D3EE]/20 border border-[#22D3EE] text-[#22D3EE] hover:bg-[#22D3EE]/30'
             }`}
           >
             Next
@@ -302,8 +302,8 @@ export function LaunchpadNewPage() {
             disabled={!canSubmit || isSubmitting}
             className={`flex items-center gap-2 px-6 py-2 text-sm font-semibold rounded transition ${
               !canSubmit || isSubmitting
-                ? 'bg-terminal-bg border border-terminal-border text-terminal-muted cursor-not-allowed'
-                : 'bg-[#00D4FF]/20 border border-[#00D4FF] text-[#00D4FF] hover:bg-[#00D4FF]/30'
+                ? 'bg-terminal-bg border border-terminal-border text-terminal-text-muted cursor-not-allowed'
+                : 'bg-[#22D3EE]/20 border border-[#22D3EE] text-[#22D3EE] hover:bg-[#22D3EE]/30'
             }`}
           >
             {isSubmitting ? 'Creating...' : 'CREATE DRAFT'}

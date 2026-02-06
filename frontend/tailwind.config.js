@@ -65,7 +65,7 @@ export default {
           'entropy': '#06B6D4',   // Entropy quality - cyan
           'cyan': '#22D3EE',      // Cyan for RLMF
         },
-        // Echelon accent colours (used across agents, analytics, etc.)
+        // Echelon accent colours (semantic aliases for cross-page use)
         'echelon': {
           'cyan': '#22D3EE',
           'green': '#4ADE80',

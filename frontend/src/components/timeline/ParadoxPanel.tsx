@@ -109,7 +109,7 @@ export function ParadoxPanel({
 
   return (
     <div
-      className={`bg-[#111111] rounded-lg p-4 border ${
+      className={`bg-slate-900 rounded-lg p-4 border ${
         hasParadox ? 'border-red-500' : 'border-green-500/50'
       }`}
     >
@@ -122,7 +122,7 @@ export function ParadoxPanel({
               NO ACTIVE PARADOX
             </span>
           </div>
-          <div className="text-sm text-terminal-muted">
+          <div className="text-sm text-terminal-text-muted">
             Distance to paradox: <span className="text-terminal-text font-mono">{distanceToThreshold.toFixed(1)}%</span>
           </div>
         </div>
@@ -158,7 +158,7 @@ export function ParadoxPanel({
 
           {/* Countdown */}
           <div className={`text-center ${isCriticalTime ? 'animate-pulse' : ''}`}>
-            <div className="text-xs text-terminal-muted mb-1 uppercase tracking-wide">
+            <div className="text-xs text-terminal-text-muted mb-1 uppercase tracking-wide">
               DETONATION IN:
             </div>
             <div className="text-3xl font-mono font-bold text-[#FF3B3B]">
@@ -167,7 +167,7 @@ export function ParadoxPanel({
           </div>
 
           {/* Trigger Info */}
-          <div className="text-sm text-terminal-muted">
+          <div className="text-sm text-terminal-text-muted">
             Triggered by:{' '}
             <span className="text-terminal-text font-medium">
               {paradoxStatus.triggerReason.replace('_', ' ')}
@@ -181,21 +181,21 @@ export function ParadoxPanel({
           {/* Extraction Cost Breakdown */}
           {paradoxStatus && (
             <div className="bg-terminal-panel rounded p-3 space-y-2">
-              <div className="text-xs text-terminal-muted uppercase mb-2">Extraction Cost</div>
+              <div className="text-xs text-terminal-text-muted uppercase mb-2">Extraction Cost</div>
               <div className="flex justify-between text-sm">
-                <span className="text-terminal-muted">USDC:</span>
+                <span className="text-terminal-text-muted">USDC:</span>
                 <span className="text-terminal-text font-mono">
                   ${paradoxStatus.extractionCost.usdc.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-terminal-muted">$ECHELON:</span>
+                <span className="text-terminal-text-muted">$ECHELON:</span>
                 <span className="text-terminal-text font-mono">
                   {paradoxStatus.extractionCost.echelon.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-terminal-muted">Sanity cost:</span>
+                <span className="text-terminal-text-muted">Sanity cost:</span>
                 <span className="text-terminal-text font-mono">
                   {paradoxStatus.extractionCost.sanityCost}
                 </span>
@@ -205,7 +205,7 @@ export function ParadoxPanel({
 
           {/* Current Carrier */}
           {paradoxStatus.carrierAgentId && paradoxStatus.carrierAgentName && (
-            <div className="text-sm text-terminal-muted">
+            <div className="text-sm text-terminal-text-muted">
               Being carried by:{' '}
               <span className="text-terminal-text font-medium">
                 {paradoxStatus.carrierAgentName}
@@ -231,7 +231,7 @@ export function ParadoxPanel({
             <div>
               <button
                 onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                className="flex items-center justify-between w-full text-sm text-terminal-muted hover:text-terminal-text transition"
+                className="flex items-center justify-between w-full text-sm text-terminal-text-muted hover:text-terminal-text transition"
               >
                 <span>
                   Extraction History ({paradoxStatus.extractionHistory.length})
@@ -249,11 +249,11 @@ export function ParadoxPanel({
                       key={attempt.timestamp}
                       className="flex items-center gap-2 text-xs bg-terminal-panel rounded p-2"
                     >
-                      <span className="text-terminal-muted font-mono">
+                      <span className="text-terminal-text-muted font-mono">
                         [{formatTime(attempt.timestamp)}]
                       </span>
                       <span className="text-terminal-text">{attempt.agentName}</span>
-                      <span className="text-terminal-muted">—</span>
+                      <span className="text-terminal-text-muted">—</span>
                       {attempt.success ? (
                         <span className="flex items-center gap-1 text-green-500">
                           <CheckCircle className="w-3 h-3" />

@@ -51,7 +51,7 @@ export function MyPositions() {
       {/* Summary */}
       <div className="flex items-center justify-between mb-4 p-3 bg-terminal-bg rounded">
         <div>
-          <span className="text-xs text-terminal-muted">Portfolio Value</span>
+          <span className="text-xs text-terminal-text-muted">Portfolio Value</span>
           <div className="text-lg font-mono font-bold text-terminal-text">
             ${totalValue.toLocaleString()}
           </div>

@@ -147,7 +147,7 @@ export function TopActionBar() {
     : config.buttons;
 
   return (
-    <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-[rgba(18,20,23,0.65)] backdrop-blur-sm">
+    <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-slate-850/80 backdrop-blur-sm">
       {/* Page name / breadcrumb */}
       <div className="flex items-center gap-2.5 min-w-0">
         <span className="text-xs font-extrabold tracking-[0.06em] uppercase text-terminal-text whitespace-nowrap">
@@ -168,8 +168,8 @@ export function TopActionBar() {
                 className={clsx(
                   'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap',
                   isActive
-                    ? 'border-[rgba(34,211,238,0.35)] bg-[rgba(34,211,238,0.1)] text-[#22D3EE]'
-                    : 'border-[#26292E] bg-[#151719] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#64748B] hover:bg-[#1A1D21]'
+                    ? 'border-echelon-cyan/30 bg-echelon-cyan/10 text-echelon-cyan'
+                    : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-slate-800'
                 )}
               >
                 {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
@@ -230,14 +230,14 @@ export function TopActionBar() {
                   console.warn(`TopActionBar: No handler registered for action "${btn.action}" on page "${config.name}"`);
                 }
               }}
-              className={`flex items-center gap-2 px-2.5 py-[7px] rounded-[10px] border text-[11px] font-semibold transition-all duration-150 whitespace-nowrap
-                ${
-                  btn.kind === 'primary'
-                    ? 'border-[rgba(59,130,246,0.35)] bg-[rgba(59,130,246,0.1)] text-[#3B82F6] hover:bg-[rgba(59,130,246,0.18)] hover:-translate-y-px'
-                    : btn.kind === 'warn'
-                    ? 'border-[rgba(250,204,21,0.35)] bg-[rgba(250,204,21,0.1)] text-[#FACC15] hover:bg-[rgba(250,204,21,0.18)] hover:-translate-y-px'
-                    : 'border-[#26292E] bg-[#151719] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#64748B] hover:bg-[#1A1D21] hover:-translate-y-px'
-                }`}
+              className={clsx(
+                'flex items-center gap-2 px-2.5 py-[7px] rounded-lg border text-[11px] font-semibold transition-all duration-150 whitespace-nowrap',
+                btn.kind === 'primary'
+                  ? 'border-echelon-blue/30 bg-echelon-blue/10 text-echelon-blue hover:bg-echelon-blue/[0.18] hover:-translate-y-px'
+                  : btn.kind === 'warn'
+                  ? 'border-echelon-amber/30 bg-echelon-amber/10 text-echelon-amber hover:bg-echelon-amber/[0.18] hover:-translate-y-px'
+                  : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-slate-800 hover:-translate-y-px'
+              )}
             >
               {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
               <span>{btn.label}</span>

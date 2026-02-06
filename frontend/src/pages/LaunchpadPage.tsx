@@ -215,8 +215,8 @@ export function LaunchpadPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2 text-sm font-medium rounded transition ${
                   isActive
-                    ? 'bg-[#00D4FF]/20 border border-[#00D4FF] text-[#00D4FF]'
-                    : 'bg-terminal-bg border border-terminal-border text-terminal-muted hover:text-terminal-text'
+                    ? 'bg-echelon-cyan/20 border border-echelon-cyan text-echelon-cyan'
+                    : 'bg-terminal-bg border border-terminal-border text-terminal-text-muted hover:text-terminal-text'
                 }`}
               >
                 {tab.label}
@@ -227,14 +227,14 @@ export function LaunchpadPage() {
 
         {/* Sort Toggle */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-terminal-muted">Sort:</span>
+          <span className="text-xs text-terminal-text-muted">Sort:</span>
           <div className="flex items-center gap-1 bg-terminal-bg border border-terminal-border rounded">
             <button
               onClick={() => setSortMode('trending')}
               className={`px-3 py-1.5 text-xs flex items-center gap-1 transition ${
                 sortMode === 'trending'
-                  ? 'bg-[#00D4FF]/20 text-[#00D4FF]'
-                  : 'text-terminal-muted hover:text-terminal-text'
+                  ? 'bg-echelon-cyan/20 text-echelon-cyan'
+                  : 'text-terminal-text-muted hover:text-terminal-text'
               }`}
             >
               <TrendingUp className="w-3 h-3" />
@@ -245,8 +245,8 @@ export function LaunchpadPage() {
               onClick={() => setSortMode('new')}
               className={`px-3 py-1.5 text-xs flex items-center gap-1 transition ${
                 sortMode === 'new'
-                  ? 'bg-[#00D4FF]/20 text-[#00D4FF]'
-                  : 'text-terminal-muted hover:text-terminal-text'
+                  ? 'bg-echelon-cyan/20 text-echelon-cyan'
+                  : 'text-terminal-text-muted hover:text-terminal-text'
               }`}
             >
               <Clock className="w-3 h-3" />
@@ -260,17 +260,17 @@ export function LaunchpadPage() {
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="text-terminal-muted animate-pulse">Loading launches...</div>
+            <div className="text-terminal-text-muted animate-pulse">Loading launches...</div>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-12">
             <p className="text-lg font-semibold text-terminal-text mb-2">Error loading launches</p>
-            <p className="text-sm text-terminal-muted">{error}</p>
+            <p className="text-sm text-terminal-text-muted">{error}</p>
           </div>
         ) : sortedLaunches.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
             <p className="text-lg font-semibold text-terminal-text mb-2">No launches found</p>
-            <p className="text-sm text-terminal-muted">
+            <p className="text-sm text-terminal-text-muted">
               {activeTab === 'drafts'
                 ? 'You have no drafts yet. Create a new timeline to get started.'
                 : `No ${activeTab} launches available.`}

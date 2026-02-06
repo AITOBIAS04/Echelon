@@ -14,7 +14,7 @@ import { useMemo } from 'react';
  */
 function SkeletonPanel({ className = '' }: { className?: string }) {
   return (
-    <div className={`bg-[#111111] rounded-lg p-4 border border-[#1A1A1A] animate-pulse ${className}`}>
+    <div className={`bg-slate-900 rounded-lg p-4 border border-[#1A1A1A] animate-pulse ${className}`}>
       <div className="h-4 bg-[#1A1A1A] rounded w-1/3 mb-4"></div>
       <div className="space-y-2">
         <div className="h-3 bg-[#1A1A1A] rounded w-full"></div>
@@ -108,7 +108,7 @@ export function TimelineDetailPage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/fieldkit')}
-              className="flex items-center gap-2 text-sm text-terminal-muted hover:text-terminal-text transition"
+              className="flex items-center gap-2 text-sm text-terminal-text-muted hover:text-terminal-text transition"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Watchlist
@@ -121,19 +121,19 @@ export function TimelineDetailPage() {
               </h1>
             )}
           </div>
-          <button className="p-2 text-terminal-muted hover:text-terminal-text transition">
+          <button className="p-2 text-terminal-text-muted hover:text-terminal-text transition">
             <MoreVertical className="w-5 h-5" />
           </button>
         </div>
 
         {/* Error State */}
         {isError && (
-          <div className="bg-[#111111] border border-red-500 rounded-lg p-6 text-center">
+          <div className="bg-slate-900 border border-red-500 rounded-lg p-6 text-center">
             <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-terminal-text mb-2">
               Failed to load timeline
             </h3>
-            <p className="text-sm text-terminal-muted mb-4">
+            <p className="text-sm text-terminal-text-muted mb-4">
               {error instanceof Error ? error.message : 'An unknown error occurred'}
             </p>
             <button
@@ -195,13 +195,13 @@ export function TimelineDetailPage() {
 
             {/* Optional Row: User Position */}
             {data.userPosition && (
-              <div className="bg-[#111111] border border-[#1A1A1A] rounded-lg p-4">
+              <div className="bg-slate-900 border border-[#1A1A1A] rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide mb-4">
                   Your Position
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div>
-                    <div className="text-xs text-terminal-muted mb-1">Side</div>
+                    <div className="text-xs text-terminal-text-muted mb-1">Side</div>
                     <div
                       className={`text-lg font-mono font-bold ${
                         data.userPosition.side === 'YES' ? 'text-green-500' : 'text-red-500'
@@ -211,19 +211,19 @@ export function TimelineDetailPage() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-terminal-muted mb-1">Shares</div>
+                    <div className="text-xs text-terminal-text-muted mb-1">Shares</div>
                     <div className="text-lg font-mono font-bold text-terminal-text">
                       {data.userPosition.shares.toLocaleString()}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-terminal-muted mb-1">Avg Price</div>
+                    <div className="text-xs text-terminal-text-muted mb-1">Avg Price</div>
                     <div className="text-lg font-mono font-bold text-terminal-text">
                       ${data.userPosition.avgPrice.toFixed(2)}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-terminal-muted mb-1">P&L</div>
+                    <div className="text-xs text-terminal-text-muted mb-1">P&L</div>
                     <div
                       className={`text-lg font-mono font-bold ${
                         data.userPosition.unrealisedPnl >= 0 ? 'text-green-500' : 'text-red-500'
@@ -234,7 +234,7 @@ export function TimelineDetailPage() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-terminal-muted mb-1">Burn Risk</div>
+                    <div className="text-xs text-terminal-text-muted mb-1">Burn Risk</div>
                     <div className="text-lg font-mono font-bold text-red-500">
                       ${data.userPosition.burnAtCollapse.toFixed(2)}
                     </div>

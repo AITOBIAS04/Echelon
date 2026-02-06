@@ -19,7 +19,7 @@ function getSourceColor(source: string): string {
   const sourceLower = source.toLowerCase();
   if (sourceLower.includes('ravenpack')) return '#00AFFF'; // blue
   if (sourceLower.includes('spire')) return '#9932CC'; // purple
-  if (sourceLower.includes('x api') || sourceLower.includes('twitter')) return '#00D4FF'; // cyan
+  if (sourceLower.includes('x api') || sourceLower.includes('twitter')) return '#22D3EE'; // cyan
   if (sourceLower.includes('gdelt')) return '#666666'; // grey
   return '#666666'; // default grey
 }
@@ -88,8 +88,8 @@ export function EvidenceLedger({ entries, onEntryClick }: EvidenceLedgerProps) {
     return (
       <div className="bg-[#0D0D0D] rounded-lg p-4 border border-[#1A1A1A]">
         <div className="flex flex-col items-center justify-center py-8 text-center">
-          <FileSearch className="w-12 h-12 text-terminal-muted mb-3 opacity-50" />
-          <p className="text-sm text-terminal-muted">No evidence recorded</p>
+          <FileSearch className="w-12 h-12 text-terminal-text-muted mb-3 opacity-50" />
+          <p className="text-sm text-terminal-text-muted">No evidence recorded</p>
         </div>
       </div>
     );
@@ -154,7 +154,7 @@ export function EvidenceLedger({ entries, onEntryClick }: EvidenceLedgerProps) {
                 >
                   {entry.source}
                 </span>
-                <span className="text-xs text-terminal-muted font-mono">
+                <span className="text-xs text-terminal-text-muted font-mono">
                   {formatTimestamp(entry.timestamp)}
                 </span>
               </div>
@@ -184,7 +184,7 @@ export function EvidenceLedger({ entries, onEntryClick }: EvidenceLedgerProps) {
               <div className="flex items-center gap-3 min-w-[100px]">
                 <div className="flex flex-col items-end gap-1">
                   <ConfidenceBar confidence={entry.confidence} />
-                  <span className="text-xs text-terminal-muted">
+                  <span className="text-xs text-terminal-text-muted">
                     {entry.confidence}%
                   </span>
                 </div>

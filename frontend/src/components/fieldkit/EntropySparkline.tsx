@@ -91,7 +91,7 @@ export function EntropySparkline({
           strokeLinejoin="round"
         />
       </svg>
-      <div className="text-xs text-terminal-muted mt-0.5">
+      <div className="text-xs text-terminal-text-muted mt-0.5">
         {currentRate.toFixed(1)}%/hr
       </div>
     </div>

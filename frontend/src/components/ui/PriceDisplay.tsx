@@ -8,7 +8,7 @@ const PriceDisplay = ({ priceYes, priceNo }: PriceDisplayProps) => {
     <div className="flex items-center gap-2 text-xs">
       <div className="flex-1">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-terminal-muted">YES</span>
+          <span className="text-terminal-text-muted">YES</span>
           <span className="text-echelon-green font-medium">
             ${priceYes.toFixed(2)}
           </span>
@@ -22,7 +22,7 @@ const PriceDisplay = ({ priceYes, priceNo }: PriceDisplayProps) => {
       </div>
       <div className="flex-1">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-terminal-muted">NO</span>
+          <span className="text-terminal-text-muted">NO</span>
           <span className="text-echelon-red font-medium">
             ${priceNo.toFixed(2)}
           </span>

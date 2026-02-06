@@ -7,7 +7,7 @@ export function HistoricalReplay() {
         <History className="w-8 h-8 text-echelon-amber" />
       </div>
       <h3 className="text-lg font-medium text-terminal-text mb-2">Historical Replay</h3>
-      <p className="text-sm text-terminal-muted mb-6 max-w-md">
+      <p className="text-sm text-terminal-text-muted mb-6 max-w-md">
         Replay past events to analyse what-if scenarios. Study agent decisions,
         market movements, and paradox resolutions.
       </p>
@@ -22,7 +22,7 @@ export function HistoricalReplay() {
           <SkipForward className="w-4 h-4" />
         </button>
       </div>
-      <p className="text-xs text-terminal-muted mt-4">Coming in Phase 2</p>
+      <p className="text-xs text-terminal-text-muted mt-4">Coming in Phase 2</p>
     </div>
   );
 }

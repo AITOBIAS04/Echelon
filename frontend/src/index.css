@@ -71,6 +71,88 @@
   .status-pill.paradox {
     @apply bg-status-paradox/10 text-status-paradox border border-status-paradox/20;
   }
+
+  /* ── Section header ── */
+  .section-header {
+    @apply flex items-center justify-between px-4 py-3 border-b border-terminal-border;
+  }
+  .section-header-title {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-terminal-text-secondary;
+  }
+  .section-header-actions {
+    @apply flex items-center gap-2;
+  }
+
+  /* ── Button variants ── */
+  .btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap select-none;
+  }
+  .btn-primary {
+    @apply btn border-echelon-blue/30 bg-echelon-blue/10 text-echelon-blue hover:bg-echelon-blue/[0.18];
+  }
+  .btn-secondary {
+    @apply btn border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-terminal-card;
+  }
+  .btn-ghost {
+    @apply btn border-transparent bg-transparent text-terminal-text-secondary hover:text-terminal-text hover:bg-terminal-panel;
+  }
+  .btn-danger {
+    @apply btn border-echelon-red/30 bg-echelon-red/10 text-echelon-red hover:bg-echelon-red/[0.18];
+  }
+  .btn-cyan {
+    @apply btn border-echelon-cyan/30 bg-echelon-cyan/10 text-echelon-cyan hover:bg-echelon-cyan/[0.18];
+  }
+
+  /* ── Chip / badge ── */
+  .chip {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide border;
+  }
+  .chip-success {
+    @apply chip bg-status-success/10 text-status-success border-status-success/20;
+  }
+  .chip-warning {
+    @apply chip bg-status-warning/10 text-status-warning border-status-warning/20;
+  }
+  .chip-danger {
+    @apply chip bg-status-danger/10 text-status-danger border-status-danger/20;
+  }
+  .chip-info {
+    @apply chip bg-status-info/10 text-status-info border-status-info/20;
+  }
+  .chip-paradox {
+    @apply chip bg-status-paradox/10 text-status-paradox border-status-paradox/20;
+  }
+  .chip-neutral {
+    @apply chip bg-terminal-panel text-terminal-text-muted border-terminal-border;
+  }
+
+  /* ── Terminal table ── */
+  .terminal-table {
+    @apply w-full text-xs;
+  }
+  .terminal-table thead th {
+    @apply text-[10px] font-semibold uppercase tracking-[0.06em] text-terminal-text-muted px-3 py-2 text-left border-b border-terminal-border;
+  }
+  .terminal-table tbody tr {
+    @apply border-b border-terminal-border/50 transition-colors duration-150;
+  }
+  .terminal-table tbody tr:hover {
+    @apply bg-terminal-panel/60;
+  }
+  .terminal-table tbody td {
+    @apply px-3 py-2.5 text-terminal-text-secondary;
+  }
+
+  /* ── Metric block (for key stats) ── */
+  .metric-block {
+    @apply flex flex-col gap-0.5;
+  }
+  .metric-label {
+    @apply text-[10px] font-medium uppercase tracking-[0.06em] text-terminal-text-muted;
+  }
+  .metric-value {
+    @apply text-sm font-semibold text-terminal-text font-mono tabular-nums;
+  }
 }
 
 @layer utilities {

@@ -8,7 +8,7 @@ const TimelineGrid = () => {
     return (
       <div className="terminal-panel p-6">
         <h3 className="terminal-header mb-4">TIMELINE HEALTH</h3>
-        <div className="text-terminal-muted">Loading timelines...</div>
+        <div className="text-terminal-text-muted">Loading timelines...</div>
       </div>
     );
   }

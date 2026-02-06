@@ -11,7 +11,7 @@ export function NotFound() {
         <h2 className="text-xl font-semibold text-terminal-text mb-2">
           Timeline Not Found
         </h2>
-        <p className="text-terminal-muted mb-6">
+        <p className="text-terminal-text-muted mb-6">
           The timeline you're looking for doesn't exist or has been terminated.
         </p>
         <Link

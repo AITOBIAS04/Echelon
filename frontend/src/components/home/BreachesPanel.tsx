@@ -65,7 +65,7 @@ export function BreachesPanel({ maxItems = 8 }: { maxItems?: number }) {
         </div>
         <button
           onClick={() => navigate('/breaches')}
-          className="text-[11px] text-terminal-muted hover:text-terminal-text transition"
+          className="text-[11px] text-terminal-text-muted hover:text-terminal-text transition"
         >
           View all
         </button>
@@ -73,9 +73,9 @@ export function BreachesPanel({ maxItems = 8 }: { maxItems?: number }) {
 
       <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
         {isLoading ? (
-          <div className="text-terminal-muted text-xs py-6 text-center">Loading breaches…</div>
+          <div className="text-terminal-text-muted text-xs py-6 text-center">Loading breaches…</div>
         ) : active.length === 0 ? (
-          <div className="text-terminal-muted text-xs py-6 text-center">No active breaches</div>
+          <div className="text-terminal-text-muted text-xs py-6 text-center">No active breaches</div>
         ) : (
           <div className="flex flex-col">
             {active.map((b) => (
@@ -86,8 +86,8 @@ export function BreachesPanel({ maxItems = 8 }: { maxItems?: number }) {
               >
                 <div className="flex items-center gap-2">
                   <span className={`w-1.5 h-1.5 rounded-full ${severityColor(b.severity)}`} />
-                  <span className="text-[10px] font-mono text-terminal-muted">{categoryLabel(b.category)}</span>
-                  <span className="text-[10px] font-mono text-terminal-muted ml-auto">{formatTimeAgo(b.timestamp)}</span>
+                  <span className="text-[10px] font-mono text-terminal-text-muted">{categoryLabel(b.category)}</span>
+                  <span className="text-[10px] font-mono text-terminal-text-muted ml-auto">{formatTimeAgo(b.timestamp)}</span>
                 </div>
                 <div className="text-xs text-terminal-text truncate mt-0.5">{b.title}</div>
               </button>

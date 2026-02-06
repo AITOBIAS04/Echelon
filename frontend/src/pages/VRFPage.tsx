@@ -143,33 +143,33 @@ export function VRFPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
-          <div className="text-xs text-terminal-muted uppercase tracking-wider font-semibold mb-2">Total VRF Requests</div>
+          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">Total VRF Requests</div>
           <div className="text-2xl font-mono font-bold text-terminal-text">{formatNumber(stats.totalRequests)}</div>
-          <div className="text-xs text-terminal-muted mt-1">Since network launch</div>
+          <div className="text-xs text-terminal-text-muted mt-1">Since network launch</div>
           <div className="text-xs text-status-success mt-2 flex items-center gap-1">
             <span>↑ 12.4% this week</span>
           </div>
         </div>
         <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
-          <div className="text-xs text-terminal-muted uppercase tracking-wider font-semibold mb-2">Verification Rate</div>
+          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">Verification Rate</div>
           <div className="text-2xl font-mono font-bold text-status-success">{stats.verificationRate}%</div>
-          <div className="text-xs text-terminal-muted mt-1">On-chain success</div>
+          <div className="text-xs text-terminal-text-muted mt-1">On-chain success</div>
           <div className="text-xs text-status-success mt-2 flex items-center gap-1">
             <span>↑ 0.02% from last month</span>
           </div>
         </div>
         <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
-          <div className="text-xs text-terminal-muted uppercase tracking-wider font-semibold mb-2">Avg Response Time</div>
+          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">Avg Response Time</div>
           <div className="text-2xl font-mono font-bold text-terminal-text">{stats.avgResponseTime}s</div>
-          <div className="text-xs text-terminal-muted mt-1">Block to fulfillment</div>
+          <div className="text-xs text-terminal-text-muted mt-1">Block to fulfillment</div>
           <div className="text-xs text-status-success mt-2 flex items-center gap-1">
             <span>↓ 0.4s improvement</span>
           </div>
         </div>
         <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
-          <div className="text-xs text-terminal-muted uppercase tracking-wider font-semibold mb-2">Entropy Quality</div>
+          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">Entropy Quality</div>
           <div className="text-2xl font-mono font-bold text-status-entropy">{stats.entropyQuality}/10</div>
-          <div className="text-xs text-terminal-muted mt-1">NIST randomness score</div>
+          <div className="text-xs text-terminal-text-muted mt-1">NIST randomness score</div>
           <div className="text-xs text-terminal-text-secondary mt-2">
             Stable
           </div>
@@ -181,7 +181,7 @@ export function VRFPage() {
           <Activity className="w-4 h-4 text-status-vrf" />
           <h2 className="text-sm font-semibold text-terminal-text uppercase tracking-wider">Current Randomness State</h2>
         </div>
-        <span className="text-xsbg-status-vrf/10 text-status-vrf px-2 py-1 rounded border border-status-vrf/30 font-semibold">CHAINLINK VRF V2</span>
+        <span className="text-xs bg-status-vrf/10 text-status-vrf px-2 py-1 rounded border border-status-vrf/30 font-semibold">CHAINLINK VRF V2</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -192,7 +192,7 @@ export function VRFPage() {
           <div className="p-4 space-y-4">
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 font-mono text-xs">
               <div className="text-status-vrf break-all leading-relaxed">{currentHash || generateHash()}</div>
-              <div className="flex gap-4 mt-3 pt-3 border-t border-terminal-border border-dashed text-terminal-muted text-xs">
+              <div className="flex gap-4 mt-3 pt-3 border-t border-terminal-border border-dashed text-terminal-text-muted text-xs">
                 <span>ID: {generateShortHash(currentHash || generateHash())}</span>
                 <span>BLK: #2,847,392</span>
                 <span>TS: 14:32:18 UTC</span>
@@ -204,28 +204,28 @@ export function VRFPage() {
                 <div className="w-5 h-5 rounded-full bg-status-success/10 flex items-center justify-center text-status-success text-xs">✓</div>
                 <div>
                   <div className="text-xs font-medium text-terminal-text">Block Hash Verification</div>
-                  <div className="text-xs text-terminal-muted">Parent block hash cryptographically verified</div>
+                  <div className="text-xs text-terminal-text-muted">Parent block hash cryptographically verified</div>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-2.5 bg-terminal-bg border border-terminal-border rounded-lg">
                 <div className="w-5 h-5 rounded-full bg-status-success/10 flex items-center justify-center text-status-success text-xs">✓</div>
                 <div>
                   <div className="text-xs font-medium text-terminal-text">Proof Validation</div>
-                  <div className="text-xs text-terminal-muted">VRF proof successfully validated on-chain</div>
+                  <div className="text-xs text-terminal-text-muted">VRF proof successfully validated on-chain</div>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-2.5 bg-terminal-bg border border-terminal-border rounded-lg">
                 <div className="w-5 h-5 rounded-full bg-status-success/10 flex items-center justify-center text-status-success text-xs">✓</div>
                 <div>
                   <div className="text-xs font-medium text-terminal-text">Output Range Check</div>
-                  <div className="text-xs text-terminal-muted">Random output within valid range [0, 2^256-1]</div>
+                  <div className="text-xs text-terminal-text-muted">Random output within valid range [0, 2^256-1]</div>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-2.5 bg-terminal-bg border border-terminal-border rounded-lg">
                 <div className="w-5 h-5 rounded-full bg-status-info/10 flex items-center justify-center text-status-info text-xs">⟳</div>
                 <div>
                   <div className="text-xs font-medium text-terminal-text">Execution Window</div>
-                  <div className="text-xs text-terminal-muted">30-60s window starting in 18s</div>
+                  <div className="text-xs text-terminal-text-muted">30-60s window starting in 18s</div>
                 </div>
               </div>
             </div>
@@ -240,7 +240,7 @@ export function VRFPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-terminal-bg border border-status-success/30 rounded-lg p-3 relative overflow-hidden">
                 <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-status-success" />
-                <div className="text-xs text-terminal-muted uppercase tracking-wider mb-1">Stability Delta</div>
+                <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Stability Delta</div>
                 <div className="text-lg font-mono font-bold text-terminal-text">
                   10.0% <span className="text-status-vrf text-xs">+VRF</span>
                 </div>
@@ -248,7 +248,7 @@ export function VRFPage() {
               </div>
               <div className="bg-terminal-bg border border-status-success/30 rounded-lg p-3 relative overflow-hidden">
                 <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-status-success" />
-                <div className="text-xs text-terminal-muted uppercase tracking-wider mb-1">Paradox Threshold</div>
+                <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Paradox Threshold</div>
                 <div className="text-lg font-mono font-bold text-terminal-text">
                   40.0% <span className="text-status-vrf text-xs">+VRF</span>
                 </div>
@@ -256,7 +256,7 @@ export function VRFPage() {
               </div>
               <div className="bg-terminal-bg border border-status-success/30 rounded-lg p-3 relative overflow-hidden">
                 <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-status-success" />
-                <div className="text-xs text-terminal-muted uppercase tracking-wider mb-1">Max Scaling</div>
+                <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Max Scaling</div>
                 <div className="text-lg font-mono font-bold text-terminal-text">
                   2.5x <span className="text-status-vrf text-xs">+VRF</span>
                 </div>
@@ -264,7 +264,7 @@ export function VRFPage() {
               </div>
               <div className="bg-terminal-bg border border-status-success/30 rounded-lg p-3 relative overflow-hidden">
                 <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-status-success" />
-                <div className="text-xs text-terminal-muted uppercase tracking-wider mb-1">Sabotage Cool</div>
+                <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Sabotage Cool</div>
                 <div className="text-lg font-mono font-bold text-terminal-text">
                   300s <span className="text-status-vrf text-xs">+VRF</span>
                 </div>
@@ -277,21 +277,21 @@ export function VRFPage() {
                 <div className="w-7 h-7 rounded-lg bg-[#375bd2] text-white flex items-center justify-center font-bold text-xs">CL</div>
                 <div>
                   <div className="text-xs font-medium text-terminal-text">Chainlink VRF Coordinator</div>
-                  <div className="text-xs text-terminal-muted font-mono">0xf0d...4e21 - Base Mainnet</div>
+                  <div className="text-xs text-terminal-text-muted font-mono">0xf0d...4e21 - Base Mainnet</div>
                 </div>
               </div>
               <div className="flex gap-4 text-right">
                 <div>
                   <div className="text-xs font-mono font-semibold text-status-success">99.99%</div>
-                  <div className="text-[9px] text-terminal-muted uppercase">UPTIME</div>
+                  <div className="text-[9px] text-terminal-text-muted uppercase">UPTIME</div>
                 </div>
                 <div>
                   <div className="text-xs font-mono font-semibold">12,847</div>
-                  <div className="text-[9px] text-terminal-muted uppercase">GAS AVG</div>
+                  <div className="text-[9px] text-terminal-text-muted uppercase">GAS AVG</div>
                 </div>
                 <div>
                   <div className="text-xs font-mono font-semibold">V2</div>
-                  <div className="text-[9px] text-terminal-muted uppercase">VER</div>
+                  <div className="text-[9px] text-terminal-text-muted uppercase">VER</div>
                 </div>
               </div>
             </div>
@@ -323,7 +323,7 @@ export function VRFPage() {
                 <div className="h-1 bg-terminal-bg rounded-full mt-2 mb-1 overflow-hidden border border-terminal-border">
                   <div className={`h-full ${item.color} rounded-full transition-all duration-500`} style={{ width: `${item.confidence}%` }} />
                 </div>
-                <div className="text-[9px] text-terminal-muted font-mono">{item.confidence.toFixed(1)}% confidence</div>
+                <div className="text-[9px] text-terminal-text-muted font-mono">{item.confidence.toFixed(1)}% confidence</div>
               </div>
             ))}
           </div>
@@ -338,28 +338,28 @@ export function VRFPage() {
               <Zap className="w-4 h-4 text-status-vrf" />
               RLMF Validation Framework
             </h3>
-            <span className="text-xs text-terminal-muted font-mono">Last updated: 14:32:22 UTC</span>
+            <span className="text-xs text-terminal-text-muted font-mono">Last updated: 14:32:22 UTC</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-3 text-center">
-              <div className="text-xs text-terminal-muted uppercase tracking-wider mb-1">Total Episodes</div>
+              <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Total Episodes</div>
               <div className="text-xl font-mono font-bold text-status-vrf">12,847</div>
-              <div className="text-[10px] text-terminal-muted mt-1">Fork decisions analyzed</div>
+              <div className="text-[10px] text-terminal-text-muted mt-1">Fork decisions analyzed</div>
             </div>
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-3 text-center">
-              <div className="text-xs text-terminal-muted uppercase tracking-wider mb-1">VRF-Sampled</div>
+              <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">VRF-Sampled</div>
               <div className="text-xl font-mono font-bold text-status-vrf">1,285</div>
-              <div className="text-[10px] text-terminal-muted mt-1">10% random checkpoint</div>
+              <div className="text-[10px] text-terminal-text-muted mt-1">10% random checkpoint</div>
             </div>
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-3 text-center">
-              <div className="text-xs text-terminal-muted uppercase tracking-wider mb-1">Calibration</div>
+              <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Calibration</div>
               <div className="text-xl font-mono font-bold text-status-vrf">0.18</div>
-              <div className="text-[10px] text-terminal-muted mt-1">Brier Score (target: &lt;0.20)</div>
+              <div className="text-[10px] text-terminal-text-muted mt-1">Brier Score (target: &lt;0.20)</div>
             </div>
             <div className="bg-terminal-bg border border-status-success/30 rounded-lg p-3 text-center">
-              <div className="text-xs text-terminal-muted uppercase tracking-wider mb-1">Integrity</div>
+              <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Integrity</div>
               <div className="text-xl font-mono font-bold text-status-success">100%</div>
-              <div className="text-[10px] text-terminal-muted mt-1">All exports verified</div>
+              <div className="text-[10px] text-terminal-text-muted mt-1">All exports verified</div>
             </div>
           </div>
         </div>
@@ -369,7 +369,7 @@ export function VRFPage() {
         <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
           <div className="px-4 py-3 bg-terminal-bg/50 border-b border-terminal-border flex justify-between items-center">
             <span className="text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider">Recent VRF Requests</span>
-            <button className="text-xs text-terminal-muted hover:text-terminal-text transition-colors flex items-center gap-1">
+            <button className="text-xs text-terminal-text-muted hover:text-terminal-text transition-colors flex items-center gap-1">
               View All <ExternalLink className="w-3 h-3" />
             </button>
           </div>
@@ -377,18 +377,18 @@ export function VRFPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-terminal-border bg-terminal-bg">
-                  <th className="text-left px-4 py-2 font-semibold text-terminal-muted uppercase tracking-wider text-[10px]">Request ID</th>
-                  <th className="text-left px-4 py-2 font-semibold text-terminal-muted uppercase tracking-wider text-[10px]">Block</th>
-                  <th className="text-left px-4 py-2 font-semibold text-terminal-muted uppercase tracking-wider text-[10px]">Type</th>
-                  <th className="text-left px-4 py-2 font-semibold text-terminal-muted uppercase tracking-wider text-[10px]">Status</th>
-                  <th className="text-right px-4 py-2 font-semibold text-terminal-muted uppercase tracking-wider text-[10px]">Time</th>
+                  <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Request ID</th>
+                  <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Block</th>
+                  <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Type</th>
+                  <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Status</th>
+                  <th className="text-right px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Time</th>
                 </tr>
               </thead>
               <tbody>
                 {requests.map((request, index) => (
                   <tr key={index} className="border-b border-terminal-border/50 hover:bg-terminal-bg/50 transition-colors">
                     <td className="px-4 py-2.5 font-mono text-status-vrf">{request.id}</td>
-                    <td className="px-4 py-2.5 font-mono text-terminal-muted">#{request.block.toLocaleString()}</td>
+                    <td className="px-4 py-2.5 font-mono text-terminal-text-muted">#{request.block.toLocaleString()}</td>
                     <td className="px-4 py-2.5 text-terminal-text-secondary">{request.type}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">
@@ -396,7 +396,7 @@ export function VRFPage() {
                         <span className="capitalize text-terminal-text-secondary">{request.status}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-terminal-muted text-right">{request.timestamp}</td>
+                    <td className="px-4 py-2.5 font-mono text-terminal-text-muted text-right">{request.timestamp}</td>
                   </tr>
                 ))}
               </tbody>
@@ -406,13 +406,13 @@ export function VRFPage() {
 
         <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
           <div className="px-4 py-3 bg-terminal-bg/50 border-b border-terminal-border flex items-center gap-2">
-            <Clock className="w-4 h-4 text-terminal-muted" />
+            <Clock className="w-4 h-4 text-terminal-text-muted" />
             <span className="text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider">Live Audit Trail</span>
           </div>
           <div className="max-h-[280px] overflow-y-auto">
             {auditTrail.map((entry, index) => (
               <div key={index} className="flex gap-3 px-4 py-2.5 border-b border-terminal-border/50 hover:bg-terminal-bg/50 transition-colors">
-                <div className="font-mono text-xs text-terminal-muted min-w-[70px]">{entry.time}</div>
+                <div className="font-mono text-xs text-terminal-text-muted min-w-[70px]">{entry.time}</div>
                 <div>
                   <div className={`text-xs font-semibold ${
                     entry.color === 'positive' ? 'text-status-success' :
@@ -428,7 +428,7 @@ export function VRFPage() {
         </div>
       </div>
 
-      <div className="pt-4 border-t border-terminal-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-terminal-muted">
+      <div className="pt-4 border-t border-terminal-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-terminal-text-muted">
         <div>Echelon Protocol VRF Dashboard - Base Mainnet</div>
         <div className="flex gap-4">
           <a href="#" className="text-terminal-text-secondary hover:text-terminal-text transition-colors">Documentation</a>

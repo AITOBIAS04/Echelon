@@ -12,7 +12,7 @@ export function AlertRulesPanel({ view, onUpdateView }: AlertRulesPanelProps) {
 
   if (!view) {
     return (
-      <div className="bg-[#111111] rounded-lg border border-[#1A1A1A] p-4 text-center text-terminal-muted">
+      <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4 text-center text-terminal-text-muted">
         <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
         <p className="text-sm">Select a view to manage alert rules</p>
       </div>
@@ -102,7 +102,7 @@ export function AlertRulesPanel({ view, onUpdateView }: AlertRulesPanelProps) {
   };
 
   return (
-    <div className="bg-[#111111] rounded-lg border border-[#1A1A1A] p-4">
+    <div className="bg-slate-900 rounded-lg border border-[#1A1A1A] p-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wide flex items-center gap-2">
           <Bell className="w-4 h-4" />
@@ -118,7 +118,7 @@ export function AlertRulesPanel({ view, onUpdateView }: AlertRulesPanelProps) {
       </div>
 
       {view.alertRules.length === 0 ? (
-        <div className="text-center py-8 text-terminal-muted text-sm">
+        <div className="text-center py-8 text-terminal-text-muted text-sm">
           <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p>No alert rules configured</p>
         </div>
@@ -149,10 +149,10 @@ export function AlertRulesPanel({ view, onUpdateView }: AlertRulesPanelProps) {
                   <div className="text-sm font-medium text-terminal-text mb-1">
                     {rule.name}
                   </div>
-                  <div className="text-xs text-terminal-muted font-mono">
+                  <div className="text-xs text-terminal-text-muted font-mono">
                     {formatCondition(rule)}
                   </div>
-                  <div className="text-xs text-terminal-muted mt-1">
+                  <div className="text-xs text-terminal-text-muted mt-1">
                     Scope: {rule.scope.scopeType}
                     {rule.scope.timelineId && ` • ${rule.scope.timelineId}`}
                   </div>
@@ -163,7 +163,7 @@ export function AlertRulesPanel({ view, onUpdateView }: AlertRulesPanelProps) {
                     className="p-1 hover:bg-terminal-panel rounded transition"
                     title="Edit rule"
                   >
-                    <Edit2 className="w-3 h-3 text-terminal-muted" />
+                    <Edit2 className="w-3 h-3 text-terminal-text-muted" />
                   </button>
                   <button
                     onClick={() => handleDelete(rule.id)}
@@ -177,8 +177,8 @@ export function AlertRulesPanel({ view, onUpdateView }: AlertRulesPanelProps) {
               
               {editingRuleId === rule.id && (
                 <div className="mt-3 pt-3 border-t border-[#1A1A1A] text-xs">
-                  <p className="text-terminal-muted mb-2">Alert rule editing UI (stubbed)</p>
-                  <p className="text-terminal-muted">
+                  <p className="text-terminal-text-muted mb-2">Alert rule editing UI (stubbed)</p>
+                  <p className="text-terminal-text-muted">
                     Full editing interface would allow modification of condition, severity, and scope.
                   </p>
                 </div>

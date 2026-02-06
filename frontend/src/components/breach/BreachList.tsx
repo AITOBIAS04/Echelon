@@ -44,7 +44,7 @@ function getCategoryColor(category: Breach['category']): { bg: string; text: str
     case 'sabotage_cluster':
       return { bg: '#FF3B3B', text: '#FF3B3B' }; // red
     case 'oracle_flip':
-      return { bg: '#00D4FF', text: '#00D4FF' }; // cyan
+      return { bg: '#22D3EE', text: '#22D3EE' }; // cyan
     case 'stability_collapse':
       return { bg: '#FF6B00', text: '#FF6B00' }; // orange
     case 'paradox_detonation':
@@ -172,12 +172,12 @@ export function BreachList({
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#111111] rounded-lg border border-[#1A1A1A]">
+    <div className="h-full flex flex-col bg-slate-900 rounded-lg border border-[#1A1A1A]">
       {/* Filter Bar */}
       <div className="p-4 border-b border-[#1A1A1A] space-y-3">
         {/* Severity Filters */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-terminal-muted uppercase mr-2">Severity:</span>
+          <span className="text-xs text-terminal-text-muted uppercase mr-2">Severity:</span>
           {(['all', 'critical', 'high', 'medium', 'low'] as const).map((severity) => {
             if (severity === 'all') {
               const allSelected =
@@ -198,8 +198,8 @@ export function BreachList({
                   }}
                   className={`px-2 py-1 text-xs rounded transition ${
                     allSelected
-                      ? 'bg-[#00D4FF]/20 border border-[#00D4FF] text-[#00D4FF]'
-                      : 'bg-terminal-bg border border-[#333] text-terminal-muted hover:text-terminal-text'
+                      ? 'bg-[#22D3EE]/20 border border-[#22D3EE] text-[#22D3EE]'
+                      : 'bg-terminal-bg border border-[#333] text-terminal-text-muted hover:text-terminal-text'
                   }`}
                 >
                   All
@@ -213,8 +213,8 @@ export function BreachList({
                 onClick={() => toggleSeverity(severity)}
                 className={`px-2 py-1 text-xs rounded transition capitalize ${
                   isSelected
-                    ? 'bg-[#00D4FF]/20 border border-[#00D4FF] text-[#00D4FF]'
-                    : 'bg-terminal-bg border border-[#333] text-terminal-muted hover:text-terminal-text'
+                    ? 'bg-[#22D3EE]/20 border border-[#22D3EE] text-[#22D3EE]'
+                    : 'bg-terminal-bg border border-[#333] text-terminal-text-muted hover:text-terminal-text'
                 }`}
               >
                 {severity}
@@ -225,7 +225,7 @@ export function BreachList({
 
         {/* Status Filters */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-terminal-muted uppercase mr-2">Status:</span>
+          <span className="text-xs text-terminal-text-muted uppercase mr-2">Status:</span>
           {(['active', 'investigating', 'mitigated', 'resolved'] as const).map((status) => {
             const isSelected = selectedStatuses.has(status);
             return (
@@ -234,8 +234,8 @@ export function BreachList({
                 onClick={() => toggleStatus(status)}
                 className={`px-2 py-1 text-xs rounded transition capitalize ${
                   isSelected
-                    ? 'bg-[#00D4FF]/20 border border-[#00D4FF] text-[#00D4FF]'
-                    : 'bg-terminal-bg border border-[#333] text-terminal-muted hover:text-terminal-text'
+                    ? 'bg-[#22D3EE]/20 border border-[#22D3EE] text-[#22D3EE]'
+                    : 'bg-terminal-bg border border-[#333] text-terminal-text-muted hover:text-terminal-text'
                 }`}
               >
                 {status}
@@ -246,11 +246,11 @@ export function BreachList({
 
         {/* Sort Dropdown */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-terminal-muted">Sort by:</span>
+          <span className="text-xs text-terminal-text-muted">Sort by:</span>
           <div className="relative">
             <button
               onClick={() => setIsSortOpen(!isSortOpen)}
-              className="flex items-center gap-1 px-2 py-1 text-xs bg-terminal-bg border border-[#333] rounded hover:border-[#00D4FF] transition"
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-terminal-bg border border-[#333] rounded hover:border-[#22D3EE] transition"
             >
               {sortBy === 'newest'
                 ? 'Newest'
@@ -265,7 +265,7 @@ export function BreachList({
                   className="fixed inset-0 z-10"
                   onClick={() => setIsSortOpen(false)}
                 />
-                <div className="absolute top-full left-0 mt-1 bg-[#111111] border border-[#1A1A1A] rounded shadow-lg z-20 min-w-[120px]">
+                <div className="absolute top-full left-0 mt-1 bg-slate-900 border border-[#1A1A1A] rounded shadow-lg z-20 min-w-[120px]">
                   {(['newest', 'severity', 'category'] as SortOption[]).map((option) => (
                     <button
                       key={option}
@@ -274,7 +274,7 @@ export function BreachList({
                         setIsSortOpen(false);
                       }}
                       className={`w-full text-left px-3 py-2 text-xs hover:bg-terminal-panel transition ${
-                        sortBy === option ? 'text-[#00D4FF]' : 'text-terminal-text'
+                        sortBy === option ? 'text-[#22D3EE]' : 'text-terminal-text'
                       }`}
                     >
                       {option === 'newest'
@@ -299,7 +299,7 @@ export function BreachList({
             <h3 className="text-lg font-semibold text-terminal-text mb-2">
               No breaches detected
             </h3>
-            <p className="text-sm text-terminal-muted">
+            <p className="text-sm text-terminal-text-muted">
               System integrity is stable. All timelines operating normally.
             </p>
           </div>
@@ -316,7 +316,7 @@ export function BreachList({
                 onClick={() => onBreachClick(breach.id)}
                 className={`
                   relative bg-terminal-panel rounded border p-3 cursor-pointer transition
-                  ${isSelected ? 'border-[#00D4FF]' : 'border-[#1A1A1A] hover:border-[#333]'}
+                  ${isSelected ? 'border-[#22D3EE]' : 'border-[#1A1A1A] hover:border-[#333]'}
                 `}
               >
                 {/* Severity color bar (left edge) */}
@@ -346,7 +346,7 @@ export function BreachList({
                         {formatCategory(breach.category)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-terminal-muted">
+                    <div className="flex items-center gap-3 text-xs text-terminal-text-muted">
                       <span>{formatTimestamp(breach.timestamp)}</span>
                       <span>
                         {breach.affectedTimelines.length} timeline
