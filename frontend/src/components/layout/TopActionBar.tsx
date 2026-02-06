@@ -14,7 +14,8 @@ import {
   Users,
   Globe,
   Search,
-  Settings
+  Settings,
+  Menu,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -32,6 +33,11 @@ interface ActionButton {
 interface PageConfig {
   name: string;
   buttons: ActionButton[];
+}
+
+interface TopActionBarProps {
+  /** Callback to open the mobile sidebar drawer */
+  onHamburgerClick?: () => void;
 }
 
 const TOP_ACTIONS: Record<string, PageConfig> = {
@@ -134,7 +140,7 @@ function getActionHandler(action: string, actionsRef: React.MutableRefObject<Top
   return actionsRef.current[action];
 }
 
-export function TopActionBar() {
+export function TopActionBar({ onHamburgerClick }: TopActionBarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const config = resolveConfig(location.pathname);
@@ -156,15 +162,24 @@ export function TopActionBar() {
 
   return (
     <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-terminal-panel" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.03)' }}>
-      {/* Page name / breadcrumb */}
+      {/* Left: Hamburger (mobile) + Page name */}
       <div className="flex items-center gap-2.5 min-w-0">
+        {/* Hamburger — mobile only */}
+        <button
+          onClick={onHamburgerClick}
+          className="md:hidden p-1.5 rounded-lg text-terminal-text-secondary hover:text-terminal-text hover:bg-terminal-card transition-colors"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
         <span className="text-sm font-bold tracking-[0.1em] uppercase text-terminal-text whitespace-nowrap pl-3 border-l-2 border-echelon-blue/40">
           {config.name}
         </span>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* Action buttons — hidden on mobile */}
+      <div className="hidden md:flex items-center gap-2 flex-wrap">
         {/* Build stamp — remove once deployment confirmed */}
         <span
           className="font-mono text-[9px] text-terminal-text-muted/60 px-2 py-1 rounded border border-terminal-border/40 bg-terminal-bg/50 select-all whitespace-nowrap"

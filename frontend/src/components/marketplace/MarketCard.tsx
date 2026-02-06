@@ -309,11 +309,11 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
 
         {/* ══════════════ BACK FACE (Bet Form) ══════════════ */}
         <div
-          className="card-flip-back bg-terminal-panel border border-terminal-border rounded-xl p-4 flex flex-col"
+          className="card-flip-back bg-terminal-panel border border-terminal-border rounded-xl p-4 flex flex-col overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Back header */}
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span
                 className={clsx(
@@ -325,25 +325,24 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
               >
                 {selectedOutcome}
               </span>
-              <span className="text-xs text-terminal-text-muted">on</span>
             </div>
             <button
               onClick={handleCancel}
-              className="p-1.5 rounded-lg hover:bg-terminal-card text-terminal-text-muted hover:text-terminal-text transition-colors"
+              className="p-1 rounded-lg hover:bg-terminal-card text-terminal-text-muted hover:text-terminal-text transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Market title */}
-          <h3 className="text-sm font-semibold text-terminal-text mb-4 line-clamp-2 leading-snug">
+          {/* Market title — single line */}
+          <p className="text-xs text-terminal-text-secondary mb-3 truncate">
             {market.title}
-          </h3>
+          </p>
 
           {/* Bet amount */}
-          <div className="flex-1 flex flex-col justify-center">
-            <div className="p-3 bg-terminal-bg rounded-lg border border-terminal-border">
-              <div className="flex items-center justify-between mb-2">
+          <div className="flex-1 flex flex-col justify-center min-h-0">
+            <div className="p-2.5 bg-terminal-bg rounded-lg border border-terminal-border">
+              <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider">Bet Amount</span>
                 <span className="text-sm font-mono font-bold text-terminal-text">${betAmount.toFixed(2)}</span>
               </div>
@@ -359,7 +358,7 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
                   background: `linear-gradient(to right, ${selectedOutcome === 'YES' ? '#4ADE80' : '#FB7185'} 0%, ${selectedOutcome === 'YES' ? '#4ADE80' : '#FB7185'} ${betAmount}%, rgba(255,255,255,0.1) ${betAmount}%, rgba(255,255,255,0.1) 100%)`,
                 }}
               />
-              <div className="flex justify-between mt-1.5">
+              <div className="flex justify-between mt-1">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -380,39 +379,39 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* Payout + actions */}
-          <div className="mt-3 pt-3 border-t border-terminal-border">
-            <div className="text-center mb-3">
-              <span className="text-xs text-terminal-text-muted">Potential payout: </span>
-              <span className="text-sm font-mono font-bold text-echelon-green">
+            {/* Payout inline */}
+            <div className="text-center mt-2">
+              <span className="text-[10px] text-terminal-text-muted">Payout: </span>
+              <span className="text-xs font-mono font-bold text-echelon-green">
                 ${potentialPayout.toFixed(2)}
               </span>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleCancel}
-                className="flex-1 py-2 rounded-lg border border-terminal-border text-xs font-semibold text-terminal-text-secondary hover:bg-terminal-card transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // In a real app this would submit the bet
-                  setSelectedOutcome(null);
-                }}
-                className={clsx(
-                  'flex-1 py-2 rounded-lg border text-xs font-bold transition-colors',
-                  selectedOutcome === 'YES'
-                    ? 'bg-status-success/15 border-status-success/40 text-status-success hover:bg-status-success/25'
-                    : 'bg-status-danger/15 border-status-danger/40 text-status-danger hover:bg-status-danger/25'
-                )}
-              >
-                Confirm {selectedOutcome}
-              </button>
-            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 mt-2 pt-2 border-t border-terminal-border">
+            <button
+              onClick={handleCancel}
+              className="flex-1 py-1.5 rounded-lg border border-terminal-border text-[11px] font-semibold text-terminal-text-secondary hover:bg-terminal-card transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // In a real app this would submit the bet
+                setSelectedOutcome(null);
+              }}
+              className={clsx(
+                'flex-1 py-1.5 rounded-lg border text-[11px] font-bold transition-colors',
+                selectedOutcome === 'YES'
+                  ? 'bg-status-success/15 border-status-success/40 text-status-success hover:bg-status-success/25'
+                  : 'bg-status-danger/15 border-status-danger/40 text-status-danger hover:bg-status-danger/25'
+              )}
+            >
+              Confirm {selectedOutcome}
+            </button>
           </div>
         </div>
       </div>
