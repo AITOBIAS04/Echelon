@@ -6,4 +6,5 @@ export const CHART = {
   BLUE: '#3B82F6',     // echelon-blue
   GRID: 'rgba(255,255,255,0.06)',
   LABEL: '#6B7280',    // terminal-text-muted
+  COST_CURVE: '#22D3EE', // echelon-cyan — impact curve line
 } as const;
