@@ -98,7 +98,7 @@ export function BlackboxPage() {
           />
         );
       case 'depth':
-        return <DepthChartPanel />;
+        return <DepthChartPanel currentPrice={currentPrice} />;
       case 'vol':
         return <VolumeProfilePanel />;
       case 'heatmap':

@@ -1,31 +1,17 @@
 /**
  * CFPM / LMSR Impact & Cost Panel
  *
- * Replaces the traditional order book with a cost-function prediction market
- * (CFPM) panel powered by LMSR (Logarithmic Market Scoring Rule).
+ * Right-side panel showing market probability, liquidity parameters,
+ * and an impact ladder powered by LMSR (Logarithmic Market Scoring Rule).
  * All values are demo/mock — no backend required.
  */
 
-import { Activity, Zap, TrendingUp, ArrowRight } from 'lucide-react';
+import { Activity, TrendingUp } from 'lucide-react';
 import { clsx } from 'clsx';
+import { lmsrCost, LIQUIDITY_B, NUM_OUTCOMES, WORST_CASE_LOSS } from '../../lib/lmsr';
 
 interface ImpactCostPanelProps {
   currentPrice: number;
-}
-
-// ── Demo LMSR parameters ────────────────────────────────────────────────
-const LIQUIDITY_B = 142.5;
-const NUM_OUTCOMES = 2;
-const WORST_CASE_LOSS = LIQUIDITY_B * Math.log(NUM_OUTCOMES);
-
-// LMSR cost function: C(q) = b * ln(sum(exp(q_i / b)))
-// For binary market, cost to move probability from p1 to p2:
-// cost = b * ln(exp(q_yes_new/b) + exp(q_no_new/b)) - b * ln(exp(q_yes_old/b) + exp(q_no_old/b))
-function lmsrCost(pFrom: number, pTo: number, b: number): number {
-  // Simplified binary LMSR cost approximation
-  const qFrom = Math.log(pFrom / (1 - pFrom));
-  const qTo = Math.log(pTo / (1 - pTo));
-  return Math.abs(b * (qTo - qFrom)) * 0.42; // Scaled for demo realism
 }
 
 // Impact ladder entries
@@ -58,7 +44,7 @@ export function ImpactCostPanel({ currentPrice }: ImpactCostPanelProps) {
         {/* ── Instant Price ────────────────────────────────────── */}
         <div className="bg-terminal-card rounded-xl p-4 border border-terminal-border">
           <div className="flex items-center justify-between mb-3">
-            <span className="data-label">Instant Probability</span>
+            <span className="data-label">Market Probability</span>
             <span className="chip chip-success text-[9px]">CFPM</span>
           </div>
           <div className="flex items-baseline gap-2">
@@ -83,6 +69,7 @@ export function ImpactCostPanel({ currentPrice }: ImpactCostPanelProps) {
             <div className="metric-block bg-terminal-card/50 rounded-lg p-3 border border-terminal-border/50">
               <span className="metric-label">Depth (b)</span>
               <span className="metric-value text-echelon-cyan">{LIQUIDITY_B.toFixed(1)}</span>
+              <span className="text-[10px] text-terminal-text-muted mt-1">higher b = deeper liquidity</span>
             </div>
             <div className="metric-block bg-terminal-card/50 rounded-lg p-3 border border-terminal-border/50">
               <span className="metric-label">Max Loss</span>
@@ -102,29 +89,6 @@ export function ImpactCostPanel({ currentPrice }: ImpactCostPanelProps) {
               <span className="text-xs font-mono tabular-nums text-terminal-text">
                 {LIQUIDITY_B} &times; ln({NUM_OUTCOMES}) = ${WORST_CASE_LOSS.toFixed(2)}
               </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Cost Calculator ──────────────────────────────────── */}
-        <div className="space-y-2">
-          <span className="section-title-accented">Cost Calculator</span>
-
-          <div className="bg-terminal-card rounded-xl p-4 border border-terminal-border">
-            <div className="flex items-center gap-2 text-sm text-terminal-text-secondary mb-3">
-              <span className="text-terminal-text-muted">Move probability</span>
-              <span className="font-mono tabular-nums text-echelon-cyan font-semibold">{probPercent}%</span>
-              <ArrowRight className="w-3 h-3 text-terminal-text-muted" />
-              <span className="font-mono tabular-nums text-echelon-green font-semibold">
-                {(currentProb * 100 + 5).toFixed(1)}%
-              </span>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <Zap className="w-4 h-4 text-echelon-amber" />
-              <span className="text-xl font-mono font-bold tabular-nums text-terminal-text">
-                ${lmsrCost(currentProb, Math.min(currentProb + 0.05, 0.99), LIQUIDITY_B).toFixed(2)}
-              </span>
-              <span className="text-xs text-terminal-text-muted">estimated cost</span>
             </div>
           </div>
         </div>
