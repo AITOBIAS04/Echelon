@@ -1,439 +1,584 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Activity, CheckCircle, Clock, ExternalLink, Zap } from 'lucide-react';
+/**
+ * VRF Integrity Terminal
+ *
+ * Audit-grade dashboard showing how Chainlink VRF protects 6 specific
+ * integrity mechanisms in the Echelon LMSR/CFPM protocol. Replaces the
+ * generic "randomness health" page with protocol-accurate sections:
+ *
+ *   1. Entropy Commitments — infra SLO stat cards
+ *   2. Where VRF Is Applied — 6 application point cards
+ *   3. LMSR Integrity Coupling — anti-manipulation + cost-to-move widget
+ *   4. Audit Trail — filterable event table
+ *
+ * All data is demo/simulated — no live Chainlink integration.
+ */
 
-interface VRFRequest {
-  id: string;
-  hash: string;
-  block: number;
-  type: string;
-  status: 'verified' | 'pending' | 'failed';
-  timestamp: string;
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import {
+  Shield, Zap, Timer, ShieldAlert, Database, Brain, Coins, Server,
+  Lock, Clock, Search, X,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { useRegisterTopActionBarActions } from '../contexts/TopActionBarActionsContext';
+import { lmsrCost, LIQUIDITY_B } from '../lib/lmsr';
+
+// ── Types ───────────────────────────────────────────────────────────────
+
+type VRFComponent =
+  | 'commit-reveal'
+  | 'circuit-breaker'
+  | 'data-validation'
+  | 'rlmf-sampling'
+  | 'entropy-pricing'
+  | 'oracle-failover';
+
+interface ApplicationPoint {
+  id: VRFComponent;
+  name: string;
+  description: string;
+  icon: LucideIcon;
+  lastDraw: { timestamp: string; requestId: string };
+  result: string;
 }
 
 interface AuditEntry {
+  id: string;
   time: string;
-  type: string;
-  detail: string;
-  color: 'positive' | 'info' | 'warning' | 'danger';
+  component: VRFComponent;
+  requestId: string;
+  blockTx: string;
+  derivedEffect: string;
+  status: 'verified' | 'pending' | 'failed';
 }
 
-export function VRFPage() {
-  const [currentHash, setCurrentHash] = useState<string>('');
-  const [requests, setRequests] = useState<VRFRequest[]>([]);
-  const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
-  const [stats] = useState({
-    totalRequests: 47892,
-    verificationRate: 99.97,
-    avgResponseTime: 2.3,
-    entropyQuality: 9.8
-  });
-  // TODO: wire TopActionBar "Refresh" button to call refreshDashboard
+interface AuditFilters {
+  component: VRFComponent | 'all';
+  status: 'verified' | 'pending' | 'failed' | 'all';
+}
 
-  const generateHash = useCallback(() => {
-    const chars = '0123456789abcdef';
-    let hash = '0x';
-    for (let i = 0; i < 64; i++) {
-      hash += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return hash;
-  }, []);
+// ── Constants ───────────────────────────────────────────────────────────
 
-  const generateShortHash = (hash: string) => {
-    return `${hash.substring(0, 6)}...${hash.substring(58)}`;
+const COMPONENT_LABELS: Record<VRFComponent, string> = {
+  'commit-reveal': 'Commit-Reveal Window',
+  'circuit-breaker': 'Circuit Breaker',
+  'data-validation': 'Data Validation',
+  'rlmf-sampling': 'RLMF Sampling',
+  'entropy-pricing': 'Entropy Pricing',
+  'oracle-failover': 'Oracle Failover',
+};
+
+const COMPONENTS: VRFComponent[] = [
+  'commit-reveal', 'circuit-breaker', 'data-validation',
+  'rlmf-sampling', 'entropy-pricing', 'oracle-failover',
+];
+
+const INITIAL_APPLICATION_POINTS: ApplicationPoint[] = [
+  {
+    id: 'commit-reveal',
+    name: 'Commit-Reveal Window',
+    description: 'Randomised execution window (30\u201360s) prevents timing attacks on sabotage actions.',
+    icon: Timer,
+    lastDraw: { timestamp: '14:32:18 UTC', requestId: '0x8f7b...a5f4' },
+    result: 'Delay chosen: +37s',
+  },
+  {
+    id: 'circuit-breaker',
+    name: 'Circuit Breaker Thresholds',
+    description: 'Randomised offset on base thresholds prevents threshold manipulation and predictable triggering.',
+    icon: ShieldAlert,
+    lastDraw: { timestamp: '14:31:45 UTC', requestId: '0x3a8f...2d4c' },
+    result: 'Threshold offset: +2.3%',
+  },
+  {
+    id: 'data-validation',
+    name: 'Market Data Validation',
+    description: 'Random feed sampling selection prevents predictable validation gaming across OSINT sources.',
+    icon: Database,
+    lastDraw: { timestamp: '14:30:12 UTC', requestId: '0xd4e1...8b7a' },
+    result: 'Feeds sampled: 3/6',
+  },
+  {
+    id: 'rlmf-sampling',
+    name: 'RLMF Episode Sampling',
+    description: 'Verifiable random episode selection ensures unbiased training data for reinforcement learning.',
+    icon: Brain,
+    lastDraw: { timestamp: '14:29:33 UTC', requestId: '0x7c2d...f1e9' },
+    result: 'Episodes sampled: 128',
+  },
+  {
+    id: 'entropy-pricing',
+    name: 'Entropy Pricing',
+    description: 'Dynamic risk adjustment randomisation prevents entropy prediction gaming on fee schedules.',
+    icon: Coins,
+    lastDraw: { timestamp: '14:28:05 UTC', requestId: '0xb5a3...6c8d' },
+    result: 'Fee multiplier: 1.14x',
+  },
+  {
+    id: 'oracle-failover',
+    name: 'Oracle Failover',
+    description: 'Randomised failover provider selection prevents oracle targeting attacks in degraded modes.',
+    icon: Server,
+    lastDraw: { timestamp: '14:27:41 UTC', requestId: '0xe9f0...4a2b' },
+    result: 'Provider: Primary',
+  },
+];
+
+const ANTI_MANIPULATION_SURFACES = [
+  { label: 'Timing Fairness', desc: 'VRF-randomised commit\u2013reveal windows prevent front-running sabotage execution.' },
+  { label: 'Threshold Gaming', desc: 'Random offsets on circuit breaker thresholds prevent adversarial threshold probing.' },
+  { label: 'Sampling Gaming', desc: 'Verifiable random episode & feed selection eliminates predictable validation patterns.' },
+];
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+
+let _entryCounter = 0;
+
+function generateHash(): string {
+  const chars = '0123456789abcdef';
+  let hash = '0x';
+  for (let i = 0; i < 64; i++) hash += chars[Math.floor(Math.random() * chars.length)];
+  return hash;
+}
+
+function shortHash(hash: string): string {
+  return `${hash.substring(0, 6)}...${hash.substring(60)}`;
+}
+
+function randomBetween(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
+
+function derivedEffectFor(component: VRFComponent): string {
+  switch (component) {
+    case 'commit-reveal':
+      return `Delay: +${Math.floor(randomBetween(30, 60))}s`;
+    case 'circuit-breaker':
+      return `Threshold offset: +${randomBetween(1.0, 5.0).toFixed(1)}%`;
+    case 'data-validation':
+      return `Feeds sampled: ${Math.floor(randomBetween(2, 5))}/6`;
+    case 'rlmf-sampling':
+      return `Episodes: ${Math.floor(randomBetween(64, 256))}`;
+    case 'entropy-pricing':
+      return `Fee multiplier: ${randomBetween(1.01, 1.25).toFixed(2)}x`;
+    case 'oracle-failover':
+      return Math.random() > 0.8
+        ? `Fallback-${Math.floor(randomBetween(1, 4))}`
+        : 'Provider: Primary';
+  }
+}
+
+function generateAuditEntry(): AuditEntry {
+  const component = COMPONENTS[Math.floor(Math.random() * COMPONENTS.length)];
+  const hash = generateHash();
+  const block = 2847000 + Math.floor(Math.random() * 500);
+  const statusRoll = Math.random();
+  const status: AuditEntry['status'] =
+    statusRoll > 0.99 ? 'failed' : statusRoll > 0.97 ? 'pending' : 'verified';
+
+  return {
+    id: `ae-${++_entryCounter}`,
+    time: new Date().toISOString().split('T')[1].slice(0, 8),
+    component,
+    requestId: shortHash(hash),
+    blockTx: `BLK #${block.toLocaleString()}`,
+    derivedEffect: derivedEffectFor(component),
+    status,
   };
+}
 
-  const generateRequest = useCallback((): VRFRequest => {
-    const hash = generateHash();
-    const usageTypes = ['Sabotage Exec', 'Episode Samp', 'Circuit Breaker', 'Data Valid', 'Entropy Pricing', 'Fork Selection'];
-    const type = usageTypes[Math.floor(Math.random() * usageTypes.length)];
-    const statusRoll = Math.random();
-    let status: 'verified' | 'pending' | 'failed' = 'verified';
-    if (statusRoll > 0.97 + 0.02) {
-      status = 'failed';
-    } else if (statusRoll > 0.97) {
-      status = 'pending';
-    }
-    return {
-      id: generateShortHash(hash),
-      hash,
-      block: 2847000 + Math.floor(Math.random() * 500),
-      type,
-      status,
-      timestamp: new Date().toISOString().split('T')[1].slice(0, 8)
-    };
-  }, [generateHash]);
+function getStatusDot(status: string) {
+  switch (status) {
+    case 'verified':
+      return <span className="w-1.5 h-1.5 bg-status-success rounded-full shadow-[0_0_4px_rgba(74,222,128,0.4)]" />;
+    case 'pending':
+      return <span className="w-1.5 h-1.5 bg-status-warning rounded-full" />;
+    case 'failed':
+      return <span className="w-1.5 h-1.5 bg-status-danger rounded-full" />;
+    default:
+      return null;
+  }
+}
+
+// ── Component ───────────────────────────────────────────────────────────
+
+export function VRFPage() {
+  const auditSectionRef = useRef<HTMLDivElement>(null);
+
+  // State
+  const [applicationPoints, setApplicationPoints] = useState<ApplicationPoint[]>(INITIAL_APPLICATION_POINTS);
+  const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
+  const [auditFilters, setAuditFilters] = useState<AuditFilters>({ component: 'all', status: 'all' });
+  const [isLive, setIsLive] = useState(true);
+
+  // LMSR cost (static demo)
+  const lmsrDemoCost = lmsrCost(0.52, 0.57, LIQUIDITY_B);
+
+  // ── Generators ──────────────────────────────────────────────────────
 
   const addAuditEntry = useCallback(() => {
-    const events = [
-      { type: 'VRF Request Fulfilled', color: 'positive' as const, detail: 'Request fulfilled with proof verification' },
-      { type: 'Block Hash Confirmed', color: 'info' as const, detail: 'Parent block hash finalized on-chain' },
-      { type: 'Data Validation', color: 'positive' as const, detail: 'Feed validated at VRF checkpoint' },
-      { type: 'Circuit Breaker Updated', color: 'info' as const, detail: 'Threshold randomized via VRF' },
-      { type: 'Entropy Calculation', color: 'warning' as const, detail: 'Dynamic pricing updated' }
-    ];
-    const event = events[Math.floor(Math.random() * events.length)];
-    const time = new Date().toISOString().split('T')[1].slice(0, 8);
-    
-    setAuditTrail(prev => {
-      const newEntry: AuditEntry = { ...event, time };
-      const updated = [newEntry, ...prev.slice(0, 9)];
+    setAuditTrail(prev => [generateAuditEntry(), ...prev.slice(0, 49)]);
+  }, []);
+
+  const updateRandomApplicationPoint = useCallback(() => {
+    setApplicationPoints(prev => {
+      const idx = Math.floor(Math.random() * prev.length);
+      const updated = [...prev];
+      const point = updated[idx];
+      updated[idx] = {
+        ...point,
+        lastDraw: {
+          timestamp: new Date().toISOString().split('T')[1].slice(0, 8) + ' UTC',
+          requestId: shortHash(generateHash()),
+        },
+        result: derivedEffectFor(point.id),
+      };
       return updated;
     });
   }, []);
 
-  const updateHistory = useCallback(() => {
-    setRequests(prev => {
-      const newRequest = generateRequest();
-      const updated = [newRequest, ...prev.slice(0, 9)];
-      return updated;
-    });
-  }, [generateRequest]);
-
-  const _refreshDashboard = useCallback(() => {
-    setCurrentHash(generateHash());
+  const refreshDashboard = useCallback(() => {
     addAuditEntry();
-    updateHistory();
-  }, [generateHash, addAuditEntry, updateHistory]);
-  void _refreshDashboard; // suppress unused warning until TopActionBar wiring
+    updateRandomApplicationPoint();
+  }, [addAuditEntry, updateRandomApplicationPoint]);
+
+  // ── TopActionBar ────────────────────────────────────────────────────
+
+  useRegisterTopActionBarActions({
+    onLive: () => setIsLive(prev => !prev),
+    onRefresh: refreshDashboard,
+  });
+
+  // ── Effects ─────────────────────────────────────────────────────────
 
   useEffect(() => {
-    const initialHash = generateHash();
-    setCurrentHash(initialHash);
-    
-    const initialRequests: VRFRequest[] = Array.from({ length: 5 }, () => generateRequest());
-    setRequests(initialRequests);
-
-    const initialAudit: AuditEntry[] = [
-      { time: '14:32:22', type: 'VRF Request Fulfilled', detail: 'Request ID 0x8f7b...a5f4 fulfilled with proof 0x3a8f...2d4c', color: 'positive' },
-      { time: '14:32:20', type: 'Circuit Breaker Updated', detail: 'Stability delta threshold set to 12.3% (VRF +2.3%)', color: 'info' },
-      { time: '14:32:18', type: 'VRF Request Initiated', detail: 'New request sent to Chainlink VRF Coordinator', color: 'warning' },
-      { time: '14:32:15', type: 'Data Validation Complete', detail: 'Market data feed validated (VRF checkpoint #1,247)', color: 'positive' }
-    ];
-    setAuditTrail(initialAudit);
-  }, [generateHash, generateRequest]);
+    const initial = Array.from({ length: 10 }, () => generateAuditEntry());
+    setAuditTrail(initial);
+  }, []);
 
   useEffect(() => {
+    if (!isLive) return;
     const auditInterval = setInterval(addAuditEntry, 3000);
-    const historyInterval = setInterval(updateHistory, 10000);
+    const pointInterval = setInterval(updateRandomApplicationPoint, 10000);
     return () => {
       clearInterval(auditInterval);
-      clearInterval(historyInterval);
+      clearInterval(pointInterval);
     };
-  }, [addAuditEntry, updateHistory]);
+  }, [isLive, addAuditEntry, updateRandomApplicationPoint]);
 
-  const getStatusDot = (status: string) => {
-    switch (status) {
-      case 'verified':
-        return <span className="w-1.5 h-1.5 bg-status-success rounded-full shadow-[0_0_4px_rgba(74,222,128,0.4)]" />;
-      case 'pending':
-        return <span className="w-1.5 h-1.5 bg-status-warning rounded-full" />;
-      case 'failed':
-        return <span className="w-1.5 h-1.5 bg-status-danger rounded-full" />;
-      default:
-        return null;
-    }
-  };
+  // ── Filtered audit trail ────────────────────────────────────────────
 
-  const formatNumber = (num: number) => {
-    return num.toLocaleString();
-  };
+  const filteredAuditTrail = useMemo(() => {
+    return auditTrail.filter(entry => {
+      if (auditFilters.component !== 'all' && entry.component !== auditFilters.component) return false;
+      if (auditFilters.status !== 'all' && entry.status !== auditFilters.status) return false;
+      return true;
+    });
+  }, [auditTrail, auditFilters]);
+
+  // ── "Audit details" handler ─────────────────────────────────────────
+
+  const scrollToAudit = useCallback((component: VRFComponent) => {
+    setAuditFilters({ component, status: 'all' });
+    setTimeout(() => {
+      auditSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 50);
+  }, []);
+
+  // ── Render ──────────────────────────────────────────────────────────
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-6">
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ═══════════ Section 1: Entropy Commitments ═══════════ */}
+
+      <div className="flex items-center gap-2 mb-1">
+        <Shield className="w-4 h-4 text-status-vrf" />
+        <h2 className="text-sm font-semibold text-terminal-text uppercase tracking-wider">
+          Entropy Commitments
+        </h2>
+        <span className="chip chip-info text-[10px]">Simulated</span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* VRF Provider */}
         <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
-          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">Total VRF Requests</div>
-          <div className="text-2xl font-mono font-bold text-terminal-text">{formatNumber(stats.totalRequests)}</div>
-          <div className="text-xs text-terminal-text-muted mt-1">Since network launch</div>
-          <div className="text-xs text-status-success mt-2 flex items-center gap-1">
-            <span>↑ 12.4% this week</span>
+          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">
+            VRF Provider
+          </div>
+          <div className="text-lg font-mono font-bold text-terminal-text">Chainlink VRF v2</div>
+          <div className="text-xs text-terminal-text-muted mt-1">Base Mainnet</div>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="w-5 h-5 rounded bg-[#375bd2] text-white flex items-center justify-center font-bold text-[9px]">CL</div>
+            <span className="chip chip-info text-[9px]">Simulated</span>
           </div>
         </div>
+
+        {/* Verification Rate */}
         <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
-          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">Verification Rate</div>
-          <div className="text-2xl font-mono font-bold text-status-success">{stats.verificationRate}%</div>
-          <div className="text-xs text-terminal-text-muted mt-1">On-chain success</div>
-          <div className="text-xs text-status-success mt-2 flex items-center gap-1">
-            <span>↑ 0.02% from last month</span>
+          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">
+            Verification Rate
           </div>
+          <div className="text-2xl font-mono font-bold text-status-success">99.97%</div>
+          <div className="text-xs text-terminal-text-muted mt-1">Proof validated</div>
         </div>
+
+        {/* Median Fulfilment */}
         <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
-          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">Avg Response Time</div>
-          <div className="text-2xl font-mono font-bold text-terminal-text">{stats.avgResponseTime}s</div>
-          <div className="text-xs text-terminal-text-muted mt-1">Block to fulfillment</div>
-          <div className="text-xs text-status-success mt-2 flex items-center gap-1">
-            <span>↓ 0.4s improvement</span>
+          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">
+            Median Fulfilment
           </div>
+          <div className="text-2xl font-mono font-bold text-terminal-text">2.3s</div>
+          <div className="text-xs text-terminal-text-muted mt-1">Block to fulfilment</div>
         </div>
+
+        {/* Entropy Utilisation */}
         <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
-          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">Entropy Quality</div>
-          <div className="text-2xl font-mono font-bold text-status-entropy">{stats.entropyQuality}/10</div>
-          <div className="text-xs text-terminal-text-muted mt-1">NIST randomness score</div>
-          <div className="text-xs text-terminal-text-secondary mt-2">
-            Stable
+          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">
+            Entropy Utilisation
           </div>
+          <div className="text-2xl font-mono font-bold text-terminal-text">847</div>
+          <div className="text-xs text-terminal-text-muted mt-1">VRF actions in 24h</div>
+        </div>
+
+        {/* Coordinator Uptime */}
+        <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
+          <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">
+            Coordinator Uptime
+          </div>
+          <div className="text-2xl font-mono font-bold text-status-success">99.99%</div>
+          <div className="text-xs text-terminal-text-muted mt-1">30-day SLO</div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-status-vrf" />
-          <h2 className="text-sm font-semibold text-terminal-text uppercase tracking-wider">Current Randomness State</h2>
-        </div>
-        <span className="text-xs bg-status-vrf/10 text-status-vrf px-2 py-1 rounded border border-status-vrf/30 font-semibold">CHAINLINK VRF V2</span>
+      {/* ═══════════ Section 2: Where VRF Is Applied ═══════════ */}
+
+      <div className="flex items-center gap-2">
+        <Zap className="w-4 h-4 text-status-vrf" />
+        <h2 className="text-sm font-semibold text-terminal-text uppercase tracking-wider">
+          Where VRF Is Applied
+        </h2>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
-          <div className="px-4 py-3 bg-terminal-bg/50 border-b border-terminal-border flex justify-between items-center">
-            <span className="text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider">Latest Request #47,893</span>
-          </div>
-          <div className="p-4 space-y-4">
-            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 font-mono text-xs">
-              <div className="text-status-vrf break-all leading-relaxed">{currentHash || generateHash()}</div>
-              <div className="flex gap-4 mt-3 pt-3 border-t border-terminal-border border-dashed text-terminal-text-muted text-xs">
-                <span>ID: {generateShortHash(currentHash || generateHash())}</span>
-                <span>BLK: #2,847,392</span>
-                <span>TS: 14:32:18 UTC</span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {applicationPoints.map(point => {
+          const Icon = point.icon;
+          return (
+            <div key={point.id} className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
+              {/* Card header */}
+              <div className="px-4 py-3 bg-terminal-bg/50 border-b border-terminal-border flex items-center gap-2">
+                <Icon className="w-4 h-4 text-status-vrf" />
+                <span className="text-xs font-semibold text-terminal-text uppercase tracking-wider">
+                  {point.name}
+                </span>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 p-2.5 bg-terminal-bg border border-terminal-border rounded-lg">
-                <div className="w-5 h-5 rounded-full bg-status-success/10 flex items-center justify-center text-status-success text-xs">✓</div>
-                <div>
-                  <div className="text-xs font-medium text-terminal-text">Block Hash Verification</div>
-                  <div className="text-xs text-terminal-text-muted">Parent block hash cryptographically verified</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-2.5 bg-terminal-bg border border-terminal-border rounded-lg">
-                <div className="w-5 h-5 rounded-full bg-status-success/10 flex items-center justify-center text-status-success text-xs">✓</div>
-                <div>
-                  <div className="text-xs font-medium text-terminal-text">Proof Validation</div>
-                  <div className="text-xs text-terminal-text-muted">VRF proof successfully validated on-chain</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-2.5 bg-terminal-bg border border-terminal-border rounded-lg">
-                <div className="w-5 h-5 rounded-full bg-status-success/10 flex items-center justify-center text-status-success text-xs">✓</div>
-                <div>
-                  <div className="text-xs font-medium text-terminal-text">Output Range Check</div>
-                  <div className="text-xs text-terminal-text-muted">Random output within valid range [0, 2^256-1]</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-2.5 bg-terminal-bg border border-terminal-border rounded-lg">
-                <div className="w-5 h-5 rounded-full bg-status-info/10 flex items-center justify-center text-status-info text-xs">⟳</div>
-                <div>
-                  <div className="text-xs font-medium text-terminal-text">Execution Window</div>
-                  <div className="text-xs text-terminal-text-muted">30-60s window starting in 18s</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+              <div className="p-4 space-y-3">
+                {/* Description */}
+                <p className="text-xs text-terminal-text-secondary leading-relaxed">
+                  {point.description}
+                </p>
 
-        <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
-          <div className="px-4 py-3 bg-terminal-bg/50 border-b border-terminal-border">
-            <span className="text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider">VRF-Enhanced Circuit Breakers</span>
-          </div>
-          <div className="p-4 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-terminal-bg border border-status-success/30 rounded-lg p-3 relative overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-status-success" />
-                <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Stability Delta</div>
-                <div className="text-lg font-mono font-bold text-terminal-text">
-                  10.0% <span className="text-status-vrf text-xs">+VRF</span>
+                {/* Last draw info */}
+                <div className="bg-terminal-bg border border-terminal-border rounded-lg p-3 space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-terminal-text-muted">Last draw</span>
+                    <span className="font-mono text-terminal-text-secondary">{point.lastDraw.timestamp}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-terminal-text-muted">Request ID</span>
+                    <span className="font-mono text-status-vrf">{point.lastDraw.requestId}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-terminal-text-muted">Result</span>
+                    <span className="font-mono font-semibold text-terminal-text">{point.result}</span>
+                  </div>
                 </div>
-                <div className="text-xs text-status-vrf font-mono mt-1">Randomized: +2.3%</div>
-              </div>
-              <div className="bg-terminal-bg border border-status-success/30 rounded-lg p-3 relative overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-status-success" />
-                <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Paradox Threshold</div>
-                <div className="text-lg font-mono font-bold text-terminal-text">
-                  40.0% <span className="text-status-vrf text-xs">+VRF</span>
-                </div>
-                <div className="text-xs text-status-vrf font-mono mt-1">Randomized: +6.7%</div>
-              </div>
-              <div className="bg-terminal-bg border border-status-success/30 rounded-lg p-3 relative overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-status-success" />
-                <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Max Scaling</div>
-                <div className="text-lg font-mono font-bold text-terminal-text">
-                  2.5x <span className="text-status-vrf text-xs">+VRF</span>
-                </div>
-                <div className="text-xs text-status-vrf font-mono mt-1">Randomized: +0.4x</div>
-              </div>
-              <div className="bg-terminal-bg border border-status-success/30 rounded-lg p-3 relative overflow-hidden">
-                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-status-success" />
-                <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Sabotage Cool</div>
-                <div className="text-lg font-mono font-bold text-terminal-text">
-                  300s <span className="text-status-vrf text-xs">+VRF</span>
-                </div>
-                <div className="text-xs text-status-vrf font-mono mt-1">Randomized: +42s</div>
-              </div>
-            </div>
 
-            <div className="flex items-center justify-between p-3 bg-terminal-bg border border-terminal-border rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-lg bg-[#375bd2] text-white flex items-center justify-center font-bold text-xs">CL</div>
-                <div>
-                  <div className="text-xs font-medium text-terminal-text">Chainlink VRF Coordinator</div>
-                  <div className="text-xs text-terminal-text-muted font-mono">0xf0d...4e21 - Base Mainnet</div>
-                </div>
-              </div>
-              <div className="flex gap-4 text-right">
-                <div>
-                  <div className="text-xs font-mono font-semibold text-status-success">99.99%</div>
-                  <div className="text-[9px] text-terminal-text-muted uppercase">UPTIME</div>
-                </div>
-                <div>
-                  <div className="text-xs font-mono font-semibold">12,847</div>
-                  <div className="text-[9px] text-terminal-text-muted uppercase">GAS AVG</div>
-                </div>
-                <div>
-                  <div className="text-xs font-mono font-semibold">V2</div>
-                  <div className="text-[9px] text-terminal-text-muted uppercase">VER</div>
-                </div>
+                {/* Audit details button */}
+                <button
+                  onClick={() => scrollToAudit(point.id)}
+                  className="w-full text-xs text-status-vrf hover:text-status-vrf/80 transition-colors flex items-center justify-center gap-1 py-1.5 rounded-lg border border-status-vrf/20 hover:border-status-vrf/40 bg-status-vrf/5"
+                >
+                  <Search className="w-3 h-3" />
+                  Audit details
+                </button>
               </div>
             </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
+
+      {/* ═══════════ Section 3: LMSR Integrity Coupling ═══════════ */}
 
       <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
         <div className="px-4 py-3 bg-terminal-bg/50 border-b border-terminal-border flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 text-status-info" />
-          <span className="text-sm font-semibold text-terminal-text uppercase tracking-wider">VRF-Backed Market Data Validation</span>
+          <Lock className="w-4 h-4 text-status-entropy" />
+          <span className="text-sm font-semibold text-terminal-text uppercase tracking-wider">
+            LMSR Integrity Coupling
+          </span>
+          <span className="chip chip-info text-[10px]">CFPM</span>
         </div>
+
         <div className="p-4">
-          <p className="text-xs text-terminal-text-secondary mb-4">
-            VRF-randomized data validation sampling prevents predictable manipulation patterns. Each feed is validated using VRF-selected checkpoints.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[
-              { name: 'Market Data', confidence: 98.2, color: 'bg-status-success' },
-              { name: 'On-Chain', confidence: 99.1, color: 'bg-status-success' },
-              { name: 'News/Sentiment', confidence: 94.7, color: 'bg-status-warning' },
-              { name: 'Browser Auto', confidence: 91.3, color: 'bg-status-warning' },
-              { name: 'Maritime (AIS)', confidence: 96.5, color: 'bg-status-success' },
-              { name: 'Aviation (ADS-B)', confidence: 95.8, color: 'bg-status-success' }
-            ].map((item) => (
-              <div key={item.name} className="bg-terminal-bg border border-terminal-border rounded-lg p-3 text-center">
-                <div className="text-xs font-medium text-terminal-text mb-2">{item.name}</div>
-                <span className="text-[9px] text-status-vrf bg-status-vrf/10 px-1.5 py-0.5 rounded border border-status-vrf/20">&lt;&gt; VRF Secured</span>
-                <div className="h-1 bg-terminal-bg rounded-full mt-2 mb-1 overflow-hidden border border-terminal-border">
-                  <div className={`h-full ${item.color} rounded-full transition-all duration-500`} style={{ width: `${item.confidence}%` }} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* Left column — Anti-Manipulation Surfaces */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider">
+                Anti-Manipulation Surfaces
+              </h3>
+
+              {ANTI_MANIPULATION_SURFACES.map(surface => (
+                <div key={surface.label} className="flex gap-3 items-start">
+                  <div className="w-1.5 h-1.5 rounded-full bg-status-vrf mt-1.5 flex-shrink-0" />
+                  <div>
+                    <div className="text-xs font-medium text-terminal-text">{surface.label}</div>
+                    <div className="text-xs text-terminal-text-secondary mt-0.5">{surface.desc}</div>
+                  </div>
                 </div>
-                <div className="text-[9px] text-terminal-text-muted font-mono">{item.confidence.toFixed(1)}% confidence</div>
+              ))}
+
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-3 mt-2">
+                <p className="text-xs text-terminal-text-muted italic leading-relaxed">
+                  No order book &rarr; no queue games; VRF protects adversarial fairness in discrete events (sabotage, thresholds, sampling).
+                </p>
               </div>
-            ))}
+            </div>
+
+            {/* Right column — Cost to Move (LMSR Demo) */}
+            <div className="space-y-4">
+              <h3 className="text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider">
+                Cost to Move (LMSR Demo)
+              </h3>
+
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 space-y-3">
+                <div className="flex justify-between text-xs">
+                  <span className="data-label">From</span>
+                  <span className="font-mono text-terminal-text">YES 52.0%</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="data-label">To</span>
+                  <span className="font-mono text-terminal-text">YES 57.0%</span>
+                </div>
+                <div className="border-t border-terminal-border border-dashed pt-3 space-y-2">
+                  <div className="flex justify-between items-baseline">
+                    <span className="data-label">Cost</span>
+                    <span className="font-mono font-bold text-status-entropy text-sm">
+                      ${lmsrDemoCost.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="data-label">Liquidity (b)</span>
+                    <span className="font-mono text-terminal-text-secondary">{LIQUIDITY_B}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-terminal-bg border border-status-vrf/20 rounded-lg p-3">
+                <p className="text-xs text-terminal-text-muted leading-relaxed">
+                  <span className="text-status-vrf font-semibold">Note:</span> VRF does not set prices;
+                  it protects event fairness &amp; sampling. The LMSR cost function is deterministic
+                  given current state.
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
 
-      <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-status-vrf/5 to-status-entropy/5 pointer-events-none" />
-        <div className="relative">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-terminal-text uppercase tracking-wider flex items-center gap-2">
-              <Zap className="w-4 h-4 text-status-vrf" />
-              RLMF Validation Framework
-            </h3>
-            <span className="text-xs text-terminal-text-muted font-mono">Last updated: 14:32:22 UTC</span>
+      {/* ═══════════ Section 4: Audit Trail ═══════════ */}
+
+      <div ref={auditSectionRef} className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
+        {/* Header with filters */}
+        <div className="px-4 py-3 bg-terminal-bg/50 border-b border-terminal-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-terminal-text-muted" />
+            <span className="text-sm font-semibold text-terminal-text uppercase tracking-wider">
+              Audit Trail
+            </span>
+            <span className="text-xs text-terminal-text-muted font-mono">
+              ({filteredAuditTrail.length})
+            </span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-3 text-center">
-              <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Total Episodes</div>
-              <div className="text-xl font-mono font-bold text-status-vrf">12,847</div>
-              <div className="text-[10px] text-terminal-text-muted mt-1">Fork decisions analyzed</div>
-            </div>
-            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-3 text-center">
-              <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">VRF-Sampled</div>
-              <div className="text-xl font-mono font-bold text-status-vrf">1,285</div>
-              <div className="text-[10px] text-terminal-text-muted mt-1">10% random checkpoint</div>
-            </div>
-            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-3 text-center">
-              <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Calibration</div>
-              <div className="text-xl font-mono font-bold text-status-vrf">0.18</div>
-              <div className="text-[10px] text-terminal-text-muted mt-1">Brier Score (target: &lt;0.20)</div>
-            </div>
-            <div className="bg-terminal-bg border border-status-success/30 rounded-lg p-3 text-center">
-              <div className="text-xs text-terminal-text-muted uppercase tracking-wider mb-1">Integrity</div>
-              <div className="text-xl font-mono font-bold text-status-success">100%</div>
-              <div className="text-[10px] text-terminal-text-muted mt-1">All exports verified</div>
-            </div>
+
+          <div className="flex items-center gap-2">
+            {/* Component filter */}
+            <select
+              value={auditFilters.component}
+              onChange={e => setAuditFilters(prev => ({ ...prev, component: e.target.value as VRFComponent | 'all' }))}
+              className="bg-terminal-bg border border-terminal-border rounded-lg px-2 py-1.5 text-xs text-terminal-text-secondary focus:outline-none focus:border-status-vrf/50 cursor-pointer"
+            >
+              <option value="all">All Components</option>
+              {COMPONENTS.map(c => (
+                <option key={c} value={c}>{COMPONENT_LABELS[c]}</option>
+              ))}
+            </select>
+
+            {/* Status filter */}
+            <select
+              value={auditFilters.status}
+              onChange={e => setAuditFilters(prev => ({ ...prev, status: e.target.value as AuditEntry['status'] | 'all' }))}
+              className="bg-terminal-bg border border-terminal-border rounded-lg px-2 py-1.5 text-xs text-terminal-text-secondary focus:outline-none focus:border-status-vrf/50 cursor-pointer"
+            >
+              <option value="all">All Statuses</option>
+              <option value="verified">Verified</option>
+              <option value="pending">Pending</option>
+              <option value="failed">Failed</option>
+            </select>
+
+            {/* Clear filters */}
+            {(auditFilters.component !== 'all' || auditFilters.status !== 'all') && (
+              <button
+                onClick={() => setAuditFilters({ component: 'all', status: 'all' })}
+                className="text-xs text-terminal-text-muted hover:text-terminal-text transition-colors flex items-center gap-1"
+              >
+                <X className="w-3 h-3" />
+                Clear
+              </button>
+            )}
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
-          <div className="px-4 py-3 bg-terminal-bg/50 border-b border-terminal-border flex justify-between items-center">
-            <span className="text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider">Recent VRF Requests</span>
-            <button className="text-xs text-terminal-text-muted hover:text-terminal-text transition-colors flex items-center gap-1">
-              View All <ExternalLink className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-terminal-border bg-terminal-bg">
-                  <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Request ID</th>
-                  <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Block</th>
-                  <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Type</th>
-                  <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Status</th>
-                  <th className="text-right px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Time</th>
+        {/* Table */}
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-terminal-border bg-terminal-bg sticky top-0 z-10">
+                <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Time</th>
+                <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Component</th>
+                <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Request ID</th>
+                <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Block / Tx</th>
+                <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Derived Effect</th>
+                <th className="text-left px-4 py-2 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAuditTrail.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-xs text-terminal-text-muted">
+                    No entries match the current filters.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {requests.map((request, index) => (
-                  <tr key={index} className="border-b border-terminal-border/50 hover:bg-terminal-bg/50 transition-colors">
-                    <td className="px-4 py-2.5 font-mono text-status-vrf">{request.id}</td>
-                    <td className="px-4 py-2.5 font-mono text-terminal-text-muted">#{request.block.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 text-terminal-text-secondary">{request.type}</td>
+              ) : (
+                filteredAuditTrail.map(entry => (
+                  <tr key={entry.id} className="border-b border-terminal-border/50 hover:bg-terminal-bg/50 transition-colors">
+                    <td className="px-4 py-2.5 font-mono text-terminal-text-muted">{entry.time}</td>
+                    <td className="px-4 py-2.5 text-terminal-text-secondary">{COMPONENT_LABELS[entry.component]}</td>
+                    <td className="px-4 py-2.5 font-mono text-status-vrf">{entry.requestId}</td>
+                    <td className="px-4 py-2.5 font-mono text-terminal-text-muted">{entry.blockTx}</td>
+                    <td className="px-4 py-2.5 font-mono text-terminal-text">{entry.derivedEffect}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">
-                        {getStatusDot(request.status)}
-                        <span className="capitalize text-terminal-text-secondary">{request.status}</span>
+                        {getStatusDot(entry.status)}
+                        <span className="capitalize text-terminal-text-secondary">{entry.status}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-terminal-text-muted text-right">{request.timestamp}</td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden">
-          <div className="px-4 py-3 bg-terminal-bg/50 border-b border-terminal-border flex items-center gap-2">
-            <Clock className="w-4 h-4 text-terminal-text-muted" />
-            <span className="text-xs font-semibold text-terminal-text-secondary uppercase tracking-wider">Live Audit Trail</span>
-          </div>
-          <div className="max-h-[280px] overflow-y-auto">
-            {auditTrail.map((entry, index) => (
-              <div key={index} className="flex gap-3 px-4 py-2.5 border-b border-terminal-border/50 hover:bg-terminal-bg/50 transition-colors">
-                <div className="font-mono text-xs text-terminal-text-muted min-w-[70px]">{entry.time}</div>
-                <div>
-                  <div className={`text-xs font-semibold ${
-                    entry.color === 'positive' ? 'text-status-success' :
-                    entry.color === 'info' ? 'text-status-info' :
-                    entry.color === 'warning' ? 'text-status-warning' :
-                    'text-status-danger'
-                  }`}>{entry.type}</div>
-                  <div className="text-xs text-terminal-text-secondary mt-0.5">{entry.detail}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="pt-4 border-t border-terminal-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-terminal-text-muted">
-        <div>Echelon Protocol VRF Dashboard - Base Mainnet</div>
-        <div className="flex gap-4">
-          <a href="#" className="text-terminal-text-secondary hover:text-terminal-text transition-colors">Documentation</a>
-          <a href="#" className="text-terminal-text-secondary hover:text-terminal-text transition-colors">Audit Reports</a>
-          <a href="#" className="text-terminal-text-secondary hover:text-terminal-text transition-colors">Smart Contracts</a>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
