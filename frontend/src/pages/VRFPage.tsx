@@ -2,13 +2,12 @@
  * VRF Integrity Terminal
  *
  * Audit-grade dashboard showing how Chainlink VRF protects 6 specific
- * integrity mechanisms in the Echelon LMSR/CFPM protocol. Replaces the
- * generic "randomness health" page with protocol-accurate sections:
+ * integrity mechanisms in the Echelon LMSR/CFPM protocol.
  *
- *   1. Entropy Commitments — infra SLO stat cards
- *   2. Where VRF Is Applied — 6 application point cards
+ *   1. Entropy Commitments — infra SLO stat cards + commitment hash
+ *   2. Where VRF Is Applied — 6 application point cards with drawer
  *   3. LMSR Integrity Coupling — anti-manipulation + cost-to-move widget
- *   4. Audit Trail — filterable event table
+ *   4. Status strip + filterable Audit Trail
  *
  * All data is demo/simulated — no live Chainlink integration.
  */
@@ -16,7 +15,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Shield, Zap, Timer, ShieldAlert, Database, Brain, Coins, Server,
-  Lock, Clock, Search, X,
+  Lock, Clock, Search, X, Copy,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useRegisterTopActionBarActions } from '../contexts/TopActionBarActionsContext';
@@ -56,14 +55,30 @@ interface AuditFilters {
   status: 'verified' | 'pending' | 'failed' | 'all';
 }
 
+interface AuditDrawerData {
+  component: VRFComponent;
+  name: string;
+  description: string;
+  icon: LucideIcon;
+  requestId: string;
+  shortRequestId: string;
+  blockTx: string;
+  seed: string;
+  proofStatus: 'verified' | 'pending';
+  derivedEffect: string;
+  timestamp: string;
+}
+
 // ── Constants ───────────────────────────────────────────────────────────
+
+const COMMITMENT_HASH = '0x7a3f8b2c1d9e4f6a0b5c3d7e8f1a2b4c6d8e0f1a2b3c4d5e6f7a8b9c0d1ecb18';
 
 const COMPONENT_LABELS: Record<VRFComponent, string> = {
   'commit-reveal': 'Commit-Reveal Window',
   'circuit-breaker': 'Circuit Breaker',
   'data-validation': 'Data Validation',
   'rlmf-sampling': 'RLMF Sampling',
-  'entropy-pricing': 'Entropy Pricing',
+  'entropy-pricing': 'Risk Fee Jitter',
   'oracle-failover': 'Oracle Failover',
 };
 
@@ -107,8 +122,8 @@ const INITIAL_APPLICATION_POINTS: ApplicationPoint[] = [
   },
   {
     id: 'entropy-pricing',
-    name: 'Entropy Pricing',
-    description: 'Dynamic risk adjustment randomisation prevents entropy prediction gaming on fee schedules.',
+    name: 'Risk Fee Jitter',
+    description: 'Randomised risk fee adjustment prevents fee prediction gaming on sabotage pricing.',
     icon: Coins,
     lastDraw: { timestamp: '14:28:05 UTC', requestId: '0xb5a3...6c8d' },
     result: 'Fee multiplier: 1.14x',
@@ -209,9 +224,12 @@ export function VRFPage() {
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>([]);
   const [auditFilters, setAuditFilters] = useState<AuditFilters>({ component: 'all', status: 'all' });
   const [isLive, setIsLive] = useState(true);
+  const [hashCopied, setHashCopied] = useState(false);
+  const [drawerEntry, setDrawerEntry] = useState<AuditDrawerData | null>(null);
 
   // LMSR cost (static demo)
   const lmsrDemoCost = lmsrCost(0.52, 0.57, LIQUIDITY_B);
+  const deltaQ = Math.abs(Math.log(0.57 / (1 - 0.57)) - Math.log(0.52 / (1 - 0.52)));
 
   // ── Generators ──────────────────────────────────────────────────────
 
@@ -265,6 +283,15 @@ export function VRFPage() {
     };
   }, [isLive, addAuditEntry, updateRandomApplicationPoint]);
 
+  // Close drawer on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDrawerEntry(null);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // ── Filtered audit trail ────────────────────────────────────────────
 
   const filteredAuditTrail = useMemo(() => {
@@ -275,10 +302,31 @@ export function VRFPage() {
     });
   }, [auditTrail, auditFilters]);
 
-  // ── "Audit details" handler ─────────────────────────────────────────
+  // ── Handlers ────────────────────────────────────────────────────────
 
-  const scrollToAudit = useCallback((component: VRFComponent) => {
-    setAuditFilters({ component, status: 'all' });
+  const handleCopyHash = useCallback(() => {
+    navigator.clipboard.writeText(COMMITMENT_HASH);
+    setHashCopied(true);
+    setTimeout(() => setHashCopied(false), 2000);
+  }, []);
+
+  const openAuditDrawer = useCallback((point: ApplicationPoint) => {
+    const fullHash = generateHash();
+    setDrawerEntry({
+      component: point.id,
+      name: point.name,
+      description: point.description,
+      icon: point.icon,
+      requestId: fullHash,
+      shortRequestId: shortHash(fullHash),
+      blockTx: `BLK #${(2847000 + Math.floor(Math.random() * 500)).toLocaleString()}`,
+      seed: generateHash(),
+      proofStatus: Math.random() > 0.05 ? 'verified' : 'pending',
+      derivedEffect: point.result,
+      timestamp: point.lastDraw.timestamp,
+    });
+    // Also filter audit trail to this component
+    setAuditFilters({ component: point.id, status: 'all' });
     setTimeout(() => {
       auditSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 50);
@@ -297,6 +345,32 @@ export function VRFPage() {
           Entropy Commitments
         </h2>
         <span className="chip chip-info text-[10px]">Simulated</span>
+      </div>
+
+      {/* Commitment Hash pill */}
+      <div className="flex items-center gap-2 bg-terminal-bg border border-terminal-border rounded-lg px-3 py-2">
+        <span className="text-[10px] text-terminal-text-muted uppercase tracking-wider font-semibold">
+          Commitment root
+        </span>
+        <span
+          className="font-mono text-status-vrf text-xs"
+          title="Simulated feed"
+        >
+          {shortHash(COMMITMENT_HASH)}
+        </span>
+        <button
+          onClick={handleCopyHash}
+          className="p-0.5 rounded text-terminal-text-muted hover:text-terminal-text transition-colors"
+          title="Copy full hash"
+        >
+          <Copy className="w-3 h-3" />
+        </button>
+        {hashCopied && (
+          <span className="text-[10px] text-status-success font-semibold animate-fade-in">
+            Copied
+          </span>
+        )}
+        <span className="chip chip-info text-[9px] ml-auto">Simulated</span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -331,13 +405,13 @@ export function VRFPage() {
           <div className="text-xs text-terminal-text-muted mt-1">Block to fulfilment</div>
         </div>
 
-        {/* Entropy Utilisation */}
+        {/* VRF Events (24h) */}
         <div className="bg-terminal-panel border border-terminal-border rounded-xl p-4">
           <div className="text-xs text-terminal-text-muted uppercase tracking-wider font-semibold mb-2">
-            Entropy Utilisation
+            VRF Events (24h)
           </div>
           <div className="text-2xl font-mono font-bold text-terminal-text">847</div>
-          <div className="text-xs text-terminal-text-muted mt-1">VRF actions in 24h</div>
+          <div className="text-xs text-terminal-text-muted mt-1">Fulfilments across all components</div>
         </div>
 
         {/* Coordinator Uptime */}
@@ -386,7 +460,7 @@ export function VRFPage() {
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-terminal-text-muted">Request ID</span>
-                    <span className="font-mono text-status-vrf">{point.lastDraw.requestId}</span>
+                    <span className="font-mono text-status-vrf" title="Simulated feed">{point.lastDraw.requestId}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="text-terminal-text-muted">Result</span>
@@ -394,9 +468,9 @@ export function VRFPage() {
                   </div>
                 </div>
 
-                {/* Audit details button */}
+                {/* Audit details button → opens drawer */}
                 <button
-                  onClick={() => scrollToAudit(point.id)}
+                  onClick={() => openAuditDrawer(point)}
                   className="w-full text-xs text-status-vrf hover:text-status-vrf/80 transition-colors flex items-center justify-center gap-1 py-1.5 rounded-lg border border-status-vrf/20 hover:border-status-vrf/40 bg-status-vrf/5"
                 >
                   <Search className="w-3 h-3" />
@@ -460,6 +534,16 @@ export function VRFPage() {
                   <span className="data-label">To</span>
                   <span className="font-mono text-terminal-text">YES 57.0%</span>
                 </div>
+
+                {/* Δq breakdown line */}
+                <div className="flex items-center gap-3 text-[11px] text-terminal-text-muted font-mono py-1">
+                  <span>&Delta;p: <span className="text-echelon-cyan">+5.0%</span></span>
+                  <span className="text-terminal-border">|</span>
+                  <span>&Delta;q: <span className="text-terminal-text">{deltaQ.toFixed(3)}</span> shares</span>
+                  <span className="text-terminal-border">|</span>
+                  <span>Cost: <span className="text-status-entropy font-semibold">${lmsrDemoCost.toFixed(2)}</span></span>
+                </div>
+
                 <div className="border-t border-terminal-border border-dashed pt-3 space-y-2">
                   <div className="flex justify-between items-baseline">
                     <span className="data-label">Cost</span>
@@ -485,6 +569,16 @@ export function VRFPage() {
 
           </div>
         </div>
+      </div>
+
+      {/* ═══════════ Status Strip ═══════════ */}
+
+      <div className="flex items-center gap-2 px-4 py-2 bg-terminal-panel border border-terminal-border rounded-lg">
+        <span className="w-1.5 h-1.5 rounded-full bg-status-success shadow-[0_0_4px_rgba(74,222,128,0.4)]" />
+        <span className="text-xs font-semibold text-status-success">All systems nominal</span>
+        <span className="text-xs text-terminal-text-muted ml-auto font-mono">
+          VRF: 2.3s &middot; Oracle: Mode 0 &middot; Circuit breakers: standby
+        </span>
       </div>
 
       {/* ═══════════ Section 4: Audit Trail ═══════════ */}
@@ -565,8 +659,8 @@ export function VRFPage() {
                   <tr key={entry.id} className="border-b border-terminal-border/50 hover:bg-terminal-bg/50 transition-colors">
                     <td className="px-4 py-2.5 font-mono text-terminal-text-muted">{entry.time}</td>
                     <td className="px-4 py-2.5 text-terminal-text-secondary">{COMPONENT_LABELS[entry.component]}</td>
-                    <td className="px-4 py-2.5 font-mono text-status-vrf">{entry.requestId}</td>
-                    <td className="px-4 py-2.5 font-mono text-terminal-text-muted">{entry.blockTx}</td>
+                    <td className="px-4 py-2.5 font-mono text-status-vrf" title="Simulated feed">{entry.requestId}</td>
+                    <td className="px-4 py-2.5 font-mono text-terminal-text-muted" title="Simulated feed">{entry.blockTx}</td>
                     <td className="px-4 py-2.5 font-mono text-terminal-text">{entry.derivedEffect}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-1.5">
@@ -581,6 +675,89 @@ export function VRFPage() {
           </table>
         </div>
       </div>
+
+      {/* ═══════════ Audit Detail Drawer ═══════════ */}
+
+      {drawerEntry && (
+        <div
+          className="fixed inset-0 z-[300] bg-black/50"
+          onClick={() => setDrawerEntry(null)}
+        />
+      )}
+      {drawerEntry && (() => {
+        const DrawerIcon = drawerEntry.icon;
+        return (
+          <div
+            className="fixed top-[60px] right-6 w-[420px] max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-[310] shadow-elevation-3 bg-terminal-overlay border border-terminal-border"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Drawer header */}
+            <div className="section-header">
+              <div className="flex items-center gap-2">
+                <DrawerIcon className="w-4 h-4 text-status-vrf" />
+                <span className="section-title-accented">{drawerEntry.name}</span>
+              </div>
+              <button
+                onClick={() => setDrawerEntry(null)}
+                className="p-1 rounded transition-colors text-terminal-text-muted hover:text-terminal-text"
+              >
+                &#x2715;
+              </button>
+            </div>
+
+            {/* Drawer body */}
+            <div className="p-4 overflow-y-auto space-y-4">
+              <p className="text-xs text-terminal-text-secondary leading-relaxed">
+                {drawerEntry.description}
+              </p>
+
+              <div className="space-y-3">
+                <div className="flex justify-between text-xs">
+                  <span className="data-label">Request ID</span>
+                  <span className="font-mono text-status-vrf text-[11px] break-all text-right max-w-[260px]" title="Simulated feed">
+                    {drawerEntry.requestId}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="data-label">Block / Tx</span>
+                  <span className="font-mono text-terminal-text-secondary" title="Simulated feed">{drawerEntry.blockTx}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="data-label">VRF Seed</span>
+                  <span className="font-mono text-terminal-text-muted text-[11px] break-all text-right max-w-[260px]" title="Simulated feed">
+                    {shortHash(drawerEntry.seed)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs items-center">
+                  <span className="data-label">Proof Status</span>
+                  <div className="flex items-center gap-1.5">
+                    {getStatusDot(drawerEntry.proofStatus)}
+                    <span className="capitalize text-terminal-text-secondary">{drawerEntry.proofStatus}</span>
+                  </div>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="data-label">Derived Effect</span>
+                  <span className="font-mono font-semibold text-terminal-text">{drawerEntry.derivedEffect}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="data-label">Component</span>
+                  <span className="text-terminal-text-secondary">{COMPONENT_LABELS[drawerEntry.component]}</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="data-label">Timestamp</span>
+                  <span className="font-mono text-terminal-text-muted">{drawerEntry.timestamp}</span>
+                </div>
+              </div>
+
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-3 mt-2">
+                <p className="text-[10px] text-terminal-text-muted italic">
+                  All values are from a simulated feed. On-chain verification will be available when Chainlink VRF is integrated on Base Mainnet.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
