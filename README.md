@@ -90,7 +90,7 @@ Full architecture documentation is in [`docs/`](docs/README.md), including:
 
 ## Status
 
-Working frontend demo with prototyping on Base Sepolia. Core components implemented: Pydantic agent schemas, multi-provider brain routing, LMSR contracts, wallet factory with HD derivation, OSINT pipeline architecture with 21+ data sources, React Situation Room UI. Seeking grant funding for OSINT data pipeline to run live Theatres.
+Working frontend demo with prototyping on Base Sepolia. LMSR market contracts deployed (frontend). Architecture documentation covers the complete platform specification including agent schemas, hierarchical brain routing, OSINT pipeline design, Theatre Templates, and RLMF export schemas. Next milestone: live Theatre with funded OSINT data pipeline.
 
 ## Contact
 
