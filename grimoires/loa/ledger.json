@@ -122,19 +122,19 @@
           "local_id": "sprint-1",
           "global_id": "sprint-19",
           "label": "Data Layer — Models, Migration, Schemas",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "local_id": "sprint-2",
           "global_id": "sprint-20",
           "label": "Service + API — Bridge, Routes, Mounting",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "local_id": "sprint-3",
           "global_id": "sprint-21",
           "label": "Integration Tests + E2E",
-          "status": "pending"
+          "status": "completed"
         }
       ]
     }
