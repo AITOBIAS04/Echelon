@@ -1,0 +1,33 @@
+{
+  "simstim_id": "simstim-20260219-c027",
+  "schema_version": 1,
+  "state": "RUNNING",
+  "phase": "implementation",
+  "timestamps": {
+    "started": "2026-02-19T15:00:00Z",
+    "last_activity": "2026-02-19T15:00:00Z"
+  },
+  "phases": {
+    "preflight": "completed",
+    "discovery": "skipped",
+    "flatline_prd": "skipped",
+    "architecture": "skipped",
+    "flatline_sdd": "skipped",
+    "planning": "skipped",
+    "flatline_sprint": "skipped",
+    "flatline_beads": "skipped",
+    "implementation": "in_progress",
+    "complete": "pending"
+  },
+  "artifacts": {
+    "prd": {
+      "path": "grimoires/loa/prd.md"
+    },
+    "sdd": {
+      "path": "grimoires/loa/sdd.md"
+    },
+    "sprint": {
+      "path": "grimoires/loa/sprint.md"
+    }
+  }
+}

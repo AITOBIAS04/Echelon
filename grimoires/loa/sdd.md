@@ -1,1209 +1,835 @@
-# SDD: Hounfour Runtime Bridge — Model-Heterogeneous Agent Routing
+# SDD: Community Oracle Verification Pipeline
 
-> Cycle: cycle-026 | Author: janitooor + Claude
-> Source PRD: `grimoires/loa/prd.md` ([#365](https://github.com/0xHoneyJar/loa/issues/365))
-> Flatline: Reviewed (5 HIGH_CONSENSUS integrated, 6 BLOCKERS addressed)
-> Phase 1.5 added: 2026-02-18 (Hounfour v7 Protocol Alignment)
+> Cycle: cycle-027 | PRD: `grimoires/loa/prd.md`
+> Grounded: Reality files (2026-02-18), backend patterns (`brain.py`, `markets.py`)
+> Status: Draft
 
 ## 1. Executive Summary
 
-This SDD designs the activation of Loa's Hounfour model routing subsystem. The infrastructure exists — alias resolution, agent bindings, circuit breakers, metering modules — but the Google provider adapter is missing and the runtime bridge is inactive. This cycle implements the `GoogleAdapter`, wires metering, activates Flatline routing, and enables TeamCreate agents to invoke external models via `cheval.py`.
+The Community Oracle Verification Pipeline is a standalone Python package (`verification/`) that scores AI construct accuracy against git repository ground truth. It implements a four-stage pipeline: Ground Truth Ingestion → Oracle Invocation → Verification Scoring → Calibration Certificate Generation. The system exposes both a CLI and a FastAPI-mountable API, uses configurable LLM providers for scoring, and produces RLMF-compatible calibration certificates.
 
-**Architecture principle**: Extend the existing adapter pattern. No new abstractions. The Google adapter follows the same `ProviderAdapter` → `http_post()` → `CompletionResult` contract as OpenAI and Anthropic.
+The architecture follows existing Echelon backend patterns: Pydantic v2 models, ABC-based provider abstraction, async-first I/O, and FastAPI routers with dependency injection.
 
 ## 2. System Architecture
 
-### 2.1 Component Diagram
+### High-Level Component Diagram
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│ Callers                                                          │
-│  ┌─────────────────┐  ┌───────────────┐  ┌────────────────────┐ │
-│  │ Flatline Scripts │  │ TeamCreate    │  │ /gpt-review        │ │
-│  │ (scoring-engine) │  │ Teammates     │  │ (direct invocation)│ │
-│  └────────┬────────┘  └──────┬────────┘  └─────────┬──────────┘ │
-│           │                  │                      │            │
-│           └──────────────────┼──────────────────────┘            │
-│                              ▼                                   │
-│  ┌───────────────────────────────────────────────────────────┐   │
-│  │                      cheval.py                            │   │
-│  │  CLI → resolve_execution() → get_adapter() → complete()   │   │
-│  │                              │                            │   │
-│  │  New: --prompt, --async, --poll, --cancel                 │   │
-│  │  New: --include-thinking                                  │   │
-│  └───────────────────────────────┬───────────────────────────┘   │
-│                                  ▼                               │
-│  ┌───────────────────────────────────────────────────────────┐   │
-│  │                    invoke_with_retry()                     │   │
-│  │  Retry + Circuit Breaker + BudgetEnforcer (newly wired)   │   │
-│  └───────────────────────────────┬───────────────────────────┘   │
-│                                  ▼                               │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
-│  │ OpenAIAdapter│  │AnthropicAdapt│  │   GoogleAdapter       │   │
-│  │ (existing)   │  │ (existing)   │  │   (NEW — this cycle)  │   │
-│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘   │
-│         ▼                 ▼                      ▼               │
-│  ┌──────────┐      ┌──────────┐      ┌────────────────────────┐ │
-│  │ OpenAI   │      │Anthropic │      │ Google AI              │ │
-│  │ API      │      │ API      │      │ generateContent        │ │
-│  └──────────┘      └──────────┘      │ Interactions (DR)      │ │
-│                                      └────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    verification/                              │
+│                                                              │
+│  ┌──────────┐   ┌───────────┐   ┌─────────┐   ┌──────────┐ │
+│  │ Ingestion │──→│  Oracle    │──→│ Scoring  │──→│ Certifier│ │
+│  │  Module   │   │  Adapters  │   │  Engine  │   │  Module  │ │
+│  └────┬─────┘   └─────┬─────┘   └────┬─────┘   └────┬─────┘ │
+│       │               │              │               │       │
+│       │         ┌─────┴─────┐  ┌─────┴─────┐        │       │
+│       │         │HTTPAdapter│  │LLM Scoring │        │       │
+│       │         │PyAdapter  │  │  Provider  │        │       │
+│       │         └───────────┘  └───────────┘        │       │
+│       │                                              │       │
+│  ┌────┴──────────────────────────────────────────────┴────┐  │
+│  │                    Pipeline Orchestrator                │  │
+│  │              (coordinates all 4 stages)                │  │
+│  └────────────────────────┬───────────────────────────────┘  │
+│                           │                                  │
+│  ┌────────────────────────┼───────────────────────────────┐  │
+│  │         ┌──────────┐   │   ┌──────────┐                │  │
+│  │         │   CLI    │   │   │   API    │                │  │
+│  │         │ (click)  │   │   │(FastAPI) │                │  │
+│  │         └──────────┘   │   └──────────┘                │  │
+│  │                  Interface Layer                        │  │
+│  └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │                    Storage Layer                        │  │
+│  │   data/{repo}/ground_truth.jsonl                       │  │
+│  │   data/{repo}/oracle_outputs.jsonl                     │  │
+│  │   data/{repo}/scores.jsonl                             │  │
+│  │   certificates/{cert_id}.json                          │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+          │                              │
+          ▼                              ▼
+    GitHub REST API                LLM Provider APIs
+    (ground truth)                 (scoring engine)
 ```
 
-### 2.2 Data Flow
+### Design Principles
 
-```
-1. Caller invokes: python cheval.py --agent deep-thinker --prompt "..."
-2. cheval.py: parse args → load_config() → resolve_execution()
-3. resolver.py: deep-thinker → alias → google:gemini-3-pro
-4. cheval.py: _build_provider_config("google", config) → get_adapter(config)
-5. invoke_with_retry(adapter, request, config, budget_hook=BudgetEnforcer)
-   a. BudgetEnforcer.pre_call() → check daily spend
-   b. GoogleAdapter.complete(request)
-      i.   _translate_messages() → Gemini format
-      ii.  Build body with thinkingConfig.thinkingLevel: "high"
-      iii. http_post() → generateContent
-      iv.  _parse_response() → CompletionResult
-   c. BudgetEnforcer.post_call(result) → record to cost-ledger.jsonl
-6. cheval.py: print result.content to stdout
-```
+1. **Pipeline as composition**: Each stage is an independent module. The orchestrator composes them. Stages can run independently (e.g., `ingest` without `score`).
+2. **Adapter pattern for extensibility**: Oracle invocation and LLM scoring use ABC-based adapters, consistent with `backend/agents/brain.py:BaseBrainProvider`.
+3. **Async-first**: All I/O operations (GitHub API, oracle calls, LLM scoring) are async, consistent with the existing backend.
+4. **Local-first storage**: Filesystem-based (JSON/JSONL). No database dependency for MVP.
+5. **Immutable artifacts**: Ground truth, oracle outputs, and scores are append-only. Certificates are write-once.
 
 ## 3. Technology Stack
 
-| Component | Technology | Justification |
-|-----------|-----------|---------------|
-| Google adapter | Python 3.8+ | Match existing adapters |
-| HTTP client | httpx (preferred) / urllib (fallback) | Match existing `http_post()` pattern |
-| Async polling | `time.sleep()` + loop | No async runtime needed, matches blocking I/O contract |
-| Config | YAML (model-config.yaml) | Match existing 4-layer config merge |
-| Cost ledger | JSONL + fcntl.flock | Match existing metering module |
-| Concurrency | flock-based semaphore files | No external deps, POSIX standard |
+| Component | Technology | Version | Rationale |
+|-----------|-----------|---------|-----------|
+| Language | Python | 3.12+ | Consistent with `backend/requirements.txt` |
+| Models | Pydantic | v2 (2.12+) | Consistent with backend schemas |
+| HTTP Client | httpx | 0.28+ | Already in backend deps, async-native |
+| LLM Client | anthropic | 0.74+ | Already in backend deps |
+| CLI | click | 8.x | Subcommand pattern, better than argparse |
+| API | FastAPI | 0.121+ | Consistent with backend routers |
+| Async | asyncio + anyio | stdlib | Standard async runtime |
+| Testing | pytest + pytest-asyncio | latest | Consistent with backend test patterns |
+| Packaging | pyproject.toml | PEP 621 | Modern Python packaging |
 
-## 4. Component Design
+### New Dependencies (not in existing backend)
 
-### 4.1 GoogleAdapter
+| Package | Purpose |
+|---------|---------|
+| `click` | CLI framework with subcommand groups |
 
-**File**: `.claude/adapters/loa_cheval/providers/google_adapter.py`
+All other dependencies are already available in the monorepo.
 
-```python
-class GoogleAdapter(ProviderAdapter):
-    """Google Gemini provider adapter (SDD §4.1)."""
+## 4. Package Structure
 
-    # --- ProviderAdapter interface ---
-    def complete(self, request: CompletionRequest) -> CompletionResult
-    def validate_config(self) -> List[str]
-    def health_check(self) -> bool
-
-    # --- Internal ---
-    def _complete_standard(self, request) -> CompletionResult    # generateContent
-    def _complete_deep_research(self, request) -> CompletionResult  # Interactions API
-    def _translate_messages(self, messages) -> Tuple[Optional[str], List[Dict]]
-    def _build_generation_config(self, request, model_config) -> Dict
-    def _build_thinking_config(self, model_id, model_config) -> Optional[Dict]
-    def _parse_response(self, resp, latency_ms) -> CompletionResult
-    def _parse_deep_research_response(self, resp, latency_ms) -> CompletionResult
-    def _normalize_citations(self, raw_output) -> Dict
+```
+verification/
+├── pyproject.toml                    # Package config, CLI entry point
+├── README.md                         # Usage documentation
+├── src/
+│   └── echelon_verify/
+│       ├── __init__.py               # Version, public API
+│       ├── config.py                 # Configuration management
+│       ├── models.py                 # All Pydantic models (single source of truth)
+│       ├── pipeline.py              # Pipeline orchestrator
+│       ├── cli.py                    # Click CLI entry point
+│       ├── api.py                    # FastAPI router (mountable)
+│       ├── ingestion/
+│       │   ├── __init__.py
+│       │   └── github.py            # GitHub REST API client
+│       ├── oracle/
+│       │   ├── __init__.py
+│       │   ├── base.py              # OracleAdapter ABC
+│       │   ├── http_adapter.py      # HTTP endpoint adapter
+│       │   └── python_adapter.py    # Python callable adapter
+│       ├── scoring/
+│       │   ├── __init__.py
+│       │   ├── base.py              # ScoringProvider ABC
+│       │   ├── anthropic_scorer.py  # Claude scoring implementation
+│       │   └── prompts/             # Versioned prompt templates
+│       │       ├── v1/
+│       │       │   ├── precision.txt
+│       │       │   ├── recall.txt
+│       │       │   ├── reply_accuracy.txt
+│       │       │   └── follow_up_question.txt
+│       │       └── manifest.json    # Prompt version metadata
+│       ├── certificate/
+│       │   ├── __init__.py
+│       │   └── generator.py         # Certificate generation + validation
+│       └── storage.py               # Filesystem read/write helpers
+├── tests/
+│   ├── conftest.py                   # Shared fixtures
+│   ├── test_ingestion.py
+│   ├── test_oracle_adapters.py
+│   ├── test_scoring.py
+│   ├── test_certificate.py
+│   ├── test_pipeline.py
+│   └── fixtures/                     # Sample ground truth, oracle output
+│       ├── sample_pr.json
+│       ├── sample_oracle_output.json
+│       └── sample_certificate.json
+└── data/                             # Runtime data (gitignored)
+    └── .gitkeep
 ```
 
-#### 4.1.1 `complete()` — Mode Branch
+## 5. Data Models
+
+All models in `echelon_verify/models.py`. Pydantic v2 with strict validation.
+
+### Core Models
 
 ```python
-def complete(self, request: CompletionRequest) -> CompletionResult:
-    model_config = self._get_model_config(request.model)
-    enforce_context_window(request, model_config)
+class GroundTruthRecord(BaseModel):
+    """A single PR/commit extracted from GitHub."""
+    id: str                              # PR number or commit SHA
+    title: str
+    description: str = ""
+    diff_content: str
+    files_changed: list[str]
+    timestamp: datetime
+    labels: list[str] = []
+    author: str
+    url: str                             # GitHub URL for reference
+    repo: str                            # owner/repo format
 
-    api_mode = getattr(model_config, 'api_mode', None)
-    if api_mode == 'interactions' or request.model.startswith('deep-research'):
-        return self._complete_deep_research(request)
-    return self._complete_standard(request)
+class OracleOutput(BaseModel):
+    """Output captured from oracle construct invocation."""
+    ground_truth_id: str                 # Links to GroundTruthRecord.id
+    summary: str
+    key_claims: list[str]
+    follow_up_question: str              # Generated question
+    follow_up_response: str              # Oracle's answer
+    metadata: dict[str, Any] = {}        # Model used, latency, etc.
+    invoked_at: datetime
+    latency_ms: int
+
+class ReplayScore(BaseModel):
+    """Per-replay verification score."""
+    ground_truth_id: str
+    precision: float = Field(ge=0.0, le=1.0)
+    recall: float = Field(ge=0.0, le=1.0)
+    reply_accuracy: float = Field(ge=0.0, le=1.0)
+    claims_total: int = Field(ge=0)
+    claims_supported: int = Field(ge=0)
+    changes_total: int = Field(ge=0)
+    changes_surfaced: int = Field(ge=0)
+    scoring_model: str
+    scoring_latency_ms: int
+    scored_at: datetime
+    raw_scoring_output: dict[str, Any] = {}  # LLM responses for audit
+
+class CalibrationCertificate(BaseModel):
+    """Aggregate verification certificate."""
+    schema_version: str = "1.0.0"
+    certificate_id: str                  # UUID
+    construct_id: str
+    domain: Literal["community_oracle"] = "community_oracle"
+    replay_count: int = Field(ge=1)
+    precision: float = Field(ge=0.0, le=1.0)
+    recall: float = Field(ge=0.0, le=1.0)
+    reply_accuracy: float = Field(ge=0.0, le=1.0)
+    composite_score: float = Field(ge=0.0, le=1.0)
+    brier: float = Field(ge=0.0, le=0.5)  # RLMF compatibility
+    sample_size: int = Field(ge=1)
+    timestamp: datetime
+    ground_truth_source: str             # Repository URL
+    commit_range: str                    # first_sha..last_sha
+    methodology_version: str             # Prompt template version
+    scoring_model: str
+    individual_scores: list[ReplayScore] = []
 ```
 
-#### 4.1.2 `_translate_messages()` — Format Conversion
-
-**Input**: Canonical OpenAI format `[{"role": "system"|"user"|"assistant", "content": str}]`
-**Output**: `(system_instruction: str | None, contents: [{"role": "user"|"model", "parts": [{"text": str}]}])`
-
-Translation rules:
-1. System messages → concatenated into single `systemInstruction` string (Gemini uses separate field)
-2. `"assistant"` role → `"model"` role (Gemini convention)
-3. `"content": str` → `"parts": [{"text": str}]`
-4. Array content blocks → `InvalidInputError` (text-only in MVP, per PRD SKP-003)
-5. Empty content → skip (don't send empty parts)
-
-#### 4.1.3 `_build_thinking_config()` — Model-Aware Thinking
+### Configuration Models
 
 ```python
-def _build_thinking_config(self, model_id: str, model_config: ModelConfig) -> Optional[Dict]:
-    """Build thinkingConfig based on model family."""
-    extra = getattr(model_config, 'extra', {})
+class IngestionConfig(BaseModel):
+    """GitHub ingestion configuration."""
+    repo_url: str                        # https://github.com/owner/repo
+    github_token: str | None = None      # For private repos / higher rate limits
+    limit: int = 100                     # Max PRs to fetch
+    since: datetime | None = None        # Only PRs after this date
+    labels: list[str] = []               # Filter by labels
+    merged_only: bool = True
 
-    if model_id.startswith('gemini-3'):
-        # Gemini 3: thinkingLevel (low/medium/high)
-        level = extra.get('thinking_level', 'high')
-        return {"thinkingConfig": {"thinkingLevel": level}}
+class OracleConfig(BaseModel):
+    """Oracle adapter configuration."""
+    type: Literal["http", "python"]
+    # HTTP mode
+    url: str | None = None
+    headers: dict[str, str] = {}
+    timeout_seconds: int = 30
+    # Python mode
+    module: str | None = None
+    callable: str | None = None
 
-    if model_id.startswith('gemini-2.5'):
-        # Gemini 2.5: thinkingBudget (128-32768 tokens, -1 for dynamic)
-        budget = extra.get('thinking_budget', -1)
-        if budget == 0:
-            return None  # Disable thinking
-        return {"thinkingConfig": {"thinkingBudget": budget}}
+class ScoringConfig(BaseModel):
+    """Scoring engine configuration."""
+    provider: str = "anthropic"          # Scoring LLM provider
+    model: str = "claude-sonnet-4-6"    # Scoring model
+    api_key: str | None = None           # Falls back to env var
+    temperature: float = 0.0             # Deterministic scoring
+    prompt_version: str = "v1"           # Which prompt templates to use
 
-    return None  # No thinking for older models
-```
-
-#### 4.1.4 `_complete_standard()` — generateContent
-
-```python
-def _complete_standard(self, request: CompletionRequest) -> CompletionResult:
-    system_instruction, contents = self._translate_messages(request.messages)
-
-    body = {
-        "contents": contents,
-        "generationConfig": self._build_generation_config(request, model_config),
+class PipelineConfig(BaseModel):
+    """Top-level pipeline configuration."""
+    ingestion: IngestionConfig
+    oracle: OracleConfig
+    scoring: ScoringConfig = ScoringConfig()
+    min_replays: int = 50
+    composite_weights: dict[str, float] = {
+        "precision": 1.0,
+        "recall": 1.0,
+        "reply_accuracy": 1.0,
     }
-
-    if system_instruction:
-        body["systemInstruction"] = {"parts": [{"text": system_instruction}]}
-
-    thinking_config = self._build_thinking_config(request.model, model_config)
-    if thinking_config:
-        body.update(thinking_config)
-
-    auth = self._get_auth_header()
-    url = f"{self.config.endpoint}/models/{request.model}:generateContent"
-    headers = {"Content-Type": "application/json"}
-
-    # Auth strategy (Flatline SKP-001/IMP-003): prefer header over query param
-    auth_mode = self.config.extra.get("auth_mode", "header")  # "header" | "query"
-    if auth_mode == "header":
-        headers["x-goog-api-key"] = auth  # Google's recommended header auth
-    else:
-        url += f"?key={auth}"  # Legacy query param (leak-prone, not recommended)
-
-    start = time.monotonic()
-    status, resp = http_post(url, headers, body, ...)
-    latency_ms = int((time.monotonic() - start) * 1000)
-
-    # Error handling (same pattern as OpenAI/Anthropic)
-    ...
-
-    return self._parse_response(resp, latency_ms)
+    output_dir: str = "data"
+    construct_id: str = "unnamed-oracle"
 ```
 
-#### 4.1.5 `_parse_response()` — Standard Model Response
-
-**Note**: `model_id` is passed explicitly to avoid scope error (Flatline SKP-003).
+### API Models
 
 ```python
-def _parse_response(self, resp: Dict, latency_ms: int, model_id: str) -> CompletionResult:
-    candidates = resp.get("candidates", [])
-    if not candidates:
-        raise InvalidInputError("Gemini response contains no candidates")
+class VerificationRunRequest(BaseModel):
+    """Request to start a verification run via API."""
+    repo_url: str
+    construct: OracleConfig
+    scoring: ScoringConfig = ScoringConfig()
+    min_replays: int = 50
+    construct_id: str = "unnamed-oracle"
+    github_token: str | None = None
+    limit: int = 100
 
-    # Check finishReason (Flatline IMP-002)
-    finish_reason = candidates[0].get("finishReason", "STOP")
-    if finish_reason == "SAFETY":
-        raise InvalidInputError(
-            f"Gemini safety filter blocked response. "
-            f"Safety ratings: {candidates[0].get('safetyRatings', [])}"
-        )
-    if finish_reason == "RECITATION":
-        raise InvalidInputError("Gemini blocked response due to recitation/copyright concern")
-    # MAX_TOKENS: response is truncated but usable — log warning, don't fail
-    if finish_reason == "MAX_TOKENS":
-        logger.warning("Gemini response truncated (MAX_TOKENS)")
+class VerificationRunStatus(BaseModel):
+    """Status of an in-progress verification run."""
+    job_id: str
+    status: Literal["pending", "ingesting", "invoking", "scoring", "certifying", "completed", "failed"]
+    progress: int = 0                    # Replays completed
+    total: int = 0                       # Total replays
+    started_at: datetime
+    error: str | None = None
 
-    parts = candidates[0].get("content", {}).get("parts", [])
-
-    # Separate text parts from thinking parts
-    content_parts = []
-    thinking_parts = []
-    for part in parts:
-        if part.get("thought", False):
-            thinking_parts.append(part.get("text", ""))
-        else:
-            content_parts.append(part.get("text", ""))
-
-    content = "\n".join(content_parts)
-    thinking = "\n".join(thinking_parts) if thinking_parts else None
-
-    # Usage metadata
-    usage_data = resp.get("usageMetadata", {})
-    usage = Usage(
-        input_tokens=usage_data.get("promptTokenCount", 0),
-        output_tokens=usage_data.get("candidatesTokenCount", 0),
-        reasoning_tokens=usage_data.get("thoughtsTokenCount", 0),
-        source="actual" if usage_data else "estimated",
-    )
-
-    return CompletionResult(
-        content=content,
-        tool_calls=None,  # Not supported in MVP
-        thinking=thinking,
-        usage=usage,
-        model=resp.get("modelVersion", model_id),  # Explicit param, not closure
-        latency_ms=latency_ms,
-        provider=self.provider,
-    )
+class VerificationRunResult(BaseModel):
+    """Result of a completed verification run."""
+    job_id: str
+    certificate: CalibrationCertificate
+    completed_at: datetime
 ```
 
-#### 4.1.6 Error Mapping Table (Flatline IMP-001)
+## 6. Component Design
 
-| Google HTTP Status | google.rpc.Status | Gemini-Specific | Hounfour Error Type |
-|-------------------|-------------------|-----------------|---------------------|
-| 400 | INVALID_ARGUMENT | Invalid model, bad content | `InvalidInputError` |
-| 400 | FAILED_PRECONDITION | Model not available in region | `InvalidInputError` |
-| 401 | UNAUTHENTICATED | Invalid API key | `ConfigError` (exit 4) |
-| 403 | PERMISSION_DENIED | Quota/billing issue | `ProviderUnavailableError` |
-| 404 | NOT_FOUND | Model not found | `InvalidInputError` |
-| 429 | RESOURCE_EXHAUSTED | Rate limit | `RateLimitError` |
-| 500 | INTERNAL | Server error | `ProviderUnavailableError` |
-| 503 | UNAVAILABLE | Service overloaded | `ProviderUnavailableError` |
-| 200 + SAFETY finishReason | — | Safety filter | `InvalidInputError` |
-| 200 + RECITATION finishReason | — | Copyright block | `InvalidInputError` |
-| 200 + no candidates | — | Empty response | `InvalidInputError` |
+### 6.1 Ground Truth Ingestion (`ingestion/github.py`)
 
-### 4.2 Deep Research Integration
+Async GitHub REST API v3 client using `httpx.AsyncClient`.
 
-**File**: Same `google_adapter.py`, method `_complete_deep_research()`
-
-#### 4.2.1 Blocking-Poll Mode (default)
+**Key Class**: `GitHubIngester`
 
 ```python
-def _complete_deep_research(self, request: CompletionRequest) -> CompletionResult:
-    model_config = self._get_model_config(request.model)
-    extra = getattr(model_config, 'extra', {})
-    polling = extra.get('polling', {})
+class GitHubIngester:
+    def __init__(self, config: IngestionConfig):
+        self._client: httpx.AsyncClient  # configured with auth, base_url
+        self._rate_limit_remaining: int
+        self._rate_limit_reset: datetime
 
-    timeout_s = polling.get('timeout_seconds', 600)
-    initial_delay = polling.get('initial_delay_seconds', 2)
-    max_delay = polling.get('max_delay_seconds', 30)
+    async def ingest(self) -> list[GroundTruthRecord]:
+        """Fetch merged PRs, extract diffs, return structured records."""
 
-    # Step 1: Create interaction
-    auth = self._get_auth_header()
-    create_url = f"{self.config.endpoint}/models/{request.model}:createInteraction"
-    headers = {"Content-Type": "application/json", "x-goog-api-key": auth}
+    async def _fetch_prs(self) -> list[dict]:
+        """Paginated PR listing with rate limit handling."""
 
-    # store defaults to false for privacy (Flatline SKP-002)
-    store_enabled = extra.get("store", False)
-    body = {
-        "userInput": {"parts": [{"text": request.messages[-1]["content"]}]},
-        "background": True,
-        "store": store_enabled,
-    }
+    async def _fetch_diff(self, pr_number: int) -> str:
+        """Fetch unified diff for a single PR."""
 
-    start = time.monotonic()
-    status, resp = http_post(create_url, headers, body, ...)
-    interaction_id = resp.get("name", "").split("/")[-1]
-
-    # Validate interaction_id (Flatline SKP-004: schema-tolerant parsing)
-    interaction_name = resp.get("name", "")
-    if not interaction_name:
-        raise InvalidInputError("Deep Research createInteraction returned no 'name' field")
-    interaction_id = interaction_name.split("/")[-1] if "/" in interaction_name else interaction_name
-
-    # Step 2: Poll with exponential backoff (Flatline IMP-005: pinned API version)
-    # Pin to v1beta — document exact endpoint for contract tests
-    delay = initial_delay
-    poll_url = f"{self.config.endpoint}/models/{request.model}/interactions/{interaction_id}"
-
-    while (time.monotonic() - start) < timeout_s:
-        time.sleep(delay)
-        poll_status, poll_resp = http_get(poll_url, headers)
-
-        # Schema-tolerant status check (Flatline SKP-004)
-        state = poll_resp.get("status") or poll_resp.get("state") or ""
-        state = state.lower()
-
-        if state in ("completed", "done", "succeeded"):
-            return self._parse_deep_research_response(poll_resp, ...)
-        if state in ("failed", "error", "cancelled"):
-            error_msg = poll_resp.get("error", {}).get("message", "unknown")
-            raise ProviderUnavailableError(self.provider, f"Deep Research failed: {error_msg}")
-
-        # Progress log to stderr
-        elapsed = int(time.monotonic() - start)
-        if elapsed % 30 == 0:
-            logger.warning("Deep Research polling... %ds elapsed, status=%s", elapsed, state)
-
-        delay = min(delay * 2, max_delay)
-
-    raise TimeoutError(f"Deep Research timed out after {timeout_s}s")
+    async def _handle_rate_limit(self, response: httpx.Response) -> None:
+        """Exponential backoff when rate limited."""
 ```
 
-#### 4.2.2 Non-Blocking Mode (`--async`)
+**Rate Limit Strategy**:
+- Read `X-RateLimit-Remaining` and `X-RateLimit-Reset` headers
+- When remaining < 10: proactive backoff (sleep until reset)
+- On 403 rate limit: exponential backoff with jitter (1s, 2s, 4s, max 60s)
+- Conditional requests (`If-None-Match` / ETags) for cache validation
 
-When `cheval.py --async` is passed:
+**Caching**:
+- Ground truth records written to `data/{owner}_{repo}/ground_truth.jsonl`
+- Each record is one JSON line (append-only)
+- Re-ingestion checks cache first; only fetches new PRs since last timestamp
+- Cache key: `{owner}/{repo}:{pr_number}`
+
+**Diff Handling**:
+- Request diff via `Accept: application/vnd.github.v3.diff`
+- Large diffs (>100KB): truncate to changed hunks only, strip unchanged context
+- Binary files: skip (note in `files_changed` but omit from `diff_content`)
+
+### 6.2 Oracle Adapters (`oracle/`)
+
+ABC-based adapter pattern, consistent with `backend/agents/brain.py:BaseBrainProvider`.
+
+**Base Interface** (`oracle/base.py`):
 
 ```python
-# In cheval.py cmd_invoke():
-if args.async_mode:
-    # Only create the interaction, return metadata
-    interaction = adapter.create_interaction(request)
-    print(json.dumps({
-        "interaction_id": interaction["id"],
-        "status": "pending",
-        "poll_command": f"python cheval.py --poll {interaction['id']} --agent {agent_name}",
-        "cancel_command": f"python cheval.py --cancel {interaction['id']} --agent {agent_name}",
-    }))
-    return EXIT_CODES["INTERACTION_PENDING"]  # exit code 8
+class OracleAdapter(ABC):
+    """Interface for oracle construct invocation."""
+
+    @abstractmethod
+    async def invoke(
+        self, ground_truth: GroundTruthRecord, follow_up_question: str
+    ) -> OracleOutput:
+        """Invoke the oracle with a ground truth record and capture output."""
+
+    @classmethod
+    def from_config(cls, config: OracleConfig) -> "OracleAdapter":
+        """Factory method to create adapter from config."""
+        if config.type == "http":
+            return HttpOracleAdapter(config)
+        elif config.type == "python":
+            return PythonOracleAdapter(config)
+        raise ValueError(f"Unknown oracle type: {config.type}")
 ```
 
-New `GoogleAdapter` methods for non-blocking:
-- `create_interaction(request) -> Dict` — POST createInteraction, return metadata
-- `poll_interaction(interaction_id) -> CompletionResult | None` — GET status, return result if completed
-- `cancel_interaction(interaction_id) -> bool` — Best-effort cancellation
-
-#### 4.2.3 Deep Research Output Normalization
+**HTTP Adapter** (`oracle/http_adapter.py`):
 
 ```python
-def _normalize_citations(self, raw_output: str) -> Dict:
-    """Post-process Deep Research output into structured format (PRD SKP-001)."""
-    # Attempt to extract structured data from raw research output
-    result = {
-        "summary": "",
-        "claims": [],
-        "citations": [],
-        "raw_output": raw_output,
-    }
+class HttpOracleAdapter(OracleAdapter):
+    """Invokes oracle via HTTP POST endpoint."""
 
-    # Extract markdown citations [N] patterns
-    # Extract DOI patterns (10.XXXX/...)
-    # Extract URLs
-    # If extraction yields results, populate structured fields
-    # If not, return raw_output only with empty structured fields + warning
-
-    return result
+    async def invoke(self, ground_truth, follow_up_question) -> OracleOutput:
+        # POST to config.url with JSON body:
+        # { "pr": { title, description, diff_content, files_changed },
+        #   "follow_up_question": "..." }
+        # Parse JSON response into OracleOutput
+        # Handle: timeout, HTTP errors, invalid response format
 ```
 
-#### 4.2.4 Concurrency Control
-
-**File**: `.claude/adapters/loa_cheval/providers/concurrency.py` (new)
+**Python Adapter** (`oracle/python_adapter.py`):
 
 ```python
-class FLockSemaphore:
-    """File-lock-based semaphore for limiting concurrent API calls (Flatline SKP-005).
+class PythonOracleAdapter(OracleAdapter):
+    """Invokes oracle as a local Python callable."""
 
-    Implements context-manager protocol for safe acquire/release.
-    Stores file descriptors to prevent GC-induced lock release.
-    Writes PID to lock file for stale-lock detection.
-    """
-
-    def __init__(self, name: str, max_concurrent: int, lock_dir: str = ".run"):
-        self._name = name
-        self._max = max_concurrent
-        self._lock_dir = lock_dir
-        self._held_fd: Optional[IO] = None
-        self._held_slot: Optional[int] = None
-        os.makedirs(lock_dir, exist_ok=True)
-
-    def __enter__(self) -> "FLockSemaphore":
-        self.acquire()
-        return self
-
-    def __exit__(self, *exc) -> None:
-        self.release()
-
-    def acquire(self, timeout: float = 30.0) -> int:
-        """Acquire a slot. Returns slot index. Raises TimeoutError if full."""
-        deadline = time.monotonic() + timeout
-
-        while time.monotonic() < deadline:
-            for slot in range(self._max):
-                lock_path = f"{self._lock_dir}/.semaphore-{self._name}-{slot}.lock"
-                try:
-                    fd = open(lock_path, "w")
-                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    fd.write(str(os.getpid()))
-                    fd.flush()
-                    self._held_fd = fd  # Prevent GC
-                    self._held_slot = slot
-                    return slot
-                except (BlockingIOError, OSError):
-                    fd.close()
-                    # Check for stale lock (process no longer exists)
-                    self._check_stale_lock(lock_path)
-                    continue
-            time.sleep(1)
-
-        raise TimeoutError(f"All {self._max} slots occupied for {self._name}")
-
-    def release(self) -> None:
-        """Release held slot."""
-        if self._held_fd is not None:
-            try:
-                fcntl.flock(self._held_fd, fcntl.LOCK_UN)
-                self._held_fd.close()
-            except OSError:
-                pass
-            self._held_fd = None
-            self._held_slot = None
-
-    def _check_stale_lock(self, lock_path: str) -> None:
-        """Remove lock file if owning PID no longer exists."""
-        try:
-            with open(lock_path, "r") as f:
-                pid = int(f.read().strip())
-            os.kill(pid, 0)  # Check if process exists
-        except (ValueError, ProcessLookupError, PermissionError, FileNotFoundError):
-            try:
-                os.unlink(lock_path)
-            except FileNotFoundError:
-                pass
+    async def invoke(self, ground_truth, follow_up_question) -> OracleOutput:
+        # Import config.module, get config.callable
+        # Call with GroundTruthRecord data
+        # Wrap sync callables in asyncio.to_thread()
+        # Handle: ImportError, AttributeError, runtime exceptions
 ```
 
-**Usage in GoogleAdapter**:
-```python
-# Standard models: max 5 concurrent
-# Deep Research: max 3 concurrent (configurable)
-semaphore = FLockSemaphore("google-standard", max_concurrent=5)
-dr_semaphore = FLockSemaphore("google-deep-research", max_concurrent=3)
-```
+**Error Handling**: Both adapters catch exceptions and return `OracleOutput` with `metadata.error` set. The pipeline marks the replay as failed but continues to the next PR.
 
-### 4.3 Metering Activation
+### 6.3 Scoring Engine (`scoring/`)
 
-#### 4.3.1 Wire BudgetEnforcer in cheval.py
+LLM-based factual alignment scoring with configurable provider.
 
-**File**: `.claude/adapters/cheval.py` — modify `cmd_invoke()`
+**Base Interface** (`scoring/base.py`):
 
 ```python
-# Current (line 266-272):
-try:
-    from loa_cheval.providers.retry import invoke_with_retry
-    result = invoke_with_retry(adapter, request, hounfour)
-except ImportError:
-    result = adapter.complete(request)
+class ScoringProvider(ABC):
+    """Interface for LLM-based verification scoring."""
 
-# New:
-from loa_cheval.metering.budget import BudgetEnforcer
-metering = hounfour.get("metering", {})
-ledger_path = metering.get("ledger_path", "grimoires/loa/a2a/cost-ledger.jsonl")
-budget_hook = BudgetEnforcer(hounfour, ledger_path, trace_id=os.environ.get("LOA_TRACE_ID"))
+    @abstractmethod
+    async def score_precision(
+        self, ground_truth: GroundTruthRecord, oracle_output: OracleOutput
+    ) -> tuple[float, int, int, dict]:
+        """Score precision. Returns (score, claims_total, claims_supported, raw)."""
 
-try:
-    from loa_cheval.providers.retry import invoke_with_retry
-    result = invoke_with_retry(adapter, request, hounfour, budget_hook=budget_hook)
-except ImportError:
-    budget_status = budget_hook.pre_call(request)
-    if budget_status == "BLOCK":
-        raise BudgetExceededError(...)
-    result = adapter.complete(request)
-    budget_hook.post_call(result)
+    @abstractmethod
+    async def score_recall(
+        self, ground_truth: GroundTruthRecord, oracle_output: OracleOutput
+    ) -> tuple[float, int, int, dict]:
+        """Score recall. Returns (score, changes_total, changes_surfaced, raw)."""
+
+    @abstractmethod
+    async def score_reply_accuracy(
+        self, ground_truth: GroundTruthRecord, oracle_output: OracleOutput
+    ) -> tuple[float, dict]:
+        """Score reply accuracy. Returns (score, raw)."""
+
+    @abstractmethod
+    async def generate_follow_up_question(
+        self, ground_truth: GroundTruthRecord
+    ) -> str:
+        """Generate a factual follow-up question about the PR."""
 ```
 
-#### 4.3.2 Extend PricingEntry for Per-Task Pricing
-
-**File**: `.claude/adapters/loa_cheval/metering/pricing.py`
+**Anthropic Implementation** (`scoring/anthropic_scorer.py`):
 
 ```python
-@dataclass
-class PricingEntry:
-    """Per-model pricing — supports token-based and per-task models."""
-    provider: str
-    model: str
-    input_per_mtok: int = 0       # micro-USD per 1M input tokens
-    output_per_mtok: int = 0      # micro-USD per 1M output tokens
-    reasoning_per_mtok: int = 0   # micro-USD per 1M reasoning tokens
-    per_task_micro_usd: int = 0   # micro-USD per task (Deep Research)
-    pricing_mode: str = "token"   # "token" | "task" | "hybrid"
+class AnthropicScorer(ScoringProvider):
+    def __init__(self, config: ScoringConfig):
+        self._client = anthropic.AsyncAnthropic(api_key=config.api_key or os.getenv("ANTHROPIC_API_KEY"))
+        self._model = config.model
+        self._temperature = config.temperature
+        self._prompts = PromptLoader(config.prompt_version)
 ```
 
-**Extend `find_pricing()`** to read `per_task_micro_usd` from config.
+**Scoring Flow per Replay**:
 
-**Extend `calculate_total_cost()`**:
-```python
-if pricing.pricing_mode == "task":
-    return CostBreakdown(
-        input_cost_micro=0,
-        output_cost_micro=0,
-        reasoning_cost_micro=0,
-        total_cost_micro=pricing.per_task_micro_usd,
-        ...
-    )
-elif pricing.pricing_mode == "hybrid":
-    # Token cost + per-task cost
-    token_cost = calculate_token_cost(...)
-    return CostBreakdown(total_cost_micro=token_cost.total + pricing.per_task_micro_usd, ...)
-```
+1. **Generate follow-up question**: LLM reads the PR diff and generates a factual question that can only be answered correctly by reading the actual source material.
+2. **Score precision**: LLM receives oracle's `key_claims` and the PR diff. For each claim, determines if it's supported by the diff. Returns `supported_count / total_claims`.
+3. **Score recall**: LLM identifies the N most important changes in the diff. Then checks which appear in the oracle's summary. Returns `surfaced_count / changes_total`.
+4. **Score reply accuracy**: LLM compares the oracle's follow-up response against the PR diff. Scores how grounded the answer is (0.0 = fabricated, 1.0 = fully grounded).
 
-#### 4.3.3 Ledger Entry Extension
+**Prompt Templates** (`scoring/prompts/v1/`):
 
-Add `pricing_mode` field to ledger entries for Deep Research:
+Each template is a text file with `{placeholders}` for ground truth and oracle output. Templates are versioned so that scoring methodology changes are traceable. The `manifest.json` tracks:
 
 ```json
 {
-  "ts": "...",
-  "provider": "google",
-  "model": "deep-research-pro",
-  "tokens_in": 0,
-  "tokens_out": 4500,
-  "cost_micro_usd": 3000000,
-  "pricing_mode": "task",
-  "interaction_id": "abc123"
+  "version": "v1",
+  "created": "2026-02-19",
+  "prompts": {
+    "precision": "precision.txt",
+    "recall": "recall.txt",
+    "reply_accuracy": "reply_accuracy.txt",
+    "follow_up_question": "follow_up_question.txt"
+  }
 }
 ```
 
-### 4.3.4 Atomic Budget Check (Flatline SKP-006)
+**Structured Output**: Scoring prompts request JSON output from the LLM for reliable parsing:
 
-Replace check-then-act with atomic check+reserve:
-
-```python
-def pre_call_atomic(self, request: CompletionRequest, estimated_cost: int) -> str:
-    """Atomic budget check with reservation."""
-    if not self._enabled:
-        return ALLOW
-
-    # Lock daily-spend file for atomic read-check-reserve
-    spend_path = _daily_spend_path(self._ledger_path)
-    with open(spend_path, "r+") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        try:
-            data = json.load(f)
-            current_spend = data.get("total_micro_usd", 0)
-
-            if current_spend + estimated_cost >= self._daily_limit:
-                return BLOCK if self._on_exceeded == "block" else DOWNGRADE
-
-            # Write reservation
-            data["total_micro_usd"] = current_spend + estimated_cost
-            data["reservations"] = data.get("reservations", 0) + 1
-            f.seek(0)
-            json.dump(data, f)
-            f.truncate()
-        finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
-
-    return ALLOW
-```
-
-Post-call reconciles reservation with actual cost (adjusts if over/under-estimated).
-
-### 4.3.5 Rate Limiting (Flatline IMP-006)
-
-Token-bucket rate limiter per provider, in addition to circuit breaker:
-
-```python
-class TokenBucketLimiter:
-    """Per-provider RPM/TPM rate limiting."""
-
-    def __init__(self, rpm: int = 60, tpm: int = 1_000_000):
-        self._rpm = rpm
-        self._tpm = tpm
-        # State stored in .run/.ratelimit-{provider}.json (flock-protected)
-
-    def check(self, provider: str, estimated_tokens: int) -> bool:
-        """Returns True if request is within limits."""
-        ...
-
-    def record(self, provider: str, tokens_used: int) -> None:
-        """Record token usage after completion."""
-        ...
-```
-
-Default limits (configurable in model-config.yaml):
-```yaml
-routing:
-  rate_limits:
-    google:
-      rpm: 60           # Requests per minute
-      tpm: 1000000      # Tokens per minute
-    openai:
-      rpm: 500
-      tpm: 2000000
-```
-
-### 4.4 Feature Flags
-
-**File**: `.loa.config.yaml` — new granular flags replace single `flatline_routing`
-
-```yaml
-hounfour:
-  google_adapter: true        # Enable Google provider adapter
-  deep_research: true         # Enable Deep Research (Interactions API)
-  flatline_routing: true      # Route Flatline through cheval.py
-  metering: true              # Activate cost recording + budget enforcement
-  thinking_traces: true       # Request thinking traces from supported models
-```
-
-**Implementation**: `cheval.py` checks flags before proceeding:
-
-```python
-flags = hounfour.get("hounfour", {})
-
-# Block Google adapter if disabled
-if resolved.provider == "google" and not flags.get("google_adapter", True):
-    raise ConfigError("Google adapter disabled (hounfour.google_adapter: false)")
-
-# Block Deep Research if disabled
-if request.model.startswith("deep-research") and not flags.get("deep_research", True):
-    raise ConfigError("Deep Research disabled (hounfour.deep_research: false)")
-```
-
-### 4.5 cheval.py CLI Extensions
-
-New arguments:
-
-| Argument | Description | Used By |
-|----------|-------------|---------|
-| `--prompt TEXT` | Inline prompt (alternative to --input/stdin) | TeamCreate teammates |
-| `--async` | Non-blocking mode for Deep Research | Long-running research |
-| `--poll ID` | Poll existing interaction status | Follow-up to --async |
-| `--cancel ID` | Cancel running interaction | Cleanup |
-| `--include-thinking` | Include thinking traces in output | Research agents |
-
-**`--prompt` implementation**:
-```python
-# In cmd_invoke(), after existing input loading:
-if args.prompt:
-    input_text = args.prompt
-```
-
-### 4.6 Thinking Trace Policy
-
-Per PRD SKP-004:
-
-1. GoogleAdapter always requests thinking traces from supported models (needed for `tokens_reasoning` count)
-2. `CompletionResult.thinking` is always populated internally
-3. In `cheval.py` output:
-   - `--output-format text`: thinking is NEVER printed
-   - `--output-format json` without `--include-thinking`: `result.thinking` set to `null`
-   - `--output-format json` with `--include-thinking`: `result.thinking` included
-4. Cost ledger: only `tokens_reasoning` count, never trace content
-5. `.run/audit.jsonl`: no trace content
-
-### 4.7 ModelConfig Extension
-
-**File**: `.claude/adapters/loa_cheval/types.py`
-
-```python
-@dataclass
-class ModelConfig:
-    """Per-model configuration within a provider."""
-    capabilities: List[str] = field(default_factory=list)
-    context_window: int = 128000
-    pricing: Optional[Dict[str, int]] = None
-    api_mode: Optional[str] = None          # "interactions" for Deep Research
-    extra: Optional[Dict[str, Any]] = None  # thinking_level, thinking_budget, polling
-```
-
-The `extra` dict carries model-specific configuration:
-- `thinking_level`: "low" | "medium" | "high" (Gemini 3)
-- `thinking_budget`: int (Gemini 2.5, 128-32768 or -1 for dynamic)
-- `polling.initial_delay_seconds`, `polling.max_delay_seconds`, `polling.timeout_seconds`
-
-### 4.8 Provider Registry Update
-
-**File**: `.claude/adapters/loa_cheval/providers/__init__.py`
-
-```python
-from loa_cheval.providers.google_adapter import GoogleAdapter
-
-_ADAPTER_REGISTRY: Dict[str, Type[ProviderAdapter]] = {
-    "openai": OpenAIAdapter,
-    "anthropic": AnthropicAdapter,
-    "openai_compat": OpenAIAdapter,
-    "google": GoogleAdapter,    # NEW
-}
-```
-
-## 5. Configuration Changes
-
-### 5.1 model-config.yaml — New Models and Aliases
-
-```yaml
-# Under providers.google.models:
-gemini-3-flash:
-  capabilities: [chat, thinking_traces]
-  context_window: 1048576
-  extra:
-    thinking_level: high      # default for Gemini 3 Flash
-  pricing:
-    input_per_mtok: 150000    # Placeholder — update when published
-    output_per_mtok: 600000
-
-gemini-3-pro:
-  capabilities: [chat, thinking_traces, deep_reasoning]
-  context_window: 1048576
-  extra:
-    thinking_level: high      # default for Gemini 3 Pro
-  pricing:
-    input_per_mtok: 1250000   # Placeholder — update when published
-    output_per_mtok: 10000000
-
-deep-research-pro:
-  capabilities: [deep_research, web_search, file_search]
-  context_window: 1048576
-  api_mode: interactions
-  extra:
-    polling:
-      initial_delay_seconds: 2
-      max_delay_seconds: 30
-      timeout_seconds: 600
-  pricing:
-    per_task_micro_usd: 3000000
-    pricing_mode: task
-
-# Under aliases:
-deep-thinker: "google:gemini-3-pro"
-fast-thinker: "google:gemini-3-flash"
-researcher: "google:gemini-2.5-pro"
-
-# Under agents:
-deep-researcher:
-  model: "google:deep-research-pro"
-  temperature: 0.3
-  requires:
-    deep_research: true
-
-deep-thinker:
-  model: deep-thinker
-  temperature: 0.5
-  requires:
-    thinking_traces: true
-    deep_reasoning: preferred
-
-fast-thinker:
-  model: fast-thinker
-  temperature: 0.5
-  requires:
-    thinking_traces: true
-
-literature-reviewer:
-  model: researcher
-  temperature: 0.3
-  requires:
-    thinking_traces: preferred
-```
-
-### 5.2 .loa.config.yaml — Feature Flags
-
-```yaml
-hounfour:
-  google_adapter: true
-  deep_research: true
-  flatline_routing: true
-  metering: true
-  thinking_traces: true
-```
-
-## 6. Flatline Integration
-
-### 6.1 Routing Flatline Through Hounfour
-
-When `hounfour.flatline_routing: true`, Flatline scripts invoke `cheval.py` instead of direct API calls.
-
-**File**: `.claude/scripts/flatline-orchestrator.sh` — modify `call_model()` function:
-
-```bash
-call_model_via_hounfour() {
-    local agent="$1"   # e.g., "flatline-reviewer", "flatline-skeptic"
-    local input_file="$2"
-    local output_file="$3"
-
-    python .claude/adapters/cheval.py \
-        --agent "$agent" \
-        --input "$input_file" \
-        --output-format json \
-        --max-tokens 8192 \
-        > "$output_file" 2>"${output_file}.err"
-
-    return $?
-}
-```
-
-**Backward compatibility**: Check flag before routing:
-
-```bash
-if [[ "$(yq '.hounfour.flatline_routing // false' .loa.config.yaml)" == "true" ]]; then
-    call_model_via_hounfour "$agent" "$input" "$output"
-else
-    call_model_legacy "$agent" "$input" "$output"  # existing behavior
-fi
-```
-
-### 6.2 Agent Bindings for Flatline
-
-Existing Flatline agent bindings already route correctly:
-
-```yaml
-flatline-reviewer:
-  model: reviewer        # → openai:gpt-5.2
-flatline-skeptic:
-  model: reasoning       # → openai:gpt-5.2
-flatline-scorer:
-  model: reviewer
-flatline-dissenter:
-  model: reasoning
-```
-
-No changes needed — these resolve through the existing alias chain.
-
-## 7. Security Design
-
-### 7.1 API Key Handling
-
-- Google API key: `{env:GOOGLE_API_KEY}` — resolved at call time by `_get_auth_header()`
-- Key passed as URL query parameter (`?key=...`) per Google API convention
-- URL with key NEVER logged — `http_post()` uses separate URL and headers
-- Add `GOOGLE_API_KEY` to error message redaction in `cheval.py` (line 318)
-
-### 7.2 Secret Scanning
-
-Add Google API key pattern to `.loa.config.yaml` secret scanning:
-
-```yaml
-flatline_protocol:
-  secret_scanning:
-    patterns:
-      - "AIzaSy[A-Za-z0-9_-]{33}"
-      - "GOOG[A-Za-z0-9_-]{16,}"
-```
-
-### 7.3 Deep Research Data Retention
-
-Deep Research uses `store: true` which persists interaction data on Google's servers. Document in config:
-
-```yaml
-# deep-research-pro config comment:
-# NOTE: store: true creates server-side interaction state.
-# Interaction data is subject to Google's data retention policies.
-# Do not send sensitive/proprietary content through Deep Research.
-```
-
-## 8. Test Strategy
-
-### 8.1 Unit Tests
-
-**File**: `.claude/adapters/tests/test_google_adapter.py`
-
-| Test | What It Validates |
-|------|------------------|
-| `test_translate_messages_basic` | User/assistant → Gemini format |
-| `test_translate_messages_system` | System message → systemInstruction |
-| `test_translate_messages_multiple_system` | Multiple system → concatenated |
-| `test_translate_messages_unsupported` | Array content → InvalidInputError |
-| `test_build_thinking_gemini3` | thinkingLevel: high for gemini-3-pro |
-| `test_build_thinking_gemini25` | thinkingBudget for gemini-2.5-pro |
-| `test_parse_response_with_thinking` | Thought parts separated from content |
-| `test_parse_response_no_thinking` | No thought parts → thinking=None |
-| `test_parse_usage_metadata` | promptTokenCount, candidatesTokenCount, thoughtsTokenCount |
-| `test_error_400` | 400 → InvalidInputError |
-| `test_error_429` | 429 → RateLimitError |
-| `test_error_500` | 500 → ProviderUnavailableError |
-| `test_normalize_citations` | Extract DOIs and URLs from raw research output |
-| `test_validate_config` | Required fields check |
-| `test_health_check` | Models list endpoint probe |
-
-### 8.2 Unit Tests — Pricing Extension
-
-**File**: `.claude/adapters/tests/test_pricing_extended.py`
-
-| Test | What It Validates |
-|------|------------------|
-| `test_per_task_pricing` | Deep Research → per_task_micro_usd |
-| `test_hybrid_pricing` | Token + per-task cost sum |
-| `test_pricing_mode_detection` | Config pricing_mode field parsed correctly |
-
-### 8.3 Integration Tests
-
-**File**: `.claude/adapters/tests/test_cheval_google.sh`
-
-| Test | What It Validates |
-|------|------------------|
-| `test_dry_run_google` | `--dry-run` resolves google provider |
-| `test_invoke_standard_mock` | Mock generateContent → CompletionResult |
-| `test_invoke_deep_research_mock` | Mock Interactions API → poll → result |
-| `test_async_mode` | `--async` returns interaction metadata |
-| `test_budget_enforcement` | BudgetEnforcer blocks when over limit |
-| `test_feature_flag_disabled` | `google_adapter: false` → ConfigError |
-| `test_thinking_trace_redaction` | Without --include-thinking → null |
-
-### 8.4 Smoke Tests (Live API)
-
-**File**: `.claude/adapters/tests/test_google_smoke.sh`
-
-Requires `GOOGLE_API_KEY` env var. Skips gracefully if not set.
-
-| Test | Model |
-|------|-------|
-| Gemini 2.5 Flash completion | gemini-2.5-flash |
-| Gemini 2.5 Pro with thinking | gemini-2.5-pro |
-| Gemini 3 Flash with thinkingLevel | gemini-3-flash (if available) |
-| Gemini 3 Pro with thinkingLevel:high | gemini-3-pro (if available) |
-| Deep Research (short query, 60s timeout) | deep-research-pro (if available) |
-
-## 9. File Manifest
-
-### New Files
-
-| Path | Description |
-|------|-------------|
-| `.claude/adapters/loa_cheval/providers/google_adapter.py` | Google/Gemini provider adapter |
-| `.claude/adapters/loa_cheval/providers/concurrency.py` | FLockSemaphore for concurrent call limiting |
-| `.claude/adapters/tests/test_google_adapter.py` | Unit tests |
-| `.claude/adapters/tests/test_pricing_extended.py` | Pricing extension tests |
-| `.claude/adapters/tests/test_cheval_google.sh` | Integration tests |
-| `.claude/adapters/tests/test_google_smoke.sh` | Live API smoke tests |
-| `.claude/adapters/tests/fixtures/gemini-*.json` | Mock API response fixtures |
-
-### Modified Files
-
-| Path | Changes |
-|------|---------|
-| `.claude/adapters/loa_cheval/providers/__init__.py` | Add GoogleAdapter to registry |
-| `.claude/adapters/loa_cheval/types.py` | Extend ModelConfig with api_mode, extra |
-| `.claude/adapters/loa_cheval/metering/pricing.py` | Add per_task_micro_usd, pricing_mode |
-| `.claude/adapters/loa_cheval/config/loader.py` | Parse new ModelConfig fields from YAML |
-| `.claude/adapters/cheval.py` | --prompt, --async, --poll, --cancel, --include-thinking, BudgetEnforcer wiring |
-| `.claude/defaults/model-config.yaml` | Gemini 3 models, Deep Research, new aliases/agents |
-| `.loa.config.yaml` | Granular feature flags |
-| `.claude/scripts/flatline-orchestrator.sh` | Hounfour routing branch |
-| `.claude/loa/reference/agent-teams-reference.md` | Template 4: Expert Swarm |
-
-## 10. Risks & Mitigations
-
-| Risk | Mitigation |
-|------|------------|
-| Google API key in URL query param visible in logs | http_post() doesn't log URLs; add to redaction list |
-| Deep Research 60min max timeout exceeds typical CI limits | Default 10min, configurable. Non-blocking mode for long research. |
-| Gemini 3 preview API may change | Pin to v1beta, add version check in adapter |
-| Circuit breaker state per-process means no cross-process state sharing | Acceptable for MVP. flock-based shared state is Phase 2. |
-| Pricing TBD for Gemini 3 Pro | Use placeholder pricing, document as estimated. Update when published. |
-
-## 11. Development Order
-
-| Sprint | Scope | Dependencies |
-|--------|-------|-------------|
-| Sprint 1 | GoogleAdapter (standard models) + model config + provider registry + unit tests | None |
-| Sprint 2 | Deep Research adapter + non-blocking mode + concurrency + citation normalization | Sprint 1 |
-| Sprint 3 | Metering activation + pricing extension + Flatline routing + feature flags + integration tests | Sprint 1 |
-| Sprint 4 | Hounfour v7 Protocol Alignment (FR-7 through FR-11) | Sprints 1-3 (runtime bridge complete) |
-
-Sprints 2 and 3 are independent of each other and could run in parallel after Sprint 1 completes.
-Sprint 4 is a standalone alignment sprint that depends on the runtime bridge being operational.
-
-## 11.5 Phase 1.5 — Hounfour v7 Protocol Alignment Design
-
-### 11.5.1 Ecosystem Version Declarations (FR-7)
-
-**Files**: `.loa.config.yaml`, `BUTTERFREEZONE.md`
-
-The ecosystem version declarations use a `pkg@version` format consumed by
-`butterfreezone-validate.sh:validate_protocol_version()` (line 650). The function:
-1. Parses `pkg-name@declared_version` from config
-2. Checks `npm view @0xhoneyjar/${pkg_name} version` for live version
-3. Falls back to `gh api repos/0xHoneyJar/${pkg_name}/releases/latest`
-4. Emits WARN on mismatch (advisory only, never blocks)
-
-**Change**: Update 3 entries in `.loa.config.yaml` → `butterfreezone.ecosystem[].protocol`:
-
-```yaml
-# FROM:
-- repo: 0xHoneyJar/loa-finn
-  protocol: loa-hounfour@4.6.0      # stale — finn is pinned to e5b9f16 (v5.0.0)
-- repo: 0xHoneyJar/loa-hounfour
-  protocol: loa-hounfour@4.6.0      # stale — published v7.0.0
-- repo: 0xHoneyJar/arrakis
-  protocol: loa-hounfour@4.6.0      # stale — pinned to d091a3c (v7.0.0)
-
-# TO:
-- repo: 0xHoneyJar/loa-finn
-  protocol: loa-hounfour@5.0.0      # pinned to e5b9f16 (v5.0.0, Multi-Model Release)
-- repo: 0xHoneyJar/loa-hounfour
-  protocol: loa-hounfour@7.0.0      # current release (Composition-Aware Economic Protocol)
-- repo: 0xHoneyJar/arrakis
-  protocol: loa-hounfour@7.0.0      # pinned to d091a3c (v7.0.0 merge commit)
-```
-
-**Post-update**: Run `butterfreezone-gen.sh` to regenerate `BUTTERFREEZONE.md`.
-Run `butterfreezone-validate.sh` to verify zero `proto_version` warnings.
-
-### 11.5.2 Trust Scopes Migration (FR-8)
-
-**Files**: `.claude/data/model-permissions.yaml`, `docs/architecture/capability-schema.md`
-
-#### model-permissions.yaml
-
-The current file uses flat `trust_level: high|medium` for each model entry.
-Hounfour v6.0.0 replaced `AgentIdentity.trust_level` with `trust_scopes: CapabilityScopedTrust`.
-
-The 6 dimensions map to Loa's permission landscape as follows:
-
-| Dimension | Loa Meaning | claude-code:session | openai:gpt-5.2 | google:* (remote) |
-|-----------|-------------|--------------------|-----------------|--------------------|
-| `data_access` | Can read/write files | high | none | none |
-| `financial` | Can authorize spend | high (BudgetEnforcer) | none | none |
-| `delegation` | Can spawn agents | high (TeamCreate) | none | none |
-| `model_selection` | Can choose models | high (resolve_execution) | none | none |
-| `governance` | Can vote/decide | none (CLI, not governance) | none | none |
-| `external_communication` | Can call external APIs | high | none | none |
-
-For local models (like `qwen-local:qwen3-coder-next`) that have file access:
-
-| Dimension | Value | Reason |
-|-----------|-------|--------|
-| `data_access` | medium | Can read/write files but sandboxed |
-| `financial` | none | No budget authority |
-| `delegation` | none | Cannot spawn agents |
-| `model_selection` | none | Fixed model |
-| `governance` | none | No governance role |
-| `external_communication` | none | No network access |
-
-**Design decision**: Keep `trust_level` as a backward-compatible summary field alongside
-`trust_scopes`. Consumers that understand v6+ use `trust_scopes`; older consumers use
-`trust_level`. This matches hounfour's own migration pattern where additive fields coexist
-with deprecated ones until the next major version removes them.
-
-#### capability-schema.md
-
-The trust gradient (L1-L4) is Loa's abstraction — it maps to but is not identical to
-hounfour's `trust_scopes`. Update the gradient definition to show the scopes each level
-implies:
-
-```yaml
-trust_gradient:
-  L1:
-    name: "Tests Present"
-    trust_scopes:
-      data_access: read_only
-      financial: none
-      delegation: none
-      model_selection: basic    # cheap, fast_code pools only
-      governance: none
-      external_communication: none
-  L2:
-    name: "CI Verified"
-    trust_scopes:
-      data_access: read_only
-      financial: metered        # within budget limits
-      delegation: none
-      model_selection: standard # + reviewer pool
-      governance: none
-      external_communication: rate_limited
-  L3:
-    name: "Property-Based"
-    trust_scopes:
-      data_access: scoped       # within declared capability scopes
-      financial: metered
-      delegation: supervised    # can delegate but lead must approve
-      model_selection: full     # + reasoning pool
-      governance: observer      # can see but not vote
-      external_communication: rate_limited
-  L4:
-    name: "Formal"
-    trust_scopes:
-      data_access: full
-      financial: budgeted       # self-managed within allocation
-      delegation: autonomous    # can delegate freely
-      model_selection: full     # + architect pool
-      governance: voting        # can participate in decisions
-      external_communication: full
-```
-
-### 11.5.3 Provider Type Schema Fix (FR-9)
-
-**File**: `.claude/schemas/model-config.schema.json`
-
-The provider `type` enum is:
 ```json
-"type": { "enum": ["openai", "anthropic", "openai_compat"] }
+// Precision scoring output
+{
+  "claims": [
+    {"claim": "Added rate limiting to /api/users", "supported": true, "evidence": "diff line 42"},
+    {"claim": "Fixed XSS vulnerability", "supported": false, "evidence": null}
+  ],
+  "precision": 0.5,
+  "total": 2,
+  "supported": 1
+}
 ```
 
-Add `"google"`:
-```json
-"type": { "enum": ["openai", "anthropic", "openai_compat", "google"] }
+### 6.4 Pipeline Orchestrator (`pipeline.py`)
+
+Coordinates the four stages with progress tracking and partial result handling.
+
+```python
+class VerificationPipeline:
+    def __init__(self, config: PipelineConfig):
+        self._ingester = GitHubIngester(config.ingestion)
+        self._oracle = OracleAdapter.from_config(config.oracle)
+        self._scorer: ScoringProvider  # created from config.scoring
+        self._storage = Storage(config.output_dir)
+        self._progress_callback: Callable | None = None
+
+    async def run(self) -> CalibrationCertificate:
+        """Execute full pipeline: ingest → invoke → score → certify."""
+
+    async def ingest_only(self) -> list[GroundTruthRecord]:
+        """Stage 1 only: fetch and cache ground truth."""
+
+    async def score_only(self, data_dir: str) -> CalibrationCertificate:
+        """Stages 3-4: score cached data and generate certificate."""
 ```
 
-This is a schema-code alignment fix — the GoogleAdapter already handles `type: "google"`
-in the adapter registry, but the JSON Schema would reject it during validation.
+**Pipeline Execution Flow**:
 
-### 11.5.4 Hounfour v7 Type Mapping Documentation (FR-10)
+```
+1. Ingest: GitHubIngester.ingest() → GroundTruthRecord[]
+   └─ Write to data/{repo}/ground_truth.jsonl
 
-**File**: `docs/architecture/capability-schema.md` — new section
+2. For each GroundTruthRecord:
+   a. Generate follow-up question (ScoringProvider)
+   b. Invoke oracle (OracleAdapter) with PR data + follow-up question
+   c. Write OracleOutput to data/{repo}/oracle_outputs.jsonl
+   d. Score: precision, recall, reply_accuracy (ScoringProvider)
+   e. Write ReplayScore to data/{repo}/scores.jsonl
+   f. Report progress via callback
 
-This is documentation-only: no code changes. The mapping documents how Loa's internal
-patterns correspond to hounfour v7 protocol types, enabling cross-repo reviewers (including
-Bridgebuilder) to understand architectural parallels.
+3. Certify: Aggregate all ReplayScores → CalibrationCertificate
+   └─ Write to certificates/{cert_id}.json
+```
 
-| Hounfour v7 Type | Loa Pattern | File:Line | Structural Parallel |
-|-----------------|-------------|-----------|---------------------|
-| `BridgeTransferSaga` | `invoke_with_retry()` retry+fallback chain | `.claude/adapters/loa_cheval/providers/retry.py` | Both implement saga-like compensation: retry is "try next step", fallback is "compensate with alternate provider" |
-| `DelegationOutcome` | Flatline `consensus_summary` | `.claude/scripts/flatline-orchestrator.sh` | Both model multi-actor decision outcomes (unanimous/majority/deadlock maps to HIGH_CONSENSUS/DISPUTED/BLOCKER) |
-| `MonetaryPolicy` | `RemainderAccumulator` conservation | `.claude/adapters/loa_cheval/metering/pricing.py` | Both enforce monetary conservation invariants (micro-USD arithmetic, no floating-point loss) |
-| `PermissionBoundary` | MAY permission grants | `CLAUDE.loa.md` permission_grants section | Both model constrained experimentation: "you may do X if conditions Y" with reporting requirements |
-| `GovernanceProposal` | Flatline scoring consensus | `.claude/scripts/flatline-orchestrator.sh` | Both implement weighted multi-actor voting (each model is a weighted voter in Flatline) |
+**Error Handling**:
+- Single replay failure: log error, skip, continue to next PR
+- Oracle timeout: mark as failed, include in certificate metadata
+- Scoring LLM failure: retry once, then mark as failed
+- If successful replays < `min_replays`: generate partial certificate with warning
+- Fatal errors (no GitHub access, invalid config): raise immediately
 
-### 11.5.5 Lore Update (FR-11)
+### 6.5 Certificate Generator (`certificate/generator.py`)
 
-**File**: `.claude/data/lore/mibera/core.yaml` — update hounfour entry
+```python
+class CertificateGenerator:
+    def generate(
+        self,
+        scores: list[ReplayScore],
+        config: PipelineConfig,
+        ground_truth_source: str,
+        commit_range: str,
+    ) -> CalibrationCertificate:
+        """Aggregate scores into a calibration certificate."""
+```
 
-Current `context` references the hounfour as "the Flatline Protocol's multi-model review
-space." Extend with v7 era context:
+**Aggregation**:
+- `precision` = mean of all `ReplayScore.precision`
+- `recall` = mean of all `ReplayScore.recall`
+- `reply_accuracy` = mean of all `ReplayScore.reply_accuracy`
+- `composite_score` = weighted average using `config.composite_weights` (normalized)
+- `brier` = `1 - composite_score` mapped to [0, 0.5] range for RLMF compatibility
+- `sample_size` = `replay_count` = len(scores)
+- `methodology_version` = scoring prompt version string
+
+**Validation**: Certificate is validated against `CalibrationCertificate` model before writing. Invalid certificates raise `ValueError`.
+
+### 6.6 Storage Layer (`storage.py`)
+
+Simple filesystem abstraction. No database.
+
+```python
+class Storage:
+    def __init__(self, base_dir: str = "data"):
+        self._base = Path(base_dir)
+
+    def repo_dir(self, repo: str) -> Path:
+        """Get/create directory for a repository. repo='owner/repo'."""
+        safe_name = repo.replace("/", "_")
+        path = self._base / safe_name
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def append_jsonl(self, path: Path, record: BaseModel) -> None:
+        """Append a Pydantic model as one JSON line."""
+
+    def read_jsonl(self, path: Path, model: type[T]) -> list[T]:
+        """Read all records from a JSONL file."""
+
+    def write_certificate(self, cert: CalibrationCertificate) -> Path:
+        """Write certificate to certificates/{cert_id}.json."""
+```
+
+**File Layout**:
+
+```
+data/
+├── owner_repo/
+│   ├── ground_truth.jsonl       # One GroundTruthRecord per line
+│   ├── oracle_outputs.jsonl     # One OracleOutput per line
+│   └── scores.jsonl             # One ReplayScore per line
+└── certificates/
+    ├── {uuid}.json              # CalibrationCertificate
+    └── index.jsonl              # Certificate metadata for listing
+```
+
+## 7. Interface Design
+
+### 7.1 CLI (`cli.py`)
+
+Built with `click`. Entry point registered in `pyproject.toml` as `echelon`.
+
+```python
+@click.group()
+def cli():
+    """Echelon Oracle Verification Pipeline."""
+
+@cli.command()
+@click.option("--repo", required=True, help="GitHub repository URL")
+@click.option("--construct", required=True, help="Oracle endpoint URL or Python module")
+@click.option("--construct-type", type=click.Choice(["http", "python"]), default=None)
+@click.option("--scoring-model", default="claude-sonnet-4-6")
+@click.option("--min-replays", default=50, type=int)
+@click.option("--limit", default=100, type=int, help="Max PRs to fetch")
+@click.option("--output", default="data", help="Output directory")
+@click.option("--construct-id", default="unnamed-oracle")
+@click.option("--verbose", is_flag=True)
+@click.option("--dry-run", is_flag=True, help="Ingest only, don't invoke oracle")
+async def verify(repo, construct, **kwargs):
+    """Run full verification pipeline."""
+
+@cli.command()
+@click.option("--repo", required=True)
+@click.option("--output", default="data")
+@click.option("--limit", default=100, type=int)
+@click.option("--since", default=None, type=click.DateTime())
+async def ingest(repo, output, limit, since):
+    """Fetch and cache ground truth from GitHub."""
+
+@cli.command()
+@click.option("--data", required=True, help="Data directory with cached results")
+@click.option("--output", default=None, help="Certificate output path")
+async def score(data, output):
+    """Score cached oracle outputs and generate certificate."""
+
+@cli.command()
+@click.argument("certificate_path")
+def inspect(certificate_path):
+    """Display a calibration certificate."""
+```
+
+**Output Format** (verbose mode):
+
+```
+Echelon Oracle Verification Pipeline
+═══════════════════════════════════════
+
+Ingesting ground truth from github.com/owner/repo...
+  Fetched 73 merged PRs
+
+Invoking oracle (http://localhost:8000/summarize)...
+  [1/73]  PR #142 "Add rate limiting" .............. OK (320ms)
+  [2/73]  PR #138 "Fix auth bypass" ................ OK (450ms)
+  ...
+
+Scoring with claude-sonnet-4-6...
+  [1/73]  PR #142  P=0.85  R=0.90  RA=0.92
+  [2/73]  PR #138  P=0.70  R=0.80  RA=0.75
+  ...
+
+Certificate generated:
+  ID:         a1b2c3d4-...
+  Replays:    73
+  Precision:  0.82 (mean)
+  Recall:     0.78 (mean)
+  Reply Acc:  0.85 (mean)
+  Composite:  0.82
+  Saved to:   data/certificates/a1b2c3d4.json
+```
+
+### 7.2 API (`api.py`)
+
+FastAPI router, mountable into the existing backend or run standalone.
+
+```python
+router = APIRouter(prefix="/api/verification", tags=["Verification"])
+
+# In-memory job tracking (MVP; replace with Redis/DB for production)
+_jobs: dict[str, VerificationJob] = {}
+
+@router.post("/run", response_model=VerificationRunStatus)
+async def start_verification_run(request: VerificationRunRequest):
+    """Start an async verification run. Returns job ID for polling."""
+    job_id = str(uuid4())
+    # Launch pipeline in background task
+    # Return immediate status with job_id
+
+@router.get("/status/{job_id}", response_model=VerificationRunStatus)
+async def get_run_status(job_id: str):
+    """Check progress of a verification run."""
+
+@router.get("/result/{job_id}", response_model=VerificationRunResult)
+async def get_run_result(job_id: str):
+    """Get the calibration certificate for a completed run."""
+
+@router.get("/certificates", response_model=list[CalibrationCertificate])
+async def list_certificates():
+    """List all generated calibration certificates."""
+```
+
+**Job Management**:
+- Jobs stored in-memory dict (MVP). Not persistent across restarts.
+- `BackgroundTasks` or `asyncio.create_task()` for async pipeline execution.
+- Progress updates via pipeline callback writing to job status.
+- Future: Replace with task queue (Celery/Redis) for production.
+
+**Standalone Mode**:
+
+```python
+# verification/src/echelon_verify/server.py
+if __name__ == "__main__":
+    app = FastAPI(title="Echelon Verification API")
+    app.include_router(router)
+    uvicorn.run(app, host="0.0.0.0", port=8100)
+```
+
+**Backend Integration** (future):
+
+```python
+# backend/main.py
+from echelon_verify.api import router as verification_router
+app.include_router(verification_router)
+```
+
+## 8. Security Architecture
+
+### 8.1 API Key Management
+
+| Secret | Source | Never Stored In |
+|--------|--------|----------------|
+| GitHub token | `GITHUB_TOKEN` env var or `--github-token` CLI arg | Config files, logs, certificates |
+| Anthropic API key | `ANTHROPIC_API_KEY` env var or config | Config files, logs, certificates |
+| Oracle auth headers | `OracleConfig.headers` | Logs, certificates |
+
+**Principle**: Secrets flow through env vars or CLI args. Never written to disk. Never included in certificates or scoring output.
+
+### 8.2 Input Validation
+
+- Repository URL: validated format (`https://github.com/{owner}/{repo}`)
+- Oracle URL: validated URL format, no private IP ranges (localhost allowed for dev)
+- PR diff content: truncated at 100KB to prevent LLM context overflow
+- Oracle response: validated against `OracleOutput` schema. Malformed responses logged and skipped.
+
+### 8.3 Rate Limiting
+
+- GitHub API: respect rate limits via headers (see 6.1)
+- LLM API: no explicit rate limiting (Anthropic handles this server-side)
+- Verification API: no auth required for MVP. Add `Depends(get_current_user)` when integrated with backend.
+
+## 9. Error Handling Strategy
+
+| Error Type | Scope | Handling |
+|------------|-------|----------|
+| GitHub 404 | Ingestion | Raise `IngestionError` with repo URL |
+| GitHub rate limit | Ingestion | Exponential backoff, retry |
+| GitHub auth failure | Ingestion | Raise `IngestionError` with hint about token |
+| Oracle timeout | Per-replay | Log, mark failed, continue |
+| Oracle HTTP error | Per-replay | Log with status code, mark failed, continue |
+| Oracle invalid response | Per-replay | Log, mark failed, continue |
+| Python import error | Oracle init | Raise `OracleConfigError` immediately |
+| LLM API error | Per-replay | Retry once, then log and mark failed |
+| LLM invalid JSON | Per-replay | Retry with stricter prompt, then fallback score |
+| Insufficient replays | Certification | Generate partial certificate with `warning` field |
+
+**Partial Results**: The pipeline always attempts to generate a certificate, even with failures. The certificate includes `replay_count` (successful) and metadata about failures. The `min_replays` threshold produces a warning, not a hard failure.
+
+## 10. Testing Strategy
+
+| Level | Focus | Count |
+|-------|-------|-------|
+| Unit | Models, scoring logic, certificate generation | ~20 tests |
+| Integration | GitHub API (mocked), oracle adapters, scoring pipeline | ~15 tests |
+| E2E | Full pipeline with fixture data | ~5 tests |
+
+**Key Test Scenarios**:
+
+1. **Ingestion**: Mock GitHub API responses, verify `GroundTruthRecord` parsing, pagination, rate limit handling
+2. **Oracle Adapters**: Mock HTTP endpoint, test timeout handling, malformed responses, Python callable invocation
+3. **Scoring**: Use fixture ground truth + oracle output, verify prompt formatting, score calculation
+4. **Certificate**: Verify aggregation math, Brier score calculation, schema validation
+5. **Pipeline**: End-to-end with mocked GitHub + mocked oracle + mocked LLM
+6. **CLI**: Smoke test `verify --dry-run` with fixture data
+7. **API**: Test endpoint routing, job lifecycle, status polling
+
+**Fixtures**: Sample PR data, oracle outputs, and scores stored in `tests/fixtures/` for deterministic testing without API calls.
+
+## 11. Deployment Architecture
+
+### Phase 1 (MVP)
+
+- **CLI**: Installed via `pip install -e verification/` in the monorepo
+- **API**: Run standalone via `python -m echelon_verify.server` or mount into existing backend
+- **Storage**: Local filesystem (`verification/data/`)
+- **No infrastructure required**: Runs on developer's machine
+
+### Future (Post-Phase 1)
+
+- API deployed alongside backend (Railway/Vercel)
+- Storage: S3 or equivalent for certificates
+- Job queue: Redis + Celery for async verification runs
+- Certificate registry: Database-backed for listing and querying
+
+## 12. Configuration
+
+### Environment Variables
+
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| `GITHUB_TOKEN` | No | None | GitHub API authentication |
+| `ANTHROPIC_API_KEY` | Yes (for scoring) | None | LLM scoring provider |
+| `ECHELON_VERIFY_DATA_DIR` | No | `data` | Data storage directory |
+| `ECHELON_VERIFY_SCORING_MODEL` | No | `claude-sonnet-4-6` | Default scoring model |
+
+### Config File (Optional)
 
 ```yaml
-- id: hounfour
-  term: "Hounfour"
-  short: "The multi-model orchestration space"
-  context: >
-    The hounfour (also peristyle) is the Vodou temple where ceremonies
-    take place. In the Loa ecosystem, the hounfour is the runtime bridge
-    that routes agent invocations across providers — the space where models
-    meet. v7.0.0 ("The Composition-Aware Economic Protocol") extends the
-    hounfour with saga patterns for cross-registry transfers, delegation
-    outcomes for multi-actor conflict resolution, and monetary policy for
-    conservation invariants.
-  source: "loa-hounfour@7.0.0"
-  tags: [infrastructure, multi-model, economy]
+# verification/config.yaml (optional, CLI args override)
+ingestion:
+  limit: 100
+  merged_only: true
+
+scoring:
+  provider: anthropic
+  model: claude-sonnet-4-6
+  temperature: 0.0
+  prompt_version: v1
+
+pipeline:
+  min_replays: 50
+  composite_weights:
+    precision: 1.0
+    recall: 1.0
+    reply_accuracy: 1.0
 ```
 
-**File**: `docs/architecture/capability-schema.md` — add version lineage section:
+## 13. Technical Risks & Mitigations
 
-```markdown
-## Hounfour Version Lineage
+| Risk | Likelihood | Impact | Mitigation |
+|------|-----------|--------|------------|
+| LLM scoring variance | Medium | Score reproducibility < 5% target | Temperature=0, structured JSON output, versioned prompts |
+| Large diffs exceed LLM context | Medium | Scoring quality degrades for big PRs | Truncate to hunks, skip binary files, cap at 100KB |
+| Oracle response format diversity | Medium | Parsing failures | Schema validation with graceful fallback |
+| GitHub API changes | Low | Ingestion breaks | Pin API version (v3), integration tests |
+| Click async compatibility | Low | CLI doesn't work | Use `asyncio.run()` wrapper in CLI commands |
 
-| Version | Codename | Key Addition |
-|---------|----------|-------------|
-| v3.0.0 | Constitutional | Agent identity, billing, conversations |
-| v4.6.0 | Agent Economy | Performance, reputation, governance |
-| v5.0.0 | Multi-Model | Barrel decomposition, conservation properties |
-| v6.0.0 | Capability-Scoped Trust | trust_scopes replaces trust_level |
-| v7.0.0 | Composition-Aware Economic Protocol | Sagas, delegation outcomes, monetary policy |
-```
+## 14. Future Considerations
 
-### 11.5.6 BUTTERFREEZONE Regeneration
-
-After all file updates, regenerate BUTTERFREEZONE.md:
-
-```bash
-.claude/scripts/butterfreezone-gen.sh
-.claude/scripts/butterfreezone-validate.sh --strict
-```
-
-The regeneration will pick up:
-- Updated ecosystem protocol versions from `.loa.config.yaml`
-- Updated trust vocabulary from `model-permissions.yaml`
-- Updated architecture docs from `capability-schema.md`
-
-### 11.5.7 File Manifest — Phase 1.5
-
-| Path | Change Type | Description |
-|------|------------|-------------|
-| `.loa.config.yaml` | Modified | Update 3 ecosystem protocol versions |
-| `.claude/data/model-permissions.yaml` | Modified | trust_level → trust_scopes (6-dimensional) |
-| `.claude/schemas/model-config.schema.json` | Modified | Add "google" to provider type enum |
-| `docs/architecture/capability-schema.md` | Modified | trust_scopes gradient, v7 type mapping, version lineage |
-| `.claude/data/lore/mibera/core.yaml` | Modified | Update hounfour entry with v7 context |
-| `BUTTERFREEZONE.md` | Regenerated | Picks up all above changes |
-
-## 12. Reference
-
-- PRD: `grimoires/loa/prd.md`
-- Existing adapter code: `.claude/adapters/loa_cheval/providers/`
-- Provider base: `.claude/adapters/loa_cheval/providers/base.py`
-- Anthropic adapter (reference): `.claude/adapters/loa_cheval/providers/anthropic_adapter.py`
-- Hounfour config: `.claude/defaults/model-config.yaml`
-- Metering: `.claude/adapters/loa_cheval/metering/`
-- Agent Teams: `.claude/loa/reference/agent-teams-reference.md`
-- [Gemini API Reference](https://ai.google.dev/gemini-api/docs)
+- **Multi-construct comparison**: Run multiple oracles against same ground truth in one pipeline execution
+- **Confidence discipline**: Add 4th metric measuring calibration of oracle's confidence signals
+- **On-chain certificates**: Publish certificate hashes to Base for immutable verification
+- **Frontend dashboard**: React UI for browsing certificates and comparing oracles
+- **Webhook integration**: Trigger verification runs on PR merge events
+- **RLMF export**: Full compatibility with `echelon_rlmf_schema.json` for training data

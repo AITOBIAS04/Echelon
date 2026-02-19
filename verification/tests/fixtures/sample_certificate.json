@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0.0",
+  "certificate_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "construct_id": "community-oracle-v1",
+  "domain": "community_oracle",
+  "replay_count": 5,
+  "precision": 0.82,
+  "recall": 0.78,
+  "reply_accuracy": 0.85,
+  "composite_score": 0.8167,
+  "brier": 0.0917,
+  "sample_size": 5,
+  "timestamp": "2026-02-15T12:00:00Z",
+  "ground_truth_source": "https://github.com/echelon/app",
+  "commit_range": "abc1234..def5678",
+  "methodology_version": "v1",
+  "scoring_model": "claude-sonnet-4-6",
+  "individual_scores": []
+}

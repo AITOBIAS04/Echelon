@@ -1,0 +1,15 @@
+{
+  "number": 142,
+  "title": "Add rate limiting to /api/users",
+  "body": "Implements token bucket rate limiting for the users endpoint.\n\n## Changes\n- Added RateLimiter utility\n- Applied to /api/users route\n- Default: 100 requests per 60 seconds",
+  "state": "closed",
+  "merged": true,
+  "merged_at": "2026-02-15T10:30:00Z",
+  "user": {"login": "alice"},
+  "labels": [{"name": "enhancement"}, {"name": "api"}],
+  "html_url": "https://github.com/echelon/app/pull/142",
+  "diff_url": "https://github.com/echelon/app/pull/142.diff",
+  "changed_files": 2,
+  "additions": 45,
+  "deletions": 3
+}

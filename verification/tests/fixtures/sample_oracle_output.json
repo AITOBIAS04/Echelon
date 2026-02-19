@@ -1,0 +1,14 @@
+{
+  "ground_truth_id": "142",
+  "summary": "This PR adds rate limiting to the /api/users endpoint using a token bucket algorithm.",
+  "key_claims": [
+    "Added rate limiting to /api/users",
+    "Uses token bucket algorithm",
+    "Max 100 requests per 60-second window"
+  ],
+  "follow_up_question": "What happens when the rate limit is exceeded?",
+  "follow_up_response": "When the rate limit is exceeded, the endpoint returns a 429 status code.",
+  "metadata": {"model": "gpt-4", "latency_ms": 320},
+  "invoked_at": "2026-02-15T11:00:00Z",
+  "latency_ms": 320
+}
