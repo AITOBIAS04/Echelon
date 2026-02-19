@@ -15,6 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import ARRAY
 import enum
+import uuid
 
 from .connection import Base
 
@@ -345,28 +346,136 @@ class WatchlistItem(Base):
 
 class PrivateFork(Base):
     __tablename__ = "private_forks"
-    
+
     id: Mapped[str] = mapped_column(String(50), primary_key=True)
-    
+
     # User
     user_id: Mapped[str] = mapped_column(String(50), ForeignKey("users.id"), index=True)
     user: Mapped["User"] = relationship(back_populates="private_forks")
-    
+
     # Fork details
     name: Mapped[str] = mapped_column(String(255))
     narrative: Mapped[str] = mapped_column(Text)
     base_timeline_id: Mapped[str] = mapped_column(String(50), ForeignKey("timelines.id"))
-    
+
     # State
     status: Mapped[str] = mapped_column(String(20), default="DRAFT")
     stability: Mapped[float] = mapped_column(Float, default=50.0)
     simulation_result: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    
+
     # Publishing
     can_publish: Mapped[bool] = mapped_column(Boolean, default=True)
     published_timeline_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+# ============================================
+# VERIFICATION (echelon-verify integration)
+# ============================================
+
+class VerificationRunStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    INGESTING = "INGESTING"
+    INVOKING = "INVOKING"
+    SCORING = "SCORING"
+    CERTIFYING = "CERTIFYING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
+def _generate_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+class VerificationCertificate(Base):
+    __tablename__ = "verification_certificates"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    construct_id: Mapped[str] = mapped_column(String(255), index=True)
+    domain: Mapped[str] = mapped_column(String(50), default="community_oracle")
+    replay_count: Mapped[int] = mapped_column(Integer)
+    precision: Mapped[float] = mapped_column(Float)
+    recall: Mapped[float] = mapped_column(Float)
+    reply_accuracy: Mapped[float] = mapped_column(Float)
+    composite_score: Mapped[float] = mapped_column(Float)
+    brier: Mapped[float] = mapped_column(Float)
+    sample_size: Mapped[int] = mapped_column(Integer)
+    ground_truth_source: Mapped[str] = mapped_column(String(500))
+    commit_range: Mapped[str] = mapped_column(String(255))
+    methodology_version: Mapped[str] = mapped_column(String(20))
+    scoring_model: Mapped[str] = mapped_column(String(100))
+    raw_scores_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    run: Mapped[Optional["VerificationRun"]] = relationship(back_populates="certificate")
+    replay_scores: Mapped[List["VerificationReplayScore"]] = relationship(
+        back_populates="certificate"
+    )
+
+    __table_args__ = (
+        Index("ix_verification_certs_construct_created", "construct_id", "created_at"),
+        Index("ix_verification_certs_brier", "brier"),
+    )
+
+
+class VerificationReplayScore(Base):
+    __tablename__ = "verification_replay_scores"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    certificate_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("verification_certificates.id"), index=True
+    )
+    ground_truth_id: Mapped[str] = mapped_column(String(255))
+    precision: Mapped[float] = mapped_column(Float)
+    recall: Mapped[float] = mapped_column(Float)
+    reply_accuracy: Mapped[float] = mapped_column(Float)
+    claims_total: Mapped[int] = mapped_column(Integer)
+    claims_supported: Mapped[int] = mapped_column(Integer)
+    changes_total: Mapped[int] = mapped_column(Integer)
+    changes_surfaced: Mapped[int] = mapped_column(Integer)
+    scoring_model: Mapped[str] = mapped_column(String(100))
+    scoring_latency_ms: Mapped[int] = mapped_column(Integer)
+    scored_at: Mapped[datetime] = mapped_column(DateTime)
+
+    # Relationships
+    certificate: Mapped["VerificationCertificate"] = relationship(
+        back_populates="replay_scores"
+    )
+
+
+class VerificationRun(Base):
+    __tablename__ = "verification_runs"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("users.id"), index=True)
+    construct_id: Mapped[str] = mapped_column(String(255), index=True)
+    repo_url: Mapped[str] = mapped_column(String(500))
+    status: Mapped[VerificationRunStatus] = mapped_column(
+        SQLEnum(VerificationRunStatus), default=VerificationRunStatus.PENDING
+    )
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    certificate_id: Mapped[Optional[str]] = mapped_column(
+        String(50), ForeignKey("verification_certificates.id"), nullable=True
+    )
+    config_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    certificate: Mapped[Optional["VerificationCertificate"]] = relationship(
+        back_populates="run"
+    )
+
+    __table_args__ = (
+        Index("ix_verification_runs_status", "status"),
+        Index("ix_verification_runs_user_created", "user_id", "created_at"),
+        Index("ix_verification_runs_construct", "construct_id"),
+    )
 
