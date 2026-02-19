@@ -131,7 +131,7 @@
           "local_id": "sprint-2",
           "global_id": "sprint-15",
           "label": "Ground Truth Ingestion",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "local_id": "sprint-3",
