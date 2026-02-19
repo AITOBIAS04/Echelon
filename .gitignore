@@ -80,3 +80,9 @@ test.db
 # Seed fixtures directory contains SQL/JSON fixtures (these ARE committed)
 # But actual generated database files should never be committed
 
+.env
+.env.*
+*.env
+*.env.bak
+.env.local
+.env.*.local
