@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "active_cycle": "cycle-026",
-  "global_sprint_counter": 13,
+  "active_cycle": "cycle-028",
+  "global_sprint_counter": 21,
   "cycles": [
     {
       "id": "cycle-025",
@@ -106,6 +106,34 @@
           "local_id": "sprint-9",
           "global_id": "sprint-13",
           "label": "Epistemic Trust Scopes & Jam Geometry Architecture",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "id": "cycle-028",
+      "label": "Backend Wiring — echelon-verify Integration",
+      "status": "active",
+      "created": "2026-02-19T16:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": "sprint-19",
+          "label": "Data Layer — Models, Migration, Schemas",
+          "status": "pending"
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": "sprint-20",
+          "label": "Service + API — Bridge, Routes, Mounting",
+          "status": "pending"
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": "sprint-21",
+          "label": "Integration Tests + E2E",
           "status": "pending"
         }
       ]
