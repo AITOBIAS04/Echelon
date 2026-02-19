@@ -85,6 +85,18 @@ class TestParseRepo:
         with pytest.raises(ValueError, match="Invalid GitHub repo URL"):
             _parse_repo("not-a-url")
 
+    def test_rejects_http_scheme(self) -> None:
+        with pytest.raises(ValueError, match="Invalid GitHub repo URL"):
+            _parse_repo("http://github.com/echelon/app")
+
+    def test_rejects_path_traversal_in_owner(self) -> None:
+        with pytest.raises(ValueError, match="Invalid"):
+            _parse_repo("https://github.com/../etc/app")
+
+    def test_rejects_special_chars_in_repo(self) -> None:
+        with pytest.raises(ValueError, match="Invalid repo name"):
+            _parse_repo("https://github.com/owner/repo%00evil")
+
 
 class TestTruncateDiff:
     def test_small_diff_unchanged(self) -> None:
@@ -109,6 +121,11 @@ class TestExtractFilesChanged:
     def test_no_files(self) -> None:
         files = _extract_files_changed("no diff content")
         assert files == []
+
+    def test_binary_files_detected(self) -> None:
+        diff = "Binary files a/image.png and b/image.png differ\n"
+        files = _extract_files_changed(diff)
+        assert files == ["image.png"]
 
 
 class TestGitHubIngester:
@@ -312,6 +329,91 @@ class TestGitHubIngester:
         assert r.url == "https://github.com/echelon/app/pull/142"
         assert "src/routes/users.py" in r.files_changed
         assert r.timestamp == datetime(2026, 2, 15, 10, 30, 0, tzinfo=timezone.utc)
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_incremental_ingestion_skips_cached(
+        self, config: IngestionConfig
+    ) -> None:
+        respx.get(
+            "https://api.github.com/repos/echelon/app/pulls",
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                json=[SAMPLE_PR, SAMPLE_PR_2],
+                headers={
+                    "x-ratelimit-remaining": "50",
+                    "x-ratelimit-reset": "9999999999",
+                },
+            )
+        )
+        # Only PR 138 diff should be fetched (142 is cached)
+        respx.get(
+            "https://api.github.com/repos/echelon/app/pulls/138",
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                text=SAMPLE_DIFF,
+                headers={
+                    "x-ratelimit-remaining": "49",
+                    "x-ratelimit-reset": "9999999999",
+                },
+            )
+        )
+
+        async with GitHubIngester(config) as ingester:
+            records = await ingester.ingest(cached_ids={"142"})
+
+        assert len(records) == 1
+        assert records[0].id == "138"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_403_triggers_backoff(self, config: IngestionConfig) -> None:
+        call_count = 0
+
+        def side_effect(request: httpx.Request) -> httpx.Response:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return httpx.Response(
+                    403,
+                    json={"message": "rate limit exceeded"},
+                    headers={
+                        "x-ratelimit-remaining": "0",
+                        "x-ratelimit-reset": "0",  # Already past
+                    },
+                )
+            return httpx.Response(
+                200,
+                json=[SAMPLE_PR],
+                headers={
+                    "x-ratelimit-remaining": "50",
+                    "x-ratelimit-reset": "9999999999",
+                },
+            )
+
+        respx.get(
+            "https://api.github.com/repos/echelon/app/pulls",
+        ).mock(side_effect=side_effect)
+        respx.get(
+            "https://api.github.com/repos/echelon/app/pulls/142",
+        ).mock(
+            return_value=httpx.Response(
+                200,
+                text=SAMPLE_DIFF,
+                headers={
+                    "x-ratelimit-remaining": "49",
+                    "x-ratelimit-reset": "9999999999",
+                },
+            )
+        )
+
+        async with GitHubIngester(config) as ingester:
+            records = await ingester.ingest()
+
+        assert len(records) == 1
+        assert call_count >= 2  # At least one retry
 
     def test_storage_round_trip(
         self, tmp_path: Path, sample_ground_truth: GroundTruthRecord

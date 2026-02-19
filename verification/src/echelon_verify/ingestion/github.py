@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import re
-import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import httpx
 
@@ -18,6 +19,8 @@ logger = logging.getLogger(__name__)
 _MAX_DIFF_BYTES = 100_000  # 100 KB
 _RATE_LIMIT_FLOOR = 10
 _MAX_BACKOFF_SECONDS = 60
+_MAX_PROACTIVE_WAIT_SECONDS = 300  # Cap proactive wait at 5 minutes
+_OWNER_REPO_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 
 def _parse_repo(repo_url: str) -> tuple[str, str]:
@@ -27,14 +30,25 @@ def _parse_repo(repo_url: str) -> tuple[str, str]:
       - https://github.com/owner/repo
       - https://github.com/owner/repo.git
       - owner/repo
+
+    Validates owner and repo contain only safe characters.
     """
     match = re.match(
-        r"(?:https?://github\.com/)?([^/]+)/([^/.]+?)(?:\.git)?/?$",
+        r"(?:https://github\.com/)?([^/]+)/([^/.]+?)(?:\.git)?/?$",
         repo_url.strip(),
     )
     if not match:
         raise ValueError(f"Invalid GitHub repo URL: {repo_url}")
-    return match.group(1), match.group(2)
+
+    owner, repo = match.group(1), match.group(2)
+
+    # Validate characters to prevent path injection
+    if not _OWNER_REPO_PATTERN.match(owner):
+        raise ValueError(f"Invalid owner name: {owner}")
+    if not _OWNER_REPO_PATTERN.match(repo):
+        raise ValueError(f"Invalid repo name: {repo}")
+
+    return owner, repo
 
 
 def _truncate_diff(diff: str, max_bytes: int = _MAX_DIFF_BYTES) -> str:
@@ -67,13 +81,18 @@ def _truncate_diff(diff: str, max_bytes: int = _MAX_DIFF_BYTES) -> str:
 
 
 def _extract_files_changed(diff: str) -> list[str]:
-    """Extract file paths from a unified diff."""
+    """Extract file paths from a unified diff, including binary files."""
     files: list[str] = []
     for line in diff.splitlines():
         if line.startswith("+++ b/"):
             path = line[6:]
             if path != "/dev/null":
                 files.append(path)
+        elif line.startswith("Binary files") and " b/" in line:
+            # Binary files a/... and b/... differ
+            match = re.search(r"b/(\S+)", line)
+            if match:
+                files.append(match.group(1))
     return files
 
 
@@ -93,6 +112,7 @@ class GitHubIngester:
             base_url="https://api.github.com",
             headers=headers,
             timeout=30.0,
+            max_redirects=0,  # Don't follow redirects to prevent SSRF
         )
         self._rate_limit_remaining: int = 60
         self._rate_limit_reset: datetime = datetime.now(tz=timezone.utc)
@@ -107,12 +127,24 @@ class GitHubIngester:
     async def __aexit__(self, *exc: object) -> None:
         await self.close()
 
-    async def ingest(self) -> list[GroundTruthRecord]:
-        """Fetch merged PRs, extract diffs, return structured records."""
+    async def ingest(
+        self, cached_ids: set[str] | None = None
+    ) -> list[GroundTruthRecord]:
+        """Fetch merged PRs, extract diffs, return structured records.
+
+        Args:
+            cached_ids: Set of PR IDs already ingested. If provided, PRs
+                        with these IDs are skipped (incremental ingestion).
+        """
         prs = await self._fetch_prs()
         records: list[GroundTruthRecord] = []
 
         for pr in prs:
+            pr_id = str(pr["number"])
+            if cached_ids and pr_id in cached_ids:
+                logger.debug("Skipping cached PR #%s", pr_id)
+                continue
+
             try:
                 diff = await self._fetch_diff(pr["number"])
                 files = _extract_files_changed(diff) or [
@@ -120,7 +152,7 @@ class GitHubIngester:
                     for f in pr.get("files", [])
                 ]
                 record = GroundTruthRecord(
-                    id=str(pr["number"]),
+                    id=pr_id,
                     title=pr.get("title", ""),
                     description=pr.get("body", "") or "",
                     diff_content=_truncate_diff(diff),
@@ -141,7 +173,7 @@ class GitHubIngester:
         return records
 
     async def _fetch_prs(self) -> list[dict]:
-        """Paginated PR listing with rate limit handling."""
+        """Paginated PR listing with rate limit handling and ETag support."""
         all_prs: list[dict] = []
         page = 1
         per_page = min(self._config.limit, 100)
@@ -157,9 +189,16 @@ class GitHubIngester:
                 "page": page,
             }
 
+            # Conditional request with ETag
+            extra_headers: dict[str, str] = {}
+            cache_key = f"pulls:page={page}"
+            if cache_key in self._etags:
+                extra_headers["If-None-Match"] = self._etags[cache_key]
+
             resp = await self._client.get(
                 f"/repos/{self._owner}/{self._repo}/pulls",
                 params=params,
+                headers=extra_headers,
             )
             self._update_rate_limit(resp)
 
@@ -167,18 +206,30 @@ class GitHubIngester:
                 await self._handle_rate_limit(resp)
                 continue
 
+            # 304 Not Modified — use cached data
+            if resp.status_code == 304:
+                break
+
             resp.raise_for_status()
+
+            # Store ETag for future conditional requests
+            etag = resp.headers.get("etag")
+            if etag:
+                self._etags[cache_key] = etag
+
             page_data = resp.json()
 
             if not page_data:
                 break
 
             for pr in page_data:
-                if not pr.get("merged_at"):
-                    continue
-
+                # Filter: merged PRs only (when merged_only=True)
                 if self._config.merged_only and not pr.get("merged_at"):
                     continue
+
+                # Include unmerged closed PRs only when merged_only=False
+                if not self._config.merged_only and not pr.get("merged_at"):
+                    pass  # Include all closed PRs
 
                 # Label filter
                 if self._config.labels:
@@ -188,8 +239,8 @@ class GitHubIngester:
 
                 # Date filter
                 if self._config.since:
-                    merged_at = pr["merged_at"]
-                    if merged_at < self._config.since:
+                    merged_at = pr.get("merged_at", "")
+                    if merged_at and merged_at < self._config.since:
                         continue
 
                 all_prs.append(pr)
@@ -230,12 +281,18 @@ class GitHubIngester:
         """Update rate limit tracking from response headers."""
         remaining = resp.headers.get("x-ratelimit-remaining")
         if remaining is not None:
-            self._rate_limit_remaining = int(remaining)
+            try:
+                self._rate_limit_remaining = int(remaining)
+            except ValueError:
+                pass
         reset = resp.headers.get("x-ratelimit-reset")
         if reset is not None:
-            self._rate_limit_reset = datetime.fromtimestamp(
-                int(reset), tz=timezone.utc
-            )
+            try:
+                self._rate_limit_reset = datetime.fromtimestamp(
+                    int(reset), tz=timezone.utc
+                )
+            except (ValueError, OSError):
+                pass
 
     async def _check_rate_limit(self) -> None:
         """Proactive backoff when rate limit is low."""
@@ -244,6 +301,8 @@ class GitHubIngester:
                 0,
                 (self._rate_limit_reset - datetime.now(tz=timezone.utc)).total_seconds(),
             )
+            # Cap wait to prevent unbounded sleep from spoofed headers
+            wait = min(wait, _MAX_PROACTIVE_WAIT_SECONDS)
             if wait > 0:
                 logger.warning(
                     "Rate limit low (%d remaining), sleeping %.1fs",
@@ -253,11 +312,13 @@ class GitHubIngester:
                 await asyncio.sleep(wait)
 
     async def _handle_rate_limit(self, response: httpx.Response) -> None:
-        """Exponential backoff when rate limited (403)."""
+        """Exponential backoff with jitter when rate limited (403)."""
         backoff = 1.0
         for _ in range(5):
-            logger.warning("Rate limited, backing off %.1fs", backoff)
-            await asyncio.sleep(backoff)
+            # Add jitter: ±25% randomization
+            jittered = backoff * (0.75 + random.random() * 0.5)
+            logger.warning("Rate limited, backing off %.1fs", jittered)
+            await asyncio.sleep(jittered)
             backoff = min(backoff * 2, _MAX_BACKOFF_SECONDS)
 
             # Check if reset time has passed
