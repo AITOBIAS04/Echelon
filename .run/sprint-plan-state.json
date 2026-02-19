@@ -1,21 +1,21 @@
 {
   "plan_id": "plan-20260219-c027",
   "branch": "feature/community-oracle-verification",
-  "state": "RUNNING",
+  "state": "JACKED_OUT",
   "timestamps": {
     "started": "2026-02-19T15:00:00Z",
-    "last_activity": "2026-02-19T15:15:00Z"
+    "last_activity": "2026-02-19T15:45:00Z"
   },
   "sprints": {
     "total": 5,
-    "completed": 1,
-    "current": "sprint-2",
+    "completed": 5,
+    "current": null,
     "list": [
       {"id": "sprint-1", "global_id": "sprint-14", "status": "completed", "cycles": 1},
-      {"id": "sprint-2", "global_id": "sprint-15", "status": "in_progress", "cycles": 0},
-      {"id": "sprint-3", "global_id": "sprint-16", "status": "pending", "cycles": 0},
-      {"id": "sprint-4", "global_id": "sprint-17", "status": "pending", "cycles": 0},
-      {"id": "sprint-5", "global_id": "sprint-18", "status": "pending", "cycles": 0}
+      {"id": "sprint-2", "global_id": "sprint-15", "status": "completed", "cycles": 2},
+      {"id": "sprint-3", "global_id": "sprint-16", "status": "completed", "cycles": 1},
+      {"id": "sprint-4", "global_id": "sprint-17", "status": "completed", "cycles": 1},
+      {"id": "sprint-5", "global_id": "sprint-18", "status": "completed", "cycles": 1}
     ]
   },
   "options": {
@@ -25,8 +25,8 @@
     "timeout_hours": 8
   },
   "metrics": {
-    "total_cycles": 1,
-    "total_files_changed": 16,
-    "total_findings_fixed": 0
+    "total_cycles": 6,
+    "total_files_changed": 30,
+    "total_findings_fixed": 2
   }
 }

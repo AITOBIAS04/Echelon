@@ -143,13 +143,13 @@
           "local_id": "sprint-4",
           "global_id": "sprint-17",
           "label": "Scoring Engine + Certificate Generator",
-          "status": "pending"
+          "status": "completed"
         },
         {
           "local_id": "sprint-5",
           "global_id": "sprint-18",
           "label": "Pipeline Orchestrator + CLI + API",
-          "status": "pending"
+          "status": "completed"
         }
       ]
     }
