@@ -109,6 +109,13 @@ except ImportError as e:
     osint_router = None
     print(f"⚠️ Could not import OSINT API router: {e}")
 
+# Verification API (echelon-verify integration)
+try:
+    from backend.api.verification_routes import router as verification_router
+except ImportError as e:
+    verification_router = None
+    print(f"⚠️ Could not import Verification API router: {e}")
+
 # Initialize
 osint = get_osint_registry()
 
@@ -306,6 +313,18 @@ try:
         print("⚠️ OSINT router is None, skipping")
 except Exception as e:
     print(f"❌ Failed to include OSINT router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Verification router (echelon-verify)
+try:
+    if verification_router:
+        app.include_router(verification_router)
+        print("✅ Verification router included")
+    else:
+        print("⚠️ Verification router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Verification router: {e}")
     import traceback
     traceback.print_exc()
 
