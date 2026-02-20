@@ -1,0 +1,559 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://echelon.ai/schemas/theatre/v2.0.1",
+  "title": "Echelon Theatre Template Specification",
+  "description": "JSON Schema for defining Echelon theatre templates. Supports Product Theatres (construct verification via replay) and Market Theatres (prediction markets via LMSR). v2.0.1 adds execution-path conditionals, hash format standardisation, and runtime validation rules.",
+  "version": "2.0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "theatre_id",
+    "template_family",
+    "execution_path",
+    "display_name",
+    "criteria",
+    "fork_definitions",
+    "scoring",
+    "resolution_programme",
+    "version_pins"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Version of this schema format.",
+      "const": "2.0.1"
+    },
+    "theatre_id": {
+      "type": "string",
+      "pattern": "^[a-z_]+_v\\d+$",
+      "description": "Unique identifier. Format: lowercase_with_underscores_v followed by version number."
+    },
+    "template_family": {
+      "type": "string",
+      "enum": [
+        "PRODUCT",
+        "GEOPOLITICAL",
+        "2D-DISCRETE",
+        "2D-CONTINUOUS",
+        "3D-STATIC",
+        "3D-INERT",
+        "3D-DYNAMIC",
+        "PHYSICS-SIM",
+        "SOCIAL-ENGINEERING",
+        "ECONOMIC-SIM",
+        "HYBRID"
+      ],
+      "description": "Template domain classification. PRODUCT and GEOPOLITICAL added in v2."
+    },
+    "execution_path": {
+      "type": "string",
+      "enum": ["replay", "market"],
+      "description": "'replay' = Product Theatre (construct invocation + scoring, no LMSR). 'market' = Market Theatre (full LMSR lifecycle)."
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
+    },
+
+    "criteria": {
+      "type": "object",
+      "description": "Structured, hashable evaluation criteria. criteria_ids become canonical keys in certificate scores.",
+      "additionalProperties": false,
+      "required": ["criteria_ids", "criteria_human"],
+      "properties": {
+        "criteria_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+$"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Deterministic score keys. Examples: source_fidelity, hex_grid_accuracy."
+        },
+        "criteria_human": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Freeform rubric summary for human consumption."
+        },
+        "weights": {
+          "type": "object",
+          "description": "Per-criterion weights. Keys must be a subset of criteria_ids. Values must sum to 1.0. NOTE: sum and subset constraints are enforced at runtime, not by this schema.",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+
+    "version_pins": {
+      "type": "object",
+      "description": "Exact version identifiers for reproducibility. NOTE: runtime engine must enforce that every construct_id in resolution_programme has a corresponding entry in constructs.",
+      "additionalProperties": false,
+      "required": ["scorer_version"],
+      "properties": {
+        "constructs": {
+          "type": "object",
+          "description": "Map of construct_id to exact commit hash.",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{7,64}$"
+          }
+        },
+        "scorer_version": {
+          "type": "string",
+          "description": "Scorer model/version identifier."
+        },
+        "methodology_version": {
+          "type": "string",
+          "default": "1.0.0"
+        }
+      }
+    },
+
+    "dataset_hashes": {
+      "type": "object",
+      "description": "Map of dataset_name to SHA-256 hash (raw hex, no 0x prefix). Ensures replay reproducibility.",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+
+    "resolution_programme": {
+      "type": "array",
+      "description": "Ordered oracle step sequence. Pre-committed and immutable after Theatre creation. NOTE: runtime engine must verify every step with construct_id has a matching version_pins.constructs entry.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step_id", "type"],
+        "properties": {
+          "step_id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["construct_invocation", "deterministic_computation", "hitl_rubric", "aggregation"]
+          },
+          "construct_id": {
+            "type": "string",
+            "description": "Required for construct_invocation type. Must have a version_pins.constructs entry (runtime-enforced)."
+          },
+          "input_spec": {
+            "type": "object"
+          },
+          "output_spec": {
+            "type": "object"
+          },
+          "escalation_path": {
+            "type": "string",
+            "description": "Step ID to jump to on failure."
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "default": 30
+          }
+        }
+      },
+      "minItems": 1
+    },
+
+    "hitl_steps": {
+      "type": "array",
+      "description": "Pre-committed human-in-the-loop specifications for semi-deterministic scoring.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step_id", "rubric", "scoring_scale"],
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "description": "Must match a resolution_programme step_id with type 'hitl_rubric'."
+          },
+          "rubric": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "scoring_scale": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["min", "max"],
+            "properties": {
+              "min": { "type": "number" },
+              "max": { "type": "number" },
+              "labels": {
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+              }
+            }
+          },
+          "identity_separation": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "scorer_must_not_be_author": { "type": "boolean", "default": true },
+              "minimum_scorers": { "type": "integer", "minimum": 1, "default": 1 }
+            }
+          }
+        }
+      }
+    },
+
+    "fork_definitions": {
+      "type": "array",
+      "description": "Decision/fork points. Market Theatres: each fork instantiates an LMSR market. Replay Theatres: forks represent evaluation dimensions.",
+      "items": {
+        "type": "object",
+        "required": ["fork_id", "options"],
+        "properties": {
+          "fork_id": {
+            "type": "string",
+            "pattern": "^f_\\d{2}$"
+          },
+          "trigger_condition": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["timestep", "state_reached", "random", "entropy_threshold", "logic_gap_threshold", "episode_complete", "manual"]
+              },
+              "parameters": { "type": "object" }
+            }
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["option_id", "label"],
+              "properties": {
+                "option_id": {
+                  "type": "string",
+                  "description": "Canonical identifier. Referenced by RLMF export fork.options (which uses option_ids, not labels)."
+                },
+                "label": { "type": "string" },
+                "description": { "type": "string" },
+                "success_criteria": { "type": "object" },
+                "failure_modes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "mode": { "type": "string" },
+                      "condition": { "type": "string" },
+                      "penalty": { "type": "number" }
+                    }
+                  }
+                }
+              }
+            },
+            "minItems": 2
+          },
+          "deadline_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Max decision time in ms. 0 = no deadline (common for replay theatres)."
+          },
+          "state_transitions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "state_changes": { "type": "object" },
+                "reward_modifiers": { "type": "object" }
+              }
+            }
+          }
+        }
+      },
+      "minItems": 1
+    },
+
+    "scoring": {
+      "type": "object",
+      "description": "Scoring configuration. v2 supports both v1 simulation score_vector and criteria-based scoring.",
+      "properties": {
+        "score_vector": {
+          "type": "object",
+          "description": "v1-compatible simulation scoring. Optional in v2 — use criteria.weights for Product Theatres.",
+          "properties": {
+            "time_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+            "value_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+            "collateral_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+            "safety_weight": { "type": "number", "minimum": 0, "maximum": 1 },
+            "trace_weight": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "score_bounds": {
+          "type": "object",
+          "properties": {
+            "minimum": { "type": "number" },
+            "maximum": { "type": "number" }
+          }
+        },
+        "tie_breakers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "holdout_split": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.5,
+          "default": 0.2,
+          "description": "Fraction of ground truth reserved as holdout for adversarial resistance."
+        }
+      }
+    },
+
+    "product_theatre_config": {
+      "type": "object",
+      "description": "Product Theatre configuration (execution_path = 'replay').",
+      "additionalProperties": false,
+      "required": ["ground_truth_source", "construct_under_test", "adapter_type"],
+      "properties": {
+        "ground_truth_source": {
+          "type": "string",
+          "enum": ["GITHUB_API", "CI_CD", "PROVENANCE_JSONL", "DETERMINISTIC_COMPUTATION", "CUSTOM"]
+        },
+        "construct_under_test": {
+          "type": "string"
+        },
+        "construct_chain": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ordered construct IDs for compositional verification. All must have version pins."
+        },
+        "replay_data_path": {
+          "type": "string",
+          "description": "Path or URI to ground truth dataset."
+        },
+        "replay_dataset_id": {
+          "type": "string",
+          "description": "Key that must exist in the top-level dataset_hashes object. Links replay_data_path to its committed hash. Runtime-enforced: dataset_hashes[replay_dataset_id] must be present and match the SHA-256 of the file at replay_data_path."
+        },
+        "gold_label_set": {
+          "type": "string",
+          "description": "Path or URI to independent human-labelled validation data."
+        },
+        "adapter_type": {
+          "type": "string",
+          "enum": ["http", "local", "mock"],
+          "description": "'mock' permitted for CI only — never for certificate generation."
+        },
+        "adapter_endpoint": {
+          "type": "string",
+          "description": "Construct endpoint URL (http) or local command (local). Required when adapter_type is 'http' or 'local' — enforced by conditional below."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "adapter_type": { "const": "http" } } },
+          "then": { "required": ["adapter_endpoint"] }
+        },
+        {
+          "if": { "properties": { "adapter_type": { "const": "local" } } },
+          "then": { "required": ["adapter_endpoint"] }
+        }
+      ]
+    },
+
+    "market_theatre_config": {
+      "type": "object",
+      "description": "Market Theatre configuration (execution_path = 'market').",
+      "additionalProperties": false,
+      "required": ["lmsr_config"],
+      "properties": {
+        "lmsr_config": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["liquidity_b", "duration_seconds"],
+          "properties": {
+            "liquidity_b": {
+              "type": "number",
+              "minimum": 1,
+              "description": "Committed liquidity parameter. Max loss = b * ln(n)."
+            },
+            "fee_schedule": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "taker_fee_bps": { "type": "integer", "minimum": 0, "maximum": 500 },
+                "maker_fee_bps": { "type": "integer", "minimum": 0, "maximum": 500 }
+              }
+            },
+            "duration_seconds": {
+              "type": "integer",
+              "minimum": 60
+            }
+          }
+        },
+        "osint_sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provider", "modality", "resolution_role"],
+            "properties": {
+              "provider": { "type": "string" },
+              "modality": { "type": "string" },
+              "resolution_role": {
+                "type": "string",
+                "enum": ["primary_evidence", "secondary_corroboration"]
+              },
+              "polling_frequency_seconds": { "type": "integer", "minimum": 1 },
+              "confidence_weight": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "corroboration_minimum": {
+          "type": "integer",
+          "minimum": 2,
+          "default": 2,
+          "description": "Minimum independent corroboration sources. Per OSINT Appendix v3.1."
+        },
+        "geopolitical_category": {
+          "type": "string",
+          "enum": ["MILITARY", "COMMODITY", "MARITIME", "DIPLOMATIC", "INFRASTRUCTURE", "FX", "ENERGY", "CORPORATE"]
+        },
+        "paradox_thresholds": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "logic_gap_warning": { "type": "number", "minimum": 0, "maximum": 1 },
+            "logic_gap_critical": { "type": "number", "minimum": 0, "maximum": 1 },
+            "stability_trigger": { "type": "number", "minimum": 0, "maximum": 1 },
+            "collusion_threshold": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+
+    "agent_behavior_config": {
+      "type": "object",
+      "description": "Agent archetype configuration. Applicable to Market Theatres.",
+      "properties": {
+        "enabled_archetypes": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["SHARK", "SPY", "DIPLOMAT", "SABOTEUR"] }
+        },
+        "population_limits": {
+          "type": "object",
+          "properties": {
+            "min_total": { "type": "integer", "minimum": 1 },
+            "max_total": { "type": "integer" },
+            "min_per_archetype": { "type": "integer", "minimum": 0 },
+            "max_per_archetype": { "type": "integer" }
+          }
+        },
+        "spawn_weights": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        }
+      }
+    },
+
+    "training_primitives": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+
+    "difficulty_tiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tier_id", "label", "difficulty_multiplier"],
+        "properties": {
+          "tier_id": { "type": "string", "enum": ["easy", "standard", "hard"] },
+          "label": { "type": "string" },
+          "difficulty_multiplier": { "type": "number", "minimum": 0.1, "maximum": 3.0 },
+          "parameter_overrides": { "type": "object" }
+        }
+      }
+    },
+
+    "rlmf_export_config": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "sampling_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "feature_flags": { "type": "object" },
+        "privacy_filters": { "type": "object" }
+      }
+    },
+
+    "oracle_config": {
+      "type": "object",
+      "description": "v1 compatibility — oracle mode requirements.",
+      "properties": {
+        "minimum_mode": { "type": "integer", "minimum": 0, "maximum": 2 },
+        "required_feeds": { "type": "array", "items": { "type": "string" } },
+        "confidence_threshold": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+
+    "physics_config": {
+      "type": "object",
+      "description": "v1 compatibility — not applicable to PRODUCT or GEOPOLITICAL.",
+      "properties": {
+        "engine": { "type": "string", "enum": ["builtin", "bullet", "pybullet", "mujoco", "isaac"] },
+        "timestep_ms": { "type": "number" },
+        "gravity": { "type": "array", "items": { "type": "number" }, "minItems": 3 },
+        "friction_coefficients": { "type": "object" },
+        "restitution_coefficients": { "type": "object" }
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "author": { "type": "string" },
+        "created_date": { "type": "string", "format": "date" },
+        "last_modified": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["draft", "review", "approved", "deprecated"] },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "source_issue": { "type": "string" }
+      }
+    },
+
+    "runtime_validation_rules": {
+      "type": "object",
+      "description": "Constraints that cannot be expressed in JSON Schema but MUST be enforced by the Theatre engine at runtime. This field is documentation-only and is not populated in template instances.",
+      "readOnly": true,
+      "properties": {
+        "_doc": {
+          "type": "string",
+          "const": "The following rules are enforced by the Theatre engine, not by JSON Schema validation: (1) criteria.weights keys must be a subset of criteria.criteria_ids. (2) criteria.weights values must sum to 1.0. (3) Every construct_id in resolution_programme must exist as a key in version_pins.constructs. (4) Every construct in product_theatre_config.construct_chain must have a version_pins.constructs entry. (5) Every hitl_steps[].step_id must match a resolution_programme step with type 'hitl_rubric'. (6) adapter_type 'mock' must be rejected for certificate-generating runs (CI-only). (7) dataset_hashes[product_theatre_config.replay_dataset_id] must be present and match the SHA-256 of the file at replay_data_path. (8) Commitment hash canonicalisation: canonical JSON is UTF-8 encoded, all object keys sorted lexicographically (Unicode code point order), no insignificant whitespace (no spaces after colons or commas), integers as-is, floats with no trailing zeroes and no positive sign prefix, null values included (not omitted), arrays preserve insertion order. Implementation must use a single canonical_json() utility function — never raw serialisation."
+        }
+      }
+    }
+  },
+
+  "allOf": [
+    {
+      "if": { "properties": { "execution_path": { "const": "replay" } } },
+      "then": {
+        "required": ["product_theatre_config", "dataset_hashes"]
+      }
+    },
+    {
+      "if": { "properties": { "execution_path": { "const": "market" } } },
+      "then": {
+        "required": ["market_theatre_config"]
+      }
+    },
+    {
+      "if": { "properties": { "template_family": { "const": "GEOPOLITICAL" } } },
+      "then": {
+        "required": ["market_theatre_config"]
+      }
+    }
+  ]
+}

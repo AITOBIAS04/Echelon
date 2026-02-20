@@ -2,9 +2,9 @@
 
 **SYSTEM BIBLE**
 
-Version 10.0
+Version 11.0
 
-*Cost-Function Prediction Markets for Embodied AI Training*
+*Cost-Function Prediction Markets for Embodied AI Training & Construct Verification*
 
 February 2026
 
@@ -44,11 +44,13 @@ XIV\. Oracle Degraded Modes
 
 Appendix A: Archetype Behaviour Matrix
 
-Appendix B: Theatre Template Schema (JSON)
+Appendix B: Theatre Template Schema (JSON) — v2.0.1
 
-Appendix C: RLMF Export Schema (JSON)
+Appendix C: RLMF Export Schema (JSON) — v2.0.1
 
-Appendix D: Terminology & Glossary
+Appendix D: Calibration Certificate Schema — v1.0.0
+
+Appendix E: Terminology & Glossary
 
 **I. Design Philosophy & Thesis Statement**
 
@@ -92,45 +94,107 @@ Each Theatre Template defines a complete, algorithmically-verifiable market spec
 
 **2.2 Template Families**
 
-| **Family**         | **Domain**                   | **Resolution Type**     | **Example**                    |
-|--------------------|------------------------------|-------------------------|--------------------------------|
-| 2D-DISCRETE        | Grid navigation, pathfinding | Deterministic (Mode 0)  | Warehouse pick-and-place       |
-| 2D-CONTINUOUS      | Continuous 2D control        | Deterministic (Mode 0)  | Drone corridor navigation      |
-| 3D-STATIC          | Static 3D manipulation       | Deterministic (Mode 0)  | Assembly line quality check    |
-| 3D-INERT           | Inertial 3D physics          | Deterministic (Mode 0)  | Orbital salvage operations     |
-| 3D-DYNAMIC         | Dynamic obstacles            | Deterministic (Mode 0)  | Traffic intersection           |
-| PHYSICS-SIM        | Full physics simulation      | Deterministic (Mode 0)  | Robotic grasping under load    |
-| SOCIAL-ENGINEERING | Multi-agent negotiation      | Evidence-based (Mode 1) | Supply chain coordination      |
-| ECONOMIC-SIM       | Market dynamics              | Evidence-based (Mode 1) | Resource allocation            |
-| HYBRID             | Mixed physical-social        | Composed escalation     | Disaster response coordination |
+Templates are organised into two first-class families by execution path, plus the original simulation families for robotics training.
+
+**Product Theatres (execution_path: replay)**
+
+Product Theatres verify AI construct capabilities against engineering ground truth. They use the Replay Engine: commit parameters → invoke real construct via OracleAdapter → score output against ground truth → issue calibration certificate. No LMSR markets, no agents, no trading. Ground truth is free — a byproduct of building (GitHub diffs, CI output, provenance records, WCAG audits).
+
+Product Theatres are the primary revenue engine: they fund the OSINT budgets required by Geopolitical Theatres and generate calibration certificates that gate construct access to higher-tier model routing in the Hounfour runtime.
+
+**Geopolitical / Market Theatres (execution_path: market)**
+
+Market Theatres create counterfactual prediction markets using the full LMSR lifecycle. Agents trade against the cost function at fork points; resolution consumes committed OSINT evidence bundles. These are the original Echelon markets described in Sections III–XIV.
+
+| **Family**         | **Execution Path** | **Domain**                   | **Resolution Type**     | **Example**                    |
+|--------------------|---------------------|------------------------------|-------------------------|--------------------------------|
+| PRODUCT            | replay              | Construct verification       | Deterministic replay    | Observer user research verification |
+| GEOPOLITICAL       | market              | World events                 | OSINT evidence (Mode 1) | Strait of Hormuz transit disruption |
+| 2D-DISCRETE        | market              | Grid navigation, pathfinding | Deterministic (Mode 0)  | Warehouse pick-and-place       |
+| 2D-CONTINUOUS      | market              | Continuous 2D control        | Deterministic (Mode 0)  | Drone corridor navigation      |
+| 3D-STATIC          | market              | Static 3D manipulation       | Deterministic (Mode 0)  | Assembly line quality check    |
+| 3D-INERT           | market              | Inertial 3D physics          | Deterministic (Mode 0)  | Orbital salvage operations     |
+| 3D-DYNAMIC         | market              | Dynamic obstacles            | Deterministic (Mode 0)  | Traffic intersection           |
+| PHYSICS-SIM        | market              | Full physics simulation      | Deterministic (Mode 0)  | Robotic grasping under load    |
+| SOCIAL-ENGINEERING | market              | Multi-agent negotiation      | Evidence-based (Mode 1) | Supply chain coordination      |
+| ECONOMIC-SIM       | market              | Market dynamics              | Evidence-based (Mode 1) | Resource allocation            |
+| HYBRID             | market              | Mixed physical-social        | Composed escalation     | Disaster response coordination |
 
 **2.3 Template Structure**
 
-Each Theatre Template is a JSON document conforming to the Echelon Theatre Schema (Appendix B). The mandatory fields constitute a complete market contract:
+Each Theatre Template is a JSON document conforming to the Echelon Theatre Schema v2.0.1 (Appendix B). The schema enforces execution-path-specific requirements through conditional validation.
 
-**Required Fields**
+**Required Fields (all templates)**
 
-**theatre_id:** Unique identifier (e.g., orbital_salvage_v1). Immutable once published.
+**theatre_id:** Unique identifier (e.g., product_observer_v1). Immutable once published.
 
-**template_family:** Classification determining simulation complexity and resolution type.
+**template_family:** Classification determining execution path and resolution type.
 
-**training_primitives:** RL primitives this theatre trains (spatial_reasoning, causal_inference, adversarial_robustness, etc.).
+**execution_path:** Either `replay` (Product Theatre) or `market` (Market Theatre). Determines which lifecycle behaviour applies at the ACTIVE state.
 
-**fork_definitions:** Complete specification of decision points: trigger conditions, options, deadlines, state transitions.
+**criteria:** Structured evaluation criteria — not a freeform string. Contains `criteria_ids` (deterministic score keys such as `source_fidelity` or `hex_grid_accuracy`), `criteria_human` (freeform rubric for human consumption), and optional `weights` (per-criterion weights summing to 1.0). The `criteria_ids` become canonical keys in the calibration certificate's scores dictionary.
 
-**scoring:** Multi-dimensional score vector with explicit weights (time, value, collateral, safety, trace quality).
+**version_pins:** Exact commit hashes for every construct, scorer, and methodology version involved. Required for reproducibility. For compositional verification chains (e.g., Easel → Artisan → Mint), every construct in the chain must have a corresponding entry.
 
-**oracle_config:** Required oracle mode, data feeds, and confidence thresholds for settlement.
+**fork_definitions:** Decision points within the Theatre. For Market Theatres, each fork instantiates an LMSR market. For Replay Theatres, forks represent evaluation dimensions.
 
-**difficulty_tiers:** Parameter sets for Easy, Standard, and Hard difficulty with explicit multipliers.
+**scoring:** Scoring configuration. Market Theatres use the multi-dimensional score vector (time, value, collateral, safety, trace quality). Product Theatres use criteria-based scoring via the `weights` field in `criteria`. Both support configurable holdout splits for adversarial resistance.
+
+**resolution_programme:** Ordered sequence of oracle steps executed during settlement. Each step specifies a type (construct_invocation, deterministic_computation, hitl_rubric, or aggregation), timeout, and escalation path. Pre-committed and immutable after Theatre creation.
+
+**Additional Required Fields (Product Theatres)**
+
+**product_theatre_config:** Ground truth source (GITHUB_API, CI_CD, PROVENANCE_JSONL, DETERMINISTIC_COMPUTATION), construct under test, adapter type (http, local, or mock — mock permitted for CI only, never for certificate generation), adapter endpoint, and optional construct chain for compositional verification.
+
+**dataset_hashes:** SHA-256 hashes for all ground truth datasets referenced by the template. Linked to the replay data via `replay_dataset_id`, which must exist as a key in `dataset_hashes`. Ensures replay reproducibility.
+
+**Additional Required Fields (Market Theatres)**
+
+**market_theatre_config:** LMSR configuration (liquidity parameter b, fee schedule, duration), OSINT source declarations with resolution roles (primary_evidence, secondary_corroboration), corroboration minimum (minimum 2 independent sources per OSINT Appendix v3.2), geopolitical category, and Paradox thresholds.
+
+**Optional Fields**
+
+**hitl_steps:** Pre-committed human-in-the-loop specifications for semi-deterministic scoring. Includes rubric text, scoring scale, and identity separation rules (scorer must not be construct author). Required when the resolution programme includes steps of type `hitl_rubric`.
+
+**training_primitives:** RL/verification primitives this Theatre trains or tests.
+
+**difficulty_tiers:** Parameter sets for Easy, Standard, and Hard difficulty. Optional for Product Theatres.
+
+**oracle_config:** Required oracle mode, data feeds, and confidence thresholds. Applicable to Market Theatres.
+
+**physics_config:** Physics simulation parameters. Applicable to simulation-family Market Theatres only.
 
 **2.4 Fork Definitions (Decision Markets)**
 
 Forks are the atomic prediction units within a Theatre. Each fork defines a decision point where agents select from a constrained set of options, and market participants price the probability distribution across those options.
 
-Fork trigger conditions are typed and parameterised: timestep-based (deterministic), state-reached (simulation state crosses threshold), entropy-threshold (market uncertainty exceeds bound), or logic-gap-threshold (divergence between market and oracle signal). Each option has explicit success criteria, failure modes with defined penalties, and state transitions that modify the simulation deterministically.
+Fork trigger conditions are typed and parameterised: timestep-based (deterministic), state-reached (simulation state crosses threshold), entropy-threshold (market uncertainty exceeds bound), logic-gap-threshold (divergence between market and oracle signal), episode-complete (replay theatre episode boundary), or manual. Each option has an `option_id` (canonical identifier referenced by RLMF exports), explicit success criteria, failure modes with defined penalties, and state transitions that modify the simulation deterministically.
 
 This structured specification ensures that every fork is unambiguous, every outcome is mechanically determinable, and every resolution is reproducible from committed inputs.
+
+**2.5 Commitment Hash and Canonical JSON**
+
+The commitment hash is computed over the full canonicalised template JSON plus external version pins and dataset hashes — not a selected subset of fields. This prevents "uncommitted knobs" where a field can change without invalidating the hash.
+
+Canonical JSON follows RFC 8785 (JSON Canonicalization Scheme): all object keys sorted lexicographically (Unicode code point order), no insignificant whitespace, integers as-is, floats with no trailing zeroes and no positive sign prefix, null values included (not omitted), arrays preserve insertion order. All implementations must use a single `canonical_json()` utility function — never raw serialisation. This ensures third parties can independently reproduce the exact same hash.
+
+**Normative hash algorithm:** The commitment hash is `SHA-256( canonical_json(composite) )` where `composite` is a single JSON object with three keys: `{"dataset_hashes": ..., "template": ..., "version_pins": ...}` (keys in lexicographic order per canonical rules). Implementations must not concatenate separately serialised fragments — the input to SHA-256 is one canonical JSON string from one composite object. This eliminates ambiguity about delimiters, ordering, or boundary encoding between components.
+
+**2.6 Calibration Certificates and Verification Tiers**
+
+Every completed Theatre (Product or Market) produces a calibration certificate — a structured record of what was measured, how it was scored, and what evidence supports the scores. The canonical certificate schema is defined in Appendix D.
+
+The unified certificate schema includes: structured criteria (IDs + human rubric + weights), per-criterion scores, composite score, calibration metrics (precision, recall, Brier score, ECE as applicable), replay count, full reproducibility pins (construct version, scorer version, dataset hash, methodology version), evidence bundle hash, commitment hash, and verification tier.
+
+**Verification Tier Rules (v0)**
+
+| **Tier** | **Requirements** | **Hounfour Routing** | **Expiry** |
+|---|---|---|---|
+| UNVERIFIED | < 50 replays, OR missing reproducibility pins, OR incomplete evidence bundle | Baseline model pools. Constraint yielding (`review: skip`) treated as `review: full`. | N/A |
+| BACKTESTED | ≥ 50 replays + full reproducibility pins + published scores + verifiable commitment hash + no unresolved disputes | Mid-tier brigade routing. | 90 days without a new Theatre run → falls to UNVERIFIED |
+| PROVEN | BACKTESTED + ≥ 3 months consecutive verification + production telemetry + community attestation + behavioural signal integration | Premium model pools, full kitchen brigade access. | 180 days without production telemetry → falls to BACKTESTED |
+
+**Constraint Yielding Gate (hard rule):** An UNVERIFIED construct declaring `review: skip` in its manifest is always treated as `review: full` by the Loa framework and Hounfour routing layer. Only BACKTESTED or PROVEN constructs may yield quality gates. This gate is enforced in two places: Loa's manifest reader (at build time) and Hounfour's router (at runtime). It is not enforced in construct manifests themselves — a construct cannot override the gate by self-declaration. No exceptions.
 
 **III. Market Microstructure (LMSR with Committed Liquidity)**
 
@@ -302,6 +366,10 @@ At Theatre instantiation, the following parameters are published as an immutable
 | Paradox Thresholds   | Logic Gap triggers, stability triggers, severity classes       | Committed in Theatre Template JSON                  |
 | Resolution Mechanism | Oracle escalation ladder, dispute rules, timeout conditions    | State machine specification hashed and published    |
 | Sabotage Rules       | Commit-reveal delays, position-scaled pricing formula, staking | Smart contract parameters immutable post-deployment |
+| Version Pins         | Exact commit hash for every construct and scorer in the resolution programme | Hash of version_pins object included in commitment hash |
+| Dataset Hashes       | SHA-256 of every ground truth dataset referenced by the template | Hash of dataset_hashes object included in commitment hash |
+
+The commitment hash is computed over the full canonicalised template JSON plus version pins and dataset hashes using canonical JSON rules (see §II.5). For Product Theatres, no capital is escrowed and sabotage rules do not apply; the commitment ensures parameter immutability and replay reproducibility. The invariant after commitment: no parameter changes are permitted. The resolution programme may include pre-committed human-in-the-loop steps, but the process, rubric, and identity rules for those steps are themselves committed.
 
 **6.3 Immutable Lifecycle**
 
@@ -486,7 +554,13 @@ RLMF replaces single-annotator binary labelling with multi-agent market-derived 
 
 **11.3 RLMF Export Format**
 
-The canonical RLMF export schema (Appendix C) standardises market supervision signals for integration with robotics training pipelines. Each export record contains: episode identification (theatre_id, seed_hash for deterministic replay), state features (6-DOF pose, object states, active constraints), fork information (options, deadlines, trigger conditions), market signals (LMSR prices as probabilities, liquidity depth, Logic Gap, entropy), action taken by the evaluated agent, settlement outcome (multi-dimensional reward vector), and calibration metrics (Brier score, ECE).
+The canonical RLMF export schema v2.0.1 (Appendix C) standardises supervision signals for integration with both robotics training pipelines and construct verification workflows. The schema supports two execution paths with conditional field requirements.
+
+**Market Theatre exports** (execution_path: market) contain: episode identification (theatre_id, seed_hash for deterministic replay), state features (6-DOF pose, object states, active constraints), fork information (options as option_ids, deadlines, trigger conditions), market signals (LMSR prices as probabilities, liquidity depth, Logic Gap, entropy, agent distribution), action taken by the evaluated agent (option_id), settlement outcome (multi-dimensional reward vector), and calibration metrics (Brier score, ECE).
+
+**Product Theatre exports** (execution_path: replay) contain: episode identification (theatre_id, config_hash as commitment reference), state features (input_data passed to construct, construct_output received, ground_truth or ground_truth_ref for auditability, ground_truth_hash), a `criteria_ids` snapshot (making the export self-describing without a template fetch), `replay_output_class` (the construct's predicted classification — distinct from `action_taken` to prevent confusion between agent decisions and construct outputs), settlement outcome (per-criterion scores keyed by criteria_ids, normalised 0.0–1.0), verification metadata (construct_id, construct_version, construct_chain_versions for compositional chains, invocation_status, invocation_latency, evidence_bundle_hash, certificate_id, verification_tier), and calibration metrics (precision, recall, reply_accuracy).
+
+Both paths include a `metadata.is_holdout` flag indicating whether the episode was in the adversarial holdout split, and the commitment hash (`config_hash`) linking the export back to the Theatre's committed parameters for third-party verification.
 
 **11.4 Market Calibration as Training Signal Quality**
 
@@ -597,29 +671,113 @@ Core discontinuous events (sabotage, extraction) maintain fairness under adversa
 
 Oracle mode is committed at Theatre creation as a minimum requirement. Theatres requiring Mode 0 (deterministic) cannot be deployed when feeds are degraded. Mode transitions are governed by committed rules and publicly visible, never by platform discretion.
 
-**Appendix D: Terminology & Glossary**
+**Appendix B: Theatre Template Schema (JSON) — v2.0.1**
+
+The Theatre Template schema (`echelon_theatre_schema_v2.json`) defines the complete specification for all Theatre types. Key design decisions in v2.0.1:
+
+**Execution path split.** The `execution_path` field (replay | market) determines which lifecycle behaviour applies. Conditional validation via `allOf`/`if`/`then` blocks enforces that Product Theatres require `product_theatre_config` and `dataset_hashes`, whilst Market Theatres require `market_theatre_config`.
+
+**Structured criteria.** The `criteria` object replaces freeform strings with `criteria_ids` (deterministic snake_case keys), `criteria_human` (freeform rubric), and `weights` (per-criterion weights — runtime-enforced to sum to 1.0 and be a subset of criteria_ids).
+
+**Version pinning.** The `version_pins` object maps construct IDs to exact commit hashes. Runtime validation enforces that every `construct_id` referenced in the `resolution_programme` has a corresponding entry.
+
+**Adapter endpoint conditional.** When `adapter_type` is `http` or `local`, `adapter_endpoint` is required by a nested `allOf` block within `product_theatre_config`.
+
+**Runtime validation rules.** A `runtime_validation_rules` documentation field enumerates seven constraints that JSON Schema cannot express but the Theatre engine must enforce, including criteria weight sums, construct-to-pin linkage, and canonical JSON rules for commitment hash computation.
+
+**Strict mode.** `additionalProperties: false` on the root object and key nested objects prevents silent arbitrary fields.
+
+The full schema is maintained in `docs/schemas/echelon_theatre_schema_v2.json`. The v1 schema (`echelon_theatre_schema.json`) is retained for backward compatibility with existing simulation templates.
+
+**Appendix C: RLMF Export Schema (JSON) — v2.0.1**
+
+The RLMF export schema (`echelon_rlmf_schema_v2.json`) defines the canonical format for training data exports. Key design decisions in v2.0.1:
+
+**Execution path conditionals.** `allOf`/`if`/`then` blocks enforce that replay episodes require `state_features.input_data`, `construct_output`, `ground_truth_hash`, `settlement.criteria_scores`, and `verification` fields. Market episodes require the `market` block with prices, liquidity, logic_gap, and entropy.
+
+**Ground truth auditability.** Replay episodes must include either `ground_truth` (inline data) or `ground_truth_ref` (URI/path), alongside `ground_truth_hash`. This supports privacy-sensitive hash-only exports whilst ensuring auditability.
+
+**Separated output semantics.** `action_taken` is for market agent decisions (option_ids). `replay_output_class` is for construct predictions in replay mode. This prevents downstream consumers from conflating agent choices with construct outputs.
+
+**Self-describing exports.** A `criteria_ids` snapshot array is required for replay episodes, allowing consumers to validate `criteria_scores` keys without fetching the Theatre template.
+
+**Standardised hash format.** All hashes use raw hex format (`^[a-f0-9]{64}$`) — no `0x` prefix — across both schemas for consistency.
+
+**Corrected bounds.** Brier score maximum is 1.0 (not 0.5). Criteria scores are bounded 0.0–1.0.
+
+The full schema is maintained in `docs/schemas/echelon_rlmf_schema_v2.json`. The v1 schema is retained for backward compatibility.
+
+**Appendix D: Calibration Certificate Schema — v1.0.0**
+
+The calibration certificate is the bridge between Echelon's verification infrastructure and Hounfour's model routing. Every completed Theatre (Product or Market) issues one. The schema is maintained in `docs/schemas/echelon_certificate_schema.json`.
+
+| **Field** | **Type** | **Description** |
+|---|---|---|
+| certificate_id | UUID | Unique certificate identifier |
+| theatre_id | string | Theatre that produced this certificate |
+| template_id | string | Theatre template used |
+| construct_id | string | Construct under test |
+| criteria | TheatreCriteria | Structured criteria (IDs + human rubric + weights) |
+| scores | dict[str, float] | Per-criterion scores; keys are criteria_ids, values 0.0–1.0 |
+| composite_score | float | Weighted aggregate per criteria weights |
+| precision | float (optional) | Classification precision (Product Theatres) |
+| recall | float (optional) | Classification recall (Product Theatres) |
+| reply_accuracy | float (optional) | Response accuracy (Product Theatres) |
+| brier_score | float (optional) | Probabilistic calibration (Market Theatres) |
+| ece | float (optional) | Expected Calibration Error |
+| replay_count | int | Number of episodes scored |
+| evidence_bundle_hash | string | SHA-256 of the evidence bundle (raw hex) |
+| ground_truth_hash | string | SHA-256 of the ground truth dataset (raw hex) |
+| construct_version | string | Exact commit hash of construct under test |
+| construct_chain_versions | dict (optional) | For compositional chains: construct_id → commit hash |
+| scorer_version | string | Scorer model/version identifier |
+| methodology_version | string | Verification methodology version |
+| dataset_hash | string | SHA-256 of replay dataset (raw hex) |
+| verification_tier | enum | UNVERIFIED, BACKTESTED, or PROVEN |
+| commitment_hash | string | Theatre's commitment hash (for third-party verification) |
+| issued_at | datetime | Certificate issuance timestamp |
+| expires_at | datetime | Per tier expiry rules (90 days BACKTESTED, 180 days PROVEN) |
+| theatre_committed_at | datetime | When the Theatre was committed |
+| theatre_resolved_at | datetime | When the Theatre resolved |
+| ground_truth_source | enum | GITHUB_API, CI_CD, PROVENANCE_JSONL, DETERMINISTIC_COMPUTATION, OSINT_FEED |
+| execution_path | string | "replay" or "market" |
+
+This schema is consumed by Hounfour's router to make tier-based routing decisions, and by Loa's manifest reader to enforce the constraint yielding gate.
+
+**Appendix E: Terminology & Glossary**
 
 | **Term**                 | **Definition**                                                                                                                 |
 |--------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| Theatre                  | A structured simulation environment defined by a Theatre Template. The atomic unit of market creation in Echelon.              |
-| Theatre Template         | A JSON specification conforming to the Echelon Theatre Schema, defining all parameters for a class of markets.                 |
+| Theatre                  | A structured environment defined by a Theatre Template. The atomic unit of market creation (Market Theatres) or construct verification (Product Theatres) in Echelon. |
+| Theatre Template         | A JSON specification conforming to the Echelon Theatre Schema v2.0.1, defining all parameters for a class of markets or verifications. |
+| Product Theatre          | A Theatre with execution_path = replay. Verifies AI construct capabilities against engineering ground truth via the Replay Engine. No LMSR markets, no agents, no trading. |
+| Market Theatre           | A Theatre with execution_path = market. Creates counterfactual prediction markets using the full LMSR lifecycle with agents and trading. |
+| Execution Path           | The `execution_path` field in a Theatre Template: `replay` (Product Theatre) or `market` (Market Theatre). Determines which lifecycle behaviour applies. |
+| Replay Engine            | The execution engine for Product Theatres. Commits parameters, invokes real constructs via OracleAdapter, scores outputs against ground truth, and issues calibration certificates. |
 | Fork                     | A decision point within a Theatre where agents select from constrained options and markets price the probability distribution. |
 | Wing Flap                | An atomic causal event recorded by the Butterfly Engine. Every significant action that modifies simulation state.              |
 | Logic Gap                | The divergence between market-implied probabilities and committed OSINT reality signals. Measured as a percentage.             |
 | Paradox                  | An integrity mechanism that activates when Logic Gap or stability exceeds pre-committed thresholds.                            |
 | LMSR                     | Logarithmic Market Scoring Rule. The cost-function market maker providing always-on liquidity with bounded loss.               |
 | Liquidity Parameter (b)  | The committed capital controlling LMSR price sensitivity. Larger b = deeper liquidity = higher maximum loss.                   |
-| Commitment Hash          | The on-chain hash of all parameters governing a market's lifecycle, published before trading opens.                            |
-| RLMF                     | Reinforcement Learning from Market Feedback. The training data product derived from market-implied probability distributions.  |
-| Brier Score              | A calibration metric measuring the accuracy of probabilistic predictions. Lower is better. Range: 0 to 0.5.                    |
+| Commitment Hash          | SHA-256 hash of the full canonicalised template JSON plus version pins and dataset hashes, published before execution opens. Computed using canonical JSON (RFC 8785). |
+| Canonical JSON           | Deterministic JSON serialisation per RFC 8785: sorted keys, no whitespace, normalised floats, nulls included. Used for all commitment hash computations. |
+| RLMF                     | Reinforcement Learning from Market Feedback. The training data product derived from market-implied probability distributions and construct verification replays. |
+| Calibration Certificate  | A structured record produced by every completed Theatre. Contains criteria scores, calibration metrics, reproducibility pins, evidence bundle hash, and verification tier. Gates construct access to model routing tiers. |
+| Verification Tier        | Trust level assigned to a construct based on Theatre evidence: UNVERIFIED (< 50 replays or missing pins), BACKTESTED (≥ 50 replays + full pins), PROVEN (BACKTESTED + production telemetry + attestation). Tiers expire without ongoing verification. |
+| Constraint Yielding Gate | Hard framework rule: UNVERIFIED constructs declaring `review: skip` are always treated as `review: full`. Only BACKTESTED or PROVEN constructs may yield quality gates. |
+| Criteria IDs             | Deterministic snake_case identifiers (e.g., `source_fidelity`, `hex_grid_accuracy`) that become canonical keys in certificate scores. Domain-specific and human-defined per template. |
+| OracleAdapter            | The interface through which Product Theatres invoke constructs. Supports HTTP (remote), local (subprocess), and mock (CI-only) transports. Standardised request/response envelope with timeout, retry, and error taxonomy. |
+| Evidence Bundle          | The auditable artefact backing a calibration certificate. Contains: manifest, committed template, ground truth, invocation records, per-episode scores, aggregate results, certificate, and audit trail. Hash-verified for integrity. |
+| Brier Score              | A calibration metric measuring the accuracy of probabilistic predictions. Lower is better. Range: 0 to 1.0.                    |
 | ECE                      | Expected Calibration Error. Measures reliability of confidence estimates across prediction bins.                               |
 | VRF                      | Verifiable Random Function. Produces unpredictable, unbiasable randomness with on-chain cryptographic proof.                   |
-| Resolution State Machine | The pre-committed procedure that consumes committed inputs and deterministically produces a market outcome.                    |
+| Resolution State Machine | The pre-committed procedure that consumes committed inputs and deterministically produces a market or verification outcome. Steps may include construct invocations, deterministic computations, HITL rubric scoring, and aggregation. |
 | Founder's Yield          | Revenue earned by the agent whose Wing Flap spawned a Timeline Fork. Proportional to stability and volume.                     |
 | Agent Tax                | The problem of high inference costs making autonomous agents economically unviable at scale.                                   |
 
 *Document End*
 
-Echelon Protocol \| Version 10.0 \| February 2026
+Echelon Protocol \| Version 11.0 \| February 2026
 
 *This document is a technical specification and does not constitute investment, legal, or financial advice.*

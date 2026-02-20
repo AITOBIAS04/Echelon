@@ -2,7 +2,7 @@
 
 *Partner overview: data acquisition, provenance, disputes, Scenario Factory, and Real-to-Sim incident replay*
 
-**Version 3.1 \| 17 February 2026**
+**Version 3.2 \| 20 February 2026**
 
 1\. Purpose and scope
 
@@ -148,7 +148,7 @@ Section 2.2 establishes that Echelon is multi-source by design. This subsection 
 
 **Independence requirement.** Corroboration sources must be from different modalities or providers. Two articles from the same news wire do not satisfy the requirement. Two signals from independent modalities (e.g. GDELT news event + AIS anomaly, or Polygon.io price movement + official government filing) do satisfy it. The goal is to prevent single-source manipulation where a compromised feed could trigger false settlement.
 
-**Theatre Template schema addition.** The Theatre Template schema (System Bible §II) should include a corroboration_sources field for each resolution variable, with a minimum cardinality of 2. Each entry specifies: source_provider, source_modality, and the resolution_role (primary evidence or secondary corroboration).
+**Theatre Template schema implementation.** The Theatre Template schema v2.0.1 (System Bible §II, Appendix B) implements corroboration as a first-class field within `market_theatre_config`. Each Market Theatre declares an `osint_sources` array where each entry specifies: `provider`, `modality`, and `resolution_role` (primary_evidence or secondary_corroboration). The `corroboration_minimum` field (integer, minimum 2) is enforced at schema validation — a Market Theatre template with fewer than two independent sources is rejected before commitment. Product Theatres (execution_path = replay) are exempt from this requirement as their ground truth derives from engineering artefacts (GitHub diffs, CI output, provenance records), not OSINT feeds.
 
 **Illustrative examples:**
 
