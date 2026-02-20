@@ -35,7 +35,10 @@ from theatre.engine.replay import ReplayEngine
 from theatre.engine.scoring import TheatreScoringProvider
 from theatre.engine.template_validator import TemplateValidator
 from theatre.engine.tier_assigner import TierAssigner
+import httpx
+
 from theatre.integration import (
+    GitHubIngester,
     GroundTruthAdapter,
     GroundTruthRecord,
     ObserverOracleAdapter,
@@ -501,19 +504,35 @@ async def main() -> None:
         sys.exit(1)
 
     # Ingest PRs from GitHub
-    # For now, this is a placeholder — real ingestion would use GitHubIngester
-    # from the Cycle-027 verification pipeline
-    print(f"Ingesting up to {args.limit} PRs from {args.repo}...")
+    if not github_token:
+        print("WARNING: GITHUB_TOKEN not set — API rate limits will be very low (60 req/hr)")
 
-    # TODO: Wire GitHubIngester when running live
-    # from verification.src.echelon_verify.ingestion import GitHubIngester
-    # ingester = GitHubIngester(token=github_token)
-    # records = await ingester.ingest(repo=args.repo, limit=args.limit)
+    print(f"Ingesting up to {args.limit} merged PRs from {args.repo}...")
 
-    print("ERROR: Live ingestion requires Cycle-027 GitHubIngester to be wired.")
-    print("Use the Python API directly for integration testing:")
-    print("  from scripts.run_observer_theatre import run_observer_theatre")
-    sys.exit(1)
+    ingester = GitHubIngester(token=github_token)
+    try:
+        records = await ingester.ingest(repo=args.repo, limit=args.limit)
+    except httpx.HTTPStatusError as exc:
+        print(f"ERROR: GitHub API returned {exc.response.status_code}: {exc.response.text[:200]}")
+        sys.exit(1)
+    except httpx.ConnectError as exc:
+        print(f"ERROR: Could not connect to GitHub API: {exc}")
+        sys.exit(1)
+
+    if not records:
+        print(f"No merged PRs found in {args.repo}")
+        sys.exit(0)
+
+    print(f"Ingested {len(records)} merged PRs")
+
+    output_dir = Path(args.output_dir)
+    cert_path = await run_observer_theatre(
+        records,
+        output_dir=output_dir,
+        anthropic_api_key=anthropic_api_key,
+        verbose=args.verbose,
+    )
+    print(f"Certificate written to {cert_path}")
 
 
 if __name__ == "__main__":

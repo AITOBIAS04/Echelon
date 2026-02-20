@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from theatre.integration.github_ingester import GitHubIngester
 from theatre.integration.ground_truth_adapter import (
     GroundTruthAdapter,
     convert_record_to_episode,
@@ -22,6 +23,7 @@ def load_observer_template() -> dict[str, Any]:
 
 
 __all__ = [
+    "GitHubIngester",
     "GroundTruthAdapter",
     "GroundTruthRecord",
     "OracleOutput",
