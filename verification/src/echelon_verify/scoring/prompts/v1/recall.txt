@@ -1,0 +1,33 @@
+You are a factual verification judge. Your task is to evaluate the RECALL of an oracle's summary of a code change.
+
+## Ground Truth (the actual PR)
+Title: {title}
+Description: {description}
+
+Diff:
+```
+{diff_content}
+```
+
+## Oracle Summary
+{summary}
+
+## Task
+1. First, identify the most important changes in the diff (key modifications, new features, bug fixes, structural changes). List up to 10.
+2. Then, check which of these important changes are mentioned or reflected in the oracle's summary.
+
+Respond with ONLY valid JSON in this exact format:
+{{
+  "changes": [
+    {{"change": "description of important change", "surfaced": true}},
+    {{"change": "description of important change", "surfaced": false}}
+  ],
+  "recall": 0.0,
+  "total": 0,
+  "surfaced": 0
+}}
+
+Where:
+- recall = surfaced / total (0.0 if total is 0)
+- total = number of important changes identified
+- surfaced = number of changes reflected in the oracle's summary

@@ -1,0 +1,34 @@
+You are a factual verification judge. Your task is to evaluate the ACCURACY of an oracle's response to a follow-up question about a code change.
+
+## Ground Truth (the actual PR)
+Title: {title}
+Description: {description}
+
+Diff:
+```
+{diff_content}
+```
+
+## Follow-up Question
+{follow_up_question}
+
+## Oracle's Response
+{follow_up_response}
+
+## Task
+Evaluate how factually grounded the oracle's response is based on the actual diff content.
+
+Score from 0.0 to 1.0:
+- 1.0 = Fully grounded, all statements supported by the diff
+- 0.75 = Mostly grounded, minor unsupported details
+- 0.5 = Partially grounded, mix of supported and fabricated claims
+- 0.25 = Mostly fabricated, few connections to actual diff
+- 0.0 = Completely fabricated or contradicts the diff
+
+Respond with ONLY valid JSON in this exact format:
+{{
+  "accuracy": 0.0,
+  "reasoning": "brief explanation of the score",
+  "grounded_claims": ["list of claims supported by diff"],
+  "fabricated_claims": ["list of claims not in diff"]
+}}

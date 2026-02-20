@@ -1,0 +1,85 @@
+{
+  "schema_version": "2.0.1",
+  "theatre_id": "product_observer_v1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "display_name": "Product Observer — Provenance Fidelity",
+  "description": "Verifies the Observer construct's ability to extract, classify, and enrich provenance signals from upstream data sources.",
+  "criteria": {
+    "criteria_ids": [
+      "source_fidelity",
+      "signal_classification",
+      "canvas_enrichment_freshness"
+    ],
+    "criteria_human": "Source fidelity measures data lineage accuracy. Signal classification measures correct categorisation of provenance events. Canvas enrichment freshness measures timeliness of downstream enrichment propagation.",
+    "weights": {
+      "source_fidelity": 0.4,
+      "signal_classification": 0.35,
+      "canvas_enrichment_freshness": 0.25
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "observer": "a1b2c3d"
+    },
+    "scorer_version": "gpt-4o-2024-08-06",
+    "methodology_version": "1.0.0"
+  },
+  "dataset_hashes": {
+    "observer_provenance": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "product_theatre_config": {
+    "ground_truth_source": "PROVENANCE_JSONL",
+    "construct_under_test": "observer",
+    "adapter_type": "mock",
+    "replay_data_path": "theatre/fixtures/observer_provenance.jsonl",
+    "replay_dataset_id": "observer_provenance"
+  },
+  "fork_definitions": [
+    {
+      "fork_id": "f_01",
+      "trigger_condition": {
+        "type": "episode_complete",
+        "parameters": {}
+      },
+      "options": [
+        {
+          "option_id": "high_fidelity",
+          "label": "High Fidelity",
+          "description": "Source provenance is accurate and complete"
+        },
+        {
+          "option_id": "low_fidelity",
+          "label": "Low Fidelity",
+          "description": "Source provenance has gaps or inaccuracies"
+        }
+      ],
+      "deadline_ms": 0
+    }
+  ],
+  "scoring": {
+    "score_bounds": {
+      "minimum": 0,
+      "maximum": 1
+    },
+    "holdout_split": 0.2
+  },
+  "resolution_programme": [
+    {
+      "step_id": "invoke_observer",
+      "type": "construct_invocation",
+      "construct_id": "observer",
+      "timeout_seconds": 30
+    },
+    {
+      "step_id": "aggregate_scores",
+      "type": "aggregation"
+    }
+  ],
+  "metadata": {
+    "author": "echelon-team",
+    "created_date": "2026-02-20",
+    "status": "approved",
+    "tags": ["observer", "provenance", "product-theatre"]
+  }
+}

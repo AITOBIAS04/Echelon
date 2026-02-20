@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { PortfolioPage } from './pages/PortfolioPage';
@@ -15,6 +16,10 @@ import { VRFPage } from './pages/VRFPage';
 import { RLMFPage } from './pages/RLMFPage';
 import { BreachConsolePage } from './pages/BreachConsolePage';
 import { ExportConsolePage } from './pages/ExportConsolePage';
+
+const VerifyPage = lazy(() =>
+  import('./pages/VerifyPage').then((m) => ({ default: m.VerifyPage }))
+);
 
 export const router = createBrowserRouter([
   {
@@ -64,6 +69,22 @@ export const router = createBrowserRouter([
         element: (
           <ErrorBoundary>
             <VRFPage />
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'verify',
+        element: (
+          <ErrorBoundary>
+            <Suspense
+              fallback={
+                <div className="p-6 text-terminal-text-muted text-xs">
+                  Loading...
+                </div>
+              }
+            >
+              <VerifyPage />
+            </Suspense>
           </ErrorBoundary>
         ),
       },

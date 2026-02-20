@@ -479,3 +479,189 @@ class VerificationRun(Base):
         Index("ix_verification_runs_construct", "construct_id"),
     )
 
+
+# ============================================
+# THEATRE (Theatre Template Engine — Cycle-031)
+# ============================================
+
+class TheatreTemplate(Base):
+    __tablename__ = "theatre_templates"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    template_family: Mapped[str] = mapped_column(String(50))
+    execution_path: Mapped[str] = mapped_column(String(10))
+    display_name: Mapped[str] = mapped_column(String(100))
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    schema_version: Mapped[str] = mapped_column(String(20))
+    template_json: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    theatres: Mapped[List["Theatre"]] = relationship(back_populates="template")
+
+    __table_args__ = (
+        Index("ix_theatre_templates_family", "template_family"),
+        Index("ix_theatre_templates_execution_path", "execution_path"),
+    )
+
+
+class Theatre(Base):
+    __tablename__ = "theatres"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("users.id"), index=True)
+    template_id: Mapped[str] = mapped_column(
+        String(100), ForeignKey("theatre_templates.id"), index=True
+    )
+    state: Mapped[str] = mapped_column(String(20), default="DRAFT")
+    construct_id: Mapped[str] = mapped_column(String(255), index=True)
+
+    # Commitment fields (populated on COMMITTED transition)
+    commitment_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    committed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    version_pins: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    dataset_hashes: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # Execution tracking
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    total_episodes: Mapped[int] = mapped_column(Integer, default=0)
+    failure_count: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Resolution
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    certificate_id: Mapped[Optional[str]] = mapped_column(
+        String(50), ForeignKey("theatre_certificates.id"), nullable=True
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    template: Mapped["TheatreTemplate"] = relationship(back_populates="theatres")
+    certificate: Mapped[Optional["TheatreCertificate"]] = relationship(
+        back_populates="theatre"
+    )
+    episode_scores: Mapped[List["TheatreEpisodeScore"]] = relationship(
+        back_populates="theatre"
+    )
+    audit_events: Mapped[List["TheatreAuditEvent"]] = relationship(
+        back_populates="theatre"
+    )
+
+    __table_args__ = (
+        Index("ix_theatres_state", "state"),
+        Index("ix_theatres_construct", "construct_id"),
+        Index("ix_theatres_user_created", "user_id", "created_at"),
+    )
+
+
+class TheatreCertificate(Base):
+    __tablename__ = "theatre_certificates"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    theatre_id: Mapped[str] = mapped_column(String(50), index=True)
+    template_id: Mapped[str] = mapped_column(String(100), index=True)
+    construct_id: Mapped[str] = mapped_column(String(255), index=True)
+
+    # Criteria & scores
+    criteria_json: Mapped[dict] = mapped_column(JSON)
+    scores_json: Mapped[dict] = mapped_column(JSON)
+    composite_score: Mapped[float] = mapped_column(Float)
+
+    # Calibration (optional)
+    precision: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    recall: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    reply_accuracy: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    brier_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    ece: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    # Evidence
+    replay_count: Mapped[int] = mapped_column(Integer)
+    evidence_bundle_hash: Mapped[str] = mapped_column(String(64))
+    ground_truth_hash: Mapped[str] = mapped_column(String(64))
+
+    # Reproducibility
+    construct_version: Mapped[str] = mapped_column(String(64))
+    construct_chain_versions: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    scorer_version: Mapped[str] = mapped_column(String(100))
+    methodology_version: Mapped[str] = mapped_column(String(20))
+    dataset_hash: Mapped[str] = mapped_column(String(64))
+
+    # Trust
+    verification_tier: Mapped[str] = mapped_column(String(20))
+    commitment_hash: Mapped[str] = mapped_column(String(64))
+
+    # Timestamps
+    issued_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    theatre_committed_at: Mapped[datetime] = mapped_column(DateTime)
+    theatre_resolved_at: Mapped[datetime] = mapped_column(DateTime)
+
+    # Integration
+    ground_truth_source: Mapped[str] = mapped_column(String(100))
+    execution_path: Mapped[str] = mapped_column(String(10))
+
+    # Relationships
+    theatre: Mapped[Optional["Theatre"]] = relationship(back_populates="certificate")
+    episode_scores: Mapped[List["TheatreEpisodeScore"]] = relationship(
+        back_populates="certificate"
+    )
+
+    __table_args__ = (
+        Index("ix_theatre_certs_construct_created", "construct_id", "issued_at"),
+        Index("ix_theatre_certs_tier", "verification_tier"),
+        Index("ix_theatre_certs_template", "template_id"),
+    )
+
+
+class TheatreEpisodeScore(Base):
+    __tablename__ = "theatre_episode_scores"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    theatre_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), index=True
+    )
+    certificate_id: Mapped[Optional[str]] = mapped_column(
+        String(50), ForeignKey("theatre_certificates.id"), nullable=True, index=True
+    )
+    episode_id: Mapped[str] = mapped_column(String(255))
+    invocation_status: Mapped[str] = mapped_column(String(20))
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    scores_json: Mapped[dict] = mapped_column(JSON)
+    composite_score: Mapped[float] = mapped_column(Float)
+    scored_at: Mapped[datetime] = mapped_column(DateTime)
+
+    # Relationships
+    theatre: Mapped["Theatre"] = relationship(back_populates="episode_scores")
+    certificate: Mapped[Optional["TheatreCertificate"]] = relationship(
+        back_populates="episode_scores"
+    )
+
+
+class TheatreAuditEvent(Base):
+    __tablename__ = "theatre_audit_events"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    theatre_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(50))
+    from_state: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    to_state: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    detail_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    theatre: Mapped["Theatre"] = relationship(back_populates="audit_events")
+
+    __table_args__ = (
+        Index("ix_theatre_audit_theatre_created", "theatre_id", "created_at"),
+    )
+

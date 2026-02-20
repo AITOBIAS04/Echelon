@@ -7,6 +7,7 @@ import {
   Briefcase,
   Cpu,
   Shield,
+  ShieldCheck,
   Users,
   Rocket,
   AlertTriangle,
@@ -41,6 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/rlmf', label: 'RLMF', icon: Cpu },
   { path: '/launchpad', label: 'Launchpad', icon: Rocket },
   { path: '/vrf', label: 'VRF', icon: Shield },
+  { path: '/verify', label: 'Verify', icon: ShieldCheck },
   { path: '/agents', label: 'Agents', icon: Users, matchPrefixes: ['/agents', '/agent/'] },
 ];
 

@@ -116,6 +116,17 @@ except ImportError as e:
     verification_router = None
     print(f"⚠️ Could not import Verification API router: {e}")
 
+# Theatre API (Theatre Template Engine)
+try:
+    from backend.api.theatre_routes import router as theatre_router
+    from backend.api.theatre_routes import templates_router as theatre_templates_router
+    from backend.api.theatre_routes import certificates_router as theatre_certificates_router
+except ImportError as e:
+    theatre_router = None
+    theatre_templates_router = None
+    theatre_certificates_router = None
+    print(f"⚠️ Could not import Theatre API router: {e}")
+
 # Initialize
 osint = get_osint_registry()
 
@@ -325,6 +336,24 @@ try:
         print("⚠️ Verification router is None, skipping")
 except Exception as e:
     print(f"❌ Failed to include Verification router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Theatre routers (Theatre Template Engine)
+try:
+    if theatre_router:
+        app.include_router(theatre_router)
+        print("✅ Theatre router included")
+    else:
+        print("⚠️ Theatre router is None, skipping")
+    if theatre_templates_router:
+        app.include_router(theatre_templates_router)
+        print("✅ Theatre Templates router included")
+    if theatre_certificates_router:
+        app.include_router(theatre_certificates_router)
+        print("✅ Theatre Certificates router included")
+except Exception as e:
+    print(f"❌ Failed to include Theatre router: {e}")
     import traceback
     traceback.print_exc()
 

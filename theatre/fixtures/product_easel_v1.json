@@ -1,0 +1,123 @@
+{
+  "schema_version": "2.0.1",
+  "theatre_id": "product_easel_v1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "display_name": "Product Easel — TDR Propagation Fidelity",
+  "description": "Verifies the Easel compositional construct chain: vocabulary adherence, TDR propagation fidelity, and downstream compliance across three chained constructs.",
+  "criteria": {
+    "criteria_ids": [
+      "vocabulary_adherence",
+      "tdr_propagation_fidelity",
+      "downstream_compliance"
+    ],
+    "criteria_human": "Vocabulary adherence measures correct use of domain-specific terminology. TDR propagation fidelity measures accurate forwarding of Threat Detection Reports. Downstream compliance measures adherence to downstream format and protocol requirements.",
+    "weights": {
+      "vocabulary_adherence": 0.3,
+      "tdr_propagation_fidelity": 0.4,
+      "downstream_compliance": 0.3
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "easel_ingester": "d4e5f6a",
+      "easel_transformer": "b7c8d9e",
+      "easel_emitter": "f0a1b2c"
+    },
+    "scorer_version": "gpt-4o-2024-08-06",
+    "methodology_version": "1.0.0"
+  },
+  "dataset_hashes": {
+    "easel_tdr_records": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "product_theatre_config": {
+    "ground_truth_source": "PROVENANCE_JSONL",
+    "construct_under_test": "easel_ingester",
+    "construct_chain": [
+      "easel_ingester",
+      "easel_transformer",
+      "easel_emitter"
+    ],
+    "adapter_type": "mock",
+    "replay_data_path": "theatre/fixtures/easel_tdr_records.jsonl",
+    "replay_dataset_id": "easel_tdr_records"
+  },
+  "fork_definitions": [
+    {
+      "fork_id": "f_01",
+      "trigger_condition": {
+        "type": "episode_complete",
+        "parameters": {}
+      },
+      "options": [
+        {
+          "option_id": "compliant",
+          "label": "Compliant",
+          "description": "TDR propagation meets all downstream requirements"
+        },
+        {
+          "option_id": "non_compliant",
+          "label": "Non-Compliant",
+          "description": "TDR propagation has compliance violations"
+        }
+      ],
+      "deadline_ms": 0
+    }
+  ],
+  "scoring": {
+    "score_bounds": {
+      "minimum": 0,
+      "maximum": 1
+    },
+    "holdout_split": 0.2
+  },
+  "resolution_programme": [
+    {
+      "step_id": "invoke_ingester",
+      "type": "construct_invocation",
+      "construct_id": "easel_ingester",
+      "timeout_seconds": 30
+    },
+    {
+      "step_id": "invoke_transformer",
+      "type": "construct_invocation",
+      "construct_id": "easel_transformer",
+      "timeout_seconds": 30
+    },
+    {
+      "step_id": "invoke_emitter",
+      "type": "construct_invocation",
+      "construct_id": "easel_emitter",
+      "timeout_seconds": 30
+    },
+    {
+      "step_id": "hitl_compliance_review",
+      "type": "hitl_rubric"
+    },
+    {
+      "step_id": "aggregate_results",
+      "type": "aggregation"
+    }
+  ],
+  "hitl_steps": [
+    {
+      "step_id": "hitl_compliance_review",
+      "rubric": "Review the TDR propagation output for downstream compliance. Score based on: vocabulary correctness, field mapping accuracy, and temporal ordering preservation.",
+      "scoring_scale": {
+        "min": 0,
+        "max": 10,
+        "labels": {
+          "0": "Complete failure",
+          "5": "Partial compliance",
+          "10": "Full compliance"
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "author": "echelon-team",
+    "created_date": "2026-02-20",
+    "status": "approved",
+    "tags": ["easel", "tdr", "compositional", "product-theatre"]
+  }
+}

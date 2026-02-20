@@ -1,0 +1,33 @@
+You are a factual verification judge. Your task is to evaluate the PRECISION of an oracle's summary of a code change.
+
+## Ground Truth (the actual PR)
+Title: {title}
+Description: {description}
+
+Diff:
+```
+{diff_content}
+```
+
+## Oracle Claims
+The oracle made the following claims about this PR:
+{claims_json}
+
+## Task
+For each claim, determine if it is SUPPORTED by the actual diff content. A claim is supported if the diff provides evidence for it. A claim is unsupported if it describes changes not present in the diff or fabricates details.
+
+Respond with ONLY valid JSON in this exact format:
+{{
+  "claims": [
+    {{"claim": "the claim text", "supported": true, "evidence": "brief evidence from diff"}},
+    {{"claim": "the claim text", "supported": false, "evidence": null}}
+  ],
+  "precision": 0.0,
+  "total": 0,
+  "supported": 0
+}}
+
+Where:
+- precision = supported / total (0.0 if total is 0)
+- total = number of claims evaluated
+- supported = number of claims with evidence in the diff

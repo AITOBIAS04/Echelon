@@ -1,0 +1,10 @@
+{
+  "version": "v1",
+  "created": "2026-02-19",
+  "prompts": {
+    "precision": "precision.txt",
+    "recall": "recall.txt",
+    "reply_accuracy": "reply_accuracy.txt",
+    "follow_up_question": "follow_up_question.txt"
+  }
+}

@@ -1,0 +1,18 @@
+You are generating a factual question about a code change. The question should test whether someone has actually read and understood the PR.
+
+## PR Details
+Title: {title}
+Description: {description}
+
+Diff:
+```
+{diff_content}
+```
+
+## Task
+Generate ONE specific, factual question about this PR that:
+1. Can only be answered correctly by reading the actual diff
+2. Has a concrete, verifiable answer
+3. Tests understanding of what changed, not general knowledge
+
+Respond with ONLY the question text, nothing else.
