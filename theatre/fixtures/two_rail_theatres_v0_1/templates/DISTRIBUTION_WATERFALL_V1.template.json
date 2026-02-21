@@ -1,0 +1,85 @@
+{
+  "schema_version": "2.0.1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "theatre_id": "product_replay_engine_v1",
+  "template_id": "distribution_waterfall_v1",
+  "display_name": "DISTRIBUTION_WATERFALL_V1 — Deterministic Waterfall & Cap Table Consistency",
+  "description": "v0.1 deterministic replay theatre. Uses the £1,500 payment split example to validate end-to-end waterfall arithmetic and per-token distribution amounts.",
+  "criteria": {
+    "criteria_ids": [
+      "waterfall_arithmetic",
+      "noi_pool_conservation",
+      "rounding_policy_compliance",
+      "cap_table_consistency",
+      "ledger_reconciliation"
+    ],
+    "criteria_human": "Deterministic verification that the distribution waterfall, NOI allocation, per-token amounts, and ledger reconciliation match the committed policy and inputs.",
+    "weights": {
+      "waterfall_arithmetic": 0.35,
+      "noi_pool_conservation": 0.2,
+      "rounding_policy_compliance": 0.15,
+      "cap_table_consistency": 0.2,
+      "ledger_reconciliation": 0.1
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "two_rail_marketplace_core": "v0.1-fixtures"
+    },
+    "scorer_version": "deterministic-v0.1"
+  },
+  "dataset_hashes": {
+    "waterfall_fixtures_10.json": "588e6f4b747e9cbd53450d7777540958aa405e1f5ff48e4a908d0fdf992a7a33"
+  },
+  "product_theatre_config": {
+    "construct_under_test": {
+      "construct_id": "two_rail_marketplace_core",
+      "construct_version": "v0.1-fixtures"
+    },
+    "adapter_type": "local",
+    "adapter_endpoint": "python:two_rail_oracles.deterministic",
+    "replay_data_path": "/mnt/data/two_rail_theatres_v0_1/waterfall_fixtures_10.json",
+    "ground_truth_source": "v0.1 fixtures (deterministic ledger/policy replay)",
+    "mock_only": false
+  },
+  "fork_definitions": [],
+  "resolution_programme": [
+    {
+      "step": "ingest",
+      "action": "load_dataset",
+      "input": "replay_data_path"
+    },
+    {
+      "step": "invoke_oracle",
+      "action": "deterministic_compute",
+      "oracle": "waterfall"
+    },
+    {
+      "step": "score",
+      "action": "binary_checks",
+      "criteria_ids": [
+        "waterfall_arithmetic",
+        "noi_pool_conservation",
+        "rounding_policy_compliance",
+        "cap_table_consistency",
+        "ledger_reconciliation"
+      ]
+    },
+    {
+      "step": "certify",
+      "action": "issue_certificate"
+    }
+  ],
+  "evidence_bundle": {
+    "manifest_required": true,
+    "hash_algorithm": "sha256",
+    "canonical_json": "RFC8785",
+    "required_paths": [
+      "inputs/",
+      "policy/",
+      "expected/",
+      "manifest.json"
+    ]
+  }
+}

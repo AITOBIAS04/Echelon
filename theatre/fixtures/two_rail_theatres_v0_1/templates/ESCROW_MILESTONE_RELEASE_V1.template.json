@@ -1,0 +1,85 @@
+{
+  "schema_version": "2.0.1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "theatre_id": "product_replay_engine_v1",
+  "template_id": "escrow_milestone_release_v1",
+  "display_name": "ESCROW_MILESTONE_RELEASE_V1 — Evidence+Signature Gated Release",
+  "description": "v0.1 deterministic replay theatre for milestone escrow releases. Evidence bundle contains document hashes and typed attestations; no subjective scoring.",
+  "criteria": {
+    "criteria_ids": [
+      "required_evidence_present",
+      "signature_policy_satisfied",
+      "validity_window_respected",
+      "release_amount_correct",
+      "idempotency"
+    ],
+    "criteria_human": "Deterministic verification that escrow releases occur only when required evidence and signer policy are satisfied, within validity windows, and release amounts match schedule rules.",
+    "weights": {
+      "required_evidence_present": 0.25,
+      "signature_policy_satisfied": 0.3,
+      "validity_window_respected": 0.15,
+      "release_amount_correct": 0.2,
+      "idempotency": 0.1
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "two_rail_marketplace_core": "v0.1-fixtures"
+    },
+    "scorer_version": "deterministic-v0.1"
+  },
+  "dataset_hashes": {
+    "escrow_fixtures_10.json": "dcfdbeb08528d2b6ae8dab036e9c13bb4f7ac27225dab3f29a5e1a972776f63f"
+  },
+  "product_theatre_config": {
+    "construct_under_test": {
+      "construct_id": "two_rail_marketplace_core",
+      "construct_version": "v0.1-fixtures"
+    },
+    "adapter_type": "local",
+    "adapter_endpoint": "python:two_rail_oracles.deterministic",
+    "replay_data_path": "/mnt/data/two_rail_theatres_v0_1/escrow_fixtures_10.json",
+    "ground_truth_source": "v0.1 fixtures (deterministic ledger/policy replay)",
+    "mock_only": false
+  },
+  "fork_definitions": [],
+  "resolution_programme": [
+    {
+      "step": "ingest",
+      "action": "load_dataset",
+      "input": "replay_data_path"
+    },
+    {
+      "step": "invoke_oracle",
+      "action": "deterministic_compute",
+      "oracle": "escrow_release"
+    },
+    {
+      "step": "score",
+      "action": "binary_checks",
+      "criteria_ids": [
+        "required_evidence_present",
+        "signature_policy_satisfied",
+        "validity_window_respected",
+        "release_amount_correct",
+        "idempotency"
+      ]
+    },
+    {
+      "step": "certify",
+      "action": "issue_certificate"
+    }
+  ],
+  "evidence_bundle": {
+    "manifest_required": true,
+    "hash_algorithm": "sha256",
+    "canonical_json": "RFC8785",
+    "required_paths": [
+      "inputs/",
+      "policy/",
+      "expected/",
+      "manifest.json"
+    ]
+  }
+}

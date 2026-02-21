@@ -1,0 +1,646 @@
+{
+  "dataset_id": "waterfall_v0_1_10",
+  "description": "v0.1 deterministic replay fixtures for DISTRIBUTION_WATERFALL_V1 (10 records) using the £1,500 split example.",
+  "records": [
+    {
+      "record_id": "waterfall_0001",
+      "asset_id": "asset_001",
+      "period_end": "2026-02-28",
+      "inputs": {
+        "payment": {
+          "payment_id": "pay_0001",
+          "gross_amount": 1500.0,
+          "currency": "GBP",
+          "settlement_reference": "BANKREF-pay_0001",
+          "splits": [
+            {
+              "bucket": "operating_costs",
+              "amount": 600.0
+            },
+            {
+              "bucket": "noi_pool",
+              "amount": 900.0
+            }
+          ]
+        },
+        "noi_report": {
+          "period_end": "2026-02-28",
+          "noi_pool": 900.0,
+          "allocations": [
+            {
+              "bucket": "distributions",
+              "amount": 720.0
+            },
+            {
+              "bucket": "platform_fee",
+              "amount": 30.0
+            },
+            {
+              "bucket": "ladder_credit",
+              "amount": 150.0
+            }
+          ]
+        },
+        "cap_table_snapshot": {
+          "token_class": "rail1_income_units",
+          "token_supply": 100000,
+          "distribution_per_token": 0.0072
+        },
+        "rounding_policy": {
+          "mode": "half_up",
+          "precision": 2,
+          "currency": "GBP"
+        }
+      },
+      "expected_outputs": {
+        "distribution_statement": {
+          "gross_amount": 1500.0,
+          "splits_sum": 1500.0,
+          "operating_costs": 600.0,
+          "noi_pool": 900.0,
+          "noi_allocations_sum": 900.0,
+          "distributions": 720.0,
+          "platform_fee": 30.0,
+          "ladder_credit": 150.0,
+          "distribution_per_token": 0.0072
+        }
+      }
+    },
+    {
+      "record_id": "waterfall_0002",
+      "asset_id": "asset_002",
+      "period_end": "2026-03-28",
+      "inputs": {
+        "payment": {
+          "payment_id": "pay_0002",
+          "gross_amount": 1500.0,
+          "currency": "GBP",
+          "settlement_reference": "BANKREF-pay_0002",
+          "splits": [
+            {
+              "bucket": "operating_costs",
+              "amount": 600.0
+            },
+            {
+              "bucket": "noi_pool",
+              "amount": 900.0
+            }
+          ]
+        },
+        "noi_report": {
+          "period_end": "2026-03-28",
+          "noi_pool": 900.0,
+          "allocations": [
+            {
+              "bucket": "distributions",
+              "amount": 720.0
+            },
+            {
+              "bucket": "platform_fee",
+              "amount": 30.0
+            },
+            {
+              "bucket": "ladder_credit",
+              "amount": 150.0
+            }
+          ]
+        },
+        "cap_table_snapshot": {
+          "token_class": "rail1_income_units",
+          "token_supply": 100000,
+          "distribution_per_token": 0.0072
+        },
+        "rounding_policy": {
+          "mode": "half_up",
+          "precision": 2,
+          "currency": "GBP"
+        }
+      },
+      "expected_outputs": {
+        "distribution_statement": {
+          "gross_amount": 1500.0,
+          "splits_sum": 1500.0,
+          "operating_costs": 600.0,
+          "noi_pool": 900.0,
+          "noi_allocations_sum": 900.0,
+          "distributions": 720.0,
+          "platform_fee": 30.0,
+          "ladder_credit": 150.0,
+          "distribution_per_token": 0.0072
+        }
+      }
+    },
+    {
+      "record_id": "waterfall_0003",
+      "asset_id": "asset_003",
+      "period_end": "2026-04-28",
+      "inputs": {
+        "payment": {
+          "payment_id": "pay_0003",
+          "gross_amount": 1500.0,
+          "currency": "GBP",
+          "settlement_reference": "BANKREF-pay_0003",
+          "splits": [
+            {
+              "bucket": "operating_costs",
+              "amount": 600.0
+            },
+            {
+              "bucket": "noi_pool",
+              "amount": 900.0
+            }
+          ]
+        },
+        "noi_report": {
+          "period_end": "2026-04-28",
+          "noi_pool": 900.0,
+          "allocations": [
+            {
+              "bucket": "distributions",
+              "amount": 720.0
+            },
+            {
+              "bucket": "platform_fee",
+              "amount": 30.0
+            },
+            {
+              "bucket": "ladder_credit",
+              "amount": 150.0
+            }
+          ]
+        },
+        "cap_table_snapshot": {
+          "token_class": "rail1_income_units",
+          "token_supply": 100000,
+          "distribution_per_token": 0.0072
+        },
+        "rounding_policy": {
+          "mode": "half_up",
+          "precision": 2,
+          "currency": "GBP"
+        }
+      },
+      "expected_outputs": {
+        "distribution_statement": {
+          "gross_amount": 1500.0,
+          "splits_sum": 1500.0,
+          "operating_costs": 600.0,
+          "noi_pool": 900.0,
+          "noi_allocations_sum": 900.0,
+          "distributions": 720.0,
+          "platform_fee": 30.0,
+          "ladder_credit": 150.0,
+          "distribution_per_token": 0.0072
+        }
+      }
+    },
+    {
+      "record_id": "waterfall_0004",
+      "asset_id": "asset_004",
+      "period_end": "2026-05-28",
+      "inputs": {
+        "payment": {
+          "payment_id": "pay_0004",
+          "gross_amount": 1500.0,
+          "currency": "GBP",
+          "settlement_reference": "BANKREF-pay_0004",
+          "splits": [
+            {
+              "bucket": "operating_costs",
+              "amount": 600.0
+            },
+            {
+              "bucket": "noi_pool",
+              "amount": 900.0
+            }
+          ]
+        },
+        "noi_report": {
+          "period_end": "2026-05-28",
+          "noi_pool": 900.0,
+          "allocations": [
+            {
+              "bucket": "distributions",
+              "amount": 720.0
+            },
+            {
+              "bucket": "platform_fee",
+              "amount": 30.0
+            },
+            {
+              "bucket": "ladder_credit",
+              "amount": 150.0
+            }
+          ]
+        },
+        "cap_table_snapshot": {
+          "token_class": "rail1_income_units",
+          "token_supply": 100000,
+          "distribution_per_token": 0.0072
+        },
+        "rounding_policy": {
+          "mode": "half_up",
+          "precision": 2,
+          "currency": "GBP"
+        }
+      },
+      "expected_outputs": {
+        "distribution_statement": {
+          "gross_amount": 1500.0,
+          "splits_sum": 1500.0,
+          "operating_costs": 600.0,
+          "noi_pool": 900.0,
+          "noi_allocations_sum": 900.0,
+          "distributions": 720.0,
+          "platform_fee": 30.0,
+          "ladder_credit": 150.0,
+          "distribution_per_token": 0.0072
+        }
+      }
+    },
+    {
+      "record_id": "waterfall_0005",
+      "asset_id": "asset_005",
+      "period_end": "2026-06-28",
+      "inputs": {
+        "payment": {
+          "payment_id": "pay_0005",
+          "gross_amount": 1500.0,
+          "currency": "GBP",
+          "settlement_reference": "BANKREF-pay_0005",
+          "splits": [
+            {
+              "bucket": "operating_costs",
+              "amount": 600.0
+            },
+            {
+              "bucket": "noi_pool",
+              "amount": 900.0
+            }
+          ]
+        },
+        "noi_report": {
+          "period_end": "2026-06-28",
+          "noi_pool": 900.0,
+          "allocations": [
+            {
+              "bucket": "distributions",
+              "amount": 720.0
+            },
+            {
+              "bucket": "platform_fee",
+              "amount": 30.0
+            },
+            {
+              "bucket": "ladder_credit",
+              "amount": 150.0
+            }
+          ]
+        },
+        "cap_table_snapshot": {
+          "token_class": "rail1_income_units",
+          "token_supply": 100000,
+          "distribution_per_token": 0.0072
+        },
+        "rounding_policy": {
+          "mode": "half_up",
+          "precision": 2,
+          "currency": "GBP"
+        }
+      },
+      "expected_outputs": {
+        "distribution_statement": {
+          "gross_amount": 1500.0,
+          "splits_sum": 1500.0,
+          "operating_costs": 600.0,
+          "noi_pool": 900.0,
+          "noi_allocations_sum": 900.0,
+          "distributions": 720.0,
+          "platform_fee": 30.0,
+          "ladder_credit": 150.0,
+          "distribution_per_token": 0.0072
+        }
+      }
+    },
+    {
+      "record_id": "waterfall_0006",
+      "asset_id": "asset_006",
+      "period_end": "2026-07-28",
+      "inputs": {
+        "payment": {
+          "payment_id": "pay_0006",
+          "gross_amount": 1500.0,
+          "currency": "GBP",
+          "settlement_reference": "BANKREF-pay_0006",
+          "splits": [
+            {
+              "bucket": "operating_costs",
+              "amount": 600.0
+            },
+            {
+              "bucket": "noi_pool",
+              "amount": 900.0
+            }
+          ]
+        },
+        "noi_report": {
+          "period_end": "2026-07-28",
+          "noi_pool": 900.0,
+          "allocations": [
+            {
+              "bucket": "distributions",
+              "amount": 720.0
+            },
+            {
+              "bucket": "platform_fee",
+              "amount": 30.0
+            },
+            {
+              "bucket": "ladder_credit",
+              "amount": 150.0
+            }
+          ]
+        },
+        "cap_table_snapshot": {
+          "token_class": "rail1_income_units",
+          "token_supply": 100000,
+          "distribution_per_token": 0.0072
+        },
+        "rounding_policy": {
+          "mode": "half_up",
+          "precision": 2,
+          "currency": "GBP"
+        }
+      },
+      "expected_outputs": {
+        "distribution_statement": {
+          "gross_amount": 1500.0,
+          "splits_sum": 1500.0,
+          "operating_costs": 600.0,
+          "noi_pool": 900.0,
+          "noi_allocations_sum": 900.0,
+          "distributions": 720.0,
+          "platform_fee": 30.0,
+          "ladder_credit": 150.0,
+          "distribution_per_token": 0.0072
+        }
+      }
+    },
+    {
+      "record_id": "waterfall_0007",
+      "asset_id": "asset_007",
+      "period_end": "2026-08-28",
+      "inputs": {
+        "payment": {
+          "payment_id": "pay_0007",
+          "gross_amount": 1500.0,
+          "currency": "GBP",
+          "settlement_reference": "BANKREF-pay_0007",
+          "splits": [
+            {
+              "bucket": "operating_costs",
+              "amount": 600.0
+            },
+            {
+              "bucket": "noi_pool",
+              "amount": 900.0
+            }
+          ]
+        },
+        "noi_report": {
+          "period_end": "2026-08-28",
+          "noi_pool": 900.0,
+          "allocations": [
+            {
+              "bucket": "distributions",
+              "amount": 720.0
+            },
+            {
+              "bucket": "platform_fee",
+              "amount": 30.0
+            },
+            {
+              "bucket": "ladder_credit",
+              "amount": 150.0
+            }
+          ]
+        },
+        "cap_table_snapshot": {
+          "token_class": "rail1_income_units",
+          "token_supply": 100000,
+          "distribution_per_token": 0.0072
+        },
+        "rounding_policy": {
+          "mode": "half_up",
+          "precision": 2,
+          "currency": "GBP"
+        }
+      },
+      "expected_outputs": {
+        "distribution_statement": {
+          "gross_amount": 1500.0,
+          "splits_sum": 1500.0,
+          "operating_costs": 600.0,
+          "noi_pool": 900.0,
+          "noi_allocations_sum": 900.0,
+          "distributions": 720.0,
+          "platform_fee": 30.0,
+          "ladder_credit": 150.0,
+          "distribution_per_token": 0.0072
+        }
+      }
+    },
+    {
+      "record_id": "waterfall_0008",
+      "asset_id": "asset_008",
+      "period_end": "2026-09-28",
+      "inputs": {
+        "payment": {
+          "payment_id": "pay_0008",
+          "gross_amount": 1500.0,
+          "currency": "GBP",
+          "settlement_reference": "BANKREF-pay_0008",
+          "splits": [
+            {
+              "bucket": "operating_costs",
+              "amount": 600.0
+            },
+            {
+              "bucket": "noi_pool",
+              "amount": 900.0
+            }
+          ]
+        },
+        "noi_report": {
+          "period_end": "2026-09-28",
+          "noi_pool": 900.0,
+          "allocations": [
+            {
+              "bucket": "distributions",
+              "amount": 720.0
+            },
+            {
+              "bucket": "platform_fee",
+              "amount": 30.0
+            },
+            {
+              "bucket": "ladder_credit",
+              "amount": 150.0
+            }
+          ]
+        },
+        "cap_table_snapshot": {
+          "token_class": "rail1_income_units",
+          "token_supply": 100000,
+          "distribution_per_token": 0.0072
+        },
+        "rounding_policy": {
+          "mode": "half_up",
+          "precision": 2,
+          "currency": "GBP"
+        }
+      },
+      "expected_outputs": {
+        "distribution_statement": {
+          "gross_amount": 1500.0,
+          "splits_sum": 1500.0,
+          "operating_costs": 600.0,
+          "noi_pool": 900.0,
+          "noi_allocations_sum": 900.0,
+          "distributions": 720.0,
+          "platform_fee": 30.0,
+          "ladder_credit": 150.0,
+          "distribution_per_token": 0.0072
+        }
+      }
+    },
+    {
+      "record_id": "waterfall_0009",
+      "asset_id": "asset_009",
+      "period_end": "2026-10-28",
+      "inputs": {
+        "payment": {
+          "payment_id": "pay_0009",
+          "gross_amount": 1500.0,
+          "currency": "GBP",
+          "settlement_reference": "BANKREF-pay_0009",
+          "splits": [
+            {
+              "bucket": "operating_costs",
+              "amount": 600.0
+            },
+            {
+              "bucket": "noi_pool",
+              "amount": 900.0
+            }
+          ]
+        },
+        "noi_report": {
+          "period_end": "2026-10-28",
+          "noi_pool": 900.0,
+          "allocations": [
+            {
+              "bucket": "distributions",
+              "amount": 720.0
+            },
+            {
+              "bucket": "platform_fee",
+              "amount": 30.0
+            },
+            {
+              "bucket": "ladder_credit",
+              "amount": 150.0
+            }
+          ]
+        },
+        "cap_table_snapshot": {
+          "token_class": "rail1_income_units",
+          "token_supply": 100000,
+          "distribution_per_token": 0.0072
+        },
+        "rounding_policy": {
+          "mode": "half_up",
+          "precision": 2,
+          "currency": "GBP"
+        }
+      },
+      "expected_outputs": {
+        "distribution_statement": {
+          "gross_amount": 1500.0,
+          "splits_sum": 1500.0,
+          "operating_costs": 600.0,
+          "noi_pool": 900.0,
+          "noi_allocations_sum": 900.0,
+          "distributions": 720.0,
+          "platform_fee": 30.0,
+          "ladder_credit": 150.0,
+          "distribution_per_token": 0.0072
+        }
+      }
+    },
+    {
+      "record_id": "waterfall_0010",
+      "asset_id": "asset_010",
+      "period_end": "2026-11-28",
+      "inputs": {
+        "payment": {
+          "payment_id": "pay_0010",
+          "gross_amount": 1500.0,
+          "currency": "GBP",
+          "settlement_reference": "BANKREF-pay_0010",
+          "splits": [
+            {
+              "bucket": "operating_costs",
+              "amount": 600.0
+            },
+            {
+              "bucket": "noi_pool",
+              "amount": 900.0
+            }
+          ]
+        },
+        "noi_report": {
+          "period_end": "2026-11-28",
+          "noi_pool": 900.0,
+          "allocations": [
+            {
+              "bucket": "distributions",
+              "amount": 720.0
+            },
+            {
+              "bucket": "platform_fee",
+              "amount": 30.0
+            },
+            {
+              "bucket": "ladder_credit",
+              "amount": 150.0
+            }
+          ]
+        },
+        "cap_table_snapshot": {
+          "token_class": "rail1_income_units",
+          "token_supply": 100000,
+          "distribution_per_token": 0.0072
+        },
+        "rounding_policy": {
+          "mode": "half_up",
+          "precision": 2,
+          "currency": "GBP"
+        }
+      },
+      "expected_outputs": {
+        "distribution_statement": {
+          "gross_amount": 1500.0,
+          "splits_sum": 1500.0,
+          "operating_costs": 600.0,
+          "noi_pool": 900.0,
+          "noi_allocations_sum": 900.0,
+          "distributions": 720.0,
+          "platform_fee": 30.0,
+          "ladder_credit": 150.0,
+          "distribution_per_token": 0.0072
+        }
+      }
+    }
+  ]
+}
