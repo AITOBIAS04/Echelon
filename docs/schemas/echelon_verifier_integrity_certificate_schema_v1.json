@@ -1,0 +1,348 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://echelon.ai/schemas/echelon_verifier_integrity_certificate_schema_v1.json",
+  "title": "Echelon Verifier Integrity Certificate",
+  "description": "An immutable, hash-anchored certificate attesting to the security and determinism posture of an Echelon verifier (schemas, runners, scorers). This certificate is about the verifier/tooling, not the construct-under-test performance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "certificate_kind",
+    "certificate_id",
+    "issued_at",
+    "verification_tier",
+    "scope",
+    "engine",
+    "integrity",
+    "checks",
+    "hashes",
+    "attestation"
+  ],
+  "properties": {
+    "certificate_kind": {
+      "type": "string",
+      "const": "VERIFIER_INTEGRITY"
+    },
+    "certificate_id": {
+      "type": "string",
+      "description": "Unique ID for this certificate (UUID recommended).",
+      "minLength": 8,
+      "maxLength": 128
+    },
+    "issued_at": {
+      "type": "string",
+      "description": "RFC3339 UTC timestamp when certificate was issued.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?Z$"
+    },
+    "expires_at": {
+      "type": "string",
+      "description": "RFC3339 UTC timestamp when certificate expires. Optional for verifier integrity; recommended for operational hygiene.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?Z$"
+    },
+    "verification_tier": {
+      "type": "string",
+      "description": "Tier for verifier integrity; typically PROVEN once the verifier is stable and audited in production.",
+      "enum": [
+        "UNVERIFIED",
+        "BACKTESTED",
+        "PROVEN"
+      ]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "artefacts"
+      ],
+      "properties": {
+        "target": {
+          "type": "string",
+          "description": "What was audited (e.g., 'echelon_verify runner + schemas', 'product theatre engine verifier').",
+          "minLength": 3,
+          "maxLength": 256
+        },
+        "artefacts": {
+          "type": "array",
+          "description": "List of audited artefacts (paths, modules, schemas) covered by this certificate.",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "ref"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "schema",
+                  "runner",
+                  "scorer",
+                  "cli",
+                  "library",
+                  "script",
+                  "package"
+                ]
+              },
+              "ref": {
+                "type": "string",
+                "description": "Identifier for the artefact (path, module name, or package name).",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "version": {
+                "type": "string",
+                "description": "Artefact version string (e.g., semver, git SHA, package version).",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "version_type": {
+                "type": "string",
+                "description": "How to interpret 'version'.",
+                "enum": [
+                  "git",
+                  "semantic",
+                  "package",
+                  "synthetic_fixture"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "echelon_engine_version",
+        "schema_versions"
+      ],
+      "properties": {
+        "echelon_engine_version": {
+          "type": "string",
+          "description": "Pinned engine version (prefer git SHA or semver+build metadata).",
+          "minLength": 3,
+          "maxLength": 128
+        },
+        "schema_versions": {
+          "type": "object",
+          "description": "Pinned schema versions used during verification.",
+          "additionalProperties": false,
+          "required": [
+            "certificate",
+            "theatre",
+            "rlmf"
+          ],
+          "properties": {
+            "certificate": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "theatre": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "rlmf": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        },
+        "toolchain": {
+          "type": "object",
+          "description": "Optional toolchain pins for reproducibility.",
+          "additionalProperties": false,
+          "properties": {
+            "python": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "os": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "platform": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deterministic",
+        "network_free",
+        "pii_free"
+      ],
+      "properties": {
+        "deterministic": {
+          "type": "boolean",
+          "description": "True if verifier output is deterministic given committed inputs."
+        },
+        "canonical_json": {
+          "type": "boolean",
+          "description": "True if hashing uses canonical JSON serialisation (e.g., RFC8785)."
+        },
+        "network_free": {
+          "type": "boolean",
+          "description": "True if verifier performs zero network calls in the audited mode."
+        },
+        "pii_free": {
+          "type": "boolean",
+          "description": "True if verification runs contain no real user PII (fixtures or redacted datasets only)."
+        },
+        "money_arithmetic": {
+          "type": "string",
+          "description": "How money arithmetic is handled, if applicable.",
+          "enum": [
+            "not_applicable",
+            "decimal_fixed_point",
+            "integer_minor_units",
+            "other"
+          ]
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "description": "Checklist findings (e.g., OWASP + security checklist) with verdict and detail.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "check_id",
+          "title",
+          "verdict"
+        ],
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "description": "Stable identifier for this check (e.g., OWASP-SECRETS, OWASP-INJECTION).",
+            "pattern": "^[A-Z0-9_\\-\\.]{3,64}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 128
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "FAIL",
+              "WARN",
+              "INFO"
+            ]
+          },
+          "detail": {
+            "type": "string",
+            "description": "Human-readable detail for this check.",
+            "maxLength": 2000
+          },
+          "evidence_refs": {
+            "type": "array",
+            "description": "Optional references into the evidence bundle (file paths, log keys).",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        }
+      }
+    },
+    "informational_notes": {
+      "type": "array",
+      "description": "Non-blocking notes (e.g., deprecation warnings, fixture versioning notes).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "note_id",
+          "text"
+        ],
+        "properties": {
+          "note_id": {
+            "type": "string",
+            "pattern": "^INFO\\-[0-9]{1,4}$"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      }
+    },
+    "hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commitment_hash",
+        "evidence_bundle_hash"
+      ],
+      "properties": {
+        "commitment_hash": {
+          "type": "string",
+          "description": "SHA-256 hex of committed parameters composite (canonicalised).",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "dataset_hash": {
+          "type": "string",
+          "description": "Optional SHA-256 hex of dataset used (if any).",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "evidence_bundle_hash": {
+          "type": "string",
+          "description": "SHA-256 hex of canonicalised evidence manifest (or equivalent).",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verifier_entity",
+        "verification_method"
+      ],
+      "properties": {
+        "verifier_entity": {
+          "type": "string",
+          "description": "Who issued the certificate (e.g., 'Echelon Protocol Core').",
+          "minLength": 2,
+          "maxLength": 128
+        },
+        "verification_method": {
+          "type": "string",
+          "description": "High-level method used (e.g., 'Static analysis + deterministic checks').",
+          "minLength": 3,
+          "maxLength": 256
+        },
+        "signature": {
+          "type": "string",
+          "description": "Optional signature over the certificate payload (implementation-defined).",
+          "minLength": 8,
+          "maxLength": 2048
+        },
+        "public_key_hint": {
+          "type": "string",
+          "description": "Optional verifier public key identifier (e.g., did:key, did:ethr, key fingerprint).",
+          "minLength": 8,
+          "maxLength": 256
+        }
+      }
+    }
+  }
+}
