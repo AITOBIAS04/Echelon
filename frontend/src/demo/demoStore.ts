@@ -101,6 +101,63 @@ export type DemoExportConfig = {
   compression: "GZIP" | "None";
 };
 
+// --- Verification types ---
+
+export type DemoVerificationRunStatus =
+  | "PENDING"
+  | "INGESTING"
+  | "INVOKING"
+  | "SCORING"
+  | "CERTIFYING"
+  | "COMPLETED"
+  | "FAILED";
+
+export type DemoVerificationRun = {
+  run_id: string;
+  status: DemoVerificationRunStatus;
+  progress: number;
+  total: number;
+  construct_id: string;
+  repo_url: string;
+  error: string | null;
+  certificate_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DemoReplayScore = {
+  id: string;
+  ground_truth_id: string;
+  precision: number;
+  recall: number;
+  reply_accuracy: number;
+  claims_total: number;
+  claims_supported: number;
+  changes_total: number;
+  changes_surfaced: number;
+  scoring_model: string;
+  scoring_latency_ms: number;
+  scored_at: string;
+};
+
+export type DemoCertificate = {
+  id: string;
+  construct_id: string;
+  domain: string;
+  replay_count: number;
+  precision: number;
+  recall: number;
+  reply_accuracy: number;
+  composite_score: number;
+  brier: number;
+  sample_size: number;
+  ground_truth_source: string;
+  methodology_version: string;
+  scoring_model: string;
+  created_at: string;
+  replay_scores: DemoReplayScore[];
+};
+
 type StoreState = {
   outcomes: Map<OutcomeKey, DemoOutcomeSnapshot>;
   positions: DemoPosition[];
@@ -113,6 +170,9 @@ type StoreState = {
   exportsActive: DemoExportJob[];
   exportPartners: DemoExportPartner[];
   exportConfig: DemoExportConfig;
+  // Verification slice
+  verificationRuns: DemoVerificationRun[];
+  certificates: DemoCertificate[];
 };
 
 const state: StoreState = {
@@ -127,6 +187,9 @@ const state: StoreState = {
   exportsActive: [],
   exportPartners: [],
   exportConfig: { samplingRate: 0.5, format: "PyTorch (.pt)", compression: "GZIP" },
+  // Verification slice
+  verificationRuns: [],
+  certificates: [],
 };
 
 const outcomeListeners = new Map<OutcomeKey, Set<Listener>>();
@@ -137,6 +200,7 @@ const toastListeners = new Set<Listener>();
 const launchFeedListeners = new Set<Listener>();
 const breachListeners = new Set<Listener>();
 const exportListeners = new Set<Listener>();
+const verificationListeners = new Set<Listener>();
 
 function emit(set: Set<Listener>) {
   set.forEach((l) => l());
@@ -341,5 +405,34 @@ export const demoStore = {
   subscribeExports(listener: Listener) {
     exportListeners.add(listener);
     return () => exportListeners.delete(listener);
+  },
+
+  // --- Verification ---
+  getVerificationRuns() {
+    return state.verificationRuns;
+  },
+
+  getCertificates() {
+    return state.certificates;
+  },
+
+  addVerificationRun(run: DemoVerificationRun) {
+    state.verificationRuns = [run, ...state.verificationRuns];
+    emit(verificationListeners);
+  },
+
+  updateVerificationRun(id: string, updater: (r: DemoVerificationRun) => DemoVerificationRun) {
+    state.verificationRuns = state.verificationRuns.map((r) => (r.run_id === id ? updater(r) : r));
+    emit(verificationListeners);
+  },
+
+  addCertificate(cert: DemoCertificate, max = 10) {
+    state.certificates = [cert, ...state.certificates].slice(0, max);
+    emit(verificationListeners);
+  },
+
+  subscribeVerification(listener: Listener) {
+    verificationListeners.add(listener);
+    return () => verificationListeners.delete(listener);
   },
 };

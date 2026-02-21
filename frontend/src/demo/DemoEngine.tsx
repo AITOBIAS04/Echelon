@@ -14,6 +14,7 @@
 import React from "react";
 import { isDemoModeEnabled } from "./demoMode";
 import { demoStore } from "./demoStore";
+import type { DemoVerificationRun, DemoCertificate, DemoReplayScore } from "./demoStore";
 
 // Mulberry32 seeded random number generator for reproducible demo behavior
 function mulberry32(seed: number) {
@@ -45,6 +46,7 @@ export function DemoEngine({ children }: { children: React.ReactNode }) {
     launchFeed?: number;
     breach?: number;
     export?: number;
+    verification?: number;
   }>({});
 
   React.useEffect(() => {
@@ -54,6 +56,7 @@ export function DemoEngine({ children }: { children: React.ReactNode }) {
       if (timers.current.launchFeed) window.clearTimeout(timers.current.launchFeed);
       if (timers.current.breach) window.clearTimeout(timers.current.breach);
       if (timers.current.export) window.clearTimeout(timers.current.export);
+      if (timers.current.verification) window.clearTimeout(timers.current.verification);
       timers.current = {};
       return;
     }
@@ -372,12 +375,203 @@ export function DemoEngine({ children }: { children: React.ReactNode }) {
       }, delay);
     };
 
+    // --- Verification Simulation ---
+
+    function makeReplayScores(rng: () => number, count: number, baseTs: string): DemoReplayScore[] {
+      const scores: DemoReplayScore[] = [];
+      for (let i = 0; i < count; i++) {
+        scores.push({
+          id: `rs_${Math.random().toString(16).slice(2)}`,
+          ground_truth_id: `gt_${Math.random().toString(16).slice(2)}`,
+          precision: parseFloat(randBetween(rng, 0.65, 0.98).toFixed(3)),
+          recall: parseFloat(randBetween(rng, 0.60, 0.95).toFixed(3)),
+          reply_accuracy: parseFloat(randBetween(rng, 0.70, 0.99).toFixed(3)),
+          claims_total: Math.floor(randBetween(rng, 15, 40)),
+          claims_supported: Math.floor(randBetween(rng, 10, 35)),
+          changes_total: Math.floor(randBetween(rng, 5, 20)),
+          changes_surfaced: Math.floor(randBetween(rng, 3, 18)),
+          scoring_model: "gpt-4o-2025-03-26",
+          scoring_latency_ms: Math.floor(randBetween(rng, 120, 850)),
+          scored_at: baseTs,
+        });
+      }
+      return scores;
+    }
+
+    function makeCertificate(rng: () => number, id: string, constructId: string, replayCount: number, createdAt: string): DemoCertificate {
+      const replays = makeReplayScores(rng, replayCount, createdAt);
+      const avgPrecision = replays.reduce((s, rs) => s + rs.precision, 0) / replays.length;
+      const avgRecall = replays.reduce((s, rs) => s + rs.recall, 0) / replays.length;
+      const avgAccuracy = replays.reduce((s, rs) => s + rs.reply_accuracy, 0) / replays.length;
+      return {
+        id,
+        construct_id: constructId,
+        domain: "prediction-markets",
+        replay_count: replayCount,
+        precision: parseFloat(avgPrecision.toFixed(3)),
+        recall: parseFloat(avgRecall.toFixed(3)),
+        reply_accuracy: parseFloat(avgAccuracy.toFixed(3)),
+        composite_score: parseFloat(((avgPrecision + avgRecall + avgAccuracy) / 3).toFixed(3)),
+        brier: parseFloat(randBetween(rng, 0.08, 0.28).toFixed(3)),
+        sample_size: Math.floor(randBetween(rng, 200, 800)),
+        ground_truth_source: "polymarket-resolved",
+        methodology_version: "v2.1.0",
+        scoring_model: "gpt-4o-2025-03-26",
+        created_at: createdAt,
+        replay_scores: replays,
+      };
+    }
+
+    const seedVerification = () => {
+      if (demoStore.getVerificationRuns().length > 0) return;
+
+      const now = Date.now();
+      const runs: DemoVerificationRun[] = [
+        {
+          run_id: "vr_completed_1",
+          status: "COMPLETED",
+          progress: 90,
+          total: 90,
+          construct_id: "osint-oracle-v3",
+          repo_url: "https://github.com/echelon/osint-oracle",
+          error: null,
+          certificate_id: "cert_1",
+          created_at: new Date(now - 24 * 3600_000).toISOString(),
+          updated_at: new Date(now - 23 * 3600_000).toISOString(),
+        },
+        {
+          run_id: "vr_completed_2",
+          status: "COMPLETED",
+          progress: 75,
+          total: 75,
+          construct_id: "sentiment-probe-v2",
+          repo_url: "https://github.com/echelon/sentiment-probe",
+          error: null,
+          certificate_id: "cert_2",
+          created_at: new Date(now - 48 * 3600_000).toISOString(),
+          updated_at: new Date(now - 47 * 3600_000).toISOString(),
+        },
+        {
+          run_id: "vr_scoring_1",
+          status: "SCORING",
+          progress: 47,
+          total: 90,
+          construct_id: "geo-resolver-v1",
+          repo_url: "https://github.com/echelon/geo-resolver",
+          error: null,
+          certificate_id: null,
+          created_at: new Date(now - 2 * 3600_000).toISOString(),
+          updated_at: new Date(now - 5 * 60_000).toISOString(),
+        },
+        {
+          run_id: "vr_failed_1",
+          status: "FAILED",
+          progress: 12,
+          total: 80,
+          construct_id: "osint-oracle-v2",
+          repo_url: "https://github.com/echelon/osint-oracle",
+          error: "Oracle timeout after 30s — HTTP oracle did not respond",
+          certificate_id: null,
+          created_at: new Date(now - 72 * 3600_000).toISOString(),
+          updated_at: new Date(now - 71 * 3600_000).toISOString(),
+        },
+        {
+          run_id: "vr_pending_1",
+          status: "PENDING",
+          progress: 0,
+          total: 0,
+          construct_id: "trade-classifier-v4",
+          repo_url: "https://github.com/echelon/trade-classifier",
+          error: null,
+          certificate_id: null,
+          created_at: new Date(now - 30_000).toISOString(),
+          updated_at: new Date(now - 30_000).toISOString(),
+        },
+      ];
+
+      for (const run of runs) {
+        demoStore.addVerificationRun(run);
+      }
+
+      // 3 certificates linked to completed runs
+      const cert1 = makeCertificate(r, "cert_1", "osint-oracle-v3", 4, new Date(now - 23 * 3600_000).toISOString());
+      const cert2 = makeCertificate(r, "cert_2", "sentiment-probe-v2", 3, new Date(now - 47 * 3600_000).toISOString());
+      const cert3 = makeCertificate(r, "cert_3", "geo-resolver-v0", 5, new Date(now - 96 * 3600_000).toISOString());
+
+      demoStore.addCertificate(cert1);
+      demoStore.addCertificate(cert2);
+      demoStore.addCertificate(cert3);
+    };
+
+    const tickVerification = () => {
+      const runs = demoStore.getVerificationRuns();
+      const now = new Date().toISOString();
+
+      for (const run of runs) {
+        if (run.status === "PENDING") {
+          // PENDING → INGESTING (set total)
+          const total = Math.floor(randBetween(r, 60, 120));
+          demoStore.updateVerificationRun(run.run_id, (prev) => ({
+            ...prev,
+            status: "INGESTING",
+            total,
+            progress: 0,
+            updated_at: now,
+          }));
+        } else if (run.status === "INGESTING") {
+          // Increment progress; transition to SCORING at 30%
+          const increment = Math.floor(randBetween(r, 3, 8));
+          const newProgress = Math.min(run.total, run.progress + increment);
+          const threshold = Math.floor(run.total * 0.3);
+          demoStore.updateVerificationRun(run.run_id, (prev) => ({
+            ...prev,
+            progress: newProgress,
+            status: newProgress >= threshold ? "SCORING" : "INGESTING",
+            updated_at: now,
+          }));
+        } else if (run.status === "SCORING") {
+          // Increment progress; transition to CERTIFYING at 90%
+          const increment = Math.floor(randBetween(r, 2, 5));
+          const newProgress = Math.min(run.total, run.progress + increment);
+          const threshold = Math.floor(run.total * 0.9);
+          demoStore.updateVerificationRun(run.run_id, (prev) => ({
+            ...prev,
+            progress: newProgress,
+            status: newProgress >= threshold ? "CERTIFYING" : "SCORING",
+            updated_at: now,
+          }));
+        } else if (run.status === "CERTIFYING") {
+          // CERTIFYING → COMPLETED with generated certificate
+          const certId = `cert_${Math.random().toString(16).slice(2)}`;
+          const cert = makeCertificate(r, certId, run.construct_id, Math.floor(randBetween(r, 3, 5)), now);
+          demoStore.addCertificate(cert);
+          demoStore.updateVerificationRun(run.run_id, (prev) => ({
+            ...prev,
+            status: "COMPLETED",
+            progress: prev.total,
+            certificate_id: certId,
+            updated_at: now,
+          }));
+        }
+      }
+    };
+
+    const scheduleVerification = () => {
+      const delay = Math.floor(randBetween(r, 2000, 3000));
+      timers.current.verification = window.setTimeout(() => {
+        seedVerification();
+        tickVerification();
+        scheduleVerification();
+      }, delay);
+    };
+
     // Start all schedules
     scheduleMarket();
     scheduleAgent();
     scheduleLaunchFeed();
     scheduleBreach();
     scheduleExport();
+    scheduleVerification();
 
     return () => {
       if (timers.current.market) window.clearTimeout(timers.current.market);
@@ -385,6 +579,7 @@ export function DemoEngine({ children }: { children: React.ReactNode }) {
       if (timers.current.launchFeed) window.clearTimeout(timers.current.launchFeed);
       if (timers.current.breach) window.clearTimeout(timers.current.breach);
       if (timers.current.export) window.clearTimeout(timers.current.export);
+      if (timers.current.verification) window.clearTimeout(timers.current.verification);
       timers.current = {};
     };
   }, [enabled]);

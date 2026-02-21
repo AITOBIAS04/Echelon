@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://echelon.ai/schemas/certificate/v1.0.0",
+  "title": "Echelon Calibration Certificate",
+  "description": "Canonical schema for calibration certificates issued by Echelon's Theatre system. Consumed by Hounfour's router for tier-based model routing and by Loa's manifest reader for constraint yielding gate enforcement. v1.0.0.",
+  "version": "1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "certificate_id",
+    "theatre_id",
+    "template_id",
+    "construct_id",
+    "execution_path",
+    "criteria",
+    "scores",
+    "composite_score",
+    "replay_count",
+    "evidence_bundle_hash",
+    "construct_version",
+    "scorer_version",
+    "dataset_hash",
+    "verification_tier",
+    "commitment_hash",
+    "issued_at",
+    "expires_at",
+    "theatre_committed_at",
+    "theatre_resolved_at",
+    "ground_truth_source"
+  ],
+  "properties": {
+    "certificate_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique certificate identifier."
+    },
+    "theatre_id": {
+      "type": "string",
+      "pattern": "^[a-z_]+_v\\d+$",
+      "description": "Theatre that produced this certificate."
+    },
+    "template_id": {
+      "type": "string",
+      "description": "Theatre template used."
+    },
+    "construct_id": {
+      "type": "string",
+      "description": "Construct under test."
+    },
+    "execution_path": {
+      "type": "string",
+      "enum": ["replay", "market"],
+      "description": "Whether this certificate was produced by a Product Theatre (replay) or Market Theatre (market)."
+    },
+    "criteria": {
+      "type": "object",
+      "description": "Structured evaluation criteria from the Theatre template.",
+      "additionalProperties": false,
+      "required": ["criteria_ids", "criteria_human"],
+      "properties": {
+        "criteria_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z_]+$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "criteria_human": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "weights": {
+          "type": "object",
+          "description": "Per-criterion weights. Keys subset of criteria_ids. Values sum to 1.0 (runtime-enforced).",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "scores": {
+      "type": "object",
+      "description": "Per-criterion scores. Keys are criteria_ids. Values normalised 0.0–1.0.",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      }
+    },
+    "composite_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Weighted aggregate per criteria weights."
+    },
+    "precision": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Classification precision. Primarily for Product Theatres."
+    },
+    "recall": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Classification recall. Primarily for Product Theatres."
+    },
+    "reply_accuracy": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Response accuracy. Primarily for Product Theatres."
+    },
+    "brier_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Probabilistic calibration. Primarily for Market Theatres. Lower is better."
+    },
+    "ece": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Expected Calibration Error."
+    },
+    "replay_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of episodes scored. Minimum 50 for BACKTESTED tier."
+    },
+    "evidence_bundle_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 of the evidence bundle. Raw hex, no 0x prefix."
+    },
+    "ground_truth_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 of the ground truth dataset. Raw hex, no 0x prefix."
+    },
+    "construct_version": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{7,64}$",
+      "description": "Exact commit hash of construct under test."
+    },
+    "construct_chain_versions": {
+      "type": "object",
+      "description": "For compositional chains: construct_id to commit hash.",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{7,64}$"
+      }
+    },
+    "scorer_version": {
+      "type": "string",
+      "description": "Scorer model/version identifier."
+    },
+    "methodology_version": {
+      "type": "string",
+      "default": "1.0.0",
+      "description": "Verification methodology version."
+    },
+    "dataset_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 of replay dataset. Raw hex, no 0x prefix."
+    },
+    "verification_tier": {
+      "type": "string",
+      "enum": ["UNVERIFIED", "BACKTESTED", "PROVEN"],
+      "description": "Trust tier per v0 rules. Gates Hounfour model routing and constraint yielding."
+    },
+    "commitment_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Theatre's commitment hash for third-party verification. SHA-256 of canonical JSON composite."
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Certificate issuance timestamp."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Expiry per tier rules. BACKTESTED: 90 days. PROVEN: 180 days."
+    },
+    "theatre_committed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the Theatre parameters were committed."
+    },
+    "theatre_resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the Theatre resolved."
+    },
+    "ground_truth_source": {
+      "type": "string",
+      "enum": ["GITHUB_API", "CI_CD", "PROVENANCE_JSONL", "DETERMINISTIC_COMPUTATION", "OSINT_FEED", "CUSTOM"],
+      "description": "Source of ground truth data."
+    }
+  }
+}

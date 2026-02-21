@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useTopActionBarActions, type TopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { useAgentsUi, type AgentsTab } from '../../contexts/AgentsUiContext';
 import { useRlmfUi } from '../../contexts/RlmfUiContext';
+import { useVerifyUi, type VerifyTab } from '../../contexts/VerifyUiContext';
 import {
   Radio,
   Bell,
@@ -16,6 +17,8 @@ import {
   Search,
   Settings,
   Menu,
+  List,
+  Award,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -28,6 +31,8 @@ interface ActionButton {
   tabValue?: AgentsTab;
   isRlmfViewTab?: boolean;
   rlmfViewValue?: 'market' | 'robotics';
+  isVerifyTab?: boolean;
+  verifyTabValue?: VerifyTab;
 }
 
 interface PageConfig {
@@ -83,6 +88,14 @@ const TOP_ACTIONS: Record<string, PageConfig> = {
     buttons: [
       { label: 'Live', icon: Radio, kind: 'primary', action: 'onLive' },
       { label: 'Refresh', icon: RefreshCw, kind: 'primary', action: 'onRefresh' },
+    ],
+  },
+  '/verify': {
+    name: 'Verify',
+    buttons: [
+      { label: 'My Runs', icon: List, isVerifyTab: true, verifyTabValue: 'runs' },
+      { label: 'Certificates', icon: Award, isVerifyTab: true, verifyTabValue: 'certificates' },
+      { label: 'Start Verification', icon: Plus, kind: 'primary', action: 'startVerification' },
     ],
   },
   '/agents': {
@@ -147,12 +160,16 @@ export function TopActionBar({ onHamburgerClick }: TopActionBarProps) {
   const { actionsRef } = useTopActionBarActions();
   const { activeTab, setActiveTab } = useAgentsUi();
   const { viewMode, setViewMode } = useRlmfUi();
+  const { activeTab: verifyTab, setActiveTab: setVerifyTab } = useVerifyUi();
 
   // Check if this is the agents page
   const isAgentsPage = location.pathname === '/agents' || location.pathname.startsWith('/agents/');
 
   // Check if this is the RLMF page
   const isRlmfPage = location.pathname === '/rlmf';
+
+  // Check if this is the Verify page
+  const isVerifyPage = location.pathname === '/verify';
 
   // Filter out Live/Alert/Compare on specific routes
   const hideLiveAlertCompare = shouldHideLiveAlertCompare(location.pathname);
@@ -219,6 +236,26 @@ export function TopActionBar({ onHamburgerClick }: TopActionBarProps) {
                   'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap',
                   isActive
                     ? 'border-echelon-cyan/35 bg-echelon-cyan/10 text-echelon-cyan'
+                    : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-terminal-card'
+                )}
+              >
+                {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
+                <span>{btn.label}</span>
+              </button>
+            );
+          }
+
+          // Tab buttons for verify page
+          if (btn.isVerifyTab && isVerifyPage) {
+            const isActive = verifyTab === btn.verifyTabValue;
+            return (
+              <button
+                key={btn.label}
+                onClick={() => btn.verifyTabValue && setVerifyTab(btn.verifyTabValue)}
+                className={clsx(
+                  'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap',
+                  isActive
+                    ? 'border-echelon-cyan/30 bg-echelon-cyan/10 text-echelon-cyan'
                     : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-terminal-card'
                 )}
               >

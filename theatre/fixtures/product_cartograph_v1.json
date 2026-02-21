@@ -1,0 +1,89 @@
+{
+  "schema_version": "2.0.1",
+  "theatre_id": "product_cartograph_v1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "display_name": "Product Cartograph — Isometric Grid Verification",
+  "description": "Verifies the Cartograph construct's isometric convention compliance, hex grid accuracy, and detail density adherence.",
+  "criteria": {
+    "criteria_ids": [
+      "isometric_convention_compliance",
+      "hex_grid_accuracy",
+      "detail_density_adherence"
+    ],
+    "criteria_human": "Isometric convention compliance measures adherence to 2:1 pixel ratio and 30-degree projection standards. Hex grid accuracy measures coordinate system correctness and neighbour calculation. Detail density adherence measures appropriate level-of-detail for the current zoom level.",
+    "weights": {
+      "isometric_convention_compliance": 0.35,
+      "hex_grid_accuracy": 0.4,
+      "detail_density_adherence": 0.25
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "cartograph": "c3d4e5f"
+    },
+    "scorer_version": "gpt-4o-2024-08-06",
+    "methodology_version": "1.0.0"
+  },
+  "dataset_hashes": {
+    "cartograph_grid_reference": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "product_theatre_config": {
+    "ground_truth_source": "DETERMINISTIC_COMPUTATION",
+    "construct_under_test": "cartograph",
+    "adapter_type": "mock",
+    "replay_data_path": "theatre/fixtures/cartograph_grid_reference.jsonl",
+    "replay_dataset_id": "cartograph_grid_reference"
+  },
+  "fork_definitions": [
+    {
+      "fork_id": "f_01",
+      "trigger_condition": {
+        "type": "episode_complete",
+        "parameters": {}
+      },
+      "options": [
+        {
+          "option_id": "accurate",
+          "label": "Accurate",
+          "description": "Grid rendering meets isometric and hex accuracy standards"
+        },
+        {
+          "option_id": "inaccurate",
+          "label": "Inaccurate",
+          "description": "Grid rendering has projection or coordinate errors"
+        }
+      ],
+      "deadline_ms": 0
+    }
+  ],
+  "scoring": {
+    "score_bounds": {
+      "minimum": 0,
+      "maximum": 1
+    },
+    "holdout_split": 0.2
+  },
+  "resolution_programme": [
+    {
+      "step_id": "invoke_cartograph",
+      "type": "construct_invocation",
+      "construct_id": "cartograph",
+      "timeout_seconds": 30
+    },
+    {
+      "step_id": "verify_grid",
+      "type": "deterministic_computation"
+    },
+    {
+      "step_id": "aggregate_scores",
+      "type": "aggregation"
+    }
+  ],
+  "metadata": {
+    "author": "echelon-team",
+    "created_date": "2026-02-20",
+    "status": "approved",
+    "tags": ["cartograph", "isometric", "hex-grid", "product-theatre"]
+  }
+}

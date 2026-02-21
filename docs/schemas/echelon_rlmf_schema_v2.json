@@ -1,0 +1,321 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://echelon.ai/schemas/rlmf-export/v2.0.1",
+  "title": "Echelon RLMF Export Schema",
+  "description": "Canonical export format for Reinforcement Learning from Market Feedback data products. v2.0.1 supports simulation episodes (robotics/physics) and Product Theatre verification episodes (construct replay). Execution-path conditionals enforce correct field presence.",
+  "version": "2.0.1",
+  "type": "object",
+  "required": [
+    "episode_id",
+    "theatre_id",
+    "execution_path",
+    "config_hash",
+    "state_features",
+    "action_taken"
+  ],
+  "properties": {
+    "episode_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "theatre_id": {
+      "type": "string",
+      "pattern": "^[a-z_]+_v\\d+$"
+    },
+    "execution_path": {
+      "type": "string",
+      "enum": ["replay", "market"],
+      "description": "Whether this episode came from a Product Theatre (replay) or Market Theatre (market)."
+    },
+    "seed_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the random seed. Raw hex, no 0x prefix."
+    },
+    "config_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 commitment hash of the Theatre configuration. Raw hex, no 0x prefix."
+    },
+    "criteria_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z_]+$"
+      },
+      "description": "Snapshot of the Theatre template's criteria_ids. Makes the export self-describing — consumers can validate criteria_scores keys without fetching the template."
+    },
+    "timestep": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Simulation timestep (market) or episode sequence number (replay)."
+    },
+
+    "state_features": {
+      "type": "object",
+      "description": "State representation. Structure varies by execution_path. Simulation: pose/objects/constraints. Replay: input_data/construct_output/ground_truth.",
+      "properties": {
+        "pose": {
+          "type": "object",
+          "description": "6-DOF pose (simulation/market theatres only).",
+          "properties": {
+            "position": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+            "orientation": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
+            "velocity": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+          }
+        },
+        "objects": {
+          "type": "array",
+          "description": "Environment objects (simulation/market theatres only).",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "type": { "type": "string" },
+              "pose": { "type": "object" },
+              "state": { "type": "string", "enum": ["grasped", "free", "obstructing", "damaged"] }
+            }
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "description": "Active constraints (simulation/market theatres only).",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "type": { "type": "string", "enum": ["force_limit", "position_bounds", "velocity_bounds", "collision_avoidance"] },
+              "threshold": { "type": "number" },
+              "current_value": { "type": "number" },
+              "violation": { "type": "boolean" }
+            }
+          }
+        },
+        "input_data": {
+          "type": "object",
+          "description": "Episode input payload passed to construct (replay theatres)."
+        },
+        "construct_output": {
+          "type": "object",
+          "description": "Raw construct response for this episode (replay theatres)."
+        },
+        "ground_truth": {
+          "type": "object",
+          "description": "Expected correct output (replay theatres). May be omitted for privacy-sensitive exports if ground_truth_ref + ground_truth_hash are provided."
+        },
+        "ground_truth_ref": {
+          "type": "string",
+          "description": "URI or path to the ground truth dataset for this episode. Together with ground_truth_hash, makes hash-only exports auditable. Required for replay if ground_truth is omitted."
+        },
+        "ground_truth_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of the ground truth data. Raw hex, no 0x prefix. Always required for replay."
+        }
+      }
+    },
+
+    "fork": {
+      "type": "object",
+      "description": "Fork information at this decision point.",
+      "properties": {
+        "fork_id": { "type": "string", "pattern": "^f_\\d{2}$" },
+        "parent_fork_id": { "type": "string", "pattern": "^f_\\d{2}$" },
+        "options": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 2,
+          "maxItems": 5,
+          "description": "Available options at this fork. Values are option_ids (not labels) — matching fork_definitions[].options[].option_id in the Theatre template."
+        },
+        "deadline_ms": { "type": "integer", "minimum": 0 },
+        "trigger_condition": { "type": "string" }
+      }
+    },
+
+    "market": {
+      "type": "object",
+      "description": "Market supervision signals (market theatres). NOTE: runtime must validate that prices sum to 1.0.",
+      "properties": {
+        "prices": {
+          "type": "array",
+          "items": { "type": "number", "minimum": 0, "maximum": 1 },
+          "minItems": 2,
+          "maxItems": 5,
+          "description": "Normalised LMSR prices per fork option. Must sum to 1.0 (runtime-enforced)."
+        },
+        "liquidity": { "type": "number", "minimum": 0 },
+        "volume_24h": { "type": "number", "minimum": 0 },
+        "logic_gap": { "type": "number", "minimum": 0, "maximum": 1 },
+        "entropy": { "type": "number", "minimum": 0, "maximum": 1 },
+        "agent_distribution": {
+          "type": "object",
+          "properties": {
+            "SHARK": { "type": "integer", "minimum": 0 },
+            "SPY": { "type": "integer", "minimum": 0 },
+            "DIPLOMAT": { "type": "integer", "minimum": 0 },
+            "SABOTEUR": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "consensus_trend": { "type": "string", "enum": ["converging", "stable", "diverging"] }
+      }
+    },
+
+    "action_taken": {
+      "type": "string",
+      "description": "option_id selected by agent at this decision point. Primarily for market theatres. For replay theatres, use replay_output_class instead. Must match a fork.options value if fork present."
+    },
+
+    "replay_output_class": {
+      "type": "string",
+      "description": "Construct's predicted classification or response category for this episode (replay theatres only). Must be drawn from the fork option_id space defined in the Theatre template. Distinct from action_taken to prevent downstream consumers from conflating agent decisions with construct outputs."
+    },
+
+    "settlement": {
+      "type": "object",
+      "description": "Outcome information. For replay theatres, populated at episode completion. For market theatres, populated at resolution.",
+      "required": ["resolved_option", "success"],
+      "properties": {
+        "resolved_option": { "type": "string", "description": "Correct option_id based on ground truth." },
+        "success": { "type": "boolean" },
+        "reward_vector": {
+          "type": "object",
+          "description": "v1-compatible simulation rewards.",
+          "properties": {
+            "time": { "type": "number" },
+            "value": { "type": "number" },
+            "collateral": { "type": "number" },
+            "safety": { "type": "number" },
+            "trace": { "type": "number" }
+          }
+        },
+        "reward_total": { "type": "number" },
+        "criteria_scores": {
+          "type": "object",
+          "description": "Per-criterion scores for this episode (replay theatres). Keys must match criteria_ids. Values normalised 0.0–1.0.",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "resolution_timestamp": { "type": "string", "format": "date-time" },
+        "resolution_mode": {
+          "type": "string",
+          "enum": ["deterministic", "evidence", "manual", "replay"]
+        }
+      }
+    },
+
+    "calibration": {
+      "type": "object",
+      "description": "Calibration metrics for this episode.",
+      "properties": {
+        "brier": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Brier score. Range 0–1 (binary and multi-class). Lower is better."
+        },
+        "ece": { "type": "number", "minimum": 0, "maximum": 1 },
+        "sharpe": { "type": "number" },
+        "agent_accuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+        "sample_size": { "type": "integer", "minimum": 1 },
+        "precision": { "type": "number", "minimum": 0, "maximum": 1, "description": "Classification precision (replay theatres)." },
+        "recall": { "type": "number", "minimum": 0, "maximum": 1, "description": "Classification recall (replay theatres)." },
+        "reply_accuracy": { "type": "number", "minimum": 0, "maximum": 1, "description": "Response accuracy (replay theatres)." }
+      }
+    },
+
+    "verification": {
+      "type": "object",
+      "description": "Verification-specific fields for Product Theatre episodes.",
+      "properties": {
+        "construct_id": { "type": "string" },
+        "construct_version": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{7,64}$"
+        },
+        "construct_chain_versions": {
+          "type": "object",
+          "description": "For compositional chains: construct_id to commit hash.",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{7,64}$"
+          }
+        },
+        "invocation_latency_ms": { "type": "integer", "minimum": 0 },
+        "invocation_status": { "type": "string", "enum": ["success", "timeout", "error", "refused"] },
+        "evidence_bundle_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of the evidence bundle. Raw hex, no 0x prefix."
+        },
+        "certificate_id": { "type": "string", "format": "uuid" },
+        "verification_tier": {
+          "type": "string",
+          "enum": ["UNVERIFIED", "BACKTESTED", "PROVEN"]
+        }
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "export_timestamp": { "type": "string", "format": "date-time" },
+        "export_version": { "type": "string" },
+        "schema_version": { "type": "string", "const": "2.0.1" },
+        "data_quality": { "type": "string", "enum": ["excellent", "good", "marginal", "poor"] },
+        "difficulty_tier": { "type": "string", "enum": ["easy", "standard", "hard"] },
+        "is_holdout": { "type": "boolean", "description": "Whether this episode was in the holdout split." }
+      }
+    },
+
+    "runtime_validation_rules": {
+      "type": "object",
+      "description": "Constraints enforced at runtime, not by JSON Schema. Documentation-only field.",
+      "readOnly": true,
+      "properties": {
+        "_doc": {
+          "type": "string",
+          "const": "The following rules are enforced by the export engine, not by JSON Schema: (1) market.prices must sum to 1.0. (2) settlement.criteria_scores keys must match the criteria_ids array in this export record (and the Theatre template). (3) action_taken must match a fork.options value if fork is present (market theatres). (4) replay_output_class must be drawn from the fork option_id space (replay theatres). (5) For replay episodes, verification.construct_version must match the Theatre's version_pins. (6) For replay episodes, either ground_truth (inline) or ground_truth_ref (URI) must be present alongside ground_truth_hash to ensure auditability."
+        }
+      }
+    }
+  },
+
+  "allOf": [
+    {
+      "if": { "properties": { "execution_path": { "const": "replay" } } },
+      "then": {
+        "required": ["settlement", "verification", "criteria_ids", "replay_output_class"],
+        "properties": {
+          "state_features": {
+            "required": ["input_data", "construct_output", "ground_truth_hash"],
+            "anyOf": [
+              { "required": ["ground_truth"] },
+              { "required": ["ground_truth_ref"] }
+            ]
+          },
+          "settlement": {
+            "required": ["resolved_option", "success", "criteria_scores"]
+          },
+          "verification": {
+            "required": ["construct_id", "construct_version", "invocation_status", "certificate_id"]
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "execution_path": { "const": "market" } } },
+      "then": {
+        "required": ["market", "settlement", "calibration"],
+        "properties": {
+          "market": {
+            "required": ["prices", "liquidity", "logic_gap", "entropy"]
+          }
+        }
+      }
+    }
+  ]
+}

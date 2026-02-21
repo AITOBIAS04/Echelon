@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: echelon-verify
+Version: 0.1.0
+Summary: Community Oracle Verification Pipeline for Echelon
+Requires-Python: >=3.12
+Requires-Dist: pydantic>=2.12
+Requires-Dist: httpx>=0.28
+Requires-Dist: anthropic>=0.74
+Requires-Dist: click>=8.0
+Requires-Dist: fastapi>=0.121
+Requires-Dist: uvicorn>=0.34
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.24; extra == "dev"
+Requires-Dist: respx>=0.22; extra == "dev"

@@ -5,6 +5,7 @@ import { TopActionBar } from './TopActionBar';
 import { TopActionBarActionsProvider } from '../../contexts/TopActionBarActionsContext';
 import { AgentsUiProvider } from '../../contexts/AgentsUiContext';
 import { RlmfUiProvider } from '../../contexts/RlmfUiContext';
+import { VerifyUiProvider } from '../../contexts/VerifyUiContext';
 import { DemoEngine } from '../../demo/DemoEngine';
 import { DemoToastHost } from '../../demo/DemoToastHost';
 
@@ -21,6 +22,7 @@ export function AppLayout() {
     <TopActionBarActionsProvider>
       <AgentsUiProvider>
         <RlmfUiProvider>
+          <VerifyUiProvider>
           <DemoEngine>
             <DemoToastHost />
             <div className="h-[100dvh] w-screen flex overflow-hidden bg-terminal-bg canary-active">
@@ -43,6 +45,7 @@ export function AppLayout() {
               </section>
             </div>
           </DemoEngine>
+          </VerifyUiProvider>
         </RlmfUiProvider>
       </AgentsUiProvider>
     </TopActionBarActionsProvider>

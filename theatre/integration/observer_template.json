@@ -1,0 +1,106 @@
+{
+  "schema_version": "2.0.1",
+  "theatre_id": "product_observer_v1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "display_name": "Community Oracle Observer Verification",
+  "description": "Verifies the Community Oracle construct against GitHub PR ground truth. Scores precision, recall, and reply accuracy of oracle summaries.",
+  "criteria": {
+    "criteria_ids": ["precision", "recall", "reply_accuracy"],
+    "criteria_human": "Precision: fraction of oracle claims supported by the PR diff. Recall: fraction of important changes surfaced in the summary. Reply Accuracy: factual grounding of follow-up question responses.",
+    "weights": {
+      "precision": 0.4,
+      "recall": 0.4,
+      "reply_accuracy": 0.2
+    }
+  },
+  "fork_definitions": [
+    {
+      "fork_id": "f_01",
+      "trigger_condition": {
+        "type": "episode_complete",
+        "parameters": {}
+      },
+      "options": [
+        {
+          "option_id": "verified",
+          "label": "Verified",
+          "description": "Oracle output is factually grounded in the PR diff"
+        },
+        {
+          "option_id": "unverified",
+          "label": "Unverified",
+          "description": "Oracle output contains fabricated or unsupported claims"
+        }
+      ],
+      "deadline_ms": 0
+    }
+  ],
+  "scoring": {
+    "score_bounds": {
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "holdout_split": 0.2
+  },
+  "resolution_programme": [
+    {
+      "step_id": "invoke_oracle",
+      "type": "construct_invocation",
+      "construct_id": "community_oracle_v1",
+      "input_spec": {
+        "title": "string",
+        "description": "string",
+        "diff_content": "string",
+        "files_changed": "array",
+        "follow_up_question": "string"
+      },
+      "output_spec": {
+        "summary": "string",
+        "key_claims": "array",
+        "follow_up_response": "string"
+      },
+      "timeout_seconds": 60
+    },
+    {
+      "step_id": "score_output",
+      "type": "deterministic_computation",
+      "input_spec": {
+        "oracle_output": "object",
+        "ground_truth": "object"
+      },
+      "output_spec": {
+        "precision": "number",
+        "recall": "number",
+        "reply_accuracy": "number"
+      }
+    },
+    {
+      "step_id": "aggregate_scores",
+      "type": "aggregation"
+    }
+  ],
+  "version_pins": {
+    "constructs": {
+      "community_oracle_v1": "0000000"
+    },
+    "scorer_version": "anthropic-claude-sonnet-4-20250514",
+    "methodology_version": "1.0.0"
+  },
+  "dataset_hashes": {
+    "observer_prs": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "product_theatre_config": {
+    "ground_truth_source": "GITHUB_API",
+    "construct_under_test": "community_oracle_v1",
+    "adapter_type": "local",
+    "adapter_endpoint": "theatre.integration.observer_oracle:ObserverOracleAdapter",
+    "replay_dataset_id": "observer_prs"
+  },
+  "metadata": {
+    "author": "echelon-system",
+    "created_date": "2026-02-20",
+    "status": "approved",
+    "tags": ["observer", "verification", "product-theatre"]
+  }
+}
