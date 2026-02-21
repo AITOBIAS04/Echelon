@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "active_cycle": null,
-  "global_sprint_counter": 29,
+  "global_sprint_counter": 31,
   "cycles": [
     {
       "id": "cycle-025",
@@ -222,6 +222,30 @@
           "local_id": "sprint-2",
           "global_id": "sprint-29",
           "label": "Runner + Evidence + Validation",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "id": "cycle-033",
+      "label": "Two-Rail Deterministic Product Theatres",
+      "status": "archived",
+      "created": "2026-02-21T00:00:00Z",
+      "archived": "2026-02-21T15:30:00Z",
+      "archive_path": "grimoires/loa/archive/2026-02-21-two-rail-deterministic-theatres",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": "sprint-30",
+          "label": "Deterministic Scoring Layer",
+          "status": "completed"
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": "sprint-31",
+          "label": "Runner Script + Integration Tests",
           "status": "completed"
         }
       ]
