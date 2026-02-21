@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://echelon.ai/schemas/echelon_certificate_envelope_schema_v1.json",
+  "title": "Echelon Certificate Envelope",
+  "description": "Optional wrapper around the canonical Echelon Calibration Certificate. Provides domain-specific reporting and non-authoritative routing hints for UX/runtime ergonomics. Trust decisions MUST be derived from the embedded canonical certificate and its hashes/signature; routing_hints are advisory only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "certificate"
+  ],
+  "properties": {
+    "certificate": {
+      "description": "Canonical Echelon Calibration Certificate (immutable trust artefact).",
+      "$ref": "echelon_certificate_schema.json"
+    },
+    "domain_report": {
+      "type": "object",
+      "description": "Optional domain-specific report data to improve UX and operator legibility. Should also be included in (and hashed by) the evidence bundle if it materially affects interpretation.",
+      "additionalProperties": false,
+      "properties": {
+        "verification_domain": {
+          "type": "string",
+          "description": "Human-readable domain label (e.g., DETERMINISTIC_FINANCE, SECURITY_REVIEW, SPATIAL_ACCURACY).",
+          "minLength": 2,
+          "maxLength": 64
+        },
+        "calibration_summary": {
+          "type": "object",
+          "description": "Optional redundant summary fields for UX. These MUST be consistent with the canonical certificate.",
+          "additionalProperties": false,
+          "properties": {
+            "overall_score": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "pass_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "logic_gap_deviations": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_replays": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "confidence_interval": {
+              "type": "string",
+              "maxLength": 64
+            }
+          }
+        },
+        "theatre_performances": {
+          "type": "array",
+          "description": "Optional per-template breakdown (useful when multiple templates feed a single domain-level narrative).",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "template_id",
+              "replays_executed"
+            ],
+            "properties": {
+              "template_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "template_family": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "replays_executed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "pass_rate": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "criteria_scores": {
+                "type": "object",
+                "description": "Scores keyed by criteria_id; values should be 0..1. This MUST align with the canonical certificate's scores for the same criteria_ids where applicable.",
+                "additionalProperties": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "tested_bounds": {
+                "type": "object",
+                "description": "Optional tested bounds / adversarial cases. Purely explanatory unless included in the hashed evidence bundle.",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "tested_bounds": {
+          "type": "object",
+          "description": "Optional global tested bounds for the run (ranges, stress tests, adversarial cases).",
+          "additionalProperties": true
+        }
+      }
+    },
+    "routing_hints": {
+      "type": "object",
+      "description": "Non-authoritative routing hints for Hounfour/Arrakis UX. Must not be treated as a trust source; routing must be derived from the canonical certificate and local policy.",
+      "additionalProperties": false,
+      "properties": {
+        "preferred_execution_tier": {
+          "type": "string",
+          "description": "Suggested execution tier label for UX display only (ecosystem-specific).",
+          "minLength": 2,
+          "maxLength": 64
+        },
+        "capability_tags": {
+          "type": "array",
+          "description": "Suggested tags (e.g., deterministic_finance, requires_hitl, safe_for_autonomy). Advisory only.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "max_privilege_recommendation": {
+          "type": "string",
+          "description": "Suggested maximum privilege level. Must be enforced by local policy, not by this field.",
+          "minLength": 2,
+          "maxLength": 64
+        }
+      }
+    }
+  }
+}
