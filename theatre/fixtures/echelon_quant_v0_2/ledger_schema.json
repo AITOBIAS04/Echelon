@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Echelon LMSR Trade Ledger Entry",
+  "type": "object",
+  "required": [
+    "ts",
+    "market_id",
+    "agent_id",
+    "event_type",
+    "x_before",
+    "x_after",
+    "C_before",
+    "C_after",
+    "cost_paid",
+    "prices_before",
+    "prices_after",
+    "cash_before",
+    "cash_after",
+    "inventory_before",
+    "inventory_after",
+    "commitment_hash",
+    "trace_id"
+  ],
+  "properties": {
+    "ts": {
+      "type": "string",
+      "description": "RFC3339 UTC timestamp"
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "UUID for correlation"
+    },
+    "market_id": {
+      "type": "string"
+    },
+    "agent_id": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "trade",
+        "commit",
+        "paradox_event",
+        "resolve",
+        "settle"
+      ]
+    },
+    "x_before": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    },
+    "x_after": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    },
+    "C_before": {
+      "type": "number"
+    },
+    "C_after": {
+      "type": "number"
+    },
+    "cost_paid": {
+      "type": "number",
+      "description": "C_after - C_before"
+    },
+    "prices_before": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    },
+    "prices_after": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    },
+    "cash_before": {
+      "type": "number"
+    },
+    "cash_after": {
+      "type": "number"
+    },
+    "inventory_before": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    },
+    "inventory_after": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      }
+    },
+    "fee_paid": {
+      "type": "number",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    },
+    "commitment_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "oracle_commitment_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

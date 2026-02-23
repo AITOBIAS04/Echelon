@@ -1,0 +1,1006 @@
+{
+  "dataset_id": "quant_market_hygiene_v0_1_10",
+  "description": "v0.1 deterministic replay fixtures for QUANT_MARKET_HYGIENE_V1 (10 records). LMSR-only microstructure: execution = cost-function math + commitment/lifecycle constraints. Includes small-b impact, large-b low impact, limit and capital violations, oracle/b/outcomes/fee not committed, paradox trigger, and missing VRF seed.",
+  "records": [
+    {
+      "record_id": "qmhy_0001",
+      "case": "small_b_high_impact",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0001",
+          "n_outcomes": 3,
+          "b": 10.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ],
+          "fee_schedule": {
+            "type": "flat",
+            "fee_bps": 0
+          },
+          "lifecycle": {
+            "phase": "trade",
+            "opened_at": "2026-02-20T00:00:00Z"
+          }
+        },
+        "commitments": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true
+        },
+        "state_before": {
+          "x": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "C": 10.986122886681098,
+          "prices": [
+            0.3333333333333333,
+            0.3333333333333333,
+            0.3333333333333333
+          ]
+        },
+        "agent": {
+          "agent_id": "agent_01",
+          "cash_available": 100.0,
+          "position_limit_per_market": 100.0
+        },
+        "trade": {
+          "side": "buy",
+          "outcome_index": 0,
+          "delta_shares": 50.0
+        },
+        "events": {
+          "paradox_triggered": false,
+          "vrf_seed": 1234
+        }
+      },
+      "expected_outputs": {
+        "state_after": {
+          "x": [
+            50.0,
+            0.0,
+            0.0
+          ],
+          "C": 50.13385901721449,
+          "prices": [
+            0.986703291042268,
+            0.006648354478866004,
+            0.006648354478866004
+          ]
+        },
+        "execution": {
+          "cost_paid": 39.14773613053339,
+          "avg_execution_price": 0.7829547226106678,
+          "impact": 0.44962138927733447,
+          "market_maker_worst_case_loss_bound": 10.986122886681098
+        },
+        "criteria_verdicts": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true,
+          "position_limit_enforced": true,
+          "capital_commitment_valid": true,
+          "worst_case_loss_bounded": true,
+          "no_negative_balance_invariant": true,
+          "inventory_accounting_correct": true,
+          "price_impact_modelled": true,
+          "impact_vs_b_sensitivity_reported": true,
+          "cost_function_consistency": true,
+          "brier_score_reported_and_valid": true,
+          "ece_reported_and_valid": true,
+          "proper_scoring_rule_used": true,
+          "calibration_by_regime": true,
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true
+        },
+        "notes": "Deterministic fixture; verdicts are binary checks on commitments, accounting, limits, and calibration/robustness flags."
+      }
+    },
+    {
+      "record_id": "qmhy_0002",
+      "case": "large_b_low_impact",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0002",
+          "n_outcomes": 3,
+          "b": 200.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ],
+          "fee_schedule": {
+            "type": "flat",
+            "fee_bps": 0
+          },
+          "lifecycle": {
+            "phase": "trade",
+            "opened_at": "2026-02-20T00:00:00Z"
+          }
+        },
+        "commitments": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true
+        },
+        "state_before": {
+          "x": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "C": 219.72245773362195,
+          "prices": [
+            0.3333333333333333,
+            0.3333333333333333,
+            0.3333333333333333
+          ]
+        },
+        "agent": {
+          "agent_id": "agent_02",
+          "cash_available": 100.0,
+          "position_limit_per_market": 100.0
+        },
+        "trade": {
+          "side": "buy",
+          "outcome_index": 0,
+          "delta_shares": 50.0
+        },
+        "events": {
+          "paradox_triggered": false,
+          "vrf_seed": 1234
+        }
+      },
+      "expected_outputs": {
+        "state_after": {
+          "x": [
+            50.0,
+            0.0,
+            0.0
+          ],
+          "C": 237.81398622238382,
+          "prices": [
+            0.3909913151594319,
+            0.30450434242028407,
+            0.30450434242028407
+          ]
+        },
+        "execution": {
+          "cost_paid": 18.091528488761867,
+          "avg_execution_price": 0.3618305697752373,
+          "impact": 0.028497236441903995,
+          "market_maker_worst_case_loss_bound": 219.72245773362195
+        },
+        "criteria_verdicts": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true,
+          "position_limit_enforced": true,
+          "capital_commitment_valid": true,
+          "worst_case_loss_bounded": true,
+          "no_negative_balance_invariant": true,
+          "inventory_accounting_correct": true,
+          "price_impact_modelled": true,
+          "impact_vs_b_sensitivity_reported": true,
+          "cost_function_consistency": true,
+          "brier_score_reported_and_valid": true,
+          "ece_reported_and_valid": true,
+          "proper_scoring_rule_used": true,
+          "calibration_by_regime": true,
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true
+        },
+        "notes": "Deterministic fixture; verdicts are binary checks on commitments, accounting, limits, and calibration/robustness flags."
+      }
+    },
+    {
+      "record_id": "qmhy_0003",
+      "case": "limit_violation_position",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0003",
+          "n_outcomes": 2,
+          "b": 50.0,
+          "outcomes": [
+            "O0",
+            "O1"
+          ],
+          "fee_schedule": {
+            "type": "flat",
+            "fee_bps": 0
+          },
+          "lifecycle": {
+            "phase": "trade",
+            "opened_at": "2026-02-20T00:00:00Z"
+          }
+        },
+        "commitments": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true
+        },
+        "state_before": {
+          "x": [
+            0.0,
+            0.0
+          ],
+          "C": 34.657359027997266,
+          "prices": [
+            0.5,
+            0.5
+          ]
+        },
+        "agent": {
+          "agent_id": "agent_03",
+          "cash_available": 100.0,
+          "position_limit_per_market": 10.0
+        },
+        "trade": {
+          "side": "buy",
+          "outcome_index": 1,
+          "delta_shares": 25.0
+        },
+        "events": {
+          "paradox_triggered": false,
+          "vrf_seed": 1234
+        }
+      },
+      "expected_outputs": {
+        "state_after": {
+          "x": [
+            0.0,
+            25.0
+          ],
+          "C": 48.703849209005334,
+          "prices": [
+            0.3775406687981454,
+            0.6224593312018546
+          ]
+        },
+        "execution": {
+          "cost_paid": 14.046490181008068,
+          "avg_execution_price": 0.5618596072403227,
+          "impact": 0.06185960724032269,
+          "market_maker_worst_case_loss_bound": 34.657359027997266
+        },
+        "criteria_verdicts": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true,
+          "position_limit_enforced": false,
+          "capital_commitment_valid": true,
+          "worst_case_loss_bounded": true,
+          "no_negative_balance_invariant": true,
+          "inventory_accounting_correct": true,
+          "price_impact_modelled": true,
+          "impact_vs_b_sensitivity_reported": true,
+          "cost_function_consistency": true,
+          "brier_score_reported_and_valid": true,
+          "ece_reported_and_valid": true,
+          "proper_scoring_rule_used": true,
+          "calibration_by_regime": true,
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true
+        },
+        "notes": "Deterministic fixture; verdicts are binary checks on commitments, accounting, limits, and calibration/robustness flags."
+      }
+    },
+    {
+      "record_id": "qmhy_0004",
+      "case": "capital_commitment_invalid",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0004",
+          "n_outcomes": 2,
+          "b": 20.0,
+          "outcomes": [
+            "O0",
+            "O1"
+          ],
+          "fee_schedule": {
+            "type": "flat",
+            "fee_bps": 0
+          },
+          "lifecycle": {
+            "phase": "trade",
+            "opened_at": "2026-02-20T00:00:00Z"
+          }
+        },
+        "commitments": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true
+        },
+        "state_before": {
+          "x": [
+            0.0,
+            0.0
+          ],
+          "C": 13.862943611198906,
+          "prices": [
+            0.5,
+            0.5
+          ]
+        },
+        "agent": {
+          "agent_id": "agent_04",
+          "cash_available": 1.0,
+          "position_limit_per_market": 100.0
+        },
+        "trade": {
+          "side": "buy",
+          "outcome_index": 0,
+          "delta_shares": 30.0
+        },
+        "events": {
+          "paradox_triggered": false,
+          "vrf_seed": 1234
+        }
+      },
+      "expected_outputs": {
+        "state_after": {
+          "x": [
+            30.0,
+            0.0
+          ],
+          "C": 34.02826555965505,
+          "prices": [
+            0.8175744761936437,
+            0.18242552380635635
+          ]
+        },
+        "execution": {
+          "cost_paid": 20.16532194845614,
+          "avg_execution_price": 0.6721773982818713,
+          "impact": 0.17217739828187129,
+          "market_maker_worst_case_loss_bound": 13.862943611198906
+        },
+        "criteria_verdicts": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true,
+          "position_limit_enforced": true,
+          "capital_commitment_valid": false,
+          "worst_case_loss_bounded": false,
+          "no_negative_balance_invariant": false,
+          "inventory_accounting_correct": true,
+          "price_impact_modelled": true,
+          "impact_vs_b_sensitivity_reported": true,
+          "cost_function_consistency": true,
+          "brier_score_reported_and_valid": true,
+          "ece_reported_and_valid": true,
+          "proper_scoring_rule_used": true,
+          "calibration_by_regime": true,
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true
+        },
+        "notes": "Deterministic fixture; verdicts are binary checks on commitments, accounting, limits, and calibration/robustness flags."
+      }
+    },
+    {
+      "record_id": "qmhy_0005",
+      "case": "oracle_not_committed",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0005",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ],
+          "fee_schedule": {
+            "type": "flat",
+            "fee_bps": 0
+          },
+          "lifecycle": {
+            "phase": "trade",
+            "opened_at": "2026-02-20T00:00:00Z"
+          }
+        },
+        "commitments": {
+          "resolution_oracle_committed": false,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true
+        },
+        "state_before": {
+          "x": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "C": 32.95836866004329,
+          "prices": [
+            0.3333333333333333,
+            0.3333333333333333,
+            0.3333333333333333
+          ]
+        },
+        "agent": {
+          "agent_id": "agent_05",
+          "cash_available": 100.0,
+          "position_limit_per_market": 100.0
+        },
+        "trade": {
+          "side": "buy",
+          "outcome_index": 2,
+          "delta_shares": 10.0
+        },
+        "events": {
+          "paradox_triggered": false,
+          "vrf_seed": 1234
+        }
+      },
+      "expected_outputs": {
+        "state_after": {
+          "x": [
+            0.0,
+            0.0,
+            10.0
+          ],
+          "C": 36.67452405142397,
+          "prices": [
+            0.2944976854873674,
+            0.2944976854873674,
+            0.41100462902526524
+          ]
+        },
+        "execution": {
+          "cost_paid": 3.7161553913806813,
+          "avg_execution_price": 0.3716155391380681,
+          "impact": 0.03828220580473479,
+          "market_maker_worst_case_loss_bound": 32.95836866004329
+        },
+        "criteria_verdicts": {
+          "resolution_oracle_committed": false,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true,
+          "position_limit_enforced": true,
+          "capital_commitment_valid": true,
+          "worst_case_loss_bounded": true,
+          "no_negative_balance_invariant": true,
+          "inventory_accounting_correct": true,
+          "price_impact_modelled": true,
+          "impact_vs_b_sensitivity_reported": true,
+          "cost_function_consistency": true,
+          "brier_score_reported_and_valid": true,
+          "ece_reported_and_valid": true,
+          "proper_scoring_rule_used": true,
+          "calibration_by_regime": true,
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true
+        },
+        "notes": "Deterministic fixture; verdicts are binary checks on commitments, accounting, limits, and calibration/robustness flags."
+      }
+    },
+    {
+      "record_id": "qmhy_0006",
+      "case": "b_not_committed",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0006",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ],
+          "fee_schedule": {
+            "type": "flat",
+            "fee_bps": 0
+          },
+          "lifecycle": {
+            "phase": "trade",
+            "opened_at": "2026-02-20T00:00:00Z"
+          }
+        },
+        "commitments": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": false,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true
+        },
+        "state_before": {
+          "x": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "C": 32.95836866004329,
+          "prices": [
+            0.3333333333333333,
+            0.3333333333333333,
+            0.3333333333333333
+          ]
+        },
+        "agent": {
+          "agent_id": "agent_06",
+          "cash_available": 100.0,
+          "position_limit_per_market": 100.0
+        },
+        "trade": {
+          "side": "buy",
+          "outcome_index": 1,
+          "delta_shares": 10.0
+        },
+        "events": {
+          "paradox_triggered": false,
+          "vrf_seed": 1234
+        }
+      },
+      "expected_outputs": {
+        "state_after": {
+          "x": [
+            0.0,
+            10.0,
+            0.0
+          ],
+          "C": 36.67452405142397,
+          "prices": [
+            0.2944976854873674,
+            0.41100462902526524,
+            0.2944976854873674
+          ]
+        },
+        "execution": {
+          "cost_paid": 3.7161553913806813,
+          "avg_execution_price": 0.3716155391380681,
+          "impact": 0.03828220580473479,
+          "market_maker_worst_case_loss_bound": 32.95836866004329
+        },
+        "criteria_verdicts": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": false,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true,
+          "position_limit_enforced": true,
+          "capital_commitment_valid": true,
+          "worst_case_loss_bounded": true,
+          "no_negative_balance_invariant": true,
+          "inventory_accounting_correct": true,
+          "price_impact_modelled": true,
+          "impact_vs_b_sensitivity_reported": true,
+          "cost_function_consistency": true,
+          "brier_score_reported_and_valid": true,
+          "ece_reported_and_valid": true,
+          "proper_scoring_rule_used": true,
+          "calibration_by_regime": true,
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true
+        },
+        "notes": "Deterministic fixture; verdicts are binary checks on commitments, accounting, limits, and calibration/robustness flags."
+      }
+    },
+    {
+      "record_id": "qmhy_0007",
+      "case": "paradox_trigger_event",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0007",
+          "n_outcomes": 3,
+          "b": 40.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ],
+          "fee_schedule": {
+            "type": "flat",
+            "fee_bps": 0
+          },
+          "lifecycle": {
+            "phase": "trade",
+            "opened_at": "2026-02-20T00:00:00Z"
+          }
+        },
+        "commitments": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true
+        },
+        "state_before": {
+          "x": [
+            5.0,
+            0.0,
+            0.0
+          ],
+          "C": 45.68153578106597,
+          "prices": [
+            0.3616644630922816,
+            0.31916776845385925,
+            0.31916776845385925
+          ]
+        },
+        "agent": {
+          "agent_id": "agent_07",
+          "cash_available": 100.0,
+          "position_limit_per_market": 100.0
+        },
+        "trade": {
+          "side": "buy",
+          "outcome_index": 0,
+          "delta_shares": 5.0
+        },
+        "events": {
+          "paradox_triggered": true,
+          "vrf_seed": 1234
+        }
+      },
+      "expected_outputs": {
+        "state_after": {
+          "x": [
+            10.0,
+            0.0,
+            0.0
+          ],
+          "C": 47.56279724447676,
+          "prices": [
+            0.3909913151594319,
+            0.30450434242028407,
+            0.30450434242028407
+          ]
+        },
+        "execution": {
+          "cost_paid": 1.8812614634107945,
+          "avg_execution_price": 0.3762522926821589,
+          "impact": 0.014587829589877255,
+          "market_maker_worst_case_loss_bound": 43.94449154672439
+        },
+        "criteria_verdicts": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true,
+          "position_limit_enforced": true,
+          "capital_commitment_valid": true,
+          "worst_case_loss_bounded": true,
+          "no_negative_balance_invariant": true,
+          "inventory_accounting_correct": true,
+          "price_impact_modelled": true,
+          "impact_vs_b_sensitivity_reported": true,
+          "cost_function_consistency": true,
+          "brier_score_reported_and_valid": true,
+          "ece_reported_and_valid": true,
+          "proper_scoring_rule_used": true,
+          "calibration_by_regime": true,
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true
+        },
+        "notes": "Deterministic fixture; verdicts are binary checks on commitments, accounting, limits, and calibration/robustness flags."
+      }
+    },
+    {
+      "record_id": "qmhy_0008",
+      "case": "vrf_seed_missing",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0008",
+          "n_outcomes": 3,
+          "b": 40.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ],
+          "fee_schedule": {
+            "type": "flat",
+            "fee_bps": 0
+          },
+          "lifecycle": {
+            "phase": "trade",
+            "opened_at": "2026-02-20T00:00:00Z"
+          }
+        },
+        "commitments": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true
+        },
+        "state_before": {
+          "x": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "C": 43.94449154672439,
+          "prices": [
+            0.3333333333333333,
+            0.3333333333333333,
+            0.3333333333333333
+          ]
+        },
+        "agent": {
+          "agent_id": "agent_08",
+          "cash_available": 100.0,
+          "position_limit_per_market": 100.0
+        },
+        "trade": {
+          "side": "buy",
+          "outcome_index": 0,
+          "delta_shares": 5.0
+        },
+        "events": {
+          "paradox_triggered": false,
+          "vrf_seed": null
+        }
+      },
+      "expected_outputs": {
+        "state_after": {
+          "x": [
+            5.0,
+            0.0,
+            0.0
+          ],
+          "C": 45.68153578106597,
+          "prices": [
+            0.3616644630922816,
+            0.31916776845385925,
+            0.31916776845385925
+          ]
+        },
+        "execution": {
+          "cost_paid": 1.7370442343415746,
+          "avg_execution_price": 0.3474088468683149,
+          "impact": 0.014075513534981599,
+          "market_maker_worst_case_loss_bound": 43.94449154672439
+        },
+        "criteria_verdicts": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": true,
+          "position_limit_enforced": true,
+          "capital_commitment_valid": true,
+          "worst_case_loss_bounded": true,
+          "no_negative_balance_invariant": true,
+          "inventory_accounting_correct": true,
+          "price_impact_modelled": true,
+          "impact_vs_b_sensitivity_reported": true,
+          "cost_function_consistency": true,
+          "brier_score_reported_and_valid": true,
+          "ece_reported_and_valid": true,
+          "proper_scoring_rule_used": true,
+          "calibration_by_regime": true,
+          "vrf_perturbation_suite_pass": false,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true
+        },
+        "notes": "Deterministic fixture; verdicts are binary checks on commitments, accounting, limits, and calibration/robustness flags."
+      }
+    },
+    {
+      "record_id": "qmhy_0009",
+      "case": "fee_not_committed",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0009",
+          "n_outcomes": 4,
+          "b": 60.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2",
+            "O3"
+          ],
+          "fee_schedule": {
+            "type": "flat",
+            "fee_bps": 0
+          },
+          "lifecycle": {
+            "phase": "trade",
+            "opened_at": "2026-02-20T00:00:00Z"
+          }
+        },
+        "commitments": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": false
+        },
+        "state_before": {
+          "x": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "C": 83.17766166719343,
+          "prices": [
+            0.25,
+            0.25,
+            0.25,
+            0.25
+          ]
+        },
+        "agent": {
+          "agent_id": "agent_09",
+          "cash_available": 100.0,
+          "position_limit_per_market": 100.0
+        },
+        "trade": {
+          "side": "buy",
+          "outcome_index": 3,
+          "delta_shares": 10.0
+        },
+        "events": {
+          "paradox_triggered": false,
+          "vrf_seed": 1234
+        }
+      },
+      "expected_outputs": {
+        "state_after": {
+          "x": [
+            0.0,
+            0.0,
+            0.0,
+            10.0
+          ],
+          "C": 85.83819907261086,
+          "prices": [
+            0.2391566144174264,
+            0.2391566144174264,
+            0.2391566144174264,
+            0.2825301567477209
+          ]
+        },
+        "execution": {
+          "cost_paid": 2.660537405417429,
+          "avg_execution_price": 0.2660537405417429,
+          "impact": 0.01605374054174291,
+          "market_maker_worst_case_loss_bound": 83.17766166719343
+        },
+        "criteria_verdicts": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": true,
+          "fee_schedule_committed": false,
+          "position_limit_enforced": true,
+          "capital_commitment_valid": true,
+          "worst_case_loss_bounded": true,
+          "no_negative_balance_invariant": true,
+          "inventory_accounting_correct": true,
+          "price_impact_modelled": true,
+          "impact_vs_b_sensitivity_reported": true,
+          "cost_function_consistency": true,
+          "brier_score_reported_and_valid": true,
+          "ece_reported_and_valid": true,
+          "proper_scoring_rule_used": true,
+          "calibration_by_regime": true,
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true
+        },
+        "notes": "Deterministic fixture; verdicts are binary checks on commitments, accounting, limits, and calibration/robustness flags."
+      }
+    },
+    {
+      "record_id": "qmhy_0010",
+      "case": "outcomes_not_committed",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0010",
+          "n_outcomes": 4,
+          "b": 60.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2",
+            "O3"
+          ],
+          "fee_schedule": {
+            "type": "flat",
+            "fee_bps": 0
+          },
+          "lifecycle": {
+            "phase": "trade",
+            "opened_at": "2026-02-20T00:00:00Z"
+          }
+        },
+        "commitments": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": false,
+          "fee_schedule_committed": true
+        },
+        "state_before": {
+          "x": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "C": 83.17766166719343,
+          "prices": [
+            0.25,
+            0.25,
+            0.25,
+            0.25
+          ]
+        },
+        "agent": {
+          "agent_id": "agent_10",
+          "cash_available": 100.0,
+          "position_limit_per_market": 100.0
+        },
+        "trade": {
+          "side": "buy",
+          "outcome_index": 2,
+          "delta_shares": 10.0
+        },
+        "events": {
+          "paradox_triggered": false,
+          "vrf_seed": 1234
+        }
+      },
+      "expected_outputs": {
+        "state_after": {
+          "x": [
+            0.0,
+            0.0,
+            10.0,
+            0.0
+          ],
+          "C": 85.83819907261086,
+          "prices": [
+            0.2391566144174264,
+            0.2391566144174264,
+            0.2825301567477209,
+            0.2391566144174264
+          ]
+        },
+        "execution": {
+          "cost_paid": 2.660537405417429,
+          "avg_execution_price": 0.2660537405417429,
+          "impact": 0.01605374054174291,
+          "market_maker_worst_case_loss_bound": 83.17766166719343
+        },
+        "criteria_verdicts": {
+          "resolution_oracle_committed": true,
+          "lmsr_parameter_b_committed": true,
+          "market_outcomes_committed": false,
+          "fee_schedule_committed": true,
+          "position_limit_enforced": true,
+          "capital_commitment_valid": true,
+          "worst_case_loss_bounded": true,
+          "no_negative_balance_invariant": true,
+          "inventory_accounting_correct": true,
+          "price_impact_modelled": true,
+          "impact_vs_b_sensitivity_reported": true,
+          "cost_function_consistency": true,
+          "brier_score_reported_and_valid": true,
+          "ece_reported_and_valid": true,
+          "proper_scoring_rule_used": true,
+          "calibration_by_regime": true,
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true
+        },
+        "notes": "Deterministic fixture; verdicts are binary checks on commitments, accounting, limits, and calibration/robustness flags."
+      }
+    }
+  ]
+}

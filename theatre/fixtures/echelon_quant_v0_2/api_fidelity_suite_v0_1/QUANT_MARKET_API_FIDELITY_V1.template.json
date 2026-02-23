@@ -1,0 +1,86 @@
+{
+  "schema_version": "2.0.1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "theatre_id": "product_replay_engine_v1",
+  "template_id": "quant_market_api_fidelity_v1",
+  "display_name": "QUANT_MARKET_API_FIDELITY_V1 \u2014 State Feed and Quoting Contract",
+  "description": "Deterministic verification that the LMSR market API exposes a versioned contract, complete state feed (x, prices, b, phase, logic_gap, stability, n_outcomes), and correct pre-trade quoting (\u0394C and resulting state).",
+  "criteria": {
+    "criteria_ids": [
+      "api_contract_versioned",
+      "state_feed_complete",
+      "pre_trade_quote_available",
+      "quote_correct",
+      "heartbeat_schedule_committed"
+    ],
+    "criteria_human": "For each fixture, verify state feed has required fields and quote_response matches deterministic LMSR math (quoted_cost == C(x+\u0394)-C(x)) and is only allowed during trade phase.",
+    "weights": {
+      "api_contract_versioned": 0.15,
+      "state_feed_complete": 0.25,
+      "pre_trade_quote_available": 0.15,
+      "quote_correct": 0.35,
+      "heartbeat_schedule_committed": 0.1
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "echelon_lmsr_engine": "v0.1-fixtures"
+    },
+    "scorer_version": "deterministic-lmsr-v0.2"
+  },
+  "dataset_hashes": {
+    "api_fidelity_fixtures_10.json": "b6ce403c7336477609a0228c2186359c0da77b619b74f0e4dcbbda87c48f84da"
+  },
+  "product_theatre_config": {
+    "construct_under_test": {
+      "construct_id": "echelon_lmsr_engine",
+      "construct_version": "v0.1-fixtures"
+    },
+    "adapter_type": "local",
+    "adapter_endpoint": "python:echelon_oracles.api_fidelity",
+    "replay_data_path": "/mnt/data/echelon_quant_missing_builds_v0_2/api_fidelity_suite_v0_1/api_fidelity_fixtures_10.json",
+    "ground_truth_source": "v0.2 fixtures (API contract + quote correctness)",
+    "mock_only": false
+  },
+  "fork_definitions": [],
+  "resolution_programme": [
+    {
+      "step": "ingest",
+      "action": "load_dataset",
+      "input": "replay_data_path"
+    },
+    {
+      "step": "invoke_oracle",
+      "action": "deterministic_compute",
+      "oracle": "api_fidelity"
+    },
+    {
+      "step": "score",
+      "action": "binary_checks",
+      "criteria_ids": [
+        "api_contract_versioned",
+        "state_feed_complete",
+        "pre_trade_quote_available",
+        "quote_correct",
+        "heartbeat_schedule_committed"
+      ]
+    },
+    {
+      "step": "certify",
+      "action": "issue_certificate"
+    }
+  ],
+  "evidence_bundle": {
+    "manifest_required": true,
+    "hash_algorithm": "sha256",
+    "canonical_json": "RFC8785",
+    "required_paths": [
+      "template.json",
+      "oracle_programme.json",
+      "oracle_output.json",
+      "metrics.json",
+      "manifest.json"
+    ]
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "schema_version": "2.0.1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "theatre_id": "product_replay_engine_v1",
+  "template_id": "quant_market_hygiene_v1",
+  "display_name": "QUANT_MARKET_HYGIENE_V1 — LMSR Microstructure, Calibration, and Robustness",
+  "description": "Deterministic audit of LMSR-only trading behaviour: commitment immutability (oracle/outcomes/b/fees), exact cost-function accounting, position/capital bounds, and calibration + adversarial robustness signals (VRF perturbation, paradox events, saboteur pressure). No venue execution assumptions; price impact is deterministic from LMSR.",
+  "criteria": {
+    "criteria_ids": [
+      "resolution_oracle_committed",
+      "lmsr_parameter_b_committed",
+      "market_outcomes_committed",
+      "fee_schedule_committed",
+      "position_limit_enforced",
+      "capital_commitment_valid",
+      "worst_case_loss_bounded",
+      "no_negative_balance_invariant",
+      "inventory_accounting_correct",
+      "price_impact_modelled",
+      "impact_vs_b_sensitivity_reported",
+      "cost_function_consistency",
+      "brier_score_reported_and_valid",
+      "ece_reported_and_valid",
+      "proper_scoring_rule_used",
+      "calibration_by_regime",
+      "vrf_perturbation_suite_pass",
+      "saboteur_pressure_pass",
+      "paradox_engine_recovery_pass"
+    ],
+    "criteria_human": "Binary deterministic checks per replay record: commitments locked pre-trade; accounting matches LMSR cost deltas; position/capital bounds hold; calibration metrics are present and use proper scoring rules; robustness flags (VRF, paradox, saboteur) meet policy.",
+    "weights": {
+      "resolution_oracle_committed": 0.07,
+      "lmsr_parameter_b_committed": 0.07,
+      "market_outcomes_committed": 0.05,
+      "fee_schedule_committed": 0.04,
+      "position_limit_enforced": 0.08,
+      "capital_commitment_valid": 0.08,
+      "worst_case_loss_bounded": 0.06,
+      "no_negative_balance_invariant": 0.05,
+      "inventory_accounting_correct": 0.04,
+      "price_impact_modelled": 0.07,
+      "impact_vs_b_sensitivity_reported": 0.04,
+      "cost_function_consistency": 0.02,
+      "brier_score_reported_and_valid": 0.06,
+      "ece_reported_and_valid": 0.05,
+      "proper_scoring_rule_used": 0.04,
+      "calibration_by_regime": 0.04,
+      "vrf_perturbation_suite_pass": 0.04,
+      "saboteur_pressure_pass": 0.04,
+      "paradox_engine_recovery_pass": 0.06
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "echelon_lmsr_engine": "v0.1-fixtures"
+    },
+    "scorer_version": "deterministic-lmsr-v0.1"
+  },
+  "dataset_hashes": {
+    "quant_market_hygiene_fixtures_10.json": "fa1820c8c2fc0a8235e7ed12d9ccdfe27d20482a26e283e9751389f47617088d"
+  },
+  "product_theatre_config": {
+    "construct_under_test": {
+      "construct_id": "echelon_lmsr_engine",
+      "construct_version": "v0.1-fixtures"
+    },
+    "adapter_type": "local",
+    "adapter_endpoint": "python:echelon_oracles.lmsr_hygiene",
+    "replay_data_path": "/mnt/data/quant_market_hygiene_v0_1/quant_market_hygiene_fixtures_10.json",
+    "ground_truth_source": "v0.1 fixtures (deterministic LMSR state transitions + binary policy checks)",
+    "mock_only": false
+  },
+  "fork_definitions": [],
+  "resolution_programme": [
+    {
+      "step": "ingest",
+      "action": "load_dataset",
+      "input": "replay_data_path"
+    },
+    {
+      "step": "invoke_oracle",
+      "action": "deterministic_compute",
+      "oracle": "lmsr_state_transition"
+    },
+    {
+      "step": "score",
+      "action": "binary_checks",
+      "criteria_ids": [
+        "resolution_oracle_committed",
+        "lmsr_parameter_b_committed",
+        "market_outcomes_committed",
+        "fee_schedule_committed",
+        "position_limit_enforced",
+        "capital_commitment_valid",
+        "worst_case_loss_bounded",
+        "no_negative_balance_invariant",
+        "inventory_accounting_correct",
+        "price_impact_modelled",
+        "impact_vs_b_sensitivity_reported",
+        "cost_function_consistency",
+        "brier_score_reported_and_valid",
+        "ece_reported_and_valid",
+        "proper_scoring_rule_used",
+        "calibration_by_regime",
+        "vrf_perturbation_suite_pass",
+        "saboteur_pressure_pass",
+        "paradox_engine_recovery_pass"
+      ]
+    },
+    {
+      "step": "certify",
+      "action": "issue_certificate"
+    }
+  ],
+  "evidence_bundle": {
+    "manifest_required": true,
+    "hash_algorithm": "sha256",
+    "canonical_json": "RFC8785",
+    "required_paths": [
+      "template.json",
+      "market_spec.json",
+      "oracle_programme.json",
+      "oracle_output.json",
+      "ledger.jsonl",
+      "metrics.json",
+      "manifest.json"
+    ]
+  }
+}

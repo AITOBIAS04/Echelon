@@ -1,0 +1,78 @@
+{
+  "schema_version": "2.0.1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "theatre_id": "product_replay_engine_v1",
+  "template_id": "lmsr_b_sensitivity_suite_v1",
+  "display_name": "LMSR_B_SENSITIVITY_SUITE_V1 \u2014 Impact and Stability Surfaces",
+  "description": "Deterministic replay suite that runs identical trade scenarios across multiple b values to quantify price impact and capital efficiency; used as BACKTESTED gating artefact.",
+  "criteria": {
+    "criteria_ids": [
+      "b_sensitivity_surface_generated",
+      "impact_monotonic_in_b",
+      "lmsr_parameter_b_committed"
+    ],
+    "criteria_human": "Generate impact/cost surfaces across b. Verify monotonic impact properties (higher b => lower impact for fixed \u0394q) and ensure b is committed per replay.",
+    "weights": {
+      "b_sensitivity_surface_generated": 0.45,
+      "impact_monotonic_in_b": 0.35,
+      "lmsr_parameter_b_committed": 0.2
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "echelon_lmsr_engine": "v0.1-fixtures"
+    },
+    "scorer_version": "deterministic-lmsr-v0.1"
+  },
+  "dataset_hashes": {
+    "b_sensitivity_fixtures_5.json": "d3164809cbad8027b79a71f4e7194d01b958bd80af55de90c7ae0568637d3877"
+  },
+  "product_theatre_config": {
+    "construct_under_test": {
+      "construct_id": "echelon_lmsr_engine",
+      "construct_version": "v0.1-fixtures"
+    },
+    "adapter_type": "local",
+    "adapter_endpoint": "python:echelon_oracles.b_sensitivity",
+    "replay_data_path": "/mnt/data/echelon_quant_missing_builds_v0_1/b_sensitivity_suite_v0_1/b_sensitivity_fixtures_5.json",
+    "ground_truth_source": "v0.1 fixtures (b sweep stability surface)",
+    "mock_only": false
+  },
+  "fork_definitions": [],
+  "resolution_programme": [
+    {
+      "step": "ingest",
+      "action": "load_dataset",
+      "input": "replay_data_path"
+    },
+    {
+      "step": "invoke_oracle",
+      "action": "deterministic_compute",
+      "oracle": "b_sensitivity"
+    },
+    {
+      "step": "score",
+      "action": "binary_checks",
+      "criteria_ids": [
+        "b_sensitivity_surface_generated",
+        "impact_monotonic_in_b",
+        "lmsr_parameter_b_committed"
+      ]
+    },
+    {
+      "step": "certify",
+      "action": "issue_certificate"
+    }
+  ],
+  "evidence_bundle": {
+    "manifest_required": true,
+    "hash_algorithm": "sha256",
+    "canonical_json": "RFC8785",
+    "required_paths": [
+      "template.json",
+      "metrics.json",
+      "manifest.json"
+    ]
+  }
+}

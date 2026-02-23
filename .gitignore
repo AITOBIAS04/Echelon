@@ -86,3 +86,6 @@ test.db
 *.env.bak
 .env.local
 .env.*.local
+
+# Built artefacts
+tools/echelon_demo_pack.tar.gz

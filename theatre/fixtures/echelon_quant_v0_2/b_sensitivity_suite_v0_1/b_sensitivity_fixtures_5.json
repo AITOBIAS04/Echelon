@@ -1,0 +1,166 @@
+{
+  "dataset_id": "b_sensitivity_v0_1_5",
+  "description": "v0.1 fixtures for b-sensitivity suite. Same trade scenario replayed across b values to generate stability/impact surfaces and enforce b immutability.",
+  "records": [
+    {
+      "record_id": "bscan_0001",
+      "case": "b_sensitivity",
+      "inputs": {
+        "b": 10.0,
+        "market": {
+          "n_outcomes": 3
+        },
+        "trade": {
+          "n_outcomes": 3,
+          "x0": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "delta": 50.0,
+          "j": 0
+        }
+      },
+      "expected_outputs": {
+        "execution": {
+          "cost_paid": 39.14773613053339,
+          "avg_execution_price": 0.7829547226106678,
+          "impact": 0.44962138927733447,
+          "mm_bound": 10.986122886681098
+        },
+        "criteria_verdicts": {
+          "b_sensitivity_surface_generated": true,
+          "impact_monotonic_in_b": true
+        }
+      }
+    },
+    {
+      "record_id": "bscan_0002",
+      "case": "b_sensitivity",
+      "inputs": {
+        "b": 20.0,
+        "market": {
+          "n_outcomes": 3
+        },
+        "trade": {
+          "n_outcomes": 3,
+          "x0": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "delta": 50.0,
+          "j": 0
+        }
+      },
+      "expected_outputs": {
+        "execution": {
+          "cost_paid": 31.0679219144605,
+          "avg_execution_price": 0.62135843828921,
+          "impact": 0.2880251049558767,
+          "mm_bound": 21.972245773362197
+        },
+        "criteria_verdicts": {
+          "b_sensitivity_surface_generated": true,
+          "impact_monotonic_in_b": true
+        }
+      }
+    },
+    {
+      "record_id": "bscan_0003",
+      "case": "b_sensitivity",
+      "inputs": {
+        "b": 40.0,
+        "market": {
+          "n_outcomes": 3
+        },
+        "trade": {
+          "n_outcomes": 3,
+          "x0": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "delta": 50.0,
+          "j": 0
+        }
+      },
+      "expected_outputs": {
+        "execution": {
+          "cost_paid": 24.17513737540895,
+          "avg_execution_price": 0.483502747508179,
+          "impact": 0.1501694141748457,
+          "mm_bound": 43.94449154672439
+        },
+        "criteria_verdicts": {
+          "b_sensitivity_surface_generated": true,
+          "impact_monotonic_in_b": true
+        }
+      }
+    },
+    {
+      "record_id": "bscan_0004",
+      "case": "b_sensitivity",
+      "inputs": {
+        "b": 80.0,
+        "market": {
+          "n_outcomes": 3
+        },
+        "trade": {
+          "n_outcomes": 3,
+          "x0": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "delta": 50.0,
+          "j": 0
+        }
+      },
+      "expected_outputs": {
+        "execution": {
+          "cost_paid": 20.33510997242064,
+          "avg_execution_price": 0.4067021994484128,
+          "impact": 0.07336886611507948,
+          "mm_bound": 87.88898309344879
+        },
+        "criteria_verdicts": {
+          "b_sensitivity_surface_generated": true,
+          "impact_monotonic_in_b": true
+        }
+      }
+    },
+    {
+      "record_id": "bscan_0005",
+      "case": "b_sensitivity",
+      "inputs": {
+        "b": 160.0,
+        "market": {
+          "n_outcomes": 3
+        },
+        "trade": {
+          "n_outcomes": 3,
+          "x0": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "delta": 50.0,
+          "j": 0
+        }
+      },
+      "expected_outputs": {
+        "execution": {
+          "cost_paid": 18.45787501327277,
+          "avg_execution_price": 0.3691575002654554,
+          "impact": 0.03582416693212209,
+          "mm_bound": 175.77796618689757
+        },
+        "criteria_verdicts": {
+          "b_sensitivity_surface_generated": true,
+          "impact_monotonic_in_b": true
+        }
+      }
+    }
+  ]
+}

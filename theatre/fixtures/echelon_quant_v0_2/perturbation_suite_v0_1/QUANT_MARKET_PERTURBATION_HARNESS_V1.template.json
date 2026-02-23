@@ -1,0 +1,93 @@
+{
+  "schema_version": "2.0.1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "theatre_id": "product_replay_engine_v1",
+  "template_id": "quant_market_perturbation_harness_v1",
+  "display_name": "QUANT_MARKET_PERTURBATION_HARNESS_V1 \u2014 VRF, Saboteur, Paradox Robustness",
+  "description": "Deterministic verification that the engine and agent policies behave safely under VRF perturbations, saboteur pressure, and paradox engine activation. Emits certificate-grade artefacts for robustness.",
+  "criteria": {
+    "criteria_ids": [
+      "vrf_perturbation_suite_pass",
+      "saboteur_pressure_pass",
+      "paradox_engine_recovery_pass",
+      "trade_has_max_cost_guard",
+      "trade_has_max_impact_guard",
+      "heartbeat_schedule_committed",
+      "vrf_execution_window_modelled"
+    ],
+    "criteria_human": "Replay perturbation fixtures. Verify robustness invariants: policy guards present; paradox triggers lead to halt/freeze behaviour; VRF seeds are committed and execution windows are modelled; heartbeat schedule is committed.",
+    "weights": {
+      "vrf_perturbation_suite_pass": 0.2,
+      "saboteur_pressure_pass": 0.2,
+      "paradox_engine_recovery_pass": 0.25,
+      "trade_has_max_cost_guard": 0.1,
+      "trade_has_max_impact_guard": 0.1,
+      "heartbeat_schedule_committed": 0.08,
+      "vrf_execution_window_modelled": 0.07
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "echelon_lmsr_engine": "v0.1-fixtures"
+    },
+    "scorer_version": "deterministic-lmsr-v0.2"
+  },
+  "dataset_hashes": {
+    "perturbation_fixtures_10.json": "ada2893a11ebf595b13e82e438e1851b2d789c31859c6836a3cc720de8328459"
+  },
+  "product_theatre_config": {
+    "construct_under_test": {
+      "construct_id": "echelon_lmsr_engine",
+      "construct_version": "v0.1-fixtures"
+    },
+    "adapter_type": "local",
+    "adapter_endpoint": "python:echelon_oracles.perturbation_harness",
+    "replay_data_path": "/mnt/data/echelon_quant_missing_builds_v0_2/perturbation_suite_v0_1/perturbation_fixtures_10.json",
+    "ground_truth_source": "v0.2 fixtures (robustness invariants under perturbations)",
+    "mock_only": false
+  },
+  "fork_definitions": [],
+  "resolution_programme": [
+    {
+      "step": "ingest",
+      "action": "load_dataset",
+      "input": "replay_data_path"
+    },
+    {
+      "step": "invoke_oracle",
+      "action": "deterministic_compute",
+      "oracle": "perturbation_harness"
+    },
+    {
+      "step": "score",
+      "action": "binary_checks",
+      "criteria_ids": [
+        "vrf_perturbation_suite_pass",
+        "saboteur_pressure_pass",
+        "paradox_engine_recovery_pass",
+        "trade_has_max_cost_guard",
+        "trade_has_max_impact_guard",
+        "heartbeat_schedule_committed",
+        "vrf_execution_window_modelled"
+      ]
+    },
+    {
+      "step": "certify",
+      "action": "issue_certificate"
+    }
+  ],
+  "evidence_bundle": {
+    "manifest_required": true,
+    "hash_algorithm": "sha256",
+    "canonical_json": "RFC8785",
+    "required_paths": [
+      "template.json",
+      "oracle_programme.json",
+      "oracle_output.json",
+      "ledger.jsonl",
+      "metrics.json",
+      "manifest.json"
+    ]
+  }
+}

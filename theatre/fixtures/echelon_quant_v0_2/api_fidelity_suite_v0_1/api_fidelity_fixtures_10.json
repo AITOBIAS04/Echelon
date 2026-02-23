@@ -1,0 +1,501 @@
+{
+  "dataset_id": "api_fidelity_v0_2_10",
+  "description": "v0.2 fixtures for QUANT_MARKET_API_FIDELITY_V1. Diverse coverage: varied b, outcomes count, non-uniform starting states, zero-delta edge, large-size quote, quote during resolve phase, missing state-feed field, and one incorrect quote.",
+  "records": [
+    {
+      "record_id": "api_0001",
+      "inputs": {
+        "api_contract_version": "v0.1",
+        "state_feed": {
+          "x": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "prices": [
+            0.3333333333333333,
+            0.3333333333333333,
+            0.3333333333333333
+          ],
+          "b": 40.0,
+          "phase": "trade",
+          "logic_gap": 0.1,
+          "stability": 0.95,
+          "n_outcomes": 3
+        },
+        "quote_request": {
+          "delta_shares": 10.0,
+          "outcome_index": 1
+        },
+        "quote_response": {
+          "quoted_cost": 3.618305697752369,
+          "quoted_prices_after": [
+            0.30450434242028407,
+            0.3909913151594319,
+            0.30450434242028407
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "api_contract_versioned": true,
+          "state_feed_complete": true,
+          "pre_trade_quote_available": true,
+          "quote_correct": true,
+          "heartbeat_schedule_committed": true
+        },
+        "notes": "API fidelity fixture. Varied n_outcomes/b/x/Δq/phase/missing-fields. Record 7 incorrect cost; record 8 quote during resolve; record 9 missing state field; record 5 zero-delta."
+      }
+    },
+    {
+      "record_id": "api_0002",
+      "inputs": {
+        "api_contract_version": "v0.1",
+        "state_feed": {
+          "x": [
+            5.0,
+            0.0
+          ],
+          "prices": [
+            0.5621765008857981,
+            0.43782349911420193
+          ],
+          "b": 20.0,
+          "phase": "trade",
+          "logic_gap": 0.1,
+          "stability": 0.95,
+          "n_outcomes": 2
+        },
+        "quote_request": {
+          "delta_shares": 5.0,
+          "outcome_index": 0
+        },
+        "quote_response": {
+          "quoted_cost": 2.962751286025263,
+          "quoted_prices_after": [
+            0.6224593312018546,
+            0.3775406687981454
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "api_contract_versioned": true,
+          "state_feed_complete": true,
+          "pre_trade_quote_available": true,
+          "quote_correct": true,
+          "heartbeat_schedule_committed": true
+        },
+        "notes": "API fidelity fixture. Varied n_outcomes/b/x/Δq/phase/missing-fields. Record 7 incorrect cost; record 8 quote during resolve; record 9 missing state field; record 5 zero-delta."
+      }
+    },
+    {
+      "record_id": "api_0003",
+      "inputs": {
+        "api_contract_version": "v0.1",
+        "state_feed": {
+          "x": [
+            10.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "prices": [
+            0.22800197607027167,
+            0.1929995059824321,
+            0.1929995059824321,
+            0.1929995059824321,
+            0.1929995059824321
+          ],
+          "b": 60.0,
+          "phase": "trade",
+          "logic_gap": 0.1,
+          "stability": 0.95,
+          "n_outcomes": 5
+        },
+        "quote_request": {
+          "delta_shares": 25.0,
+          "outcome_index": 0
+        },
+        "quote_response": {
+          "quoted_cost": 6.684619231759015,
+          "quoted_prices_after": [
+            0.30939248287492893,
+            0.17265187928126777,
+            0.17265187928126777,
+            0.17265187928126777,
+            0.17265187928126777
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "api_contract_versioned": true,
+          "state_feed_complete": true,
+          "pre_trade_quote_available": true,
+          "quote_correct": true,
+          "heartbeat_schedule_committed": true
+        },
+        "notes": "API fidelity fixture. Varied n_outcomes/b/x/Δq/phase/missing-fields. Record 7 incorrect cost; record 8 quote during resolve; record 9 missing state field; record 5 zero-delta."
+      }
+    },
+    {
+      "record_id": "api_0004",
+      "inputs": {
+        "api_contract_version": "v0.1",
+        "state_feed": {
+          "x": [
+            50.0,
+            0.0,
+            0.0
+          ],
+          "prices": [
+            0.986703291042268,
+            0.006648354478866004,
+            0.006648354478866004
+          ],
+          "b": 10.0,
+          "phase": "trade",
+          "logic_gap": 0.1,
+          "stability": 0.95,
+          "n_outcomes": 3
+        },
+        "quote_request": {
+          "delta_shares": 1.0,
+          "outcome_index": 0
+        },
+        "quote_response": {
+          "quoted_cost": 0.987338496137518,
+          "quoted_prices_after": [
+            0.9879533970394208,
+            0.006023301480289596,
+            0.006023301480289596
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "api_contract_versioned": true,
+          "state_feed_complete": true,
+          "pre_trade_quote_available": true,
+          "quote_correct": true,
+          "heartbeat_schedule_committed": true
+        },
+        "notes": "API fidelity fixture. Varied n_outcomes/b/x/Δq/phase/missing-fields. Record 7 incorrect cost; record 8 quote during resolve; record 9 missing state field; record 5 zero-delta."
+      }
+    },
+    {
+      "record_id": "api_0005",
+      "inputs": {
+        "api_contract_version": "v0.1",
+        "state_feed": {
+          "x": [
+            0.0,
+            15.0,
+            0.0
+          ],
+          "prices": [
+            0.3118927594737128,
+            0.3762144810525745,
+            0.3118927594737128
+          ],
+          "b": 80.0,
+          "phase": "trade",
+          "logic_gap": 0.1,
+          "stability": 0.95,
+          "n_outcomes": 3
+        },
+        "quote_request": {
+          "delta_shares": 0.0,
+          "outcome_index": 1
+        },
+        "quote_response": {
+          "quoted_cost": 0.0,
+          "quoted_prices_after": [
+            0.3118927594737128,
+            0.3762144810525745,
+            0.3118927594737128
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "api_contract_versioned": true,
+          "state_feed_complete": true,
+          "pre_trade_quote_available": true,
+          "quote_correct": true,
+          "heartbeat_schedule_committed": true
+        },
+        "notes": "API fidelity fixture. Varied n_outcomes/b/x/Δq/phase/missing-fields. Record 7 incorrect cost; record 8 quote during resolve; record 9 missing state field; record 5 zero-delta."
+      }
+    },
+    {
+      "record_id": "api_0006",
+      "inputs": {
+        "api_contract_version": "v0.1",
+        "state_feed": {
+          "x": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "prices": [
+            0.3333333333333333,
+            0.3333333333333333,
+            0.3333333333333333
+          ],
+          "b": 30.0,
+          "phase": "trade",
+          "logic_gap": 0.1,
+          "stability": 0.95,
+          "n_outcomes": 3
+        },
+        "quote_request": {
+          "delta_shares": 100.0,
+          "outcome_index": 2
+        },
+        "quote_response": {
+          "quoted_cost": 69.10916102715352,
+          "quoted_prices_after": [
+            0.03329823156462872,
+            0.03329823156462872,
+            0.9334035368707425
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "api_contract_versioned": true,
+          "state_feed_complete": true,
+          "pre_trade_quote_available": true,
+          "quote_correct": true,
+          "heartbeat_schedule_committed": true
+        },
+        "notes": "API fidelity fixture. Varied n_outcomes/b/x/Δq/phase/missing-fields. Record 7 incorrect cost; record 8 quote during resolve; record 9 missing state field; record 5 zero-delta."
+      }
+    },
+    {
+      "record_id": "api_0007",
+      "inputs": {
+        "api_contract_version": "v0.1",
+        "state_feed": {
+          "x": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "prices": [
+            0.3333333333333333,
+            0.3333333333333333,
+            0.3333333333333333
+          ],
+          "b": 40.0,
+          "phase": "trade",
+          "logic_gap": 0.1,
+          "stability": 0.95,
+          "n_outcomes": 3
+        },
+        "quote_request": {
+          "delta_shares": 10.0,
+          "outcome_index": 1
+        },
+        "quote_response": {
+          "quoted_cost": 3.7992209826399876,
+          "quoted_prices_after": [
+            0.30450434242028407,
+            0.3909913151594319,
+            0.30450434242028407
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "api_contract_versioned": true,
+          "state_feed_complete": true,
+          "pre_trade_quote_available": true,
+          "quote_correct": false,
+          "heartbeat_schedule_committed": true
+        },
+        "notes": "API fidelity fixture. Varied n_outcomes/b/x/Δq/phase/missing-fields. Record 7 incorrect cost; record 8 quote during resolve; record 9 missing state field; record 5 zero-delta."
+      }
+    },
+    {
+      "record_id": "api_0008",
+      "inputs": {
+        "api_contract_version": "v0.1",
+        "state_feed": {
+          "x": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "prices": [
+            0.3333333333333333,
+            0.3333333333333333,
+            0.3333333333333333
+          ],
+          "b": 40.0,
+          "phase": "resolve",
+          "logic_gap": 0.1,
+          "stability": 0.95,
+          "n_outcomes": 3
+        },
+        "quote_request": {
+          "delta_shares": 10.0,
+          "outcome_index": 1
+        },
+        "quote_response": {
+          "quoted_cost": 3.618305697752369,
+          "quoted_prices_after": [
+            0.30450434242028407,
+            0.3909913151594319,
+            0.30450434242028407
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "api_contract_versioned": true,
+          "state_feed_complete": true,
+          "pre_trade_quote_available": true,
+          "quote_correct": false,
+          "heartbeat_schedule_committed": true
+        },
+        "notes": "API fidelity fixture. Varied n_outcomes/b/x/Δq/phase/missing-fields. Record 7 incorrect cost; record 8 quote during resolve; record 9 missing state field; record 5 zero-delta."
+      }
+    },
+    {
+      "record_id": "api_0009",
+      "inputs": {
+        "api_contract_version": "v0.1",
+        "state_feed": {
+          "x": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "prices": [
+            0.3333333333333333,
+            0.3333333333333333,
+            0.3333333333333333
+          ],
+          "b": 40.0,
+          "phase": "trade",
+          "stability": 0.95,
+          "n_outcomes": 3
+        },
+        "quote_request": {
+          "delta_shares": 10.0,
+          "outcome_index": 1
+        },
+        "quote_response": {
+          "quoted_cost": 3.618305697752369,
+          "quoted_prices_after": [
+            0.30450434242028407,
+            0.3909913151594319,
+            0.30450434242028407
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "api_contract_versioned": true,
+          "state_feed_complete": false,
+          "pre_trade_quote_available": true,
+          "quote_correct": true,
+          "heartbeat_schedule_committed": true
+        },
+        "notes": "API fidelity fixture. Varied n_outcomes/b/x/Δq/phase/missing-fields. Record 7 incorrect cost; record 8 quote during resolve; record 9 missing state field; record 5 zero-delta."
+      }
+    },
+    {
+      "record_id": "api_0010",
+      "inputs": {
+        "api_contract_version": "v0.1",
+        "state_feed": {
+          "x": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "prices": [
+            0.25,
+            0.25,
+            0.25,
+            0.25
+          ],
+          "b": 25.0,
+          "phase": "trade",
+          "logic_gap": 0.1,
+          "stability": 0.95,
+          "n_outcomes": 4
+        },
+        "quote_request": {
+          "delta_shares": 12.5,
+          "outcome_index": 3
+        },
+        "quote_response": {
+          "quoted_cost": 3.7574456278201396,
+          "quoted_prices_after": [
+            0.2151129185358522,
+            0.2151129185358522,
+            0.2151129185358522,
+            0.3546612443924434
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "api_contract_versioned": true,
+          "state_feed_complete": true,
+          "pre_trade_quote_available": true,
+          "quote_correct": true,
+          "heartbeat_schedule_committed": true
+        },
+        "notes": "API fidelity fixture. Varied n_outcomes/b/x/Δq/phase/missing-fields. Record 7 incorrect cost; record 8 quote during resolve; record 9 missing state field; record 5 zero-delta."
+      }
+    }
+  ]
+}

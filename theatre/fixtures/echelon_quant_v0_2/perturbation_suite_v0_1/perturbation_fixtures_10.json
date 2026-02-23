@@ -1,0 +1,576 @@
+{
+  "dataset_id": "perturbation_suite_v0_2_10",
+  "description": "v0.2 fixtures for perturbation harness: explicitly aligned labels with VRF seed shifts, saboteur pressure, paradox triggers, and combined cases. Includes one missing-seed failure. Includes heartbeat schedule + VRF execution window fields.",
+  "records": [
+    {
+      "record_id": "pert_0001",
+      "case": "baseline",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0001",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        },
+        "vrf": {
+          "seed": 1111,
+          "commitment_hash": "7e8b8dac05135a89a9d3581af37e93db4ef9b6e04df9c7e847b87fe1acc650e7",
+          "execution_window_ms": 2500,
+          "window_modelled": true
+        },
+        "adversary": {
+          "archetype": "none",
+          "pressure_mode": "none",
+          "intensity": 0.0
+        },
+        "paradox": {
+          "logic_gap_exceeded": false,
+          "gap_value": 0.12,
+          "policy": {
+            "halt_trading_on_gap": true,
+            "freeze_new_positions": true
+          }
+        },
+        "agent_policy": {
+          "max_cost": 25.0,
+          "max_impact": 0.1,
+          "position_limit": 50.0,
+          "capital_limit": 100.0
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true,
+          "trade_has_max_cost_guard": true,
+          "trade_has_max_impact_guard": true,
+          "heartbeat_schedule_committed": true,
+          "vrf_execution_window_modelled": true
+        },
+        "notes": "Perturbation harness fixture with aligned labels/content. Includes saboteur-only cases, paradox-only cases, combined case, and missing-seed failure."
+      }
+    },
+    {
+      "record_id": "pert_0002",
+      "case": "vrf_seed_shift",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0002",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        },
+        "vrf": {
+          "seed": 2222,
+          "commitment_hash": "0d306d981f4ba73174e6442e4a8c99f843422b2e1a75d722006c8c9f3d49f6a7",
+          "execution_window_ms": 2500,
+          "window_modelled": true
+        },
+        "adversary": {
+          "archetype": "none",
+          "pressure_mode": "none",
+          "intensity": 0.0
+        },
+        "paradox": {
+          "logic_gap_exceeded": false,
+          "gap_value": 0.12,
+          "policy": {
+            "halt_trading_on_gap": true,
+            "freeze_new_positions": true
+          }
+        },
+        "agent_policy": {
+          "max_cost": 25.0,
+          "max_impact": 0.1,
+          "position_limit": 50.0,
+          "capital_limit": 100.0
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true,
+          "trade_has_max_cost_guard": true,
+          "trade_has_max_impact_guard": true,
+          "heartbeat_schedule_committed": true,
+          "vrf_execution_window_modelled": true
+        },
+        "notes": "Perturbation harness fixture with aligned labels/content. Includes saboteur-only cases, paradox-only cases, combined case, and missing-seed failure."
+      }
+    },
+    {
+      "record_id": "pert_0003",
+      "case": "saboteur_pressure",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0003",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        },
+        "vrf": {
+          "seed": 3333,
+          "commitment_hash": "1729835d3afe729bc74ab3c6618ebb58aea57294a44aa60811cfca964f4c93f8",
+          "execution_window_ms": 2500,
+          "window_modelled": true
+        },
+        "adversary": {
+          "archetype": "saboteur",
+          "pressure_mode": "spread_fog",
+          "intensity": 0.8
+        },
+        "paradox": {
+          "logic_gap_exceeded": false,
+          "gap_value": 0.12,
+          "policy": {
+            "halt_trading_on_gap": true,
+            "freeze_new_positions": true
+          }
+        },
+        "agent_policy": {
+          "max_cost": 25.0,
+          "max_impact": 0.1,
+          "position_limit": 50.0,
+          "capital_limit": 100.0
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true,
+          "trade_has_max_cost_guard": true,
+          "trade_has_max_impact_guard": true,
+          "heartbeat_schedule_committed": true,
+          "vrf_execution_window_modelled": true
+        },
+        "notes": "Perturbation harness fixture with aligned labels/content. Includes saboteur-only cases, paradox-only cases, combined case, and missing-seed failure."
+      }
+    },
+    {
+      "record_id": "pert_0004",
+      "case": "paradox_trigger",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0004",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        },
+        "vrf": {
+          "seed": 4444,
+          "commitment_hash": "6754de5b22990f887e25d7477da2893b22fc06c4ef24845b54829e1154de6ee6",
+          "execution_window_ms": 2500,
+          "window_modelled": true
+        },
+        "adversary": {
+          "archetype": "none",
+          "pressure_mode": "none",
+          "intensity": 0.0
+        },
+        "paradox": {
+          "logic_gap_exceeded": true,
+          "gap_value": 0.72,
+          "policy": {
+            "halt_trading_on_gap": true,
+            "freeze_new_positions": true
+          }
+        },
+        "agent_policy": {
+          "max_cost": 25.0,
+          "max_impact": 0.1,
+          "position_limit": 50.0,
+          "capital_limit": 100.0
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true,
+          "trade_has_max_cost_guard": true,
+          "trade_has_max_impact_guard": true,
+          "heartbeat_schedule_committed": true,
+          "vrf_execution_window_modelled": true
+        },
+        "notes": "Perturbation harness fixture with aligned labels/content. Includes saboteur-only cases, paradox-only cases, combined case, and missing-seed failure."
+      }
+    },
+    {
+      "record_id": "pert_0005",
+      "case": "saboteur_only_high",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0005",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        },
+        "vrf": {
+          "seed": 5555,
+          "commitment_hash": "2053cac17d5a0e4005cc61275aa0e80092c0776d005af2b7a8df0b9ddeea4777",
+          "execution_window_ms": 2500,
+          "window_modelled": true
+        },
+        "adversary": {
+          "archetype": "saboteur",
+          "pressure_mode": "spread_fog",
+          "intensity": 0.95
+        },
+        "paradox": {
+          "logic_gap_exceeded": false,
+          "gap_value": 0.18,
+          "policy": {
+            "halt_trading_on_gap": true,
+            "freeze_new_positions": true
+          }
+        },
+        "agent_policy": {
+          "max_cost": 25.0,
+          "max_impact": 0.1,
+          "position_limit": 50.0,
+          "capital_limit": 100.0
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true,
+          "trade_has_max_cost_guard": true,
+          "trade_has_max_impact_guard": true,
+          "heartbeat_schedule_committed": true,
+          "vrf_execution_window_modelled": true
+        },
+        "notes": "Perturbation harness fixture with aligned labels/content. Includes saboteur-only cases, paradox-only cases, combined case, and missing-seed failure."
+      }
+    },
+    {
+      "record_id": "pert_0006",
+      "case": "paradox_with_saboteur",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0006",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        },
+        "vrf": {
+          "seed": 6666,
+          "commitment_hash": "ccc277b03f66e818614cc8d8064609ae32566716f3ef36a2f3034f4b3880a264",
+          "execution_window_ms": 2500,
+          "window_modelled": true
+        },
+        "adversary": {
+          "archetype": "saboteur",
+          "pressure_mode": "spread_fog",
+          "intensity": 0.6
+        },
+        "paradox": {
+          "logic_gap_exceeded": true,
+          "gap_value": 0.66,
+          "policy": {
+            "halt_trading_on_gap": true,
+            "freeze_new_positions": true
+          }
+        },
+        "agent_policy": {
+          "max_cost": 25.0,
+          "max_impact": 0.1,
+          "position_limit": 50.0,
+          "capital_limit": 100.0
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true,
+          "trade_has_max_cost_guard": true,
+          "trade_has_max_impact_guard": true,
+          "heartbeat_schedule_committed": true,
+          "vrf_execution_window_modelled": true
+        },
+        "notes": "Perturbation harness fixture with aligned labels/content. Includes saboteur-only cases, paradox-only cases, combined case, and missing-seed failure."
+      }
+    },
+    {
+      "record_id": "pert_0007",
+      "case": "vrf_seed_missing",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0007",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        },
+        "vrf": {
+          "seed": null,
+          "commitment_hash": null,
+          "execution_window_ms": 2500,
+          "window_modelled": true
+        },
+        "adversary": {
+          "archetype": "none",
+          "pressure_mode": "none",
+          "intensity": 0.0
+        },
+        "paradox": {
+          "logic_gap_exceeded": false,
+          "gap_value": 0.12,
+          "policy": {
+            "halt_trading_on_gap": true,
+            "freeze_new_positions": true
+          }
+        },
+        "agent_policy": {
+          "max_cost": 25.0,
+          "max_impact": 0.1,
+          "position_limit": 50.0,
+          "capital_limit": 100.0
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "vrf_perturbation_suite_pass": false,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true,
+          "trade_has_max_cost_guard": true,
+          "trade_has_max_impact_guard": true,
+          "heartbeat_schedule_committed": true,
+          "vrf_execution_window_modelled": true
+        },
+        "notes": "Perturbation harness fixture with aligned labels/content. Includes saboteur-only cases, paradox-only cases, combined case, and missing-seed failure."
+      }
+    },
+    {
+      "record_id": "pert_0008",
+      "case": "paradox_trigger_low",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0008",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        },
+        "vrf": {
+          "seed": 7777,
+          "commitment_hash": "9727a3d447224362777a894b4d7246d39585befec7cac96a70aaa411e1e4882b",
+          "execution_window_ms": 2500,
+          "window_modelled": true
+        },
+        "adversary": {
+          "archetype": "none",
+          "pressure_mode": "none",
+          "intensity": 0.0
+        },
+        "paradox": {
+          "logic_gap_exceeded": true,
+          "gap_value": 0.61,
+          "policy": {
+            "halt_trading_on_gap": true,
+            "freeze_new_positions": true
+          }
+        },
+        "agent_policy": {
+          "max_cost": 25.0,
+          "max_impact": 0.1,
+          "position_limit": 50.0,
+          "capital_limit": 100.0
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true,
+          "trade_has_max_cost_guard": true,
+          "trade_has_max_impact_guard": true,
+          "heartbeat_schedule_committed": true,
+          "vrf_execution_window_modelled": true
+        },
+        "notes": "Perturbation harness fixture with aligned labels/content. Includes saboteur-only cases, paradox-only cases, combined case, and missing-seed failure."
+      }
+    },
+    {
+      "record_id": "pert_0009",
+      "case": "saboteur_pressure_low",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0009",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        },
+        "vrf": {
+          "seed": 8888,
+          "commitment_hash": "4b2877508399262173586347e140204a950161c24543b8b5bee62ffeab9eee58",
+          "execution_window_ms": 2500,
+          "window_modelled": true
+        },
+        "adversary": {
+          "archetype": "saboteur",
+          "pressure_mode": "spread_fog",
+          "intensity": 0.4
+        },
+        "paradox": {
+          "logic_gap_exceeded": false,
+          "gap_value": 0.12,
+          "policy": {
+            "halt_trading_on_gap": true,
+            "freeze_new_positions": true
+          }
+        },
+        "agent_policy": {
+          "max_cost": 25.0,
+          "max_impact": 0.1,
+          "position_limit": 50.0,
+          "capital_limit": 100.0
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true,
+          "trade_has_max_cost_guard": true,
+          "trade_has_max_impact_guard": true,
+          "heartbeat_schedule_committed": true,
+          "vrf_execution_window_modelled": true
+        },
+        "notes": "Perturbation harness fixture with aligned labels/content. Includes saboteur-only cases, paradox-only cases, combined case, and missing-seed failure."
+      }
+    },
+    {
+      "record_id": "pert_0010",
+      "case": "baseline_2",
+      "inputs": {
+        "market_spec": {
+          "market_id": "mkt_0010",
+          "n_outcomes": 3,
+          "b": 30.0,
+          "outcomes": [
+            "O0",
+            "O1",
+            "O2"
+          ]
+        },
+        "heartbeat_schedule": {
+          "interval_ms": 1000,
+          "committed": true
+        },
+        "vrf": {
+          "seed": 9999,
+          "commitment_hash": "e6ccb130491df5ed8ae9f76920dcb4d6555bdddca82f06d5b515d7e151e7ca58",
+          "execution_window_ms": 2500,
+          "window_modelled": true
+        },
+        "adversary": {
+          "archetype": "none",
+          "pressure_mode": "none",
+          "intensity": 0.0
+        },
+        "paradox": {
+          "logic_gap_exceeded": false,
+          "gap_value": 0.12,
+          "policy": {
+            "halt_trading_on_gap": true,
+            "freeze_new_positions": true
+          }
+        },
+        "agent_policy": {
+          "max_cost": 25.0,
+          "max_impact": 0.1,
+          "position_limit": 50.0,
+          "capital_limit": 100.0
+        }
+      },
+      "expected_outputs": {
+        "criteria_verdicts": {
+          "vrf_perturbation_suite_pass": true,
+          "saboteur_pressure_pass": true,
+          "paradox_engine_recovery_pass": true,
+          "trade_has_max_cost_guard": true,
+          "trade_has_max_impact_guard": true,
+          "heartbeat_schedule_committed": true,
+          "vrf_execution_window_modelled": true
+        },
+        "notes": "Perturbation harness fixture with aligned labels/content. Includes saboteur-only cases, paradox-only cases, combined case, and missing-seed failure."
+      }
+    }
+  ]
+}
