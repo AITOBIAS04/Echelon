@@ -1,0 +1,162 @@
+{
+  "schema_version": "2.0.1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "theatre_id": "product_replay_engine_v1",
+  "template_id": "arrears_resolution_v1",
+  "display_name": "ARREARS_RESOLUTION_V1 — Tenant Arrears State Machine & Ladder Redirection",
+  "description": "v0.1 deterministic replay theatre for tenant arrears resolution. Validates state transitions, ladder contribution redirection to arrears, reserve fund drawdown logic, distribution adjustment during shortfall, and ladder balance protection. Covers full lifecycle: grace period, partial payment, arrears escalation, dispute handling, payment plans, recovery, and lease termination.",
+  "criteria": {
+    "criteria_ids": [
+      "state_transition_validity",
+      "ladder_redirection_arithmetic",
+      "reserve_fund_impact",
+      "distribution_adjustment",
+      "grace_period_enforcement",
+      "ladder_balance_protection"
+    ],
+    "criteria_human": "Deterministic verification that arrears state transitions follow committed policy, ladder contributions are correctly redirected to arrears before equity purchase, reserve fund drawdowns are arithmetically correct, investor distributions are adjusted per the loss waterfall, grace periods are enforced within timing rules, and existing ladder balances are protected from forced liquidation.",
+    "weights": {
+      "state_transition_validity": 0.25,
+      "ladder_redirection_arithmetic": 0.25,
+      "reserve_fund_impact": 0.15,
+      "distribution_adjustment": 0.15,
+      "grace_period_enforcement": 0.10,
+      "ladder_balance_protection": 0.10
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "two_rail_marketplace_core": "v0.1-fixtures"
+    },
+    "scorer_version": "deterministic-v0.1"
+  },
+  "dataset_hashes": {
+    "arrears_fixtures_10.json": "a4e1915b0e9a912fa2ebd13776fa03ac7a9b2c62a07fc6ae3c61f7204d05ef9d"
+  },
+  "product_theatre_config": {
+    "construct_under_test": {
+      "construct_id": "two_rail_marketplace_core",
+      "construct_version": "v0.1-fixtures"
+    },
+    "adapter_type": "local",
+    "adapter_endpoint": "python:two_rail_oracles.deterministic",
+    "replay_data_path": "/mnt/data/two_rail_theatres_v0_1/arrears_fixtures_10.json",
+    "ground_truth_source": "v0.1 fixtures (deterministic arrears policy replay)",
+    "mock_only": false
+  },
+  "fork_definitions": [],
+  "resolution_programme": [
+    {
+      "step": "ingest",
+      "action": "load_dataset",
+      "input": "replay_data_path"
+    },
+    {
+      "step": "invoke_oracle",
+      "action": "deterministic_compute",
+      "oracle": "arrears_resolution"
+    },
+    {
+      "step": "score",
+      "action": "binary_checks",
+      "criteria_ids": [
+        "state_transition_validity",
+        "ladder_redirection_arithmetic",
+        "reserve_fund_impact",
+        "distribution_adjustment",
+        "grace_period_enforcement",
+        "ladder_balance_protection"
+      ]
+    },
+    {
+      "step": "certify",
+      "action": "issue_certificate"
+    }
+  ],
+  "evidence_bundle": {
+    "manifest_required": true,
+    "hash_algorithm": "sha256",
+    "canonical_json": "RFC8785",
+    "required_paths": [
+      "inputs/",
+      "policy/",
+      "expected/",
+      "manifest.json"
+    ]
+  },
+  "arrears_policy": {
+    "state_machine": {
+      "states": [
+        "CURRENT",
+        "GRACE_PERIOD",
+        "LATE",
+        "PARTIAL_RECEIVED",
+        "ARREARS",
+        "LADDER_REDIRECTED",
+        "DISPUTE_RAISED",
+        "PAYMENT_PLAN",
+        "RECOVERY",
+        "EVICTION_PROCESS",
+        "LEASE_TERMINATED",
+        "RESOLVED"
+      ],
+      "initial_state": "CURRENT",
+      "terminal_states": ["CURRENT", "RESOLVED", "LEASE_TERMINATED"],
+      "transitions": [
+        { "from": "CURRENT",           "to": "GRACE_PERIOD",     "trigger": "payment_due_date_passed",     "condition": "no_payment_received" },
+        { "from": "GRACE_PERIOD",      "to": "CURRENT",          "trigger": "full_payment_received",       "condition": "amount >= rent_due" },
+        { "from": "GRACE_PERIOD",      "to": "LATE",             "trigger": "grace_period_expired",        "condition": "grace_days_exceeded" },
+        { "from": "GRACE_PERIOD",      "to": "PARTIAL_RECEIVED", "trigger": "partial_payment_received",    "condition": "0 < amount < rent_due" },
+        { "from": "LATE",              "to": "CURRENT",          "trigger": "full_payment_received",       "condition": "amount >= total_outstanding" },
+        { "from": "LATE",              "to": "PARTIAL_RECEIVED", "trigger": "partial_payment_received",    "condition": "0 < amount < total_outstanding" },
+        { "from": "LATE",              "to": "ARREARS",          "trigger": "arrears_threshold_crossed",   "condition": "outstanding >= arrears_threshold" },
+        { "from": "PARTIAL_RECEIVED",  "to": "CURRENT",          "trigger": "balance_cleared",             "condition": "remaining_balance == 0" },
+        { "from": "PARTIAL_RECEIVED",  "to": "ARREARS",          "trigger": "arrears_threshold_crossed",   "condition": "outstanding >= arrears_threshold" },
+        { "from": "ARREARS",           "to": "LADDER_REDIRECTED","trigger": "ladder_contribution_due",     "condition": "ladder_plan_active" },
+        { "from": "ARREARS",           "to": "DISPUTE_RAISED",   "trigger": "tenant_dispute_filed",        "condition": "dispute_type_valid" },
+        { "from": "ARREARS",           "to": "PAYMENT_PLAN",     "trigger": "payment_plan_agreed",         "condition": "plan_signed_by_both_parties" },
+        { "from": "ARREARS",           "to": "RECOVERY",         "trigger": "recovery_initiated",          "condition": "arrears_age >= recovery_threshold_days" },
+        { "from": "ARREARS",           "to": "CURRENT",          "trigger": "full_payment_received",       "condition": "amount >= total_outstanding" },
+        { "from": "LADDER_REDIRECTED", "to": "ARREARS",          "trigger": "redirection_applied",         "condition": "outstanding > 0 after redirection" },
+        { "from": "LADDER_REDIRECTED", "to": "CURRENT",          "trigger": "redirection_clears_balance",  "condition": "outstanding == 0 after redirection" },
+        { "from": "DISPUTE_RAISED",    "to": "ARREARS",          "trigger": "dispute_resolved_against_tenant", "condition": "adjudication_complete" },
+        { "from": "DISPUTE_RAISED",    "to": "RESOLVED",         "trigger": "dispute_resolved_for_tenant", "condition": "arrears_written_off_or_adjusted" },
+        { "from": "PAYMENT_PLAN",      "to": "CURRENT",          "trigger": "plan_completed",              "condition": "all_instalments_paid" },
+        { "from": "PAYMENT_PLAN",      "to": "RECOVERY",         "trigger": "plan_breached",               "condition": "missed_instalments >= breach_threshold" },
+        { "from": "RECOVERY",          "to": "EVICTION_PROCESS", "trigger": "legal_notice_served",         "condition": "notice_period_requirements_met" },
+        { "from": "RECOVERY",          "to": "CURRENT",          "trigger": "full_payment_received",       "condition": "amount >= total_outstanding" },
+        { "from": "EVICTION_PROCESS",  "to": "LEASE_TERMINATED", "trigger": "possession_order_executed",   "condition": "court_order_granted" },
+        { "from": "EVICTION_PROCESS",  "to": "CURRENT",          "trigger": "full_payment_received",       "condition": "amount >= total_outstanding + legal_costs" }
+      ]
+    },
+    "timing_rules": {
+      "grace_period_days": 5,
+      "arrears_threshold_months": 1.0,
+      "recovery_threshold_days": 60,
+      "payment_plan_breach_threshold": 2,
+      "uk_section_8_notice_days": 14,
+      "dubai_ejari_notice_days": 30
+    },
+    "ladder_redirection_rules": {
+      "rule": "Ladder contribution applied to arrears BEFORE equity purchase. This is a hard rule, not discretionary.",
+      "application_order": [
+        "apply_ladder_contribution_to_oldest_arrears_first",
+        "any_remainder_purchases_equity_per_ladder_plan",
+        "if_arrears_exceed_contribution_no_equity_purchased"
+      ],
+      "forced_liquidation": false,
+      "forced_liquidation_note": "Existing ladder balance is protected. No forced liquidation of accrued equity unless explicitly contracted and disclosed to consumer."
+    },
+    "distribution_impact": {
+      "loss_waterfall_priority": [
+        "operator_fee_absorption",
+        "platform_fee_absorption",
+        "reserve_fund_drawdown",
+        "investor_pro_rata_reduction"
+      ],
+      "reserve_fund_minimum_coverage_months": 3,
+      "distribution_smoothing": "Reserve fund used to maintain investor distributions during temporary shortfall. If reserve < minimum coverage, governance notification triggered."
+    }
+  }
+}

@@ -1,0 +1,551 @@
+{
+  "dataset_id": "arrears_v0_1_10",
+  "description": "v0.1 deterministic replay fixtures for ARREARS_RESOLUTION_V1 (10 records). Covers: full non-payment, partial payment, grace period resolution, ladder redirection, dispute handling, payment plan lifecycle, recovery escalation, multi-month rolling arrears, reserve fund drawdown, and lease termination with ladder balance protection.",
+  "records": [
+    {
+      "record_id": "arrears_0001",
+      "scenario": "Full non-payment — grace period expires, transitions to LATE then ARREARS",
+      "asset_id": "asset_001",
+      "inputs": {
+        "lease_state": {
+          "lease_id": "lease_001",
+          "tenant_id": "tenant_001",
+          "rent_amount": 1500.00,
+          "currency": "GBP",
+          "payment_due_date": "2026-03-01",
+          "deposit_amount": 2500.00,
+          "ladder_plan_active": true,
+          "ladder_contribution": 150.00,
+          "accrued_ladder_balance": 1200.00
+        },
+        "payment_events": [],
+        "current_date": "2026-03-07",
+        "prior_state": "CURRENT",
+        "arrears_policy": {
+          "grace_period_days": 5,
+          "arrears_threshold": 1500.00
+        }
+      },
+      "expected_outputs": {
+        "state_transitions": [
+          { "from": "CURRENT", "to": "GRACE_PERIOD", "trigger": "payment_due_date_passed", "timestamp": "2026-03-01T00:00:01Z" },
+          { "from": "GRACE_PERIOD", "to": "LATE", "trigger": "grace_period_expired", "timestamp": "2026-03-06T00:00:01Z" }
+        ],
+        "final_state": "LATE",
+        "outstanding_balance": 1500.00,
+        "ladder_action": "no_action_yet",
+        "ladder_equity_purchased": 0.00,
+        "ladder_balance_protected": true,
+        "accrued_ladder_balance": 1200.00,
+        "reserve_fund_impact": 0.00,
+        "distribution_adjustment": "none"
+      }
+    },
+    {
+      "record_id": "arrears_0002",
+      "scenario": "Payment received within grace period — returns to CURRENT",
+      "asset_id": "asset_002",
+      "inputs": {
+        "lease_state": {
+          "lease_id": "lease_002",
+          "tenant_id": "tenant_002",
+          "rent_amount": 1500.00,
+          "currency": "GBP",
+          "payment_due_date": "2026-03-01",
+          "deposit_amount": 2500.00,
+          "ladder_plan_active": true,
+          "ladder_contribution": 150.00,
+          "accrued_ladder_balance": 600.00
+        },
+        "payment_events": [
+          {
+            "payment_id": "pay_arr_002",
+            "amount": 1500.00,
+            "currency": "GBP",
+            "received_at": "2026-03-04T14:22:00Z",
+            "settlement_reference": "BANKREF-arr_002"
+          }
+        ],
+        "current_date": "2026-03-04",
+        "prior_state": "CURRENT",
+        "arrears_policy": {
+          "grace_period_days": 5,
+          "arrears_threshold": 1500.00
+        }
+      },
+      "expected_outputs": {
+        "state_transitions": [
+          { "from": "CURRENT", "to": "GRACE_PERIOD", "trigger": "payment_due_date_passed", "timestamp": "2026-03-01T00:00:01Z" },
+          { "from": "GRACE_PERIOD", "to": "CURRENT", "trigger": "full_payment_received", "timestamp": "2026-03-04T14:22:00Z" }
+        ],
+        "final_state": "CURRENT",
+        "outstanding_balance": 0.00,
+        "ladder_action": "normal_equity_purchase",
+        "ladder_equity_purchased": 150.00,
+        "ladder_balance_protected": true,
+        "accrued_ladder_balance": 750.00,
+        "reserve_fund_impact": 0.00,
+        "distribution_adjustment": "none"
+      }
+    },
+    {
+      "record_id": "arrears_0003",
+      "scenario": "Partial payment during grace — transitions to PARTIAL_RECEIVED then ARREARS",
+      "asset_id": "asset_003",
+      "inputs": {
+        "lease_state": {
+          "lease_id": "lease_003",
+          "tenant_id": "tenant_003",
+          "rent_amount": 1500.00,
+          "currency": "GBP",
+          "payment_due_date": "2026-04-01",
+          "deposit_amount": 2500.00,
+          "ladder_plan_active": true,
+          "ladder_contribution": 150.00,
+          "accrued_ladder_balance": 900.00
+        },
+        "payment_events": [
+          {
+            "payment_id": "pay_arr_003",
+            "amount": 800.00,
+            "currency": "GBP",
+            "received_at": "2026-04-03T10:15:00Z",
+            "settlement_reference": "BANKREF-arr_003"
+          }
+        ],
+        "current_date": "2026-05-02",
+        "prior_state": "CURRENT",
+        "arrears_policy": {
+          "grace_period_days": 5,
+          "arrears_threshold": 1500.00
+        }
+      },
+      "expected_outputs": {
+        "state_transitions": [
+          { "from": "CURRENT", "to": "GRACE_PERIOD", "trigger": "payment_due_date_passed", "timestamp": "2026-04-01T00:00:01Z" },
+          { "from": "GRACE_PERIOD", "to": "PARTIAL_RECEIVED", "trigger": "partial_payment_received", "timestamp": "2026-04-03T10:15:00Z" },
+          { "from": "PARTIAL_RECEIVED", "to": "ARREARS", "trigger": "arrears_threshold_crossed", "timestamp": "2026-05-01T00:00:01Z" }
+        ],
+        "final_state": "ARREARS",
+        "outstanding_balance": 2200.00,
+        "ladder_action": "no_action_yet",
+        "ladder_equity_purchased": 0.00,
+        "ladder_balance_protected": true,
+        "accrued_ladder_balance": 900.00,
+        "reserve_fund_impact": 0.00,
+        "distribution_adjustment": "none"
+      }
+    },
+    {
+      "record_id": "arrears_0004",
+      "scenario": "Ladder redirection — contribution applied to arrears, remainder purchases equity",
+      "asset_id": "asset_004",
+      "inputs": {
+        "lease_state": {
+          "lease_id": "lease_004",
+          "tenant_id": "tenant_004",
+          "rent_amount": 1500.00,
+          "currency": "GBP",
+          "payment_due_date": "2026-04-01",
+          "deposit_amount": 2500.00,
+          "ladder_plan_active": true,
+          "ladder_contribution": 150.00,
+          "accrued_ladder_balance": 1800.00
+        },
+        "payment_events": [
+          {
+            "payment_id": "pay_arr_004a",
+            "amount": 1400.00,
+            "currency": "GBP",
+            "received_at": "2026-04-08T09:00:00Z",
+            "settlement_reference": "BANKREF-arr_004a"
+          }
+        ],
+        "current_date": "2026-04-30",
+        "prior_state": "ARREARS",
+        "prior_outstanding": 100.00,
+        "arrears_policy": {
+          "grace_period_days": 5,
+          "arrears_threshold": 1500.00
+        }
+      },
+      "expected_outputs": {
+        "state_transitions": [
+          { "from": "ARREARS", "to": "LADDER_REDIRECTED", "trigger": "ladder_contribution_due", "timestamp": "2026-04-30T00:00:01Z" },
+          { "from": "LADDER_REDIRECTED", "to": "CURRENT", "trigger": "redirection_clears_balance", "timestamp": "2026-04-30T00:00:02Z" }
+        ],
+        "final_state": "CURRENT",
+        "outstanding_balance": 0.00,
+        "ladder_action": "partial_redirection",
+        "ladder_redirection_detail": {
+          "total_contribution": 150.00,
+          "applied_to_arrears": 100.00,
+          "remainder_to_equity": 50.00
+        },
+        "ladder_equity_purchased": 50.00,
+        "ladder_balance_protected": true,
+        "accrued_ladder_balance": 1850.00,
+        "reserve_fund_impact": 0.00,
+        "distribution_adjustment": "none"
+      }
+    },
+    {
+      "record_id": "arrears_0005",
+      "scenario": "Full ladder redirection — entire contribution absorbed by arrears, no equity purchased",
+      "asset_id": "asset_005",
+      "inputs": {
+        "lease_state": {
+          "lease_id": "lease_005",
+          "tenant_id": "tenant_005",
+          "rent_amount": 1500.00,
+          "currency": "GBP",
+          "payment_due_date": "2026-05-01",
+          "deposit_amount": 2500.00,
+          "ladder_plan_active": true,
+          "ladder_contribution": 150.00,
+          "accrued_ladder_balance": 2400.00
+        },
+        "payment_events": [],
+        "current_date": "2026-05-31",
+        "prior_state": "ARREARS",
+        "prior_outstanding": 1500.00,
+        "arrears_policy": {
+          "grace_period_days": 5,
+          "arrears_threshold": 1500.00
+        }
+      },
+      "expected_outputs": {
+        "state_transitions": [
+          { "from": "ARREARS", "to": "LADDER_REDIRECTED", "trigger": "ladder_contribution_due", "timestamp": "2026-05-31T00:00:01Z" },
+          { "from": "LADDER_REDIRECTED", "to": "ARREARS", "trigger": "redirection_applied", "timestamp": "2026-05-31T00:00:02Z" }
+        ],
+        "final_state": "ARREARS",
+        "outstanding_balance": 2850.00,
+        "ladder_action": "full_redirection",
+        "ladder_redirection_detail": {
+          "total_contribution": 150.00,
+          "applied_to_arrears": 150.00,
+          "remainder_to_equity": 0.00
+        },
+        "ladder_equity_purchased": 0.00,
+        "ladder_balance_protected": true,
+        "accrued_ladder_balance": 2400.00,
+        "reserve_fund_impact": 0.00,
+        "distribution_adjustment": "none"
+      }
+    },
+    {
+      "record_id": "arrears_0006",
+      "scenario": "Dispute raised — tenant claims habitability issue, arrears frozen pending resolution",
+      "asset_id": "asset_006",
+      "inputs": {
+        "lease_state": {
+          "lease_id": "lease_006",
+          "tenant_id": "tenant_006",
+          "rent_amount": 1500.00,
+          "currency": "GBP",
+          "payment_due_date": "2026-04-01",
+          "deposit_amount": 2500.00,
+          "ladder_plan_active": true,
+          "ladder_contribution": 150.00,
+          "accrued_ladder_balance": 3000.00
+        },
+        "payment_events": [],
+        "current_date": "2026-04-20",
+        "prior_state": "ARREARS",
+        "prior_outstanding": 1500.00,
+        "dispute": {
+          "dispute_id": "disp_006",
+          "dispute_type": "habitability",
+          "filed_at": "2026-04-15T11:00:00Z",
+          "description": "Heating system failure reported 2026-03-28, not repaired",
+          "resolution": null
+        },
+        "arrears_policy": {
+          "grace_period_days": 5,
+          "arrears_threshold": 1500.00
+        }
+      },
+      "expected_outputs": {
+        "state_transitions": [
+          { "from": "ARREARS", "to": "DISPUTE_RAISED", "trigger": "tenant_dispute_filed", "timestamp": "2026-04-15T11:00:00Z" }
+        ],
+        "final_state": "DISPUTE_RAISED",
+        "outstanding_balance": 1500.00,
+        "ladder_action": "frozen_pending_dispute",
+        "ladder_equity_purchased": 0.00,
+        "ladder_balance_protected": true,
+        "accrued_ladder_balance": 3000.00,
+        "reserve_fund_impact": 0.00,
+        "distribution_adjustment": "none",
+        "dispute_status": "pending_adjudication",
+        "arrears_collection_paused": true
+      }
+    },
+    {
+      "record_id": "arrears_0007",
+      "scenario": "Payment plan agreed and completed — transitions through PAYMENT_PLAN to CURRENT",
+      "asset_id": "asset_007",
+      "inputs": {
+        "lease_state": {
+          "lease_id": "lease_007",
+          "tenant_id": "tenant_007",
+          "rent_amount": 1500.00,
+          "currency": "GBP",
+          "payment_due_date": "2026-03-01",
+          "deposit_amount": 2500.00,
+          "ladder_plan_active": true,
+          "ladder_contribution": 150.00,
+          "accrued_ladder_balance": 450.00
+        },
+        "payment_events": [
+          {
+            "payment_id": "pay_arr_007a",
+            "amount": 1750.00,
+            "currency": "GBP",
+            "received_at": "2026-04-01T10:00:00Z",
+            "settlement_reference": "BANKREF-arr_007a",
+            "note": "April rent (1500) + plan instalment 1 (250)"
+          },
+          {
+            "payment_id": "pay_arr_007b",
+            "amount": 1750.00,
+            "currency": "GBP",
+            "received_at": "2026-05-01T10:00:00Z",
+            "settlement_reference": "BANKREF-arr_007b",
+            "note": "May rent (1500) + plan instalment 2 (250)"
+          },
+          {
+            "payment_id": "pay_arr_007c",
+            "amount": 1750.00,
+            "currency": "GBP",
+            "received_at": "2026-06-01T10:00:00Z",
+            "settlement_reference": "BANKREF-arr_007c",
+            "note": "June rent (1500) + plan instalment 3 (250)"
+          }
+        ],
+        "current_date": "2026-06-01",
+        "prior_state": "ARREARS",
+        "prior_outstanding": 750.00,
+        "payment_plan": {
+          "plan_id": "plan_007",
+          "agreed_at": "2026-03-20T14:00:00Z",
+          "total_arrears": 750.00,
+          "instalments": [
+            { "instalment_id": 1, "amount": 250.00, "due_date": "2026-04-01" },
+            { "instalment_id": 2, "amount": 250.00, "due_date": "2026-05-01" },
+            { "instalment_id": 3, "amount": 250.00, "due_date": "2026-06-01" }
+          ],
+          "breach_threshold_missed_instalments": 2
+        },
+        "arrears_policy": {
+          "grace_period_days": 5,
+          "arrears_threshold": 1500.00
+        }
+      },
+      "expected_outputs": {
+        "state_transitions": [
+          { "from": "ARREARS", "to": "PAYMENT_PLAN", "trigger": "payment_plan_agreed", "timestamp": "2026-03-20T14:00:00Z" },
+          { "from": "PAYMENT_PLAN", "to": "CURRENT", "trigger": "plan_completed", "timestamp": "2026-06-01T10:00:00Z" }
+        ],
+        "final_state": "CURRENT",
+        "outstanding_balance": 0.00,
+        "ladder_action": "normal_equity_purchase",
+        "ladder_equity_purchased": 150.00,
+        "ladder_balance_protected": true,
+        "accrued_ladder_balance": 600.00,
+        "reserve_fund_impact": 0.00,
+        "distribution_adjustment": "none"
+      }
+    },
+    {
+      "record_id": "arrears_0008",
+      "scenario": "Payment plan breached — escalates to RECOVERY",
+      "asset_id": "asset_008",
+      "inputs": {
+        "lease_state": {
+          "lease_id": "lease_008",
+          "tenant_id": "tenant_008",
+          "rent_amount": 1500.00,
+          "currency": "GBP",
+          "payment_due_date": "2026-03-01",
+          "deposit_amount": 2500.00,
+          "ladder_plan_active": true,
+          "ladder_contribution": 150.00,
+          "accrued_ladder_balance": 1500.00
+        },
+        "payment_events": [
+          {
+            "payment_id": "pay_arr_008a",
+            "amount": 1500.00,
+            "currency": "GBP",
+            "received_at": "2026-04-01T10:00:00Z",
+            "settlement_reference": "BANKREF-arr_008a",
+            "note": "April rent only, missed plan instalment 1"
+          },
+          {
+            "payment_id": "pay_arr_008b",
+            "amount": 1500.00,
+            "currency": "GBP",
+            "received_at": "2026-05-01T10:00:00Z",
+            "settlement_reference": "BANKREF-arr_008b",
+            "note": "May rent only, missed plan instalment 2"
+          }
+        ],
+        "current_date": "2026-05-06",
+        "prior_state": "PAYMENT_PLAN",
+        "prior_outstanding": 1000.00,
+        "payment_plan": {
+          "plan_id": "plan_008",
+          "agreed_at": "2026-03-15T14:00:00Z",
+          "total_arrears": 1000.00,
+          "instalments": [
+            { "instalment_id": 1, "amount": 250.00, "due_date": "2026-04-01", "paid": false },
+            { "instalment_id": 2, "amount": 250.00, "due_date": "2026-05-01", "paid": false },
+            { "instalment_id": 3, "amount": 250.00, "due_date": "2026-06-01", "paid": false },
+            { "instalment_id": 4, "amount": 250.00, "due_date": "2026-07-01", "paid": false }
+          ],
+          "breach_threshold_missed_instalments": 2
+        },
+        "arrears_policy": {
+          "grace_period_days": 5,
+          "arrears_threshold": 1500.00
+        }
+      },
+      "expected_outputs": {
+        "state_transitions": [
+          { "from": "PAYMENT_PLAN", "to": "RECOVERY", "trigger": "plan_breached", "timestamp": "2026-05-06T00:00:01Z" }
+        ],
+        "final_state": "RECOVERY",
+        "outstanding_balance": 1000.00,
+        "ladder_action": "full_redirection",
+        "ladder_redirection_detail": {
+          "total_contribution": 150.00,
+          "applied_to_arrears": 150.00,
+          "remainder_to_equity": 0.00
+        },
+        "ladder_equity_purchased": 0.00,
+        "ladder_balance_protected": true,
+        "accrued_ladder_balance": 1500.00,
+        "reserve_fund_impact": 0.00,
+        "distribution_adjustment": "none"
+      }
+    },
+    {
+      "record_id": "arrears_0009",
+      "scenario": "Multi-month arrears with reserve fund drawdown and distribution adjustment",
+      "asset_id": "asset_009",
+      "inputs": {
+        "lease_state": {
+          "lease_id": "lease_009",
+          "tenant_id": "tenant_009",
+          "rent_amount": 1500.00,
+          "currency": "GBP",
+          "payment_due_date": "2026-03-01",
+          "deposit_amount": 2500.00,
+          "ladder_plan_active": false,
+          "ladder_contribution": 0.00,
+          "accrued_ladder_balance": 0.00
+        },
+        "payment_events": [],
+        "current_date": "2026-06-01",
+        "prior_state": "ARREARS",
+        "prior_outstanding": 4500.00,
+        "asset_financials": {
+          "total_units": 20,
+          "units_in_arrears": 3,
+          "monthly_gross_income_expected": 30000.00,
+          "monthly_gross_income_actual": 25500.00,
+          "shortfall": 4500.00,
+          "reserve_fund_balance": 9000.00,
+          "reserve_fund_minimum": 7500.00
+        },
+        "arrears_policy": {
+          "grace_period_days": 5,
+          "arrears_threshold": 1500.00
+        }
+      },
+      "expected_outputs": {
+        "state_transitions": [],
+        "final_state": "ARREARS",
+        "outstanding_balance": 6000.00,
+        "ladder_action": "not_applicable",
+        "ladder_equity_purchased": 0.00,
+        "ladder_balance_protected": true,
+        "accrued_ladder_balance": 0.00,
+        "reserve_fund_impact": {
+          "drawdown_amount": 1500.00,
+          "drawdown_reason": "distribution_smoothing",
+          "reserve_after_drawdown": 7500.00,
+          "minimum_coverage_breached": false
+        },
+        "distribution_adjustment": {
+          "loss_waterfall_applied": true,
+          "operator_fee_absorbed": 75.00,
+          "platform_fee_absorbed": 30.00,
+          "reserve_fund_drawdown": 1500.00,
+          "investor_reduction": 0.00,
+          "adjusted_distribution_per_token": 0.0072,
+          "note": "Reserve fund covers shortfall; investor distributions maintained this period"
+        }
+      }
+    },
+    {
+      "record_id": "arrears_0010",
+      "scenario": "Lease termination — eviction completed, ladder balance redeemed at NAV, deposit offset",
+      "asset_id": "asset_010",
+      "inputs": {
+        "lease_state": {
+          "lease_id": "lease_010",
+          "tenant_id": "tenant_010",
+          "rent_amount": 1500.00,
+          "currency": "GBP",
+          "payment_due_date": "2026-01-01",
+          "deposit_amount": 2500.00,
+          "ladder_plan_active": true,
+          "ladder_contribution": 150.00,
+          "accrued_ladder_balance": 4500.00
+        },
+        "payment_events": [],
+        "current_date": "2026-06-15",
+        "prior_state": "EVICTION_PROCESS",
+        "prior_outstanding": 7500.00,
+        "eviction": {
+          "legal_notice_served_at": "2026-04-01T00:00:00Z",
+          "court_hearing_date": "2026-05-20",
+          "possession_order_granted": true,
+          "possession_executed_at": "2026-06-15T10:00:00Z",
+          "legal_costs": 2500.00
+        },
+        "arrears_policy": {
+          "grace_period_days": 5,
+          "arrears_threshold": 1500.00
+        }
+      },
+      "expected_outputs": {
+        "state_transitions": [
+          { "from": "EVICTION_PROCESS", "to": "LEASE_TERMINATED", "trigger": "possession_order_executed", "timestamp": "2026-06-15T10:00:00Z" }
+        ],
+        "final_state": "LEASE_TERMINATED",
+        "outstanding_balance": 10000.00,
+        "settlement_calculation": {
+          "total_owed": 10000.00,
+          "deposit_offset": 2500.00,
+          "remaining_after_deposit": 7500.00,
+          "ladder_balance_status": "protected",
+          "ladder_balance_redeemed_at_nav": true,
+          "ladder_redemption_value": 4500.00,
+          "ladder_redemption_note": "Ladder balance redeemed at current NAV and paid to tenant. NOT seized to cover arrears unless explicitly contracted.",
+          "net_debt_to_recover": 7500.00,
+          "recovery_method": "debt_collection_or_county_court_judgment"
+        },
+        "ladder_action": "redeemed_at_nav",
+        "ladder_equity_purchased": 0.00,
+        "ladder_balance_protected": true,
+        "accrued_ladder_balance": 0.00,
+        "reserve_fund_impact": 0.00,
+        "distribution_adjustment": "shortfall_absorbed_per_loss_waterfall"
+      }
+    }
+  ]
+}
