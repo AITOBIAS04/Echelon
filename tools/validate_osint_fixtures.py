@@ -22,10 +22,10 @@ Checks:
   5. Hash length validation (64-char hex strings).
   6. proposed_source_group values must exist in proposed_groups_exercised.
   7. Counter-signal bundle consistency (non-blocking warning).
-  8. Registry version + hash pin (if declared in dataset).
+  8. Registry version + hash pin (required — missing pins are a hard fail).
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 import hashlib
 import json
@@ -45,37 +45,45 @@ def canonical_hash(obj: object) -> str:
 def check_registry_pin(dataset: dict, registry: dict) -> list[str]:
     """Check that the registry matches the version + hash pin declared in the dataset.
 
-    Hard errors: if the dataset declares a pin and it doesn't match, fail.
-    If no pin is declared, skip silently (backwards-compatible).
+    Hard errors: missing pins fail. Mismatched pins fail.
     """
     errors = []
 
     required_version = dataset.get("registry_version_required")
     required_hash = dataset.get("registry_hash_required")
+    actual_version = registry.get("version")
+    actual_hash = canonical_hash(registry)
 
-    if not required_version and not required_hash:
+    # CHECK 8a: pins must exist
+    if not required_version:
+        errors.append(
+            f"Missing registry_version_required in dataset header. "
+            f"Add: \"registry_version_required\": \"{actual_version}\""
+        )
+    if not required_hash:
+        errors.append(
+            f"Missing registry_hash_required in dataset header. "
+            f"Add: \"registry_hash_required\": \"sha256:{actual_hash}\""
+        )
+
+    if not required_version or not required_hash:
         return errors
 
-    actual_version = registry.get("version")
-
-    # CHECK 8a: version pin
-    if required_version and actual_version != required_version:
+    # CHECK 8b: version pin
+    if actual_version != required_version:
         errors.append(
             f"Registry version mismatch: dataset requires '{required_version}', "
             f"got '{actual_version}'. Use the pinned registry or update the dataset pin."
         )
 
-    # CHECK 8b: hash pin
-    if required_hash:
-        actual_hash = canonical_hash(registry)
-        # Support both bare hex and "sha256:" prefix
-        expected_hex = required_hash.removeprefix("sha256:")
-        if actual_hash != expected_hex:
-            errors.append(
-                f"Registry hash mismatch: dataset requires '{expected_hex[:16]}...', "
-                f"got '{actual_hash[:16]}...'. The registry has been modified since "
-                f"this dataset was pinned."
-            )
+    # CHECK 8c: hash pin
+    expected_hex = required_hash.removeprefix("sha256:")
+    if actual_hash != expected_hex:
+        errors.append(
+            f"Registry hash mismatch: dataset requires '{expected_hex[:16]}...', "
+            f"got '{actual_hash[:16]}...'. The registry has been modified since "
+            f"this dataset was pinned."
+        )
 
     return errors
 
@@ -140,6 +148,17 @@ def validate(fixtures_path: str, registry_path: str) -> list[str]:
         registry = json.load(f)
 
     errors = []
+
+    # CI echo: print pin audit trail
+    print(f"  dataset_id:              {dataset.get('dataset_id', '?')}")
+    print(f"  registry_version_required: {dataset.get('registry_version_required', 'MISSING')}")
+    print(f"  registry_hash_required:    {dataset.get('registry_hash_required', 'MISSING')}")
+    print(f"  registry_hash_computed:    sha256:{canonical_hash(registry)}")
+    print(f"  registry_version_actual:   {registry.get('version', '?')}")
+    expected_path = dataset.get("registry_path_expected")
+    if expected_path and not registry_path.endswith(expected_path):
+        print(f"  ⚠ registry_path_expected: '{expected_path}' — actual path does not match")
+    print()
 
     # CHECK 8: Registry version + hash pin (fail-fast before per-record checks)
     pin_errors = check_registry_pin(dataset, registry)

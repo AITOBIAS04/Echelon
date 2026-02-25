@@ -1,6 +1,9 @@
 {
   "dataset_id": "osint_composed_oracle_v0_1_10",
   "description": "v0.1 deterministic replay fixtures for OSINT_COMPOSED_ORACLE_V1 (10 records). 6 PASS, 4 FAIL. Each FAIL exercises a distinct criterion failure mode. All evidence bundles are synthetic with precomputed hashes.",
+  "registry_version_required": "0.4.0",
+  "registry_hash_required": "sha256:e731bdbff7b00362551cb82db2a076f7a35bfc6c4732a806caf0bc84e80d749a",
+  "registry_path_expected": "theatre/fixtures/two_rail_theatres_v0_1/datasets/echelon_osint_source_registry_v0_4_0.json",
   "oracle_config": {
     "corroboration_minimum": 2,
     "corroboration_window_seconds": 3600,
