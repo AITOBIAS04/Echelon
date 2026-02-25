@@ -1,0 +1,220 @@
+{
+  "schema_version": "2.0.1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "theatre_id": "product_replay_engine_v1",
+  "template_id": "osint_composed_oracle_v1",
+  "display_name": "OSINT_COMPOSED_ORACLE_V1 — Composed Multi-Source Oracle Verification",
+  "description": "Deterministic replay theatre for verifying composed OSINT oracle outputs. Scores primary evidence, secondary corroboration, counter-signal evaluation, source freshness, provenance integrity, and market rule stability. Designed for geopolitical and market theatres where oracle accuracy is settlement-critical.",
+  "criteria": {
+    "criteria_ids": [
+      "source_freshness_ok",
+      "provenance_integrity",
+      "corroboration_minimum_met",
+      "counter_signal_checked",
+      "rule_change_monitored",
+      "composite_score_deterministic"
+    ],
+    "criteria_human": "Deterministic verification that composed oracle outputs are derived from fresh, provenance-verified sources with sufficient independent corroboration, explicit counter-signal evaluation, market rule integrity monitoring, and reproducible composite scoring.",
+    "weights": {
+      "source_freshness_ok": 0.15,
+      "provenance_integrity": 0.20,
+      "corroboration_minimum_met": 0.25,
+      "counter_signal_checked": 0.15,
+      "rule_change_monitored": 0.10,
+      "composite_score_deterministic": 0.15
+    }
+  },
+  "criteria_semantics": {
+    "source_freshness_ok": {
+      "description": "All evidence bundles fall within the declared freshness window for their source. Stale evidence (beyond max_age_seconds) causes FAIL. Freshness is evaluated per source_id, not per source_group, because different sources within the same group may have different staleness tolerances.",
+      "pass_condition": "For each evidence bundle: (oracle_evaluation_timestamp - bundle.evidence_timestamp) <= osint_source_config[bundle.source_id].max_age_seconds",
+      "fail_modes": [
+        "evidence_timestamp exceeds max_age_seconds for source_id",
+        "evidence_timestamp missing or malformed",
+        "oracle_evaluation_timestamp missing",
+        "source_id not found in osint_source_config"
+      ]
+    },
+    "provenance_integrity": {
+      "description": "Every evidence bundle has a valid retrieval receipt with matching content hash. In live mode, the content_hash is computed as sha256(canonical(raw_payload)). In fixtures mode, raw_payload is elided and raw_payload_hash stands in as the precomputed result — the check becomes raw_payload_hash == receipt.content_hash.",
+      "pass_condition": "For each evidence bundle: bundle.raw_payload_hash == bundle.receipt.content_hash AND bundle.receipt contains required fields (timestamp, request_parameters, source_id, http_status)",
+      "pass_condition_live": "For each evidence bundle: sha256(canonical(bundle.raw_payload)) == bundle.receipt.content_hash AND bundle.receipt contains required fields (timestamp, request_parameters, source_id, http_status)",
+      "fail_modes": [
+        "content_hash mismatch between raw payload hash and receipt",
+        "receipt missing required fields",
+        "receipt timestamp inconsistent with evidence timestamp"
+      ],
+      "fixture_note": "In v0.1 fixtures, raw_payload is intentionally elided. raw_payload_hash is the precomputed sha256 that would result from hashing the full payload. This is explicitly documented to prevent drift between fixture semantics and live semantics."
+    },
+    "corroboration_minimum_met": {
+      "description": "The primary claim is independently confirmed by at least N sources from distinct source_groups within the corroboration time window. Sources from the same source_group count as one corroborator regardless of quantity.",
+      "pass_condition": "count(distinct source_groups WHERE source.resolution_role IN ['secondary_corroboration'] AND source.confirms_primary == true AND abs(source.evidence_timestamp - primary.evidence_timestamp) <= corroboration_window_seconds) >= corroboration_minimum",
+      "fail_modes": [
+        "fewer than corroboration_minimum distinct source_groups confirm",
+        "corroborating sources outside corroboration_window_seconds",
+        "corroborating sources from same source_group counted as distinct"
+      ]
+    },
+    "counter_signal_checked": {
+      "description": "At least one counter-signal stream was explicitly evaluated. The evaluation must produce one of four outcomes: absent (signal not present, supports primary), present_discounted (present but explained by precommitted rule), present_unexplained (present with no discount rule — causes FAIL), or unavailable (source unreachable — scored as intelligence gap).",
+      "pass_condition": "counter_signal_evaluation.outcome IN ['absent', 'present_discounted'] OR (counter_signal_evaluation.outcome == 'unavailable' AND oracle_config.allow_gap_on_counter_signal == true)",
+      "fail_modes": [
+        "counter_signal_evaluation.outcome == 'present_unexplained'",
+        "counter_signal_evaluation.outcome == 'unavailable' AND oracle_config.allow_gap_on_counter_signal == false",
+        "no counter_signal_evaluation present in evidence bundle",
+        "counter_signal discount_rule not precommitted in oracle_config"
+      ],
+      "outcome_enum": [
+        "absent",
+        "present_discounted",
+        "present_unexplained",
+        "unavailable"
+      ]
+    },
+    "rule_change_monitored": {
+      "description": "Market resolution rules text hash at evaluation time matches the committed rules hash from market open. Any diff triggers the configured response (FAIL, WARN, or FREEZE).",
+      "pass_condition": "sha256(canonical(current_market_rules)) == committed_market_rules_hash OR (diff detected AND rule_change_policy == 'warn') OR (diff detected AND rule_change_policy == 'freeze')",
+      "fail_modes": [
+        "rules_hash mismatch AND rule_change_policy == 'fail'",
+        "committed_market_rules_hash missing from oracle_config",
+        "current_market_rules not retrievable"
+      ],
+      "policy_enum": [
+        "fail",
+        "warn",
+        "freeze"
+      ],
+      "policy_semantics": {
+        "fail": "Criterion result: FAIL. Settlement blocked. Rule diff logged as integrity_event.",
+        "warn": "Criterion result: PASS. Settlement proceeds. Rule diff logged as integrity_event with severity=WARN.",
+        "freeze": "Criterion result: PASS. Rule diff logged as integrity_event. Side-effect: trading_state set to FROZEN, settlement halted until manual review clears the freeze via a signed unfreeze_attestation."
+      }
+    },
+    "composite_score_deterministic": {
+      "description": "The final composite_risk score is reproducible from the committed evidence bundles and scoring formula. Re-computation from inputs must yield identical output (bitwise for integers, tolerance 1e-9 for floats).",
+      "pass_condition": "recompute(evidence_bundles, scoring_formula, oracle_config) == declared_composite_risk within tolerance",
+      "fail_modes": [
+        "recomputed score differs from declared score beyond tolerance",
+        "scoring_formula version mismatch",
+        "evidence bundle hash mismatch during replay"
+      ]
+    }
+  },
+  "source_group_enum": {
+    "description": "Committed enumeration of source independence groups. Corroboration requires distinct groups, not distinct sources within the same group.",
+    "values": [
+      "official_gov",
+      "wire_service",
+      "national_media",
+      "local_media",
+      "social_platform",
+      "satellite_imagery",
+      "maritime_ais",
+      "aviation_adsb",
+      "market_data",
+      "prediction_market",
+      "academic_research",
+      "alt_data_behavioural",
+      "cyber_threat_intel"
+    ]
+  },
+  "osint_source_config": {
+    "description": "Per-source configuration committed at oracle creation. Defines resolution roles, freshness windows, and source group membership.",
+    "source_schema": {
+      "source_id": "string — unique identifier for this source",
+      "source_group": "source_group_enum value",
+      "resolution_role": "enum: primary_evidence | secondary_corroboration | counter_signal",
+      "max_age_seconds": "integer — maximum staleness before evidence is rejected",
+      "confidence_floor": "float [0.0, 1.0] — minimum confidence for inclusion",
+      "retrieval_method": "string — repeatable description of how data is fetched"
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "echelon_osint_oracle": "v0.1-fixtures"
+    },
+    "scorer_version": "deterministic-v0.1"
+  },
+  "dataset_hashes": {
+    "osint_composed_oracle_fixtures_10.json": "188dacfacc254bf67b27ea7c0e3f39fd3d80ce57b340066639f064e382eadacd"
+  },
+  "product_theatre_config": {
+    "construct_under_test": {
+      "construct_id": "echelon_osint_oracle",
+      "construct_version": "v0.1-fixtures"
+    },
+    "adapter_type": "local",
+    "adapter_endpoint": "python:echelon_oracles.composed_osint",
+    "replay_data_path": "/mnt/data/osint_theatres_v0_1/osint_composed_oracle_fixtures_10.json",
+    "ground_truth_source": "v0.1 fixtures (deterministic composed oracle replay)",
+    "mock_only": false
+  },
+  "fork_definitions": [],
+  "resolution_programme": [
+    {
+      "step": "ingest",
+      "action": "load_dataset",
+      "input": "replay_data_path"
+    },
+    {
+      "step": "validate_provenance",
+      "action": "verify_evidence_hashes",
+      "criteria_ids": [
+        "provenance_integrity"
+      ]
+    },
+    {
+      "step": "check_freshness",
+      "action": "validate_timestamps",
+      "criteria_ids": [
+        "source_freshness_ok"
+      ]
+    },
+    {
+      "step": "evaluate_corroboration",
+      "action": "count_distinct_source_groups",
+      "criteria_ids": [
+        "corroboration_minimum_met"
+      ]
+    },
+    {
+      "step": "evaluate_counter_signal",
+      "action": "check_counter_signal_outcome",
+      "criteria_ids": [
+        "counter_signal_checked"
+      ]
+    },
+    {
+      "step": "check_rule_integrity",
+      "action": "diff_market_rules",
+      "criteria_ids": [
+        "rule_change_monitored"
+      ]
+    },
+    {
+      "step": "verify_determinism",
+      "action": "replay_composite_score",
+      "criteria_ids": [
+        "composite_score_deterministic"
+      ]
+    },
+    {
+      "step": "certify",
+      "action": "issue_certificate"
+    }
+  ],
+  "evidence_bundle": {
+    "manifest_required": true,
+    "hash_algorithm": "sha256",
+    "canonical_json": "RFC8785",
+    "required_paths": [
+      "inputs/",
+      "sources/",
+      "counter_signals/",
+      "market_rules/",
+      "oracle_output/",
+      "manifest.json"
+    ]
+  }
+}
