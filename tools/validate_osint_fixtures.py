@@ -22,12 +22,62 @@ Checks:
   5. Hash length validation (64-char hex strings).
   6. proposed_source_group values must exist in proposed_groups_exercised.
   7. Counter-signal bundle consistency (non-blocking warning).
+  8. Registry version + hash pin (if declared in dataset).
 """
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
+import hashlib
 import json
 import sys
+
+
+def canonical_hash(obj: object) -> str:
+    """Compute SHA-256 over canonical JSON (sorted keys, no whitespace, UTF-8).
+
+    Matches Echelon's deterministic hashing convention:
+    json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    """
+    canonical = json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def check_registry_pin(dataset: dict, registry: dict) -> list[str]:
+    """Check that the registry matches the version + hash pin declared in the dataset.
+
+    Hard errors: if the dataset declares a pin and it doesn't match, fail.
+    If no pin is declared, skip silently (backwards-compatible).
+    """
+    errors = []
+
+    required_version = dataset.get("registry_version_required")
+    required_hash = dataset.get("registry_hash_required")
+
+    if not required_version and not required_hash:
+        return errors
+
+    actual_version = registry.get("version")
+
+    # CHECK 8a: version pin
+    if required_version and actual_version != required_version:
+        errors.append(
+            f"Registry version mismatch: dataset requires '{required_version}', "
+            f"got '{actual_version}'. Use the pinned registry or update the dataset pin."
+        )
+
+    # CHECK 8b: hash pin
+    if required_hash:
+        actual_hash = canonical_hash(registry)
+        # Support both bare hex and "sha256:" prefix
+        expected_hex = required_hash.removeprefix("sha256:")
+        if actual_hash != expected_hex:
+            errors.append(
+                f"Registry hash mismatch: dataset requires '{expected_hex[:16]}...', "
+                f"got '{actual_hash[:16]}...'. The registry has been modified since "
+                f"this dataset was pinned."
+            )
+
+    return errors
 
 
 def check_counter_signal_consistency(dataset: dict) -> list[str]:
@@ -90,6 +140,10 @@ def validate(fixtures_path: str, registry_path: str) -> list[str]:
         registry = json.load(f)
 
     errors = []
+
+    # CHECK 8: Registry version + hash pin (fail-fast before per-record checks)
+    pin_errors = check_registry_pin(dataset, registry)
+    errors.extend(pin_errors)
 
     # Build registry source_id set
     registry_ids = {s["source_id"] for s in registry["sources"]}

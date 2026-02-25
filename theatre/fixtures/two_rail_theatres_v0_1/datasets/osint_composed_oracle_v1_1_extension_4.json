@@ -3,6 +3,9 @@
   "description": "v1.1 extension fixtures for OSINT_COMPOSED_ORACLE_V1 (4 records). 2 PASS, 2 FAIL. Exercises proposed source_group extensions: judicial_record (2 fixtures) and calendar_counter_signal (2 fixtures). These fixtures require template schema_version >= 1.1 to commit the proposed groups. Until then, sources fall back to their current source_group assignments. All evidence bundles are synthetic with precomputed hashes.",
   "extends": "osint_composed_oracle_v0_1_10",
   "requires_template_version": "1.1",
+  "registry_version_required": "0.4.0",
+  "registry_hash_required": "sha256:e731bdbff7b00362551cb82db2a076f7a35bfc6c4732a806caf0bc84e80d749a",
+  "registry_path_expected": "theatre/fixtures/two_rail_theatres_v0_1/datasets/echelon_osint_source_registry_v0_4_0.json",
   "proposed_groups_exercised": [
     "judicial_record",
     "calendar_counter_signal"
