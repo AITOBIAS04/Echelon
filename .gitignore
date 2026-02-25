@@ -89,3 +89,6 @@ test.db
 
 # Built artefacts
 tools/echelon_demo_pack.tar.gz
+
+# Internal project knowledge (not for external sharing)
+docs/core/
