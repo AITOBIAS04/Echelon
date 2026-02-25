@@ -1,0 +1,460 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "echelon_delta_brief_schema_v1.json",
+  "title": "Echelon DeltaBrief v1",
+  "description": "Schema for a deterministic, hashable, inspectable novelty detection artefact. A DeltaBrief is a structured diff of a corpus snapshot against a pinned baseline, producing classified claims (new, updated, contradicted) with independence collapse and counter-signal evaluation. Designed as a first-class evidence bundle type in the Echelon Theatre Template Library.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "brief_id",
+    "schema_version",
+    "generated_at",
+    "commitment",
+    "registry_pin",
+    "baseline_snapshot",
+    "corpus_snapshot",
+    "independence_collapse",
+    "deltas",
+    "summary",
+    "hashes"
+  ],
+  "properties": {
+    "brief_id": {
+      "type": "string",
+      "description": "Stable identifier for this DeltaBrief artefact. Format: db_{uuid4} or db_{deterministic_hash}."
+    },
+    "schema_version": {
+      "const": "v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of artefact generation. Informational only — not included in commitment hash."
+    },
+
+    "commitment": {
+      "type": "object",
+      "description": "All inputs that determine the DeltaBrief output. commitment_hash = sha256(canonical_json(commitment minus commitment_hash itself)).",
+      "additionalProperties": false,
+      "required": [
+        "commitment_hash",
+        "detector_id",
+        "detector_version",
+        "normalisation_rules_hash",
+        "independence_rules_hash",
+        "counter_signal_policy_hash"
+      ],
+      "properties": {
+        "commitment_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of the canonical JSON of this commitment object (excluding this field). Proves determinism: same inputs → same hash."
+        },
+        "detector_id": {
+          "type": "string",
+          "description": "Identifier for the novelty detection pipeline (e.g. 'delta_brief_generator_v1')."
+        },
+        "detector_version": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["git_commit"],
+          "properties": {
+            "git_commit": {
+              "type": "string",
+              "minLength": 7,
+              "description": "Git commit hash of the detector codebase."
+            },
+            "semver": {
+              "type": "string",
+              "description": "Semantic version if tagged."
+            }
+          }
+        },
+        "llm_pins": {
+          "type": ["object", "null"],
+          "description": "Only present if the detector uses an LLM step. Null or absent for purely deterministic detectors (preferred in v1).",
+          "additionalProperties": false,
+          "properties": {
+            "provider": { "type": "string" },
+            "model": { "type": "string" },
+            "model_revision": { "type": "string" },
+            "temperature": { "type": "number", "minimum": 0.0 },
+            "prompt_hash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$",
+              "description": "SHA-256 of the canonical prompt template."
+            }
+          }
+        },
+        "normalisation_rules_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of canonical normalisation config (chunking, whitespace, boilerplate stripping, shingling params, dedup thresholds)."
+        },
+        "independence_rules_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of canonical independence collapse rules (how independence_upstream_id maps sources to clusters)."
+        },
+        "counter_signal_policy_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of canonical counter-signal evaluation policy (required classes, time window, gap handling)."
+        }
+      }
+    },
+
+    "registry_pin": {
+      "type": "object",
+      "description": "Pin to a specific OSINT source registry version. Same convention as fixture datasets.",
+      "additionalProperties": false,
+      "required": ["registry_version_required", "registry_hash_required"],
+      "properties": {
+        "registry_version_required": { "type": "string" },
+        "registry_hash_required": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "registry_path_expected": { "type": "string" }
+      }
+    },
+
+    "baseline_snapshot": {
+      "type": "object",
+      "description": "Defines 'what counts as already known'. Novelty is computed relative to this baseline. Agent-agnostic: defined by sources + time window + query policy, not by any agent's internal state.",
+      "additionalProperties": false,
+      "required": [
+        "baseline_id",
+        "baseline_window",
+        "baseline_source_ids",
+        "baseline_query_policy",
+        "baseline_snapshot_hash"
+      ],
+      "properties": {
+        "baseline_id": {
+          "type": "string",
+          "description": "Stable identifier for this baseline definition."
+        },
+        "baseline_window": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start_at", "end_at"],
+          "properties": {
+            "start_at": { "type": "string", "format": "date-time" },
+            "end_at": { "type": "string", "format": "date-time" }
+          }
+        },
+        "baseline_source_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Explicit list of source_ids from the OSINT registry that define the baseline corpus."
+        },
+        "baseline_query_policy": {
+          "type": "object",
+          "description": "Committed constraints on how baseline data was collected. Ensures replayability.",
+          "additionalProperties": false,
+          "required": [
+            "access_surface_allowed",
+            "receipt_mode_minimum",
+            "revision_policy_handling"
+          ],
+          "properties": {
+            "access_surface_allowed": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["public_api", "partner_api", "paid_gateway", "portal_scrape", "manual_attestation"]
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "receipt_mode_minimum": {
+              "type": "string",
+              "enum": ["none", "http_transcript", "signed_receipt", "witness_quorum", "manual_attestation"]
+            },
+            "revision_policy_handling": {
+              "type": "object",
+              "description": "Committed stance when a source issuer revises historical data.",
+              "additionalProperties": false,
+              "required": ["latest_only_policy"],
+              "properties": {
+                "latest_only_policy": {
+                  "type": "string",
+                  "enum": ["forbid_settlement", "require_witness", "allow_scoring_only"]
+                }
+              }
+            }
+          }
+        },
+        "baseline_snapshot_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of the canonical baseline descriptor (this object minus this field). Not a hash of the fetched content."
+        }
+      }
+    },
+
+    "corpus_snapshot": {
+      "type": "object",
+      "description": "The incoming data being evaluated for novelty against the baseline.",
+      "additionalProperties": false,
+      "required": ["corpus_id", "corpus_window", "corpus_source_ids", "corpus_snapshot_hash"],
+      "properties": {
+        "corpus_id": {
+          "type": "string",
+          "description": "Stable identifier for this corpus snapshot."
+        },
+        "corpus_window": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start_at", "end_at"],
+          "properties": {
+            "start_at": { "type": "string", "format": "date-time" },
+            "end_at": { "type": "string", "format": "date-time" }
+          }
+        },
+        "corpus_source_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Source_ids that contributed to this corpus snapshot."
+        },
+        "corpus_snapshot_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of the canonical corpus descriptor."
+        }
+      }
+    },
+
+    "independence_collapse": {
+      "type": "object",
+      "description": "Explicit record of how sources were collapsed by independence_upstream_id. Ten mirrors of Reuters = one cluster, one corroborator.",
+      "additionalProperties": false,
+      "required": ["clusters"],
+      "properties": {
+        "clusters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "cluster_id",
+              "independence_upstream_id",
+              "member_source_ids",
+              "representative_source_id"
+            ],
+            "properties": {
+              "cluster_id": {
+                "type": "string",
+                "pattern": "^cl_[a-f0-9]{16}$",
+                "description": "Deterministic cluster ID: 'cl_' + sha256(independence_upstream_id)[0:16]. Same upstream always produces same cluster_id."
+              },
+              "independence_upstream_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The shared upstream identity that collapses these sources into one corroborator."
+              },
+              "member_source_ids": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 1,
+                "uniqueItems": true,
+                "description": "All source_ids that share this upstream."
+              },
+              "representative_source_id": {
+                "type": "string",
+                "description": "The source_id selected as representative for this cluster (highest priority_bucket, then freshest timestamp)."
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "deltas": {
+      "type": "object",
+      "description": "Classified novelty output. Each claim carries its delta_type so the classification survives flattening.",
+      "additionalProperties": false,
+      "required": ["new_claims", "updates", "contradictions", "counter_signals"],
+      "properties": {
+        "new_claims": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/claim" },
+          "description": "Claims present in corpus but absent from baseline. Genuinely new information."
+        },
+        "updates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/claim" },
+          "description": "Claims present in both corpus and baseline, but with fresher timestamp, stronger source, or updated values."
+        },
+        "contradictions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/claim" },
+          "description": "Claims in corpus that directly contradict a baseline claim."
+        },
+        "counter_signals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "counter_signal_id",
+              "counter_signal_class",
+              "status",
+              "source_ids"
+            ],
+            "properties": {
+              "counter_signal_id": { "type": "string" },
+              "counter_signal_class": {
+                "type": "string",
+                "description": "From the OSINT registry counter_signal_class_enum."
+              },
+              "status": {
+                "type": "string",
+                "enum": ["present_unexplained", "present_discounted", "absent", "unavailable"]
+              },
+              "source_ids": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "discount_rule": {
+                "type": ["string", "null"],
+                "description": "Precommitted discount rule ID if status is present_discounted."
+              },
+              "notes": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "summary": {
+      "type": "object",
+      "description": "Computed counts for quick inspection and CI echo. Recomputable from deltas — validator should check consistency.",
+      "additionalProperties": false,
+      "required": [
+        "total_new_claims",
+        "total_updates",
+        "total_contradictions",
+        "total_counter_signals",
+        "independence_clusters",
+        "corpus_sources_count",
+        "baseline_sources_count"
+      ],
+      "properties": {
+        "total_new_claims": { "type": "integer", "minimum": 0 },
+        "total_updates": { "type": "integer", "minimum": 0 },
+        "total_contradictions": { "type": "integer", "minimum": 0 },
+        "total_counter_signals": { "type": "integer", "minimum": 0 },
+        "independence_clusters": { "type": "integer", "minimum": 0 },
+        "corpus_sources_count": { "type": "integer", "minimum": 1 },
+        "baseline_sources_count": { "type": "integer", "minimum": 1 }
+      }
+    },
+
+    "hashes": {
+      "type": "object",
+      "description": "Top-level integrity hashes for the complete artefact.",
+      "additionalProperties": false,
+      "required": ["delta_brief_hash", "evidence_bundle_hash"],
+      "properties": {
+        "delta_brief_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of the canonical DeltaBrief (entire document minus hashes object)."
+        },
+        "evidence_bundle_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 of the evidence bundle directory this DeltaBrief belongs to (for Theatre Template integration)."
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "description": "A single classified claim. claim_id is deterministic: sha256(canonical(claim_text) + baseline_snapshot_hash + normalisation_rules_hash). This ensures the same claim against the same baseline with the same normaliser always produces the same ID.",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "delta_type",
+        "claim_text",
+        "first_seen_at",
+        "source_ids",
+        "cluster_ids",
+        "stance"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Deterministic claim identifier: sha256(canonical(claim_text) + baseline_snapshot_hash + normalisation_rules_hash)."
+        },
+        "delta_type": {
+          "type": "string",
+          "enum": ["new", "update", "contradiction"],
+          "description": "Classification of this claim's novelty status. Carried on each claim so the category survives array flattening."
+        },
+        "claim_text": {
+          "type": "string",
+          "description": "Normalised canonical text of the claim (post-normalisation, pre-hashing)."
+        },
+        "first_seen_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Earliest timestamp this claim appeared in the corpus."
+        },
+        "source_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "All source_ids that contributed this claim."
+        },
+        "cluster_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Independence collapse cluster_ids that sourced this claim. For corroboration counting."
+        },
+        "stance": {
+          "type": "string",
+          "enum": ["confirms", "contradicts", "neutral", "unknown"],
+          "description": "Claim's stance relative to the primary thesis under evaluation. Critical for counter-signal routing."
+        },
+        "entities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Named entities extracted from the claim (companies, jurisdictions, persons, instruments)."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Confidence in the novelty classification (not in the claim's truth)."
+        },
+        "supersedes_claim_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "For delta_type 'update' or 'contradiction': the baseline claim_id this claim supersedes or contradicts. Null for delta_type 'new'."
+        }
+      }
+    }
+  }
+}
