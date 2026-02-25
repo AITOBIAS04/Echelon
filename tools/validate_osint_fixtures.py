@@ -21,10 +21,66 @@ Checks:
      one record (no orphaned configs).
   5. Hash length validation (64-char hex strings).
   6. proposed_source_group values must exist in proposed_groups_exercised.
+  7. Counter-signal bundle consistency (non-blocking warning).
 """
+
+__version__ = "0.1.1"
 
 import json
 import sys
+
+
+def check_counter_signal_consistency(dataset: dict) -> list[str]:
+    """Check that proposed_groups_exercised claims are backed by actual bundles.
+
+    Non-blocking: returns warnings, not errors. Does not affect exit code.
+    """
+    warnings = []
+
+    # Dataset-level check: if proposed_groups_exercised is declared,
+    # at least one record must contain a counter_signal bundle.
+    proposed = dataset.get("proposed_groups_exercised", [])
+    if not proposed:
+        return warnings
+
+    has_counter_signal_bundle = False
+    records = dataset.get("records", [])
+
+    for record in records:
+        bundles = record.get("inputs", {}).get("evidence_bundles", [])
+        if any(b.get("resolution_role") == "counter_signal" for b in bundles):
+            has_counter_signal_bundle = True
+            break
+
+    if not has_counter_signal_bundle:
+        warnings.append(
+            f"Dataset declares proposed_groups_exercised={proposed} "
+            f"but no record contains a bundle with resolution_role='counter_signal'. "
+            f"Add at least one counter-signal bundle to validate the claim."
+        )
+
+    # Per-record check: if a record's criteria include counter_signal_checked
+    # with result=true, it should have at least one counter_signal bundle.
+    for record in records:
+        rid = record.get("record_id", "unknown")
+        criteria_scores = record.get("criteria_scores", {})
+        cs_checked = criteria_scores.get("counter_signal_checked", {})
+
+        if cs_checked.get("result") is True:
+            bundles = record.get("inputs", {}).get("evidence_bundles", [])
+            has_cs = any(
+                b.get("resolution_role") == "counter_signal"
+                for b in bundles
+            )
+            if not has_cs:
+                warnings.append(
+                    f"Record {rid} has counter_signal_checked=true "
+                    f"but no bundle with resolution_role='counter_signal'. "
+                    f"Either add a counter-signal bundle or document why "
+                    f"the gap is intentional."
+                )
+
+    return warnings
 
 
 def validate(fixtures_path: str, registry_path: str) -> list[str]:
@@ -131,9 +187,16 @@ def validate(fixtures_path: str, registry_path: str) -> list[str]:
 
 
 if __name__ == "__main__":
+    if "--version" in sys.argv:
+        print(f"validate_osint_fixtures v{__version__}")
+        sys.exit(0)
+
     if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <fixtures.json> <registry.json>")
+        print(f"Usage: {sys.argv[0]} [--version] <fixtures.json> <registry.json>")
+        print(f"  --version  Print version ({__version__}) and exit")
         sys.exit(2)
+
+    print(f"validate_osint_fixtures v{__version__}")
 
     errs = validate(sys.argv[1], sys.argv[2])
     if errs:
@@ -146,4 +209,17 @@ if __name__ == "__main__":
             ds = json.load(f)
         n = len(ds.get("records", []))
         print(f"ALL FIXTURE VALIDATIONS PASSED ({n} records, dataset: {ds.get('dataset_id', '?')})")
-        sys.exit(0)
+
+    # CHECK 7: Counter-signal bundle consistency (non-blocking warnings)
+    with open(sys.argv[1]) as f:
+        ds = json.load(f)
+    cs_warnings = check_counter_signal_consistency(ds)
+    if cs_warnings:
+        print(f"\n  Counter-signal consistency: {len(cs_warnings)} warning(s)")
+        for w in cs_warnings:
+            print(f"    ⚠ {w}")
+    else:
+        print("  Counter-signal consistency: OK")
+
+    # Exit code based on errors only, not warnings
+    sys.exit(1 if errs else 0)

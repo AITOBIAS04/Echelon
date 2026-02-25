@@ -14,6 +14,8 @@ Flags:
   --strict  Reject sources carrying proposed_source_group (enforce v1.1+ only)
 """
 
+__version__ = "0.4.0"
+
 import json
 import sys
 from collections import Counter
@@ -219,11 +221,17 @@ if __name__ == "__main__":
     flags = [a for a in sys.argv[1:] if a.startswith("--")]
     strict = "--strict" in flags
 
+    if "--version" in flags:
+        print(f"validate_osint_registry v{__version__}")
+        sys.exit(0)
+
     if len(args) != 1:
-        print(f"Usage: {sys.argv[0]} [--strict] <registry.json>")
-        print("  --strict  Reject proposed_source_group fields (enforce v1.1+ only)")
+        print(f"Usage: {sys.argv[0]} [--strict] [--version] <registry.json>")
+        print("  --strict   Reject proposed_source_group fields (enforce v1.1+ only)")
+        print(f"  --version  Print version ({__version__}) and exit")
         sys.exit(2)
 
+    print(f"validate_osint_registry v{__version__}")
     errs = validate(args[0], strict=strict)
     if errs:
         print(f"FAILED — {len(errs)} error(s):")
