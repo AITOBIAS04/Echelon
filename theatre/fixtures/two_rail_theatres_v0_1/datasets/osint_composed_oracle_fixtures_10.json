@@ -6,14 +6,14 @@
     "corroboration_window_seconds": 3600,
     "allow_gap_on_counter_signal": false,
     "rule_change_policy": "fail",
-    "composite_score_tolerance": 1e-9,
+    "composite_score_tolerance": 1e-09,
     "scoring_formula_version": "weighted_linear_v0.1",
     "scoring_weights": {
-      "primary_anomaly": 0.40,
+      "primary_anomaly": 0.4,
       "corroboration": 0.25,
       "counter_adjustment": -0.15,
-      "freshness": 0.10,
-      "provenance": 0.10
+      "freshness": 0.1,
+      "provenance": 0.1
     }
   },
   "source_config": [
@@ -21,41 +21,38 @@
       "source_id": "worldmonitor_cii",
       "source_group": "alt_data_behavioural",
       "resolution_role": "primary_evidence",
+      "registry_status": "committed",
       "max_age_seconds": 3600,
-      "confidence_floor": 0.60,
+      "confidence_floor": 0.6,
       "retrieval_method": "GET /api/v1/intelligence/cii?country={iso3}"
     },
     {
       "source_id": "gdelt_event_feed",
       "source_group": "wire_service",
       "resolution_role": "secondary_corroboration",
+      "registry_status": "committed",
       "max_age_seconds": 7200,
-      "confidence_floor": 0.50,
+      "confidence_floor": 0.5,
       "retrieval_method": "GET /api/v2/events?geo={lat},{lon}&radius=100km"
     },
     {
       "source_id": "reuters_wire",
       "source_group": "national_media",
       "resolution_role": "secondary_corroboration",
+      "registry_status": "planned",
+      "registry_note": "No Reuters API in registry. Geopolitical-era fixture source. Will require national_media source onboarding or fixture migration to gdelt_event_feed in a future cycle.",
       "max_age_seconds": 7200,
-      "confidence_floor": 0.70,
+      "confidence_floor": 0.7,
       "retrieval_method": "RSS ingest from reuters.com/world filtered by geo tags"
     },
     {
-      "source_id": "polymarket_feed",
+      "source_id": "polymarket_clob",
       "source_group": "prediction_market",
       "resolution_role": "secondary_corroboration",
+      "registry_status": "committed",
       "max_age_seconds": 1800,
-      "confidence_floor": 0.40,
+      "confidence_floor": 0.4,
       "retrieval_method": "GET /api/v1/markets?tag={theatre_tag}&active=true"
-    },
-    {
-      "source_id": "citywide_activity_index",
-      "source_group": "alt_data_behavioural",
-      "resolution_role": "counter_signal",
-      "max_age_seconds": 3600,
-      "confidence_floor": 0.50,
-      "retrieval_method": "GET /api/v1/mobility/index?geo={lat},{lon}&radius=50km"
     }
   ],
   "committed_market_rules": {
@@ -81,7 +78,10 @@
             "raw_payload_hash": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
             "receipt": {
               "timestamp": "2026-02-24T10:42:01Z",
-              "request_parameters": {"country": "IRN", "endpoint": "/api/v1/intelligence/cii"},
+              "request_parameters": {
+                "country": "IRN",
+                "endpoint": "/api/v1/intelligence/cii"
+              },
               "source_id": "worldmonitor_cii",
               "source_version": "v2.1.0",
               "http_status": 200,
@@ -89,8 +89,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0001_a",
-              "geo": {"lat": 26.5667, "lon": 56.2500, "radius_m": 50000},
-              "measure": {"type": "country_instability_index", "value": 0.78, "unit": "0_1"},
+              "geo": {
+                "lat": 26.5667,
+                "lon": 56.25,
+                "radius_m": 50000
+              },
+              "measure": {
+                "type": "country_instability_index",
+                "value": 0.78,
+                "unit": "0_1"
+              },
               "confidence": 0.85
             }
           },
@@ -104,7 +112,10 @@
             "raw_payload_hash": "2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c",
             "receipt": {
               "timestamp": "2026-02-24T10:38:02Z",
-              "request_parameters": {"geo": "26.5667,56.2500", "radius": "100km"},
+              "request_parameters": {
+                "geo": "26.5667,56.2500",
+                "radius": "100km"
+              },
               "source_id": "gdelt_event_feed",
               "source_version": "v2.0",
               "http_status": 200,
@@ -112,8 +123,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0001_b",
-              "geo": {"lat": 26.60, "lon": 56.30, "radius_m": 100000},
-              "measure": {"type": "goldstein_scale", "value": -6.2, "unit": "goldstein"},
+              "geo": {
+                "lat": 26.6,
+                "lon": 56.3,
+                "radius_m": 100000
+              },
+              "measure": {
+                "type": "goldstein_scale",
+                "value": -6.2,
+                "unit": "goldstein"
+              },
               "confidence": 0.72
             }
           },
@@ -127,7 +146,10 @@
             "raw_payload_hash": "3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d",
             "receipt": {
               "timestamp": "2026-02-24T10:35:04Z",
-              "request_parameters": {"feed": "reuters_world", "geo_tag": "hormuz"},
+              "request_parameters": {
+                "feed": "reuters_world",
+                "geo_tag": "hormuz"
+              },
               "source_id": "reuters_wire",
               "source_version": "rss_v3",
               "http_status": 200,
@@ -135,14 +157,22 @@
             },
             "normalised_event": {
               "event_id": "evt_0001_c",
-              "geo": {"lat": 26.55, "lon": 56.25, "radius_m": 50000},
-              "measure": {"type": "risk_narrative", "value": 0.80, "unit": "0_1"},
+              "geo": {
+                "lat": 26.55,
+                "lon": 56.25,
+                "radius_m": 50000
+              },
+              "measure": {
+                "type": "risk_narrative",
+                "value": 0.8,
+                "unit": "0_1"
+              },
               "confidence": 0.88
             }
           },
           {
             "bundle_id": "eb_0001_corr_poly",
-            "source_id": "polymarket_feed",
+            "source_id": "polymarket_clob",
             "source_group": "prediction_market",
             "resolution_role": "secondary_corroboration",
             "confirms_primary": true,
@@ -150,16 +180,27 @@
             "raw_payload_hash": "4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e",
             "receipt": {
               "timestamp": "2026-02-24T10:50:01Z",
-              "request_parameters": {"tag": "iran_hormuz", "active": true},
-              "source_id": "polymarket_feed",
+              "request_parameters": {
+                "tag": "iran_hormuz",
+                "active": true
+              },
+              "source_id": "polymarket_clob",
               "source_version": "clob_v2",
               "http_status": 200,
               "content_hash": "4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e"
             },
             "normalised_event": {
               "event_id": "evt_0001_d",
-              "geo": {"lat": 26.57, "lon": 56.25, "radius_m": 50000},
-              "measure": {"type": "implied_probability", "value": 0.36, "unit": "0_1"},
+              "geo": {
+                "lat": 26.57,
+                "lon": 56.25,
+                "radius_m": 50000
+              },
+              "measure": {
+                "type": "implied_probability",
+                "value": 0.36,
+                "unit": "0_1"
+              },
               "confidence": 0.95
             }
           }
@@ -173,7 +214,10 @@
           "raw_payload_hash": "5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f",
           "receipt": {
             "timestamp": "2026-02-24T10:45:02Z",
-            "request_parameters": {"geo": "26.5667,56.2500", "radius": "50km"},
+            "request_parameters": {
+              "geo": "26.5667,56.2500",
+              "radius": "50km"
+            },
             "source_id": "citywide_activity_index",
             "http_status": 200,
             "content_hash": "5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f"
@@ -200,10 +244,10 @@
           "composite_risk": 0.7405,
           "components": {
             "primary_anomaly": 0.78,
-            "corroboration": 0.80,
-            "counter_adjustment": 0.00,
-            "freshness": 1.00,
-            "provenance": 1.00
+            "corroboration": 0.8,
+            "counter_adjustment": 0.0,
+            "freshness": 1.0,
+            "provenance": 1.0
           }
         },
         "overall_result": "PASS"
@@ -225,7 +269,10 @@
             "raw_payload_hash": "aa11bb22cc33dd44ee55ff66aa77bb88cc99dd00ee11ff22aa33bb44cc55dd66",
             "receipt": {
               "timestamp": "2026-02-24T08:30:01Z",
-              "request_parameters": {"country": "SYR", "endpoint": "/api/v1/intelligence/cii"},
+              "request_parameters": {
+                "country": "SYR",
+                "endpoint": "/api/v1/intelligence/cii"
+              },
               "source_id": "worldmonitor_cii",
               "source_version": "v2.1.0",
               "http_status": 200,
@@ -233,8 +280,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0002_a",
-              "geo": {"lat": 35.00, "lon": 36.00, "radius_m": 200000},
-              "measure": {"type": "country_instability_index", "value": 0.62, "unit": "0_1"},
+              "geo": {
+                "lat": 35.0,
+                "lon": 36.0,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "country_instability_index",
+                "value": 0.62,
+                "unit": "0_1"
+              },
               "confidence": 0.78
             }
           },
@@ -248,7 +303,10 @@
             "raw_payload_hash": "bb22cc33dd44ee55ff66aa77bb88cc99dd00ee11ff22aa33bb44cc55dd66ee77",
             "receipt": {
               "timestamp": "2026-02-24T08:25:03Z",
-              "request_parameters": {"geo": "35.00,36.00", "radius": "200km"},
+              "request_parameters": {
+                "geo": "35.00,36.00",
+                "radius": "200km"
+              },
               "source_id": "gdelt_event_feed",
               "source_version": "v2.0",
               "http_status": 200,
@@ -256,8 +314,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0002_b",
-              "geo": {"lat": 35.10, "lon": 36.10, "radius_m": 200000},
-              "measure": {"type": "goldstein_scale", "value": -4.1, "unit": "goldstein"},
+              "geo": {
+                "lat": 35.1,
+                "lon": 36.1,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "goldstein_scale",
+                "value": -4.1,
+                "unit": "goldstein"
+              },
               "confidence": 0.65
             }
           },
@@ -271,7 +337,10 @@
             "raw_payload_hash": "cc33dd44ee55ff66aa77bb88cc99dd00ee11ff22aa33bb44cc55dd66ee77ff88",
             "receipt": {
               "timestamp": "2026-02-24T08:20:02Z",
-              "request_parameters": {"feed": "reuters_world", "geo_tag": "syria_eastern_med"},
+              "request_parameters": {
+                "feed": "reuters_world",
+                "geo_tag": "syria_eastern_med"
+              },
               "source_id": "reuters_wire",
               "source_version": "rss_v3",
               "http_status": 200,
@@ -279,8 +348,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0002_c",
-              "geo": {"lat": 34.90, "lon": 35.90, "radius_m": 200000},
-              "measure": {"type": "risk_narrative", "value": 0.58, "unit": "0_1"},
+              "geo": {
+                "lat": 34.9,
+                "lon": 35.9,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "risk_narrative",
+                "value": 0.58,
+                "unit": "0_1"
+              },
               "confidence": 0.82
             }
           }
@@ -296,7 +373,10 @@
           "raw_payload_hash": "dd44ee55ff66aa77bb88cc99dd00ee11ff22aa33bb44cc55dd66ee77ff8899aa",
           "receipt": {
             "timestamp": "2026-02-24T08:35:01Z",
-            "request_parameters": {"geo": "35.00,36.00", "radius": "50km"},
+            "request_parameters": {
+              "geo": "35.00,36.00",
+              "radius": "50km"
+            },
             "source_id": "citywide_activity_index",
             "http_status": 200,
             "content_hash": "dd44ee55ff66aa77bb88cc99dd00ee11ff22aa33bb44cc55dd66ee77ff8899aa"
@@ -324,9 +404,9 @@
           "components": {
             "primary_anomaly": 0.62,
             "corroboration": 0.58,
-            "counter_adjustment": 0.00,
-            "freshness": 1.00,
-            "provenance": 1.00
+            "counter_adjustment": 0.0,
+            "freshness": 1.0,
+            "provenance": 1.0
           }
         },
         "overall_result": "PASS"
@@ -348,7 +428,10 @@
             "raw_payload_hash": "a100b200c300d400e500f600a700b800c900d000e100f200a300b400c500d600",
             "receipt": {
               "timestamp": "2026-02-24T06:45:01Z",
-              "request_parameters": {"country": "CHN", "endpoint": "/api/v1/intelligence/cii"},
+              "request_parameters": {
+                "country": "CHN",
+                "endpoint": "/api/v1/intelligence/cii"
+              },
               "source_id": "worldmonitor_cii",
               "source_version": "v2.1.0",
               "http_status": 200,
@@ -356,8 +439,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0003_a",
-              "geo": {"lat": 14.50, "lon": 114.00, "radius_m": 300000},
-              "measure": {"type": "country_instability_index", "value": 0.91, "unit": "0_1"},
+              "geo": {
+                "lat": 14.5,
+                "lon": 114.0,
+                "radius_m": 300000
+              },
+              "measure": {
+                "type": "country_instability_index",
+                "value": 0.91,
+                "unit": "0_1"
+              },
               "confidence": 0.92
             }
           },
@@ -371,7 +462,10 @@
             "raw_payload_hash": "b200c300d400e500f600a700b800c900d000e100f200a300b400c500d600e700",
             "receipt": {
               "timestamp": "2026-02-24T06:40:02Z",
-              "request_parameters": {"geo": "14.50,114.00", "radius": "300km"},
+              "request_parameters": {
+                "geo": "14.50,114.00",
+                "radius": "300km"
+              },
               "source_id": "gdelt_event_feed",
               "source_version": "v2.0",
               "http_status": 200,
@@ -379,9 +473,17 @@
             },
             "normalised_event": {
               "event_id": "evt_0003_b",
-              "geo": {"lat": 14.60, "lon": 114.10, "radius_m": 300000},
-              "measure": {"type": "goldstein_scale", "value": -8.5, "unit": "goldstein"},
-              "confidence": 0.80
+              "geo": {
+                "lat": 14.6,
+                "lon": 114.1,
+                "radius_m": 300000
+              },
+              "measure": {
+                "type": "goldstein_scale",
+                "value": -8.5,
+                "unit": "goldstein"
+              },
+              "confidence": 0.8
             }
           },
           {
@@ -394,7 +496,10 @@
             "raw_payload_hash": "c300d400e500f600a700b800c900d000e100f200a300b400c500d600e700f800",
             "receipt": {
               "timestamp": "2026-02-24T06:35:03Z",
-              "request_parameters": {"feed": "reuters_world", "geo_tag": "south_china_sea"},
+              "request_parameters": {
+                "feed": "reuters_world",
+                "geo_tag": "south_china_sea"
+              },
               "source_id": "reuters_wire",
               "source_version": "rss_v3",
               "http_status": 200,
@@ -402,14 +507,22 @@
             },
             "normalised_event": {
               "event_id": "evt_0003_c",
-              "geo": {"lat": 14.45, "lon": 113.95, "radius_m": 300000},
-              "measure": {"type": "risk_narrative", "value": 0.89, "unit": "0_1"},
+              "geo": {
+                "lat": 14.45,
+                "lon": 113.95,
+                "radius_m": 300000
+              },
+              "measure": {
+                "type": "risk_narrative",
+                "value": 0.89,
+                "unit": "0_1"
+              },
               "confidence": 0.91
             }
           },
           {
             "bundle_id": "eb_0003_corr_poly",
-            "source_id": "polymarket_feed",
+            "source_id": "polymarket_clob",
             "source_group": "prediction_market",
             "resolution_role": "secondary_corroboration",
             "confirms_primary": true,
@@ -417,16 +530,27 @@
             "raw_payload_hash": "d400e500f600a700b800c900d000e100f200a300b400c500d600e700f800a900",
             "receipt": {
               "timestamp": "2026-02-24T06:50:01Z",
-              "request_parameters": {"tag": "south_china_sea_conflict", "active": true},
-              "source_id": "polymarket_feed",
+              "request_parameters": {
+                "tag": "south_china_sea_conflict",
+                "active": true
+              },
+              "source_id": "polymarket_clob",
               "source_version": "clob_v2",
               "http_status": 200,
               "content_hash": "d400e500f600a700b800c900d000e100f200a300b400c500d600e700f800a900"
             },
             "normalised_event": {
               "event_id": "evt_0003_d",
-              "geo": {"lat": 14.50, "lon": 114.00, "radius_m": 300000},
-              "measure": {"type": "implied_probability", "value": 0.72, "unit": "0_1"},
+              "geo": {
+                "lat": 14.5,
+                "lon": 114.0,
+                "radius_m": 300000
+              },
+              "measure": {
+                "type": "implied_probability",
+                "value": 0.72,
+                "unit": "0_1"
+              },
               "confidence": 0.95
             }
           }
@@ -440,7 +564,10 @@
           "raw_payload_hash": "e500f600a700b800c900d000e100f200a300b400c500d600e700f800a900b000",
           "receipt": {
             "timestamp": "2026-02-24T06:48:02Z",
-            "request_parameters": {"geo": "18.25,109.50", "radius": "200km"},
+            "request_parameters": {
+              "geo": "18.25,109.50",
+              "radius": "200km"
+            },
             "source_id": "citywide_activity_index",
             "http_status": 200,
             "content_hash": "e500f600a700b800c900d000e100f200a300b400c500d600e700f800a900b000"
@@ -468,9 +595,9 @@
           "components": {
             "primary_anomaly": 0.91,
             "corroboration": 0.89,
-            "counter_adjustment": 0.00,
-            "freshness": 1.00,
-            "provenance": 1.00
+            "counter_adjustment": 0.0,
+            "freshness": 1.0,
+            "provenance": 1.0
           }
         },
         "overall_result": "PASS"
@@ -492,7 +619,10 @@
             "raw_payload_hash": "f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2",
             "receipt": {
               "timestamp": "2026-02-24T12:30:01Z",
-              "request_parameters": {"country": "ROU", "endpoint": "/api/v1/intelligence/cii"},
+              "request_parameters": {
+                "country": "ROU",
+                "endpoint": "/api/v1/intelligence/cii"
+              },
               "source_id": "worldmonitor_cii",
               "source_version": "v2.1.0",
               "http_status": 200,
@@ -500,8 +630,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0004_a",
-              "geo": {"lat": 43.50, "lon": 30.00, "radius_m": 150000},
-              "measure": {"type": "country_instability_index", "value": 0.35, "unit": "0_1"},
+              "geo": {
+                "lat": 43.5,
+                "lon": 30.0,
+                "radius_m": 150000
+              },
+              "measure": {
+                "type": "country_instability_index",
+                "value": 0.35,
+                "unit": "0_1"
+              },
               "confidence": 0.75
             }
           },
@@ -515,7 +653,10 @@
             "raw_payload_hash": "e2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3",
             "receipt": {
               "timestamp": "2026-02-24T12:22:02Z",
-              "request_parameters": {"geo": "43.50,30.00", "radius": "150km"},
+              "request_parameters": {
+                "geo": "43.50,30.00",
+                "radius": "150km"
+              },
               "source_id": "gdelt_event_feed",
               "source_version": "v2.0",
               "http_status": 200,
@@ -523,9 +664,17 @@
             },
             "normalised_event": {
               "event_id": "evt_0004_b",
-              "geo": {"lat": 43.55, "lon": 30.05, "radius_m": 150000},
-              "measure": {"type": "goldstein_scale", "value": -1.8, "unit": "goldstein"},
-              "confidence": 0.60
+              "geo": {
+                "lat": 43.55,
+                "lon": 30.05,
+                "radius_m": 150000
+              },
+              "measure": {
+                "type": "goldstein_scale",
+                "value": -1.8,
+                "unit": "goldstein"
+              },
+              "confidence": 0.6
             }
           },
           {
@@ -538,7 +687,10 @@
             "raw_payload_hash": "d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4",
             "receipt": {
               "timestamp": "2026-02-24T12:18:03Z",
-              "request_parameters": {"feed": "reuters_world", "geo_tag": "black_sea"},
+              "request_parameters": {
+                "feed": "reuters_world",
+                "geo_tag": "black_sea"
+              },
               "source_id": "reuters_wire",
               "source_version": "rss_v3",
               "http_status": 200,
@@ -546,9 +698,17 @@
             },
             "normalised_event": {
               "event_id": "evt_0004_c",
-              "geo": {"lat": 43.48, "lon": 29.95, "radius_m": 150000},
-              "measure": {"type": "risk_narrative", "value": 0.30, "unit": "0_1"},
-              "confidence": 0.70
+              "geo": {
+                "lat": 43.48,
+                "lon": 29.95,
+                "radius_m": 150000
+              },
+              "measure": {
+                "type": "risk_narrative",
+                "value": 0.3,
+                "unit": "0_1"
+              },
+              "confidence": 0.7
             }
           }
         ],
@@ -561,7 +721,10 @@
           "raw_payload_hash": "c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5",
           "receipt": {
             "timestamp": "2026-02-24T12:40:01Z",
-            "request_parameters": {"geo": "44.18,28.63", "radius": "50km"},
+            "request_parameters": {
+              "geo": "44.18,28.63",
+              "radius": "50km"
+            },
             "source_id": "citywide_activity_index",
             "http_status": 200,
             "content_hash": "c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5"
@@ -585,13 +748,13 @@
         "oracle_output": {
           "geo_id": "black_sea_western",
           "window": "2026-02-24T12:00:00Z/2026-02-24T13:00:00Z",
-          "composite_risk": 0.3350,
+          "composite_risk": 0.335,
           "components": {
             "primary_anomaly": 0.35,
-            "corroboration": 0.30,
-            "counter_adjustment": 0.00,
-            "freshness": 1.00,
-            "provenance": 1.00
+            "corroboration": 0.3,
+            "counter_adjustment": 0.0,
+            "freshness": 1.0,
+            "provenance": 1.0
           }
         },
         "overall_result": "PASS"
@@ -613,7 +776,10 @@
             "raw_payload_hash": "1111222233334444555566667777888899990000aaaabbbbccccddddeeeeffff",
             "receipt": {
               "timestamp": "2026-02-24T14:40:01Z",
-              "request_parameters": {"country": "YEM", "endpoint": "/api/v1/intelligence/cii"},
+              "request_parameters": {
+                "country": "YEM",
+                "endpoint": "/api/v1/intelligence/cii"
+              },
               "source_id": "worldmonitor_cii",
               "source_version": "v2.1.0",
               "http_status": 200,
@@ -621,9 +787,17 @@
             },
             "normalised_event": {
               "event_id": "evt_0005_a",
-              "geo": {"lat": 12.80, "lon": 45.00, "radius_m": 200000},
-              "measure": {"type": "country_instability_index", "value": 0.70, "unit": "0_1"},
-              "confidence": 0.80
+              "geo": {
+                "lat": 12.8,
+                "lon": 45.0,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "country_instability_index",
+                "value": 0.7,
+                "unit": "0_1"
+              },
+              "confidence": 0.8
             }
           },
           {
@@ -636,7 +810,10 @@
             "raw_payload_hash": "2222333344445555666677778888999900001111bbbbccccddddeeeeffffaaaa",
             "receipt": {
               "timestamp": "2026-02-24T14:32:02Z",
-              "request_parameters": {"geo": "12.80,45.00", "radius": "200km"},
+              "request_parameters": {
+                "geo": "12.80,45.00",
+                "radius": "200km"
+              },
               "source_id": "gdelt_event_feed",
               "source_version": "v2.0",
               "http_status": 200,
@@ -644,14 +821,22 @@
             },
             "normalised_event": {
               "event_id": "evt_0005_b",
-              "geo": {"lat": 12.85, "lon": 45.05, "radius_m": 200000},
-              "measure": {"type": "goldstein_scale", "value": -5.8, "unit": "goldstein"},
+              "geo": {
+                "lat": 12.85,
+                "lon": 45.05,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "goldstein_scale",
+                "value": -5.8,
+                "unit": "goldstein"
+              },
               "confidence": 0.68
             }
           },
           {
             "bundle_id": "eb_0005_corr_poly",
-            "source_id": "polymarket_feed",
+            "source_id": "polymarket_clob",
             "source_group": "prediction_market",
             "resolution_role": "secondary_corroboration",
             "confirms_primary": true,
@@ -659,16 +844,27 @@
             "raw_payload_hash": "3333444455556666777788889999000011112222ccccddddeeeeffffaaaabbbb",
             "receipt": {
               "timestamp": "2026-02-24T14:48:01Z",
-              "request_parameters": {"tag": "gulf_of_aden_shipping", "active": true},
-              "source_id": "polymarket_feed",
+              "request_parameters": {
+                "tag": "gulf_of_aden_shipping",
+                "active": true
+              },
+              "source_id": "polymarket_clob",
               "source_version": "clob_v2",
               "http_status": 200,
               "content_hash": "3333444455556666777788889999000011112222ccccddddeeeeffffaaaabbbb"
             },
             "normalised_event": {
               "event_id": "evt_0005_c",
-              "geo": {"lat": 12.80, "lon": 45.00, "radius_m": 200000},
-              "measure": {"type": "implied_probability", "value": 0.55, "unit": "0_1"},
+              "geo": {
+                "lat": 12.8,
+                "lon": 45.0,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "implied_probability",
+                "value": 0.55,
+                "unit": "0_1"
+              },
               "confidence": 0.93
             }
           }
@@ -682,7 +878,10 @@
           "raw_payload_hash": null,
           "receipt": {
             "timestamp": "2026-02-24T14:44:00Z",
-            "request_parameters": {"geo": "12.80,45.00", "radius": "50km"},
+            "request_parameters": {
+              "geo": "12.80,45.00",
+              "radius": "50km"
+            },
             "source_id": "citywide_activity_index",
             "http_status": 503,
             "content_hash": null
@@ -713,13 +912,15 @@
           "window": "2026-02-24T14:00:00Z/2026-02-24T15:00:00Z",
           "composite_risk": 0.6425,
           "components": {
-            "primary_anomaly": 0.70,
+            "primary_anomaly": 0.7,
             "corroboration": 0.55,
-            "counter_adjustment": 0.00,
-            "freshness": 1.00,
-            "provenance": 1.00
+            "counter_adjustment": 0.0,
+            "freshness": 1.0,
+            "provenance": 1.0
           },
-          "intelligence_gaps": ["counter_signal_unavailable"]
+          "intelligence_gaps": [
+            "counter_signal_unavailable"
+          ]
         },
         "overall_result": "PASS"
       }
@@ -740,7 +941,10 @@
             "raw_payload_hash": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
             "receipt": {
               "timestamp": "2026-02-24T04:42:01Z",
-              "request_parameters": {"country": "TWN", "endpoint": "/api/v1/intelligence/cii"},
+              "request_parameters": {
+                "country": "TWN",
+                "endpoint": "/api/v1/intelligence/cii"
+              },
               "source_id": "worldmonitor_cii",
               "source_version": "v2.1.0",
               "http_status": 200,
@@ -748,9 +952,17 @@
             },
             "normalised_event": {
               "event_id": "evt_0006_a",
-              "geo": {"lat": 24.50, "lon": 119.00, "radius_m": 200000},
-              "measure": {"type": "country_instability_index", "value": 0.88, "unit": "0_1"},
-              "confidence": 0.90
+              "geo": {
+                "lat": 24.5,
+                "lon": 119.0,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "country_instability_index",
+                "value": 0.88,
+                "unit": "0_1"
+              },
+              "confidence": 0.9
             }
           },
           {
@@ -763,7 +975,10 @@
             "raw_payload_hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
             "receipt": {
               "timestamp": "2026-02-24T04:38:02Z",
-              "request_parameters": {"geo": "24.50,119.00", "radius": "200km"},
+              "request_parameters": {
+                "geo": "24.50,119.00",
+                "radius": "200km"
+              },
               "source_id": "gdelt_event_feed",
               "source_version": "v2.0",
               "http_status": 200,
@@ -771,8 +986,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0006_b",
-              "geo": {"lat": 24.55, "lon": 119.05, "radius_m": 200000},
-              "measure": {"type": "goldstein_scale", "value": -7.9, "unit": "goldstein"},
+              "geo": {
+                "lat": 24.55,
+                "lon": 119.05,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "goldstein_scale",
+                "value": -7.9,
+                "unit": "goldstein"
+              },
               "confidence": 0.82
             }
           },
@@ -786,7 +1009,10 @@
             "raw_payload_hash": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
             "receipt": {
               "timestamp": "2026-02-24T04:33:03Z",
-              "request_parameters": {"feed": "reuters_world", "geo_tag": "taiwan_strait"},
+              "request_parameters": {
+                "feed": "reuters_world",
+                "geo_tag": "taiwan_strait"
+              },
               "source_id": "reuters_wire",
               "source_version": "rss_v3",
               "http_status": 200,
@@ -794,8 +1020,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0006_c",
-              "geo": {"lat": 24.48, "lon": 118.95, "radius_m": 200000},
-              "measure": {"type": "risk_narrative", "value": 0.85, "unit": "0_1"},
+              "geo": {
+                "lat": 24.48,
+                "lon": 118.95,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "risk_narrative",
+                "value": 0.85,
+                "unit": "0_1"
+              },
               "confidence": 0.88
             }
           }
@@ -809,7 +1043,10 @@
           "raw_payload_hash": "9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba",
           "receipt": {
             "timestamp": "2026-02-24T04:46:01Z",
-            "request_parameters": {"geo": "24.50,118.10", "radius": "100km"},
+            "request_parameters": {
+              "geo": "24.50,118.10",
+              "radius": "100km"
+            },
             "source_id": "citywide_activity_index",
             "http_status": 200,
             "content_hash": "9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba"
@@ -837,9 +1074,9 @@
           "components": {
             "primary_anomaly": 0.88,
             "corroboration": 0.85,
-            "counter_adjustment": 0.00,
-            "freshness": 1.00,
-            "provenance": 1.00
+            "counter_adjustment": 0.0,
+            "freshness": 1.0,
+            "provenance": 1.0
           }
         },
         "overall_result": "PASS"
@@ -861,7 +1098,10 @@
             "raw_payload_hash": "aaaa1111bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888",
             "receipt": {
               "timestamp": "2026-02-24T16:10:01Z",
-              "request_parameters": {"country": "IRN", "endpoint": "/api/v1/intelligence/cii"},
+              "request_parameters": {
+                "country": "IRN",
+                "endpoint": "/api/v1/intelligence/cii"
+              },
               "source_id": "worldmonitor_cii",
               "source_version": "v2.1.0",
               "http_status": 200,
@@ -869,8 +1109,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0007_a",
-              "geo": {"lat": 26.5667, "lon": 56.2500, "radius_m": 50000},
-              "measure": {"type": "country_instability_index", "value": 0.73, "unit": "0_1"},
+              "geo": {
+                "lat": 26.5667,
+                "lon": 56.25,
+                "radius_m": 50000
+              },
+              "measure": {
+                "type": "country_instability_index",
+                "value": 0.73,
+                "unit": "0_1"
+              },
               "confidence": 0.82
             }
           },
@@ -884,7 +1132,10 @@
             "raw_payload_hash": "bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888cccc9999",
             "receipt": {
               "timestamp": "2026-02-24T16:08:02Z",
-              "request_parameters": {"geo": "26.5667,56.2500", "radius": "100km"},
+              "request_parameters": {
+                "geo": "26.5667,56.2500",
+                "radius": "100km"
+              },
               "source_id": "gdelt_event_feed",
               "source_version": "v2.0",
               "http_status": 200,
@@ -892,14 +1143,22 @@
             },
             "normalised_event": {
               "event_id": "evt_0007_b",
-              "geo": {"lat": 26.60, "lon": 56.30, "radius_m": 100000},
-              "measure": {"type": "goldstein_scale", "value": -5.5, "unit": "goldstein"},
-              "confidence": 0.70
+              "geo": {
+                "lat": 26.6,
+                "lon": 56.3,
+                "radius_m": 100000
+              },
+              "measure": {
+                "type": "goldstein_scale",
+                "value": -5.5,
+                "unit": "goldstein"
+              },
+              "confidence": 0.7
             }
           },
           {
             "bundle_id": "eb_0007_corr_poly_LATE",
-            "source_id": "polymarket_feed",
+            "source_id": "polymarket_clob",
             "source_group": "prediction_market",
             "resolution_role": "secondary_corroboration",
             "confirms_primary": true,
@@ -907,17 +1166,28 @@
             "raw_payload_hash": "cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888cccc9999ddddaaaa",
             "receipt": {
               "timestamp": "2026-02-24T17:10:02Z",
-              "request_parameters": {"tag": "iran_hormuz", "active": true},
-              "source_id": "polymarket_feed",
+              "request_parameters": {
+                "tag": "iran_hormuz",
+                "active": true
+              },
+              "source_id": "polymarket_clob",
               "source_version": "clob_v2",
               "http_status": 200,
               "content_hash": "cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888cccc9999ddddaaaa"
             },
             "normalised_event": {
               "event_id": "evt_0007_c",
-              "geo": {"lat": 26.57, "lon": 56.25, "radius_m": 50000},
-              "measure": {"type": "implied_probability", "value": 0.42, "unit": "0_1"},
-              "confidence": 0.90
+              "geo": {
+                "lat": 26.57,
+                "lon": 56.25,
+                "radius_m": 50000
+              },
+              "measure": {
+                "type": "implied_probability",
+                "value": 0.42,
+                "unit": "0_1"
+              },
+              "confidence": 0.9
             }
           }
         ],
@@ -930,7 +1200,10 @@
           "raw_payload_hash": "dddd4444eeee5555ffff6666aaaa7777bbbb8888cccc9999ddddaaaaeeeebbb1",
           "receipt": {
             "timestamp": "2026-02-24T16:15:01Z",
-            "request_parameters": {"geo": "26.5667,56.2500", "radius": "50km"},
+            "request_parameters": {
+              "geo": "26.5667,56.2500",
+              "radius": "50km"
+            },
             "source_id": "citywide_activity_index",
             "http_status": 200,
             "content_hash": "dddd4444eeee5555ffff6666aaaa7777bbbb8888cccc9999ddddaaaaeeeebbb1"
@@ -955,10 +1228,17 @@
           "criterion": "corroboration_minimum_met",
           "reason": "Only 1 distinct source_group (wire_service) confirmed within corroboration_window_seconds=3600. prediction_market corroboration arrived at 17:10:01Z, which is 3601 seconds after primary at 16:10:00Z — 1 second beyond window. Required: 2.",
           "corroborators_in_window": [
-            {"source_group": "wire_service", "delta_seconds": -120}
+            {
+              "source_group": "wire_service",
+              "delta_seconds": -120
+            }
           ],
           "corroborators_out_of_window": [
-            {"source_group": "prediction_market", "delta_seconds": 3601, "excess_seconds": 1}
+            {
+              "source_group": "prediction_market",
+              "delta_seconds": 3601,
+              "excess_seconds": 1
+            }
           ]
         },
         "overall_result": "FAIL"
@@ -977,19 +1257,30 @@
             "source_group": "alt_data_behavioural",
             "resolution_role": "primary_evidence",
             "evidence_timestamp": "2026-02-24T18:30:00Z",
-            "raw_payload_hash": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+            "raw_payload_hash": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff0",
             "receipt": {
               "timestamp": "2026-02-24T18:30:01Z",
-              "request_parameters": {"country": "SYR", "endpoint": "/api/v1/intelligence/cii"},
+              "request_parameters": {
+                "country": "SYR",
+                "endpoint": "/api/v1/intelligence/cii"
+              },
               "source_id": "worldmonitor_cii",
               "source_version": "v2.1.0",
               "http_status": 200,
-              "content_hash": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+              "content_hash": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff0"
             },
             "normalised_event": {
               "event_id": "evt_0008_a",
-              "geo": {"lat": 35.00, "lon": 36.00, "radius_m": 200000},
-              "measure": {"type": "country_instability_index", "value": 0.68, "unit": "0_1"},
+              "geo": {
+                "lat": 35.0,
+                "lon": 36.0,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "country_instability_index",
+                "value": 0.68,
+                "unit": "0_1"
+              },
               "confidence": 0.79
             }
           },
@@ -1003,7 +1294,10 @@
             "raw_payload_hash": "e0e1e2e3e4e5e6e7e8e9eaebecedefeee0e1e2e3e4e5e6e7e8e9eaebecedefe0",
             "receipt": {
               "timestamp": "2026-02-24T18:25:02Z",
-              "request_parameters": {"geo": "35.00,36.00", "radius": "200km"},
+              "request_parameters": {
+                "geo": "35.00,36.00",
+                "radius": "200km"
+              },
               "source_id": "gdelt_event_feed",
               "source_version": "v2.0",
               "http_status": 200,
@@ -1011,8 +1305,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0008_b",
-              "geo": {"lat": 35.10, "lon": 36.10, "radius_m": 200000},
-              "measure": {"type": "goldstein_scale", "value": -4.8, "unit": "goldstein"},
+              "geo": {
+                "lat": 35.1,
+                "lon": 36.1,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "goldstein_scale",
+                "value": -4.8,
+                "unit": "goldstein"
+              },
               "confidence": 0.67
             }
           },
@@ -1026,7 +1328,10 @@
             "raw_payload_hash": "d0d1d2d3d4d5d6d7d8d9dadbdcdddedfd0d1d2d3d4d5d6d7d8d9dadbdcddded0",
             "receipt": {
               "timestamp": "2026-02-24T18:22:03Z",
-              "request_parameters": {"feed": "reuters_world", "geo_tag": "syria"},
+              "request_parameters": {
+                "feed": "reuters_world",
+                "geo_tag": "syria"
+              },
               "source_id": "reuters_wire",
               "source_version": "rss_v3",
               "http_status": 200,
@@ -1034,9 +1339,17 @@
             },
             "normalised_event": {
               "event_id": "evt_0008_c",
-              "geo": {"lat": 34.90, "lon": 35.90, "radius_m": 200000},
-              "measure": {"type": "risk_narrative", "value": 0.62, "unit": "0_1"},
-              "confidence": 0.80
+              "geo": {
+                "lat": 34.9,
+                "lon": 35.9,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "risk_narrative",
+                "value": 0.62,
+                "unit": "0_1"
+              },
+              "confidence": 0.8
             }
           }
         ],
@@ -1052,7 +1365,10 @@
           "raw_payload_hash": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfc0c1c2c3c4c5c6c7c8c9cacbcccdcec0",
           "receipt": {
             "timestamp": "2026-02-24T18:35:01Z",
-            "request_parameters": {"geo": "35.52,35.79", "radius": "50km"},
+            "request_parameters": {
+              "geo": "35.52,35.79",
+              "radius": "50km"
+            },
             "source_id": "citywide_activity_index",
             "http_status": 200,
             "content_hash": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfc0c1c2c3c4c5c6c7c8c9cacbcccdcec0"
@@ -1099,7 +1415,10 @@
             "raw_payload_hash": "1a1b1c1d1e1f2a2b2c2d2e2f3a3b3c3d3e3f4a4b4c4d4e4f5a5b5c5d5e5f6a6b",
             "receipt": {
               "timestamp": "2026-02-24T20:40:01Z",
-              "request_parameters": {"country": "IRN", "endpoint": "/api/v1/intelligence/cii"},
+              "request_parameters": {
+                "country": "IRN",
+                "endpoint": "/api/v1/intelligence/cii"
+              },
               "source_id": "worldmonitor_cii",
               "source_version": "v2.1.0",
               "http_status": 200,
@@ -1107,8 +1426,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0009_a",
-              "geo": {"lat": 26.5667, "lon": 56.2500, "radius_m": 50000},
-              "measure": {"type": "country_instability_index", "value": 0.80, "unit": "0_1"},
+              "geo": {
+                "lat": 26.5667,
+                "lon": 56.25,
+                "radius_m": 50000
+              },
+              "measure": {
+                "type": "country_instability_index",
+                "value": 0.8,
+                "unit": "0_1"
+              },
               "confidence": 0.86
             }
           },
@@ -1122,7 +1449,10 @@
             "raw_payload_hash": "2b2c2d2e2f3a3b3c3d3e3f4a4b4c4d4e4f5a5b5c5d5e5f6a6b6c6d6e6f7a7b7c",
             "receipt": {
               "timestamp": "2026-02-24T20:35:02Z",
-              "request_parameters": {"geo": "26.5667,56.2500", "radius": "100km"},
+              "request_parameters": {
+                "geo": "26.5667,56.2500",
+                "radius": "100km"
+              },
               "source_id": "gdelt_event_feed",
               "source_version": "v2.0",
               "http_status": 200,
@@ -1130,8 +1460,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0009_b",
-              "geo": {"lat": 26.60, "lon": 56.30, "radius_m": 100000},
-              "measure": {"type": "goldstein_scale", "value": -6.8, "unit": "goldstein"},
+              "geo": {
+                "lat": 26.6,
+                "lon": 56.3,
+                "radius_m": 100000
+              },
+              "measure": {
+                "type": "goldstein_scale",
+                "value": -6.8,
+                "unit": "goldstein"
+              },
               "confidence": 0.75
             }
           },
@@ -1145,7 +1483,10 @@
             "raw_payload_hash": "3c3d3e3f4a4b4c4d4e4f5a5b5c5d5e5f6a6b6c6d6e6f7a7b7c7d7e7f8a8b8c8d",
             "receipt": {
               "timestamp": "2026-02-24T20:30:03Z",
-              "request_parameters": {"feed": "reuters_world", "geo_tag": "hormuz"},
+              "request_parameters": {
+                "feed": "reuters_world",
+                "geo_tag": "hormuz"
+              },
               "source_id": "reuters_wire",
               "source_version": "rss_v3",
               "http_status": 200,
@@ -1153,8 +1494,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0009_c",
-              "geo": {"lat": 26.55, "lon": 56.25, "radius_m": 50000},
-              "measure": {"type": "risk_narrative", "value": 0.82, "unit": "0_1"},
+              "geo": {
+                "lat": 26.55,
+                "lon": 56.25,
+                "radius_m": 50000
+              },
+              "measure": {
+                "type": "risk_narrative",
+                "value": 0.82,
+                "unit": "0_1"
+              },
               "confidence": 0.89
             }
           }
@@ -1168,7 +1517,10 @@
           "raw_payload_hash": "4d4e4f5a5b5c5d5e5f6a6b6c6d6e6f7a7b7c7d7e7f8a8b8c8d8e8f9a9b9c9d9e",
           "receipt": {
             "timestamp": "2026-02-24T20:45:01Z",
-            "request_parameters": {"geo": "26.5667,56.2500", "radius": "50km"},
+            "request_parameters": {
+              "geo": "26.5667,56.2500",
+              "radius": "50km"
+            },
             "source_id": "citywide_activity_index",
             "http_status": 200,
             "content_hash": "4d4e4f5a5b5c5d5e5f6a6b6c6d6e6f7a7b7c7d7e7f8a8b8c8d8e8f9a9b9c9d9e"
@@ -1221,7 +1573,10 @@
             "raw_payload_hash": "a0a0b0b0c0c0d0d0e0e0f0f0a1a1b1b1c1c1d1d1e1e1f1f1a2a2b2b2c2c2d2d2",
             "receipt": {
               "timestamp": "2026-02-24T22:30:01Z",
-              "request_parameters": {"country": "LTU", "endpoint": "/api/v1/intelligence/cii"},
+              "request_parameters": {
+                "country": "LTU",
+                "endpoint": "/api/v1/intelligence/cii"
+              },
               "source_id": "worldmonitor_cii",
               "source_version": "v2.1.0",
               "http_status": 200,
@@ -1229,8 +1584,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0010_a",
-              "geo": {"lat": 56.00, "lon": 20.00, "radius_m": 200000},
-              "measure": {"type": "country_instability_index", "value": 0.55, "unit": "0_1"},
+              "geo": {
+                "lat": 56.0,
+                "lon": 20.0,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "country_instability_index",
+                "value": 0.55,
+                "unit": "0_1"
+              },
               "confidence": 0.72
             }
           },
@@ -1244,7 +1607,10 @@
             "raw_payload_hash": "b0b0c0c0d0d0e0e0f0f0a1a1b1b1c1c1d1d1e1e1f1f1a2a2b2b2c2c2d2d2e2e2",
             "receipt": {
               "timestamp": "2026-02-24T22:25:02Z",
-              "request_parameters": {"geo": "56.00,20.00", "radius": "200km"},
+              "request_parameters": {
+                "geo": "56.00,20.00",
+                "radius": "200km"
+              },
               "source_id": "gdelt_event_feed",
               "source_version": "v2.0",
               "http_status": 200,
@@ -1252,8 +1618,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0010_b",
-              "geo": {"lat": 56.05, "lon": 20.05, "radius_m": 200000},
-              "measure": {"type": "goldstein_scale", "value": -2.5, "unit": "goldstein"},
+              "geo": {
+                "lat": 56.05,
+                "lon": 20.05,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "goldstein_scale",
+                "value": -2.5,
+                "unit": "goldstein"
+              },
               "confidence": 0.45
             }
           },
@@ -1267,7 +1641,10 @@
             "raw_payload_hash": "c0c0d0d0e0e0f0f0a1a1b1b1c1c1d1d1e1e1f1f1a2a2b2b2c2c2d2d2e2e2f2f2",
             "receipt": {
               "timestamp": "2026-02-24T22:20:03Z",
-              "request_parameters": {"feed": "reuters_world", "geo_tag": "baltic"},
+              "request_parameters": {
+                "feed": "reuters_world",
+                "geo_tag": "baltic"
+              },
               "source_id": "reuters_wire",
               "source_version": "rss_v3",
               "http_status": 200,
@@ -1275,8 +1652,16 @@
             },
             "normalised_event": {
               "event_id": "evt_0010_c",
-              "geo": {"lat": 55.95, "lon": 19.95, "radius_m": 200000},
-              "measure": {"type": "risk_narrative", "value": 0.48, "unit": "0_1"},
+              "geo": {
+                "lat": 55.95,
+                "lon": 19.95,
+                "radius_m": 200000
+              },
+              "measure": {
+                "type": "risk_narrative",
+                "value": 0.48,
+                "unit": "0_1"
+              },
               "confidence": 0.65
             }
           }
@@ -1290,7 +1675,10 @@
           "raw_payload_hash": null,
           "receipt": {
             "timestamp": "2026-02-24T22:35:00Z",
-            "request_parameters": {"geo": "56.00,20.00", "radius": "50km"},
+            "request_parameters": {
+              "geo": "56.00,20.00",
+              "radius": "50km"
+            },
             "source_id": "citywide_activity_index",
             "http_status": 504,
             "content_hash": null
@@ -1319,7 +1707,7 @@
           "marginal_corroborator": {
             "source_id": "gdelt_event_feed",
             "confidence": 0.45,
-            "confidence_floor": 0.50,
+            "confidence_floor": 0.5,
             "below_floor": true
           }
         },

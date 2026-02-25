@@ -1,0 +1,933 @@
+{
+  "dataset_id": "osint_composed_oracle_v1_1_extension_4",
+  "description": "v1.1 extension fixtures for OSINT_COMPOSED_ORACLE_V1 (4 records). 2 PASS, 2 FAIL. Exercises proposed source_group extensions: judicial_record (2 fixtures) and calendar_counter_signal (2 fixtures). These fixtures require template schema_version >= 1.1 to commit the proposed groups. Until then, sources fall back to their current source_group assignments. All evidence bundles are synthetic with precomputed hashes.",
+  "extends": "osint_composed_oracle_v0_1_10",
+  "requires_template_version": "1.1",
+  "proposed_groups_exercised": [
+    "judicial_record",
+    "calendar_counter_signal"
+  ],
+  "oracle_config": {
+    "corroboration_minimum": 2,
+    "corroboration_window_seconds": 3600,
+    "allow_gap_on_counter_signal": false,
+    "rule_change_policy": "fail",
+    "composite_score_tolerance": 1e-09,
+    "scoring_formula_version": "weighted_linear_v0.1",
+    "scoring_weights": {
+      "primary_anomaly": 0.4,
+      "corroboration": 0.25,
+      "counter_adjustment": -0.15,
+      "freshness": 0.1,
+      "provenance": 0.1
+    }
+  },
+  "source_config": [
+    {
+      "source_id": "companies_house_api",
+      "source_group": "official_gov",
+      "registry_status": "committed",
+      "retrieval_method": "GET /company/{company_number} via Companies House REST API"
+    },
+    {
+      "source_id": "uk_gazette",
+      "source_group": "official_gov",
+      "proposed_source_group": "judicial_record",
+      "registry_status": "committed",
+      "retrieval_method": "GET /notice?company-number={number} via Gazette API"
+    },
+    {
+      "source_id": "uk_registry_trust",
+      "source_group": "official_gov",
+      "proposed_source_group": "judicial_record",
+      "counter_signal_class": "financial_distress",
+      "registry_status": "committed",
+      "retrieval_method": "GET /ccj/search?name={entity_name} via Registry Trust portal"
+    },
+    {
+      "source_id": "dld_open_data",
+      "source_group": "official_gov",
+      "registry_status": "committed",
+      "retrieval_method": "GET /transactions via DLD Open Data portal"
+    },
+    {
+      "source_id": "dubai_municipality_bps",
+      "source_group": "official_gov",
+      "registry_status": "committed",
+      "retrieval_method": "GET /permit/{permit_id} via BPS portal"
+    },
+    {
+      "source_id": "nager_date",
+      "source_group": "alt_data_behavioural",
+      "proposed_source_group": "calendar_counter_signal",
+      "counter_signal_class": "calendar",
+      "registry_status": "committed",
+      "retrieval_method": "GET /api/v3/publicholidays/{year}/{countryCode} via Nager.Date REST API"
+    },
+    {
+      "source_id": "abstract_holidays",
+      "source_group": "alt_data_behavioural",
+      "proposed_source_group": "calendar_counter_signal",
+      "counter_signal_class": "calendar",
+      "registry_status": "committed",
+      "retrieval_method": "GET /v1/holidays?country={cc}&year={y}&month={m}&day={d} via Abstract Holidays REST API"
+    },
+    {
+      "source_id": "afsa_npii",
+      "source_group": "official_gov",
+      "proposed_source_group": "judicial_record",
+      "registry_status": "committed",
+      "retrieval_method": "GET /npii/search?name={entity_name} via AFSA NPII portal"
+    },
+    {
+      "source_id": "ecb_data_api",
+      "source_group": "market_data",
+      "registry_status": "committed",
+      "retrieval_method": "GET /service/data/{flowRef}/{key} via ECB SDMX REST API"
+    },
+    {
+      "source_id": "asic_company_register",
+      "source_group": "official_gov",
+      "registry_status": "committed",
+      "retrieval_method": "GET /asic/company/find/?query={query} via Vigil.sh interim gateway"
+    },
+    {
+      "source_id": "hmlr_land_registry",
+      "source_group": "official_gov",
+      "registry_status": "committed",
+      "retrieval_method": "GET /title/{title_number} via HMLR data services"
+    }
+  ],
+  "records": [
+    {
+      "record_id": "osint_0011",
+      "geo_id": "gb_entity_verification",
+      "evaluation_window": "2026-02-25T09:00:00Z/2026-02-25T10:00:00Z",
+      "description": "PASS — GB entity verification for escrow settlement. Companies House confirms entity active (primary). Gazette search returns no insolvency notices within 24 months (judicial_record corroboration). Registry Trust CCJ check returns absent — no county court judgments on file. All sources fresh, provenance intact, rules unchanged. Clean settlement-grade pass.",
+      "inputs": {
+        "evidence_bundles": [
+          {
+            "bundle_id": "eb_0011_primary",
+            "source_id": "companies_house_api",
+            "source_group": "official_gov",
+            "resolution_role": "primary_evidence",
+            "evidence_timestamp": "2026-02-25T09:30:00Z",
+            "raw_payload_hash": "f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2",
+            "receipt": {
+              "timestamp": "2026-02-25T09:30:01Z",
+              "request_parameters": {
+                "company_number": "12345678",
+                "endpoint": "/company/12345678"
+              },
+              "source_id": "companies_house_api",
+              "source_version": "v1.0",
+              "http_status": 200,
+              "content_hash": "f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2"
+            },
+            "normalised_event": {
+              "event_id": "evt_0011_a",
+              "entity": {
+                "company_number": "12345678",
+                "company_name": "Meridian Property Holdings Ltd",
+                "jurisdiction": "GB",
+                "status": "Active"
+              },
+              "measure": {
+                "type": "entity_existence_verified",
+                "value": 1.0,
+                "unit": "boolean"
+              },
+              "confidence": 0.98
+            }
+          },
+          {
+            "bundle_id": "eb_0011_corr_gazette",
+            "source_id": "uk_gazette",
+            "source_group": "official_gov",
+            "proposed_source_group": "judicial_record",
+            "resolution_role": "secondary_corroboration",
+            "confirms_primary": true,
+            "evidence_timestamp": "2026-02-25T09:32:00Z",
+            "raw_payload_hash": "a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3",
+            "receipt": {
+              "timestamp": "2026-02-25T09:32:01Z",
+              "request_parameters": {
+                "company_number": "12345678",
+                "category_code": "2401",
+                "endpoint": "/notice?company-number=12345678&category-code=2401"
+              },
+              "source_id": "uk_gazette",
+              "source_version": "v2.0",
+              "http_status": 200,
+              "content_hash": "a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3"
+            },
+            "normalised_event": {
+              "event_id": "evt_0011_b",
+              "entity": {
+                "company_number": "12345678",
+                "company_name": "Meridian Property Holdings Ltd"
+              },
+              "measure": {
+                "type": "insolvency_notice_count",
+                "value": 0,
+                "unit": "count",
+                "search_window_months": 24
+              },
+              "confidence": 0.95,
+              "interpretation": "No insolvency notices found within 24-month search window. Confirms entity is not subject to winding-up petitions, administration orders, or voluntary liquidation proceedings."
+            }
+          },
+          {
+            "bundle_id": "eb_0011_corr_hmlr",
+            "source_id": "hmlr_land_registry",
+            "source_group": "official_gov",
+            "resolution_role": "secondary_corroboration",
+            "confirms_primary": true,
+            "evidence_timestamp": "2026-02-25T09:28:00Z",
+            "raw_payload_hash": "b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4",
+            "receipt": {
+              "timestamp": "2026-02-25T09:28:02Z",
+              "request_parameters": {
+                "title_number": "NGL123456",
+                "endpoint": "/v1/titles/NGL123456"
+              },
+              "source_id": "hmlr_land_registry",
+              "source_version": "v1.0",
+              "http_status": 200,
+              "content_hash": "b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4"
+            },
+            "normalised_event": {
+              "event_id": "evt_0011_c",
+              "entity": {
+                "title_number": "NGL123456",
+                "registered_proprietor": "Meridian Property Holdings Ltd",
+                "tenure": "Freehold"
+              },
+              "measure": {
+                "type": "title_ownership_confirmed",
+                "value": 1.0,
+                "unit": "boolean"
+              },
+              "confidence": 0.99
+            }
+          },
+          {
+            "bundle_id": "eb_0011_cs_ccj",
+            "source_id": "uk_registry_trust",
+            "source_group": "official_gov",
+            "proposed_source_group": "judicial_record",
+            "resolution_role": "counter_signal",
+            "counter_signal_class": "financial_distress",
+            "evidence_timestamp": "2026-02-25T00:15:00Z",
+            "raw_payload_hash": "dd11ee22ff33aa44bb55cc66dd77ee88ff99aa00bb11cc22dd33ee44ff55aa66",
+            "receipt": {
+              "timestamp": "2026-02-25T00:15:01Z",
+              "request_parameters": {
+                "entity_name": "Meridian Property Holdings Ltd",
+                "endpoint": "/ccj/search?name=Meridian+Property+Holdings+Ltd"
+              },
+              "source_id": "uk_registry_trust",
+              "source_version": "v1.0",
+              "http_status": 200,
+              "content_hash": "dd11ee22ff33aa44bb55cc66dd77ee88ff99aa00bb11cc22dd33ee44ff55aa66"
+            },
+            "normalised_event": {
+              "event_id": "evt_0011_cs",
+              "entity": {
+                "entity_name": "Meridian Property Holdings Ltd",
+                "jurisdiction": "GB"
+              },
+              "measure": {
+                "type": "ccj_count",
+                "value": 0,
+                "unit": "count"
+              },
+              "confidence": 0.95,
+              "interpretation": "No County Court Judgments found on Registry Trust. Entity clear of registered debt enforcement."
+            },
+            "counter_signal_status": "absent"
+          }
+        ],
+        "counter_signal_evaluation": {
+          "source_id": "uk_registry_trust",
+          "source_group": "official_gov",
+          "proposed_source_group": "judicial_record",
+          "counter_signal_class": "financial_distress",
+          "evidence_timestamp": "2026-02-25T09:34:00Z",
+          "outcome": "absent",
+          "detail": "Registry Trust CCJ search for Meridian Property Holdings Ltd returns zero results. No county court judgments registered against entity at any address. Entity clear for settlement-grade evaluation.",
+          "raw_payload_hash": "c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5",
+          "receipt": {
+            "timestamp": "2026-02-25T09:34:01Z",
+            "request_parameters": {
+              "name": "Meridian Property Holdings Ltd",
+              "postcode": "EC2A 1NT",
+              "endpoint": "/search?name=Meridian+Property+Holdings+Ltd&postcode=EC2A+1NT"
+            },
+            "source_id": "uk_registry_trust",
+            "http_status": 200,
+            "content_hash": "c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+          }
+        },
+        "market_rules_snapshot": {
+          "market_id": "mkt_gb_escrow_meridian_2026",
+          "current_rules_hash": "e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2",
+          "snapshot_timestamp": "2026-02-25T09:55:00Z"
+        }
+      },
+      "expected_outputs": {
+        "criteria_results": {
+          "source_freshness_ok": "PASS",
+          "provenance_integrity": "PASS",
+          "corroboration_minimum_met": "PASS",
+          "counter_signal_checked": "PASS",
+          "rule_change_monitored": "PASS",
+          "composite_score_deterministic": "PASS"
+        },
+        "oracle_output": {
+          "geo_id": "gb_entity_verification",
+          "window": "2026-02-25T09:00:00Z/2026-02-25T10:00:00Z",
+          "composite_risk": 0.042,
+          "components": {
+            "primary_anomaly": 0.02,
+            "corroboration": 0.0,
+            "counter_adjustment": 0.0,
+            "freshness": 1.0,
+            "provenance": 1.0
+          },
+          "interpretation": "Entity verified active with no insolvency notices, no CCJs, and confirmed land title ownership. Settlement-grade clearance."
+        },
+        "overall_result": "PASS"
+      }
+    },
+    {
+      "record_id": "osint_0012",
+      "geo_id": "gb_entity_verification",
+      "evaluation_window": "2026-02-25T11:00:00Z/2026-02-25T12:00:00Z",
+      "description": "FAIL — GB entity verification blocked by financial distress counter-signal. Companies House confirms entity active (primary). Gazette confirms no insolvency notices (judicial_record corroboration). However, Registry Trust CCJ check returns present_unexplained: 3 active county court judgments totalling £45,200 with no precommitted discount rule. Financial distress signal blocks settlement.",
+      "inputs": {
+        "evidence_bundles": [
+          {
+            "bundle_id": "eb_0012_primary",
+            "source_id": "companies_house_api",
+            "source_group": "official_gov",
+            "resolution_role": "primary_evidence",
+            "evidence_timestamp": "2026-02-25T11:20:00Z",
+            "raw_payload_hash": "d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2",
+            "receipt": {
+              "timestamp": "2026-02-25T11:20:01Z",
+              "request_parameters": {
+                "company_number": "87654321",
+                "endpoint": "/company/87654321"
+              },
+              "source_id": "companies_house_api",
+              "source_version": "v1.0",
+              "http_status": 200,
+              "content_hash": "d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2"
+            },
+            "normalised_event": {
+              "event_id": "evt_0012_a",
+              "entity": {
+                "company_number": "87654321",
+                "company_name": "Vantage Developments Group Ltd",
+                "jurisdiction": "GB",
+                "status": "Active"
+              },
+              "measure": {
+                "type": "entity_existence_verified",
+                "value": 1.0,
+                "unit": "boolean"
+              },
+              "confidence": 0.98
+            }
+          },
+          {
+            "bundle_id": "eb_0012_corr_gazette",
+            "source_id": "uk_gazette",
+            "source_group": "official_gov",
+            "proposed_source_group": "judicial_record",
+            "resolution_role": "secondary_corroboration",
+            "confirms_primary": true,
+            "evidence_timestamp": "2026-02-25T11:22:00Z",
+            "raw_payload_hash": "e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3",
+            "receipt": {
+              "timestamp": "2026-02-25T11:22:02Z",
+              "request_parameters": {
+                "company_number": "87654321",
+                "category_code": "2401",
+                "endpoint": "/notice?company-number=87654321&category-code=2401"
+              },
+              "source_id": "uk_gazette",
+              "source_version": "v2.0",
+              "http_status": 200,
+              "content_hash": "e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3"
+            },
+            "normalised_event": {
+              "event_id": "evt_0012_b",
+              "entity": {
+                "company_number": "87654321",
+                "company_name": "Vantage Developments Group Ltd"
+              },
+              "measure": {
+                "type": "insolvency_notice_count",
+                "value": 0,
+                "unit": "count",
+                "search_window_months": 24
+              },
+              "confidence": 0.95,
+              "interpretation": "No insolvency notices found. Entity not in formal insolvency proceedings."
+            }
+          },
+          {
+            "bundle_id": "eb_0012_corr_hmlr",
+            "source_id": "hmlr_land_registry",
+            "source_group": "official_gov",
+            "resolution_role": "secondary_corroboration",
+            "confirms_primary": true,
+            "evidence_timestamp": "2026-02-25T11:18:00Z",
+            "raw_payload_hash": "f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4",
+            "receipt": {
+              "timestamp": "2026-02-25T11:18:03Z",
+              "request_parameters": {
+                "title_number": "SGL789012",
+                "endpoint": "/v1/titles/SGL789012"
+              },
+              "source_id": "hmlr_land_registry",
+              "source_version": "v1.0",
+              "http_status": 200,
+              "content_hash": "f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4"
+            },
+            "normalised_event": {
+              "event_id": "evt_0012_c",
+              "entity": {
+                "title_number": "SGL789012",
+                "registered_proprietor": "Vantage Developments Group Ltd",
+                "tenure": "Leasehold",
+                "lease_term_remaining_years": 87
+              },
+              "measure": {
+                "type": "title_ownership_confirmed",
+                "value": 1.0,
+                "unit": "boolean"
+              },
+              "confidence": 0.99
+            }
+          },
+          {
+            "bundle_id": "eb_0012_cs_ccj",
+            "source_id": "uk_registry_trust",
+            "source_group": "official_gov",
+            "proposed_source_group": "judicial_record",
+            "resolution_role": "counter_signal",
+            "counter_signal_class": "financial_distress",
+            "evidence_timestamp": "2026-02-25T00:17:00Z",
+            "raw_payload_hash": "ee22ff33aa44bb55cc66dd77ee88ff99aa00bb11cc22dd33ee44ff55aa66bb77",
+            "receipt": {
+              "timestamp": "2026-02-25T00:17:01Z",
+              "request_parameters": {
+                "entity_name": "Meridian Property Holdings Ltd",
+                "endpoint": "/ccj/search?name=Meridian+Property+Holdings+Ltd"
+              },
+              "source_id": "uk_registry_trust",
+              "source_version": "v1.0",
+              "http_status": 200,
+              "content_hash": "ee22ff33aa44bb55cc66dd77ee88ff99aa00bb11cc22dd33ee44ff55aa66bb77"
+            },
+            "normalised_event": {
+              "event_id": "evt_0012_cs",
+              "entity": {
+                "entity_name": "Meridian Property Holdings Ltd",
+                "jurisdiction": "GB"
+              },
+              "measure": {
+                "type": "ccj_count",
+                "value": 3,
+                "unit": "count",
+                "total_value_gbp": 45200,
+                "judgments": [
+                  {
+                    "court": "County Court Business Centre",
+                    "amount_gbp": 18500,
+                    "date": "2025-11-14"
+                  },
+                  {
+                    "court": "County Court Business Centre",
+                    "amount_gbp": 15200,
+                    "date": "2025-09-22"
+                  },
+                  {
+                    "court": "County Court Business Centre",
+                    "amount_gbp": 11500,
+                    "date": "2025-07-03"
+                  }
+                ]
+              },
+              "confidence": 0.97,
+              "interpretation": "3 active County Court Judgments totalling £45,200 found on Registry Trust. Financial distress counter-signal present. No discount rule applies."
+            },
+            "counter_signal_status": "present_unexplained"
+          }
+        ],
+        "counter_signal_evaluation": {
+          "source_id": "uk_registry_trust",
+          "source_group": "official_gov",
+          "proposed_source_group": "judicial_record",
+          "counter_signal_class": "financial_distress",
+          "evidence_timestamp": "2026-02-25T11:24:00Z",
+          "outcome": "present_unexplained",
+          "detail": "Registry Trust CCJ search for Vantage Developments Group Ltd returns 3 active county court judgments totalling £45,200. Judgments registered at Companies House registered address (14 Blackfriars Road, London SE1 8NY). Most recent judgment dated 2026-01-08. No precommitted discount rule applies. Financial distress signal present with no mitigating explanation.",
+          "ccj_count": 3,
+          "ccj_total_gbp": 45200,
+          "most_recent_judgment_date": "2026-01-08",
+          "applicable_discount_rules": [],
+          "raw_payload_hash": "a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5",
+          "receipt": {
+            "timestamp": "2026-02-25T11:24:01Z",
+            "request_parameters": {
+              "name": "Vantage Developments Group Ltd",
+              "postcode": "SE1 8NY",
+              "endpoint": "/search?name=Vantage+Developments+Group+Ltd&postcode=SE1+8NY"
+            },
+            "source_id": "uk_registry_trust",
+            "http_status": 200,
+            "content_hash": "a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5"
+          }
+        },
+        "market_rules_snapshot": {
+          "market_id": "mkt_gb_escrow_vantage_2026",
+          "current_rules_hash": "b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6",
+          "snapshot_timestamp": "2026-02-25T11:55:00Z"
+        }
+      },
+      "expected_outputs": {
+        "criteria_results": {
+          "source_freshness_ok": "PASS",
+          "provenance_integrity": "PASS",
+          "corroboration_minimum_met": "PASS",
+          "counter_signal_checked": "FAIL",
+          "rule_change_monitored": "PASS",
+          "composite_score_deterministic": "PASS"
+        },
+        "fail_detail": {
+          "criterion": "counter_signal_checked",
+          "reason": "Counter-signal outcome is 'present_unexplained'. Registry Trust reports 3 active CCJs totalling £45,200 against Vantage Developments Group Ltd. Most recent judgment 2026-01-08. No precommitted discount rule applies. Financial distress signal blocks settlement-grade clearance.",
+          "ccj_count": 3,
+          "ccj_total_gbp": 45200,
+          "discount_rules_checked": 0
+        },
+        "overall_result": "FAIL"
+      }
+    },
+    {
+      "record_id": "osint_0013",
+      "geo_id": "ae_property_telemetry",
+      "evaluation_window": "2026-02-25T06:00:00Z/2026-02-25T07:00:00Z",
+      "description": "PASS — Dubai property transaction volume spike explained by calendar counter-signal. DLD Open Data shows 340% above daily average (primary). Dubai Municipality BPS confirms elevated building permit activity (corroboration). Nager.Date API (calendar_counter_signal) returns present_discounted: UAE National Day (2 December) weekend observed. Precommitted HOLIDAY_CALENDAR rule applies. Volume spike attributed to pre-holiday transaction rush, not market anomaly.",
+      "inputs": {
+        "evidence_bundles": [
+          {
+            "bundle_id": "eb_0013_primary",
+            "source_id": "dld_open_data",
+            "source_group": "official_gov",
+            "resolution_role": "primary_evidence",
+            "evidence_timestamp": "2026-02-25T06:30:00Z",
+            "raw_payload_hash": "1111aaaa2222bbbb3333cccc4444dddd5555eeee6666ffff7777aaaa8888bbbb",
+            "receipt": {
+              "timestamp": "2026-02-25T06:30:01Z",
+              "request_parameters": {
+                "date_from": "2026-02-25",
+                "date_to": "2026-02-25",
+                "endpoint": "/api/v1/transactions?date_from=2026-02-25&date_to=2026-02-25"
+              },
+              "source_id": "dld_open_data",
+              "source_version": "v3.0",
+              "http_status": 200,
+              "content_hash": "1111aaaa2222bbbb3333cccc4444dddd5555eeee6666ffff7777aaaa8888bbbb"
+            },
+            "normalised_event": {
+              "event_id": "evt_0013_a",
+              "entity": {
+                "jurisdiction": "AE",
+                "region": "Dubai",
+                "data_source": "Dubai Land Department"
+              },
+              "measure": {
+                "type": "transaction_volume_anomaly",
+                "value": 3.4,
+                "unit": "z_score",
+                "daily_count": 847,
+                "rolling_30d_average": 249
+              },
+              "confidence": 0.88
+            }
+          },
+          {
+            "bundle_id": "eb_0013_corr_bps",
+            "source_id": "dubai_municipality_bps",
+            "source_group": "official_gov",
+            "resolution_role": "secondary_corroboration",
+            "confirms_primary": true,
+            "evidence_timestamp": "2026-02-25T06:25:00Z",
+            "raw_payload_hash": "2222bbbb3333cccc4444dddd5555eeee6666ffff7777aaaa8888bbbb9999cccc",
+            "receipt": {
+              "timestamp": "2026-02-25T06:25:02Z",
+              "request_parameters": {
+                "date": "2026-02-25",
+                "endpoint": "/api/v1/permits?date=2026-02-25"
+              },
+              "source_id": "dubai_municipality_bps",
+              "source_version": "v2.0",
+              "http_status": 200,
+              "content_hash": "2222bbbb3333cccc4444dddd5555eeee6666ffff7777aaaa8888bbbb9999cccc"
+            },
+            "normalised_event": {
+              "event_id": "evt_0013_b",
+              "entity": {
+                "jurisdiction": "AE",
+                "region": "Dubai",
+                "data_source": "Dubai Municipality Building Permits"
+              },
+              "measure": {
+                "type": "permit_volume_anomaly",
+                "value": 2.1,
+                "unit": "z_score",
+                "daily_count": 134,
+                "rolling_30d_average": 78
+              },
+              "confidence": 0.82
+            }
+          },
+          {
+            "bundle_id": "eb_0013_corr_ecb",
+            "source_id": "ecb_data_api",
+            "source_group": "market_data",
+            "resolution_role": "secondary_corroboration",
+            "confirms_primary": true,
+            "evidence_timestamp": "2026-02-25T06:20:00Z",
+            "raw_payload_hash": "3333cccc4444dddd5555eeee6666ffff7777aaaa8888bbbb9999cccc0000dddd",
+            "receipt": {
+              "timestamp": "2026-02-25T06:20:03Z",
+              "request_parameters": {
+                "series_key": "D.AED.EUR.SP00.A",
+                "endpoint": "/data/EXR/D.AED.EUR.SP00.A"
+              },
+              "source_id": "ecb_data_api",
+              "source_version": "v1.0",
+              "http_status": 200,
+              "content_hash": "3333cccc4444dddd5555eeee6666ffff7777aaaa8888bbbb9999cccc0000dddd"
+            },
+            "normalised_event": {
+              "event_id": "evt_0013_c",
+              "entity": {
+                "jurisdiction": "EU",
+                "data_source": "European Central Bank"
+              },
+              "measure": {
+                "type": "fx_rate_aed_eur",
+                "value": 0.2513,
+                "unit": "exchange_rate",
+                "movement_1d_pct": 0.02
+              },
+              "confidence": 0.99,
+              "interpretation": "AED/EUR rate stable. No currency stress explaining property volume anomaly."
+            }
+          },
+          {
+            "bundle_id": "eb_0013_cs_calendar",
+            "source_id": "nager_date",
+            "source_group": "alt_data_behavioural",
+            "proposed_source_group": "calendar_counter_signal",
+            "resolution_role": "counter_signal",
+            "counter_signal_class": "calendar",
+            "evidence_timestamp": "2026-02-25T00:12:00Z",
+            "raw_payload_hash": "ff33aa44bb55cc66dd77ee88ff99aa00bb11cc22dd33ee44ff55aa66bb77cc88",
+            "receipt": {
+              "timestamp": "2026-02-25T00:12:01Z",
+              "request_parameters": {
+                "year": 2026,
+                "country_code": "AE",
+                "endpoint": "/api/v3/publicholidays/2026/AE"
+              },
+              "source_id": "nager_date",
+              "source_version": "v3.0",
+              "http_status": 200,
+              "content_hash": "ff33aa44bb55cc66dd77ee88ff99aa00bb11cc22dd33ee44ff55aa66bb77cc88"
+            },
+            "normalised_event": {
+              "event_id": "evt_0013_cs",
+              "geo": {
+                "region": "AE",
+                "context": "UAE National Day public holiday"
+              },
+              "measure": {
+                "type": "public_holiday_active",
+                "value": 1,
+                "unit": "boolean",
+                "holiday_name": "UAE National Day",
+                "holiday_date": "2026-12-02"
+              },
+              "confidence": 0.99,
+              "interpretation": "Nager.Date confirms UAE National Day on evaluation date. Transaction volume anomaly discounted per HOLIDAY_CALENDAR rule."
+            },
+            "counter_signal_status": "present_discounted",
+            "discount_rule": "HOLIDAY_CALENDAR"
+          }
+        ],
+        "counter_signal_evaluation": {
+          "source_id": "nager_date",
+          "source_group": "alt_data_behavioural",
+          "proposed_source_group": "calendar_counter_signal",
+          "counter_signal_class": "calendar",
+          "evidence_timestamp": "2026-02-25T06:32:00Z",
+          "outcome": "present_discounted",
+          "detail": "Nager.Date API confirms UAE National Day observed (2 December, weekend adjusted to 25 February per federal decree FD-2026-003). Pre-holiday transaction rush is documented seasonal pattern for Dubai property market. Precommitted HOLIDAY_CALENDAR discount rule applies.",
+          "holiday_name": "UAE National Day (observed)",
+          "holiday_date": "2026-02-25",
+          "country_code": "AE",
+          "discount_rule_id": "HOLIDAY_CALENDAR",
+          "discount_rule_committed_at": "2026-01-15T00:00:00Z",
+          "raw_payload_hash": "4444dddd5555eeee6666ffff7777aaaa8888bbbb9999cccc0000dddd1111eeee",
+          "receipt": {
+            "timestamp": "2026-02-25T06:32:01Z",
+            "request_parameters": {
+              "year": "2026",
+              "country_code": "AE",
+              "endpoint": "/api/v3/PublicHolidays/2026/AE"
+            },
+            "source_id": "nager_date",
+            "http_status": 200,
+            "content_hash": "4444dddd5555eeee6666ffff7777aaaa8888bbbb9999cccc0000dddd1111eeee"
+          }
+        },
+        "market_rules_snapshot": {
+          "market_id": "mkt_ae_dld_volume_anomaly_q1_2026",
+          "current_rules_hash": "5555eeee6666ffff7777aaaa8888bbbb9999cccc0000dddd1111eeee2222ffff",
+          "snapshot_timestamp": "2026-02-25T06:55:00Z"
+        }
+      },
+      "expected_outputs": {
+        "criteria_results": {
+          "source_freshness_ok": "PASS",
+          "provenance_integrity": "PASS",
+          "corroboration_minimum_met": "PASS",
+          "counter_signal_checked": "PASS",
+          "rule_change_monitored": "PASS",
+          "composite_score_deterministic": "PASS"
+        },
+        "oracle_output": {
+          "geo_id": "ae_property_telemetry",
+          "window": "2026-02-25T06:00:00Z/2026-02-25T07:00:00Z",
+          "composite_risk": 0.382,
+          "components": {
+            "primary_anomaly": 0.68,
+            "corroboration": 0.6,
+            "counter_adjustment": -0.15,
+            "freshness": 1.0,
+            "provenance": 1.0
+          },
+          "interpretation": "Property transaction volume anomaly detected but fully explained by UAE National Day calendar effect. Counter-signal discounted. No market intervention required."
+        },
+        "overall_result": "PASS"
+      }
+    },
+    {
+      "record_id": "osint_0014",
+      "geo_id": "au_property_telemetry",
+      "evaluation_window": "2026-02-25T00:00:00Z/2026-02-25T01:00:00Z",
+      "description": "FAIL — Australian property activity anomaly with calendar counter-signal unavailable. AFSA NPII returns no insolvency records (judicial_record corroboration). Abstract Holidays API (calendar_counter_signal) returns HTTP 503 Service Unavailable during scheduled maintenance. oracle_config.allow_gap_on_counter_signal is false. Calendar source unavailability blocks verification — cannot confirm or rule out holiday effect on observed anomaly.",
+      "inputs": {
+        "evidence_bundles": [
+          {
+            "bundle_id": "eb_0014_primary",
+            "source_id": "asic_company_register",
+            "source_group": "official_gov",
+            "resolution_role": "primary_evidence",
+            "evidence_timestamp": "2026-02-25T00:20:00Z",
+            "raw_payload_hash": "aaaa1111bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888",
+            "receipt": {
+              "timestamp": "2026-02-25T00:20:01Z",
+              "request_parameters": {
+                "abn": "51824753556",
+                "endpoint": "/v1/entity/51824753556"
+              },
+              "source_id": "asic_company_register",
+              "source_version": "v1.0",
+              "http_status": 200,
+              "content_hash": "aaaa1111bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888"
+            },
+            "normalised_event": {
+              "event_id": "evt_0014_a",
+              "entity": {
+                "abn": "51824753556",
+                "entity_name": "Harbour View Properties Pty Ltd",
+                "jurisdiction": "AU",
+                "status": "Registered"
+              },
+              "measure": {
+                "type": "property_settlement_volume_anomaly",
+                "value": 2.6,
+                "unit": "z_score",
+                "weekly_count": 312,
+                "rolling_8w_average": 187
+              },
+              "confidence": 0.84
+            }
+          },
+          {
+            "bundle_id": "eb_0014_corr_afsa",
+            "source_id": "afsa_npii",
+            "source_group": "official_gov",
+            "proposed_source_group": "judicial_record",
+            "resolution_role": "secondary_corroboration",
+            "confirms_primary": true,
+            "evidence_timestamp": "2026-02-25T00:22:00Z",
+            "raw_payload_hash": "bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888cccc9999",
+            "receipt": {
+              "timestamp": "2026-02-25T00:22:01Z",
+              "request_parameters": {
+                "name": "Harbour View Properties Pty Ltd",
+                "endpoint": "/npii/search?name=Harbour+View+Properties+Pty+Ltd"
+              },
+              "source_id": "afsa_npii",
+              "source_version": "v1.0",
+              "http_status": 200,
+              "content_hash": "bbbb2222cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888cccc9999"
+            },
+            "normalised_event": {
+              "event_id": "evt_0014_b",
+              "entity": {
+                "entity_name": "Harbour View Properties Pty Ltd",
+                "jurisdiction": "AU"
+              },
+              "measure": {
+                "type": "insolvency_record_count",
+                "value": 0,
+                "unit": "count"
+              },
+              "confidence": 0.92,
+              "interpretation": "No insolvency records found on AFSA National Personal Insolvency Index. Entity not subject to bankruptcy, debt agreement, or personal insolvency agreement."
+            }
+          },
+          {
+            "bundle_id": "eb_0014_corr_ecb",
+            "source_id": "ecb_data_api",
+            "source_group": "market_data",
+            "resolution_role": "secondary_corroboration",
+            "confirms_primary": true,
+            "evidence_timestamp": "2026-02-25T00:15:00Z",
+            "raw_payload_hash": "cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888cccc9999dddd0000",
+            "receipt": {
+              "timestamp": "2026-02-25T00:15:02Z",
+              "request_parameters": {
+                "series_key": "D.AUD.EUR.SP00.A",
+                "endpoint": "/data/EXR/D.AUD.EUR.SP00.A"
+              },
+              "source_id": "ecb_data_api",
+              "source_version": "v1.0",
+              "http_status": 200,
+              "content_hash": "cccc3333dddd4444eeee5555ffff6666aaaa7777bbbb8888cccc9999dddd0000"
+            },
+            "normalised_event": {
+              "event_id": "evt_0014_c",
+              "entity": {
+                "jurisdiction": "EU",
+                "data_source": "European Central Bank"
+              },
+              "measure": {
+                "type": "fx_rate_aud_eur",
+                "value": 0.5847,
+                "unit": "exchange_rate",
+                "movement_1d_pct": -0.15
+              },
+              "confidence": 0.99,
+              "interpretation": "AUD/EUR rate marginally weaker. Insufficient to explain property volume anomaly."
+            }
+          },
+          {
+            "bundle_id": "eb_0014_cs_calendar",
+            "source_id": "abstract_holidays",
+            "source_group": "alt_data_behavioural",
+            "proposed_source_group": "calendar_counter_signal",
+            "resolution_role": "counter_signal",
+            "counter_signal_class": "calendar",
+            "evidence_timestamp": "2026-02-25T00:24:00Z",
+            "raw_payload_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "receipt": {
+              "timestamp": "2026-02-25T00:24:01Z",
+              "request_parameters": {
+                "country": "AU",
+                "year": 2026,
+                "month": 2,
+                "day": 25,
+                "endpoint": "/v1/holidays?country=AU&year=2026&month=2&day=25"
+              },
+              "source_id": "abstract_holidays",
+              "source_version": "v1.0",
+              "http_status": 503,
+              "content_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+            },
+            "normalised_event": {
+              "event_id": "evt_0014_cs",
+              "geo": {
+                "region": "AU",
+                "context": "Australian holiday calendar check"
+              },
+              "measure": {
+                "type": "public_holiday_active",
+                "value": -1,
+                "unit": "unavailable"
+              },
+              "confidence": 0.0,
+              "interpretation": "Abstract Holidays API returned HTTP 503 Service Unavailable during scheduled maintenance. Calendar counter-signal could not be evaluated. oracle_config.allow_gap_on_counter_signal is false — source unavailability blocks verification."
+            },
+            "counter_signal_status": "unavailable"
+          }
+        ],
+        "counter_signal_evaluation": {
+          "source_id": "abstract_holidays",
+          "source_group": "alt_data_behavioural",
+          "proposed_source_group": "calendar_counter_signal",
+          "counter_signal_class": "calendar",
+          "evidence_timestamp": null,
+          "outcome": "unavailable",
+          "detail": "Abstract Holidays API returned HTTP 503 Service Unavailable. Scheduled maintenance window (00:00–02:00 UTC Tuesdays). Cannot confirm or rule out Australian public holiday effect on observed property settlement volume anomaly. oracle_config.allow_gap_on_counter_signal is false for this evaluation.",
+          "raw_payload_hash": null,
+          "receipt": {
+            "timestamp": "2026-02-25T00:24:00Z",
+            "request_parameters": {
+              "country": "AU",
+              "year": "2026",
+              "endpoint": "/v1/holidays?country=AU&year=2026"
+            },
+            "source_id": "abstract_holidays",
+            "http_status": 503,
+            "content_hash": null
+          }
+        },
+        "market_rules_snapshot": {
+          "market_id": "mkt_au_property_volume_q1_2026",
+          "current_rules_hash": "dddd4444eeee5555ffff6666aaaa7777bbbb8888cccc9999dddd0000eeee1111",
+          "snapshot_timestamp": "2026-02-25T00:55:00Z"
+        }
+      },
+      "expected_outputs": {
+        "criteria_results": {
+          "source_freshness_ok": "PASS",
+          "provenance_integrity": "PASS",
+          "corroboration_minimum_met": "PASS",
+          "counter_signal_checked": "FAIL",
+          "rule_change_monitored": "PASS",
+          "composite_score_deterministic": "PASS"
+        },
+        "fail_detail": {
+          "criterion": "counter_signal_checked",
+          "reason": "Counter-signal outcome is 'unavailable'. Abstract Holidays API returned HTTP 503 during scheduled maintenance. Cannot confirm or rule out Australian public holiday effect on property volume anomaly. oracle_config.allow_gap_on_counter_signal is false. Intelligence gap blocks verification.",
+          "http_status": 503,
+          "maintenance_window": "00:00-02:00 UTC Tuesdays",
+          "discount_rules_checked": 0
+        },
+        "overall_result": "FAIL"
+      }
+    }
+  ]
+}

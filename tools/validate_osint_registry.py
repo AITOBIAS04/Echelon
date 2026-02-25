@@ -109,9 +109,17 @@ def validate(path: str, strict: bool = False) -> list[str]:
         # World Monitor domain => repo_url should reference WM fork (api_url may be null for self-hosted)
         WM_URL_ALLOWLIST = ["github.com/AITOBIAS04/worldmonitor", "github.com/koala73/worldmonitor"]
         if has_wm:
-            repo = s.get("repo_url", "")
-            if not repo or not any(allowed in repo for allowed in WM_URL_ALLOWLIST):
-                errors.append(f"{sid}: world_monitor_domain is set but repo_url '{repo}' does not reference WM fork")
+            # Priority order for WM identity: repo_url → api_url → access_proof.doc_url → primary_url
+            url = (
+                s.get("repo_url")
+                or s.get("api_url")
+                or (s.get("access_proof") or {}).get("doc_url")
+                or s.get("primary_url")
+                or ""
+            )
+            url = str(url)
+            if not any(allowed in url for allowed in WM_URL_ALLOWLIST):
+                errors.append(f"{sid}: world_monitor_domain is set but no URL field (repo_url/api_url/access_proof.doc_url) references WM fork. Found: '{url}'")
 
         # --- v0.3 CHECKS ---
 

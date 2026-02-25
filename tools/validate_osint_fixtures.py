@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""
+Echelon OSINT Fixture Dataset Validator
+Validates osint_composed_oracle_*.json fixture files against the
+OSINT source registry and internal consistency rules.
+
+Exit code 0 = pass, 1 = fail, 2 = usage error.
+
+Usage:
+  python3 validate_osint_fixtures.py <fixtures.json> <registry.json>
+
+Checks:
+  1. Every source_id referenced in evidence bundles exists in either
+     (a) the registry, or (b) the dataset source_config with
+     registry_status: "planned".
+  2. receipt.source_id must equal the parent bundle's source_id
+     (no cross-source receipt mismatch).
+  3. source_config entries with registry_status: "planned" must have
+     settlement_eligible: false (planned sources cannot settle).
+  4. All source_ids in source_config must be referenced by at least
+     one record (no orphaned configs).
+  5. Hash length validation (64-char hex strings).
+  6. proposed_source_group values must exist in proposed_groups_exercised.
+"""
+
+import json
+import sys
+
+
+def validate(fixtures_path: str, registry_path: str) -> list[str]:
+    with open(fixtures_path) as f:
+        dataset = json.load(f)
+    with open(registry_path) as f:
+        registry = json.load(f)
+
+    errors = []
+
+    # Build registry source_id set
+    registry_ids = {s["source_id"] for s in registry["sources"]}
+
+    # Build dataset source_config map
+    source_config = {sc["source_id"]: sc for sc in dataset.get("source_config", [])}
+
+    # Track which source_ids are actually referenced by records
+    referenced_sources = set()
+
+    records = dataset.get("records", [])
+    proposed_exercised = set(dataset.get("proposed_groups_exercised", []))
+
+    for rec in records:
+        rid = rec["record_id"]
+
+        # Collect all evidence bundles (primary + corroboration + counter-signal)
+        bundles = []
+        for eb in rec.get("inputs", {}).get("evidence_bundles", []):
+            bundles.append(eb)
+
+        for bundle in bundles:
+            bid = bundle.get("bundle_id", "?")
+            bsid = bundle.get("source_id")
+
+            if not bsid:
+                errors.append(f"{rid}/{bid}: missing source_id on evidence bundle")
+                continue
+
+            referenced_sources.add(bsid)
+
+            # CHECK 1: source_id must exist in registry OR dataset source_config
+            in_registry = bsid in registry_ids
+            in_config = bsid in source_config
+
+            if not in_registry and not in_config:
+                errors.append(
+                    f"{rid}/{bid}: source_id '{bsid}' not found in registry "
+                    f"({registry.get('version', '?')}) or dataset source_config"
+                )
+            elif not in_registry and in_config:
+                # CHECK 3: planned source must have registry_status marker
+                sc = source_config[bsid]
+                rs = sc.get("registry_status")
+                if rs != "planned":
+                    errors.append(
+                        f"{rid}/{bid}: source_id '{bsid}' not in registry and "
+                        f"source_config.registry_status is '{rs}' (expected 'planned')"
+                    )
+                # Planned sources must not be settlement_eligible
+                if sc.get("settlement_eligible"):
+                    errors.append(
+                        f"{rid}/{bid}: source_id '{bsid}' is registry_status='planned' "
+                        f"but settlement_eligible is true"
+                    )
+
+            # CHECK 2: receipt.source_id must equal bundle.source_id
+            receipt = bundle.get("receipt", {})
+            rsid = receipt.get("source_id")
+            if rsid and rsid != bsid:
+                errors.append(
+                    f"{rid}/{bid}: receipt.source_id '{rsid}' does not match "
+                    f"bundle.source_id '{bsid}'"
+                )
+
+            # CHECK 5: hash length validation
+            for hash_field in ["raw_payload_hash", "content_hash"]:
+                # Check bundle-level
+                h = bundle.get(hash_field)
+                if h and len(h) != 64:
+                    errors.append(f"{rid}/{bid}: {hash_field} length is {len(h)}, expected 64")
+                # Check receipt-level
+                rh = receipt.get(hash_field)
+                if rh and len(rh) != 64:
+                    errors.append(f"{rid}/{bid}: receipt.{hash_field} length is {len(rh)}, expected 64")
+
+            # CHECK 6: proposed_source_group must be in proposed_groups_exercised
+            psg = bundle.get("proposed_source_group")
+            if psg and psg not in proposed_exercised:
+                errors.append(
+                    f"{rid}/{bid}: proposed_source_group '{psg}' not listed "
+                    f"in dataset.proposed_groups_exercised"
+                )
+
+    # CHECK 4: source_config entries must be referenced by at least one record
+    config_ids = set(source_config.keys())
+    orphaned = config_ids - referenced_sources
+    if orphaned:
+        errors.append(
+            f"source_config has {len(orphaned)} unreferenced entries: "
+            f"{sorted(orphaned)}"
+        )
+
+    return errors
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print(f"Usage: {sys.argv[0]} <fixtures.json> <registry.json>")
+        sys.exit(2)
+
+    errs = validate(sys.argv[1], sys.argv[2])
+    if errs:
+        print(f"FAILED — {len(errs)} error(s):")
+        for e in errs:
+            print(f"  ✗ {e}")
+        sys.exit(1)
+    else:
+        with open(sys.argv[1]) as f:
+            ds = json.load(f)
+        n = len(ds.get("records", []))
+        print(f"ALL FIXTURE VALIDATIONS PASSED ({n} records, dataset: {ds.get('dataset_id', '?')})")
+        sys.exit(0)

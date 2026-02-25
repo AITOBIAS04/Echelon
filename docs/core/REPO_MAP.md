@@ -57,7 +57,8 @@ prediction-market-monorepo/
 │   │   ├── verification.py
 │   │   ├── butterfly_schemas.py
 │   │   ├── paradox_schemas.py
-│   │   └── user_schemas.py
+│   │   ├── user_schemas.py
+│   │   └── worldmonitor_api_contract.py  World Monitor API contract (Pydantic v2)
 │   │
 │   ├── agents/                       Agent system (11 modules, 496 KB)
 │   │   ├── schemas.py                Agent data schemas (36 KB)
@@ -196,12 +197,17 @@ prediction-market-monorepo/
 │       │   │   ├── escrow_fixtures_10.json
 │       │   │   ├── escrow_fixtures_v02_11.json
 │       │   │   ├── reconciliation_fixtures_10.json
-│       │   │   └── arrears_fixtures_10.json
+│       │   │   ├── arrears_fixtures_10.json
+│       │   │   ├── osint_composed_oracle_fixtures_10.json
+│       │   │   ├── osint_composed_oracle_v1_1_extension_4.json
+│       │   │   ├── echelon_osint_source_registry_v0_3_2.json
+│       │   │   └── echelon_osint_source_registry_v0_4_0.json
 │       │   └── templates/
 │       │       ├── DISTRIBUTION_WATERFALL_V1.template.json
 │       │       ├── ESCROW_MILESTONE_RELEASE_V1.template.json
 │       │       ├── LEDGER_RECONCILIATION_V1.template.json
-│       │       └── ARREARS_RESOLUTION_V1.template.json
+│       │       ├── ARREARS_RESOLUTION_V1.template.json
+│       │       └── OSINT_COMPOSED_ORACLE_V1.template.json
 │       │
 │       └── echelon_quant_v0_2/       LMSR quant market theatres
 │           ├── README.txt
@@ -258,12 +264,17 @@ prediction-market-monorepo/
 │
 ├── tools/                            Standalone utilities
 │   ├── echelon_verify.py             Verifier CLI (v0.1) — zero dependencies
-│   └── echelon_demo.sh               Escrow Wedge Demo Pack Generator (v0.2)
+│   ├── echelon_demo.sh               Escrow Wedge Demo Pack Generator (v0.2)
+│   ├── validate_osint_registry.py    OSINT Source Registry validator — zero dependencies
+│   └── validate_osint_fixtures.py    OSINT fixture dataset validator — zero dependencies
 │
 ├── docs/                             Documentation
 │   ├── core/                         Core reference documents
 │   │   ├── Echelon_System_Bible_v11.md
 │   │   ├── Echelon_OSINT_Reality_Oracle_Appendix_v3_2.md
+│   │   ├── Echelon_OSINT_Composed_Oracle_Spec_v2.md
+│   │   ├── Echelon_OSINT_Composed_Oracle_Spec_v2.docx
+│   │   ├── echelon_registry_v0_4_source_research.md
 │   │   └── REPO_MAP.md               ← you are here
 │   ├── architecture/                 System architecture
 │   ├── dev/                          Developer guides (18 dirs)
@@ -382,11 +393,13 @@ prediction-market-monorepo/
               │   oracle · scoring/prompts  │
               └─────────────┬──────────────┘
                             │
-              ┌─────────────▼──────────────┐
-              │   tools/ (standalone CLI)   │
-              │   echelon_verify.py         │
-              │   echelon_demo.sh           │
-              └────────────────────────────┘
+              ┌─────────────▼──────────────────┐
+              │   tools/ (standalone CLI)       │
+              │   echelon_verify.py             │
+              │   echelon_demo.sh               │
+              │   validate_osint_registry.py    │
+              │   validate_osint_fixtures.py    │
+              └────────────────────────────────┘
 
               ┌────────────────────────────┐
               │  smart-contracts/ (Solidity)│
