@@ -29,26 +29,16 @@ _SUPPORTED_PARAMS = {"messages", "model", "temperature", "max_tokens", "max_comp
 class OpenAIAdapter(ProviderAdapter):
     """Adapter for OpenAI and OpenAI-compatible APIs (SDD §4.2.3, §4.2.5)."""
 
+    def _is_codex_model(self, model: str) -> bool:
+        """Check if model uses the Responses API (codex models)."""
+        return "codex" in model
+
     def complete(self, request: CompletionRequest) -> CompletionResult:
         """Send completion request to OpenAI API, return normalized result."""
         model_config = self._get_model_config(request.model)
 
         # Context window enforcement (SDD §4.2.4)
         enforce_context_window(request, model_config)
-
-        # Build request body — OpenAI is the canonical format (pass-through)
-        token_key = self._token_limit_key(request.model)
-        body: Dict[str, Any] = {
-            "model": request.model,
-            "messages": request.messages,
-            "temperature": request.temperature,
-            token_key: request.max_tokens,
-        }
-
-        if request.tools:
-            body["tools"] = request.tools
-        if request.tool_choice:
-            body["tool_choice"] = request.tool_choice
 
         # Build headers
         auth = self._get_auth_header()
@@ -57,7 +47,14 @@ class OpenAIAdapter(ProviderAdapter):
             "Authorization": f"Bearer {auth}",
         }
 
-        url = f"{self.config.endpoint}/chat/completions"
+        # Codex models use Responses API; standard models use Chat Completions
+        if self._is_codex_model(request.model):
+            url = f"{self.config.endpoint}/responses"
+            body = self._build_responses_body(request)
+        else:
+            url = f"{self.config.endpoint}/chat/completions"
+            body = self._build_chat_body(request, model_config)
+
         start = time.monotonic()
 
         status, resp = http_post(
@@ -87,7 +84,79 @@ class OpenAIAdapter(ProviderAdapter):
             raise InvalidInputError(f"OpenAI API error (HTTP {status}): {msg}")
 
         # Parse response
+        if self._is_codex_model(request.model):
+            return self._parse_responses_response(resp, latency_ms)
         return self._parse_response(resp, latency_ms)
+
+    def _build_chat_body(self, request: CompletionRequest, model_config: Any) -> Dict[str, Any]:
+        """Build request body for Chat Completions API."""
+        token_key = model_config.token_param  # "max_completion_tokens" for GPT-5.2+
+        body: Dict[str, Any] = {
+            "model": request.model,
+            "messages": request.messages,
+            "temperature": request.temperature,
+            token_key: request.max_tokens,
+        }
+
+        if request.tools:
+            body["tools"] = request.tools
+        if request.tool_choice:
+            body["tool_choice"] = request.tool_choice
+
+        return body
+
+    def _build_responses_body(self, request: CompletionRequest) -> Dict[str, Any]:
+        """Build request body for Responses API (codex models)."""
+        # Combine system + user messages into a single input string
+        parts = []
+        for msg in request.messages:
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            if role == "system":
+                parts.insert(0, content)
+            else:
+                parts.append(content)
+        combined_input = "\n\n---\n\n".join(parts)
+
+        body: Dict[str, Any] = {
+            "model": request.model,
+            "input": combined_input,
+        }
+
+        return body
+
+    def _parse_responses_response(self, resp: Dict[str, Any], latency_ms: int) -> CompletionResult:
+        """Extract CompletionResult from Responses API response."""
+        # Responses API returns output as array of items
+        content = ""
+        output_items = resp.get("output", [])
+        for item in output_items:
+            if item.get("type") == "message":
+                for part in item.get("content", []):
+                    if part.get("type") == "output_text":
+                        content = part.get("text", "")
+                        break
+                if content:
+                    break
+
+        # Usage
+        usage_data = resp.get("usage", {})
+        usage = Usage(
+            input_tokens=usage_data.get("input_tokens", 0),
+            output_tokens=usage_data.get("output_tokens", 0),
+            reasoning_tokens=usage_data.get("output_tokens_details", {}).get("reasoning_tokens", 0),
+            source="actual" if usage_data else "estimated",
+        )
+
+        return CompletionResult(
+            content=content,
+            tool_calls=None,
+            thinking=None,
+            usage=usage,
+            model=resp.get("model", "unknown"),
+            latency_ms=latency_ms,
+            provider=self.provider,
+        )
 
     def _parse_response(self, resp: Dict[str, Any], latency_ms: int) -> CompletionResult:
         """Extract CompletionResult from OpenAI response (SDD §4.2.5)."""
@@ -120,25 +189,6 @@ class OpenAIAdapter(ProviderAdapter):
             latency_ms=latency_ms,
             provider=self.provider,
         )
-
-    @staticmethod
-    def _token_limit_key(model: str) -> str:
-        """Return the correct token limit parameter for the model.
-
-        GPT-4o and earlier use 'max_tokens'.
-        GPT-5.2+ use 'max_completion_tokens' (OpenAI API deprecation).
-
-        Decision: Prefix matching chosen over a version map because all known
-        legacy models start with 'gpt-4' or 'gpt-3'. New model families
-        (GPT-5.x, o1, o3, etc.) default to the current API parameter.
-        Update legacy_prefixes only if OpenAI releases a model with a new
-        prefix that still requires the deprecated 'max_tokens' parameter.
-        See: https://platform.openai.com/docs/api-reference/chat/create
-        """
-        legacy_prefixes = ("gpt-4", "gpt-3")
-        if any(model.startswith(p) for p in legacy_prefixes):
-            return "max_tokens"
-        return "max_completion_tokens"
 
     def validate_config(self) -> List[str]:
         """Validate OpenAI-specific configuration."""
