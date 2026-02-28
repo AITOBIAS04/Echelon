@@ -3,18 +3,9 @@ import { InquiryFlowProvider } from './hooks/useInquiryFlow';
 import { Shell } from './components/layout/Shell';
 import { SignalFeed } from './components/signal-feed/SignalFeed';
 import { InquiryConfig } from './components/inquiry-config/InquiryConfig';
-
-// Placeholder screens — will be replaced in Sprint 3
-function PlaceholderScreen({ name }: { name: string }) {
-  return (
-    <div className="animate-fade-slide-up rounded-lg border border-echelon-border bg-white p-8 shadow-sm">
-      <h2 className="text-lg font-semibold text-echelon-navy">{name}</h2>
-      <p className="mt-2 text-sm text-slate-500">
-        This screen will be implemented in a subsequent sprint.
-      </p>
-    </div>
-  );
-}
+import { ExecutionView } from './components/execution/ExecutionView';
+import { CertificateView } from './components/certificate/CertificateView';
+import { TierGate } from './components/tier-gate/TierGate';
 
 const router = createBrowserRouter([
   {
@@ -31,15 +22,15 @@ const router = createBrowserRouter([
       },
       {
         path: 'execute',
-        element: <PlaceholderScreen name="Screen 3: Construct Execution" />,
+        element: <ExecutionView />,
       },
       {
         path: 'certificate',
-        element: <PlaceholderScreen name="Screen 4: Certificate Issued" />,
+        element: <CertificateView />,
       },
       {
         path: 'tier-gate',
-        element: <PlaceholderScreen name="Screen 5: Tier Gate" />,
+        element: <TierGate />,
       },
     ],
   },
