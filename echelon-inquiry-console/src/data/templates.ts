@@ -720,20 +720,30 @@ export const GLOBAL_CONFLICT_PHASES: MarketPhase[] = [
 ];
 
 /**
- * Generate minimal episodes for templates that don't have full mock data.
- * These are used when executing templates other than ESCROW or GLOBAL_CONFLICT.
+ * Deterministic seeded scores for non-hardcoded templates.
+ * Uses a simple hash to avoid Math.random() instability across renders.
+ */
+function seededScore(seed: number): number {
+  const x = Math.sin(seed * 9301 + 49297) * 233280;
+  return x - Math.floor(x) > 0.5 ? 1.0 : 0.0;
+}
+
+/**
+ * Generate episodes for templates that don't have full mock data.
+ * Deterministic — safe to call on every render without memoisation issues.
  */
 export function generateMinimalEpisodes(
   template: TheatreTemplate
 ): Episode[] {
-  const count = Math.min(template.fixture_count, 5);
+  const count = template.fixture_count;
   const episodes: Episode[] = [];
 
   for (let i = 0; i < count; i++) {
     const isPass = i < template.pass_count;
     const scores: Record<string, number> = {};
-    for (const cid of template.criteria_ids) {
-      scores[cid] = isPass ? 1.0 : Math.random() > 0.5 ? 1.0 : 0.0;
+    for (let c = 0; c < template.criteria_ids.length; c++) {
+      const cid = template.criteria_ids[c];
+      scores[cid] = isPass ? 1.0 : seededScore(i * 100 + c);
     }
     const total = Object.values(scores).reduce((a, b) => a + b, 0);
     const composite = total / Object.keys(scores).length;
@@ -752,3 +762,191 @@ export function generateMinimalEpisodes(
 
   return episodes;
 }
+
+/**
+ * OSINT Composed Oracle — 10 hand-crafted episodes (6 pass, 4 fail).
+ * Criteria: source_corroboration, temporal_consistency, entity_resolution,
+ *           confidence_calibration, counter_signal_integration, provenance_chain.
+ */
+export const OSINT_EPISODES: Episode[] = [
+  {
+    episode_id: 'ep_001',
+    ground_truth_summary:
+      'Satellite imagery corroborated by 3 independent OSINT accounts. Temporal gap < 2 hours. Entity resolved via cross-reference.',
+    expected_class: 'PASS',
+    construct_output_class: 'PASS',
+    criteria_scores: {
+      source_corroboration: 1.0,
+      temporal_consistency: 1.0,
+      entity_resolution: 1.0,
+      confidence_calibration: 1.0,
+      counter_signal_integration: 1.0,
+      provenance_chain: 1.0,
+    },
+    composite_score: 1.0,
+    ground_truth_hash: 'f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2',
+    invocation_hash: 'a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3',
+  },
+  {
+    episode_id: 'ep_002',
+    ground_truth_summary:
+      'Single source telegram channel report. No corroboration found within 48-hour window. Entity identification ambiguous.',
+    expected_class: 'FAIL',
+    construct_output_class: 'FAIL',
+    criteria_scores: {
+      source_corroboration: 0.0,
+      temporal_consistency: 0.0,
+      entity_resolution: 0.0,
+      confidence_calibration: 1.0,
+      counter_signal_integration: 1.0,
+      provenance_chain: 0.0,
+    },
+    composite_score: 0.3333,
+    ground_truth_hash: 'b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4',
+    invocation_hash: 'c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5',
+  },
+  {
+    episode_id: 'ep_003',
+    ground_truth_summary:
+      'Ship AIS data cross-referenced with port authority records. Temporal alignment within 30 minutes. Full provenance chain verified.',
+    expected_class: 'PASS',
+    construct_output_class: 'PASS',
+    criteria_scores: {
+      source_corroboration: 1.0,
+      temporal_consistency: 1.0,
+      entity_resolution: 1.0,
+      confidence_calibration: 0.9,
+      counter_signal_integration: 1.0,
+      provenance_chain: 1.0,
+    },
+    composite_score: 0.9833,
+    ground_truth_hash: 'd5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6',
+    invocation_hash: 'e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7',
+  },
+  {
+    episode_id: 'ep_004',
+    ground_truth_summary:
+      'Social media geolocation contradicted by metadata analysis. Temporal inconsistency — post predates claimed event by 6 hours.',
+    expected_class: 'FAIL',
+    construct_output_class: 'FAIL',
+    criteria_scores: {
+      source_corroboration: 0.0,
+      temporal_consistency: 0.0,
+      entity_resolution: 1.0,
+      confidence_calibration: 0.0,
+      counter_signal_integration: 1.0,
+      provenance_chain: 0.0,
+    },
+    composite_score: 0.3333,
+    ground_truth_hash: 'f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8',
+    invocation_hash: 'a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9',
+  },
+  {
+    episode_id: 'ep_005',
+    ground_truth_summary:
+      'Flight tracking data confirmed by 2 radar sources. Entity matched via tail number registry. Counter-signal: weather deviation noted.',
+    expected_class: 'PASS',
+    construct_output_class: 'PASS',
+    criteria_scores: {
+      source_corroboration: 1.0,
+      temporal_consistency: 1.0,
+      entity_resolution: 1.0,
+      confidence_calibration: 1.0,
+      counter_signal_integration: 0.8,
+      provenance_chain: 1.0,
+    },
+    composite_score: 0.9667,
+    ground_truth_hash: 'b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0',
+    invocation_hash: 'c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1',
+  },
+  {
+    episode_id: 'ep_006',
+    ground_truth_summary:
+      'Leaked document authenticity unverifiable. Provenance chain broken at second hop. Confidence calibration shows overfit.',
+    expected_class: 'FAIL',
+    construct_output_class: 'FAIL',
+    criteria_scores: {
+      source_corroboration: 0.0,
+      temporal_consistency: 1.0,
+      entity_resolution: 0.0,
+      confidence_calibration: 0.0,
+      counter_signal_integration: 0.0,
+      provenance_chain: 0.0,
+    },
+    composite_score: 0.1667,
+    ground_truth_hash: 'd1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2',
+    invocation_hash: 'e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3',
+  },
+  {
+    episode_id: 'ep_007',
+    ground_truth_summary:
+      'Radio intercept corroborated by signals intelligence partner. Temporal match within 5 minutes. Full entity resolution via callsign database.',
+    expected_class: 'PASS',
+    construct_output_class: 'PASS',
+    criteria_scores: {
+      source_corroboration: 1.0,
+      temporal_consistency: 1.0,
+      entity_resolution: 1.0,
+      confidence_calibration: 1.0,
+      counter_signal_integration: 1.0,
+      provenance_chain: 1.0,
+    },
+    composite_score: 1.0,
+    ground_truth_hash: 'f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4',
+    invocation_hash: 'a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5',
+  },
+  {
+    episode_id: 'ep_008',
+    ground_truth_summary:
+      'Customs manifest verified against trade database. Entity resolved. Counter-signal: discrepancy in declared weight vs satellite estimate.',
+    expected_class: 'PASS',
+    construct_output_class: 'PASS',
+    criteria_scores: {
+      source_corroboration: 1.0,
+      temporal_consistency: 1.0,
+      entity_resolution: 1.0,
+      confidence_calibration: 0.8,
+      counter_signal_integration: 1.0,
+      provenance_chain: 1.0,
+    },
+    composite_score: 0.9667,
+    ground_truth_hash: 'b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6',
+    invocation_hash: 'c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7',
+  },
+  {
+    episode_id: 'ep_009',
+    ground_truth_summary:
+      'Open-source financial filing cross-referenced with sanctions list. Temporal gap: 3 months between filing and detection. Provenance incomplete.',
+    expected_class: 'FAIL',
+    construct_output_class: 'FAIL',
+    criteria_scores: {
+      source_corroboration: 1.0,
+      temporal_consistency: 0.0,
+      entity_resolution: 1.0,
+      confidence_calibration: 0.0,
+      counter_signal_integration: 0.0,
+      provenance_chain: 0.0,
+    },
+    composite_score: 0.3333,
+    ground_truth_hash: 'd7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8',
+    invocation_hash: 'e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9',
+  },
+  {
+    episode_id: 'ep_010',
+    ground_truth_summary:
+      'Geospatial imagery with 4 corroborating sources. Sub-metre resolution. Entity confirmed via building footprint matching. Full chain of custody.',
+    expected_class: 'PASS',
+    construct_output_class: 'PASS',
+    criteria_scores: {
+      source_corroboration: 1.0,
+      temporal_consistency: 1.0,
+      entity_resolution: 1.0,
+      confidence_calibration: 1.0,
+      counter_signal_integration: 1.0,
+      provenance_chain: 1.0,
+    },
+    composite_score: 1.0,
+    ground_truth_hash: 'f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0',
+    invocation_hash: 'a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1',
+  },
+];

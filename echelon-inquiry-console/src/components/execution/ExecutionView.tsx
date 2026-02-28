@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useInquiryFlow } from '../../hooks/useInquiryFlow';
 import { useExecutionSimulator } from '../../hooks/useExecutionSimulator';
@@ -9,6 +9,7 @@ import { ScoreStream } from './ScoreStream';
 import { EvidenceBundleBuilder } from './EvidenceBundleBuilder';
 import {
   ESCROW_EPISODES,
+  OSINT_EPISODES,
   GLOBAL_CONFLICT_PHASES,
   generateMinimalEpisodes,
 } from '../../data/templates';
@@ -34,18 +35,19 @@ export function ExecutionView() {
 
   const isProduct = template.execution_path === 'PRODUCT';
 
-  // Determine episodes or phases
-  const episodes: Episode[] = isProduct
-    ? template.template_id === 'ESCROW_MILESTONE_RELEASE_V1'
-      ? ESCROW_EPISODES
-      : generateMinimalEpisodes(template)
-    : [];
+  // Determine episodes or phases — memoised to prevent re-triggering simulator
+  const episodes: Episode[] = useMemo(() => {
+    if (!isProduct) return [];
+    if (template.template_id === 'ESCROW_MILESTONE_RELEASE_V1') return ESCROW_EPISODES;
+    if (template.template_id === 'OSINT_COMPOSED_ORACLE_V1') return OSINT_EPISODES;
+    return generateMinimalEpisodes(template);
+  }, [isProduct, template]);
 
-  const phases: MarketPhase[] = !isProduct
-    ? template.template_id === 'GLOBAL_CONFLICT_V1'
-      ? GLOBAL_CONFLICT_PHASES
-      : []
-    : [];
+  const phases: MarketPhase[] = useMemo(() => {
+    if (isProduct) return [];
+    if (template.template_id === 'GLOBAL_CONFLICT_V1') return GLOBAL_CONFLICT_PHASES;
+    return [];
+  }, [isProduct, template]);
 
   const onComplete = useCallback(() => {
     dispatch({ type: 'COMPLETE_EXECUTION' });
