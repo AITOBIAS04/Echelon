@@ -149,8 +149,8 @@ function inquiryReducer(
 
     case 'GO_TO_STEP': {
       const target = action.payload;
-      // Allow backward navigation to completed steps or forward to next step
-      if (target <= state.currentStep) {
+      // Allow backward navigation or forward to next step
+      if (target <= state.currentStep + 1) {
         return { ...state, currentStep: target };
       }
       return state;

@@ -1,8 +1,10 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { InquiryFlowProvider } from './hooks/useInquiryFlow';
 import { Shell } from './components/layout/Shell';
+import { SignalFeed } from './components/signal-feed/SignalFeed';
+import { InquiryConfig } from './components/inquiry-config/InquiryConfig';
 
-// Placeholder screens — will be replaced in Sprint 2 & 3
+// Placeholder screens — will be replaced in Sprint 3
 function PlaceholderScreen({ name }: { name: string }) {
   return (
     <div className="animate-fade-slide-up rounded-lg border border-echelon-border bg-white p-8 shadow-sm">
@@ -21,11 +23,11 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/signal-feed" replace /> },
       {
         path: 'signal-feed',
-        element: <PlaceholderScreen name="Screen 1: Signal Feed" />,
+        element: <SignalFeed />,
       },
       {
         path: 'configure',
-        element: <PlaceholderScreen name="Screen 2: Inquiry Configuration" />,
+        element: <InquiryConfig />,
       },
       {
         path: 'execute',
