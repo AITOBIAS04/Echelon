@@ -72,8 +72,10 @@
     {
       "cycle_id": "cycle-003",
       "label": "OSINT Registry v0.6.0 Merge & Pipeline Hardening",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-01T21:30:00Z",
+      "archived": "2026-03-01T22:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-01-osint-registry-v060-hardening",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -88,7 +90,7 @@
       ]
     }
   ],
-  "active_cycle": "cycle-003",
+  "active_cycle": null,
   "active_bugfix": null,
   "global_sprint_counter": 7,
   "bugfix_cycles": []
