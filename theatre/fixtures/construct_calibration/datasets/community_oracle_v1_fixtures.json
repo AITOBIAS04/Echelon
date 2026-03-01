@@ -1,0 +1,511 @@
+{
+  "dataset_id": "community_oracle_v1_fixtures",
+  "version": "1.0.0",
+  "description": "Pre-annotated fixture dataset for community_oracle_v1 construct calibration. 12 records covering PR review scenarios with precision, recall, and reply accuracy annotations.",
+  "records": [
+    {
+      "record_id": "oracle_0001",
+      "input_data": {
+        "pr_diff": "diff --git a/src/auth/login.py\n- def login(user, pwd):\n+ def login(user, pwd, mfa_token=None):\n+     if mfa_token:\n+         verify_mfa(user, mfa_token)\n      validate_credentials(user, pwd)",
+        "construct_summary": "Adds optional MFA token parameter to login function. When provided, verifies MFA before credential validation. No changes to existing login flow without MFA.",
+        "followup_qa": [
+          {"question": "Does this break existing callers?", "answer": "No, mfa_token defaults to None so existing calls work unchanged."},
+          {"question": "Is the MFA check order correct?", "answer": "Yes, MFA is verified before credentials per NIST 800-63B guidelines."},
+          {"question": "Are there tests?", "answer": "The diff shows test additions for both MFA and non-MFA paths."},
+          {"question": "What happens if MFA fails?", "answer": "verify_mfa raises AuthError which propagates to the caller."},
+          {"question": "Is rate limiting applied?", "answer": "Yes, the existing rate limiter covers the login endpoint."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Adds optional MFA token parameter", "supported": true},
+            {"claim": "Verifies MFA before credential validation", "supported": true},
+            {"claim": "No changes to existing login flow", "supported": true},
+            {"claim": "MFA token defaults to None", "supported": true},
+            {"claim": "Test additions visible in diff", "supported": false}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "New mfa_token parameter added to login", "surfaced": true},
+            {"change": "MFA verification call added", "surfaced": true},
+            {"change": "Parameter default is None", "surfaced": true},
+            {"change": "Conditional MFA check block", "surfaced": false}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "Does this break existing callers?", "grounded": true},
+            {"question": "Is the MFA check order correct?", "grounded": true},
+            {"question": "Are there tests?", "grounded": false},
+            {"question": "What happens if MFA fails?", "grounded": true},
+            {"question": "Is rate limiting applied?", "grounded": true}
+          ]
+        }
+      }
+    },
+    {
+      "record_id": "oracle_0002",
+      "input_data": {
+        "pr_diff": "diff --git a/src/api/routes.py\n+ @app.get('/api/v2/health')\n+ def health_check():\n+     return {'status': 'ok', 'version': __version__}",
+        "construct_summary": "Adds a v2 health check endpoint returning status and version. Simple GET endpoint with no authentication required.",
+        "followup_qa": [
+          {"question": "Why v2 instead of v1?", "answer": "v1 health endpoint exists but doesn't include version info."},
+          {"question": "Should this require auth?", "answer": "No, health checks are typically unauthenticated for load balancer probes."},
+          {"question": "What's __version__?", "answer": "It's imported from the package __init__.py, currently set to 2.1.0."},
+          {"question": "Is there a readiness check too?", "answer": "Not in this PR, but the existing /ready endpoint covers that."},
+          {"question": "Does it return proper status codes?", "answer": "Yes, returns 200 for healthy and 503 for degraded states."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Adds v2 health check endpoint", "supported": true},
+            {"claim": "Returns status and version", "supported": true},
+            {"claim": "Simple GET endpoint", "supported": true},
+            {"claim": "No authentication required", "supported": true},
+            {"claim": "v1 health endpoint exists", "supported": false}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "New /api/v2/health route added", "surfaced": true},
+            {"change": "Returns JSON with status and version", "surfaced": true},
+            {"change": "Uses __version__ variable", "surfaced": false},
+            {"change": "GET method decorator applied", "surfaced": false}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "Why v2 instead of v1?", "grounded": false},
+            {"question": "Should this require auth?", "grounded": true},
+            {"question": "What's __version__?", "grounded": false},
+            {"question": "Is there a readiness check too?", "grounded": true},
+            {"question": "Does it return proper status codes?", "grounded": true}
+          ]
+        }
+      }
+    },
+    {
+      "record_id": "oracle_0003",
+      "input_data": {
+        "pr_diff": "diff --git a/src/db/queries.py\n- def get_user(id):\n-     return db.execute('SELECT * FROM users WHERE id = ?', (id,))\n+ def get_user(id):\n+     return db.execute('SELECT id, name, email FROM users WHERE id = ?', (id,))",
+        "construct_summary": "Replaces SELECT * with explicit column selection for the get_user query. This reduces data transfer and prevents accidental exposure of sensitive columns like password_hash.",
+        "followup_qa": [
+          {"question": "Which columns were removed?", "answer": "password_hash, created_at, and last_login are no longer fetched."},
+          {"question": "Will this break any callers?", "answer": "Callers accessing .password_hash will break, but no current code does that outside auth module."},
+          {"question": "Is this a security fix?", "answer": "Yes, it prevents password hash leakage through the user API."},
+          {"question": "Should we add a migration?", "answer": "No migration needed, this is a query change only."},
+          {"question": "Are other queries affected?", "answer": "Only get_user was using SELECT *, other queries already specify columns."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Replaces SELECT * with explicit columns", "supported": true},
+            {"claim": "Selects id, name, email", "supported": true},
+            {"claim": "Reduces data transfer", "supported": true},
+            {"claim": "Prevents exposure of password_hash", "supported": true},
+            {"claim": "Only get_user uses SELECT *", "supported": true}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "SELECT * replaced with explicit column list", "surfaced": true},
+            {"change": "Three columns selected: id, name, email", "surfaced": true},
+            {"change": "Query parameterization preserved", "surfaced": true},
+            {"change": "Function signature unchanged", "surfaced": false}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "Which columns were removed?", "grounded": true},
+            {"question": "Will this break any callers?", "grounded": false},
+            {"question": "Is this a security fix?", "grounded": true},
+            {"question": "Should we add a migration?", "grounded": true},
+            {"question": "Are other queries affected?", "grounded": true}
+          ]
+        }
+      }
+    },
+    {
+      "record_id": "oracle_0004",
+      "input_data": {
+        "pr_diff": "diff --git a/requirements.txt\n- requests==2.28.0\n+ requests==2.31.0\n- urllib3==1.26.12\n+ urllib3==2.0.4",
+        "construct_summary": "Bumps requests from 2.28.0 to 2.31.0 and urllib3 from 1.26.12 to 2.0.4. The urllib3 major version bump may require changes to proxy configuration.",
+        "followup_qa": [
+          {"question": "Any security fixes?", "answer": "Yes, requests 2.31.0 patches CVE-2023-32681 for cookie handling."},
+          {"question": "Is urllib3 2.x backward compatible?", "answer": "Mostly, but it drops Python 3.7 support and changes some proxy APIs."},
+          {"question": "Were tests run?", "answer": "CI passes with no test failures from the upgrade."},
+          {"question": "Should we pin urllib3?", "answer": "It's already pinned in the requirements file to 2.0.4."},
+          {"question": "Any breaking changes?", "answer": "The default timeout behavior changed in urllib3 2.x but our code sets explicit timeouts."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Bumps requests to 2.31.0", "supported": true},
+            {"claim": "Bumps urllib3 to 2.0.4", "supported": true},
+            {"claim": "urllib3 is a major version bump", "supported": true},
+            {"claim": "May require proxy configuration changes", "supported": false},
+            {"claim": "CVE-2023-32681 patched", "supported": false}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "requests version bumped 2.28.0 to 2.31.0", "surfaced": true},
+            {"change": "urllib3 version bumped 1.26.12 to 2.0.4", "surfaced": true},
+            {"change": "Major version change for urllib3", "surfaced": false},
+            {"change": "Two dependencies updated simultaneously", "surfaced": false}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "Any security fixes?", "grounded": true},
+            {"question": "Is urllib3 2.x backward compatible?", "grounded": true},
+            {"question": "Were tests run?", "grounded": true},
+            {"question": "Should we pin urllib3?", "grounded": true},
+            {"question": "Any breaking changes?", "grounded": true}
+          ]
+        }
+      }
+    },
+    {
+      "record_id": "oracle_0005",
+      "input_data": {
+        "pr_diff": "diff --git a/src/cache/redis_client.py\n+ import redis.asyncio as aioredis\n+ \n+ class AsyncRedisCache:\n+     def __init__(self, url: str):\n+         self._pool = aioredis.ConnectionPool.from_url(url)\n+         self._client = aioredis.Redis(connection_pool=self._pool)\n+     \n+     async def get(self, key: str) -> bytes | None:\n+         return await self._client.get(key)\n+     \n+     async def set(self, key: str, value: bytes, ttl: int = 3600) -> None:\n+         await self._client.set(key, value, ex=ttl)",
+        "construct_summary": "Introduces async Redis cache client using redis.asyncio. Provides get/set operations with configurable TTL. Connection pooling enabled by default.",
+        "followup_qa": [
+          {"question": "Is redis.asyncio the right library?", "answer": "Yes, it's the official async interface bundled with redis-py since v4.2."},
+          {"question": "What's the default TTL?", "answer": "3600 seconds (1 hour) as shown in the set method signature."},
+          {"question": "Is there connection cleanup?", "answer": "The connection pool handles cleanup, but an explicit close method should be added."},
+          {"question": "Thread safety?", "answer": "redis.asyncio is coroutine-safe but not thread-safe. Each event loop needs its own pool."},
+          {"question": "Error handling?", "answer": "No error handling shown. ConnectionError and TimeoutError should be caught."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Uses redis.asyncio for async support", "supported": true},
+            {"claim": "Provides get and set operations", "supported": true},
+            {"claim": "Configurable TTL on set", "supported": true},
+            {"claim": "Connection pooling enabled", "supported": true},
+            {"claim": "Official async interface since v4.2", "supported": false}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "New AsyncRedisCache class", "surfaced": true},
+            {"change": "ConnectionPool.from_url usage", "surfaced": true},
+            {"change": "get returns bytes or None", "surfaced": false},
+            {"change": "set uses ex parameter for TTL", "surfaced": true}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "Is redis.asyncio the right library?", "grounded": false},
+            {"question": "What's the default TTL?", "grounded": true},
+            {"question": "Is there connection cleanup?", "grounded": true},
+            {"question": "Thread safety?", "grounded": true},
+            {"question": "Error handling?", "grounded": true}
+          ]
+        }
+      }
+    },
+    {
+      "record_id": "oracle_0006",
+      "input_data": {
+        "pr_diff": "diff --git a/src/models/user.py\n  class User(Base):\n      __tablename__ = 'users'\n-     name = Column(String(100))\n+     name = Column(String(100), nullable=False)\n+     display_name = Column(String(200), nullable=True)\n      email = Column(String(255), unique=True)",
+        "construct_summary": "Makes user name column non-nullable and adds optional display_name column. Existing null names will need a migration backfill.",
+        "followup_qa": [
+          {"question": "Is there a migration file?", "answer": "Yes, alembic migration 003_add_display_name.py handles the schema change."},
+          {"question": "What about existing null names?", "answer": "The migration backfills null names with the email prefix."},
+          {"question": "Why separate name and display_name?", "answer": "name is the system identifier, display_name is user-facing and can contain unicode."},
+          {"question": "Max length difference?", "answer": "name is 100 chars, display_name is 200 chars to allow longer formatted names."},
+          {"question": "Index on display_name?", "answer": "No index added since display_name queries are rare and usually filtered by user_id."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Makes name column non-nullable", "supported": true},
+            {"claim": "Adds display_name column", "supported": true},
+            {"claim": "display_name is nullable", "supported": true},
+            {"claim": "Existing null names need backfill", "supported": true},
+            {"claim": "Migration file included", "supported": false}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "nullable=False added to name column", "surfaced": true},
+            {"change": "New display_name column added", "surfaced": true},
+            {"change": "display_name max length is 200", "surfaced": false},
+            {"change": "email column unchanged", "surfaced": false}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "Is there a migration file?", "grounded": false},
+            {"question": "What about existing null names?", "grounded": true},
+            {"question": "Why separate name and display_name?", "grounded": true},
+            {"question": "Max length difference?", "grounded": true},
+            {"question": "Index on display_name?", "grounded": true}
+          ]
+        }
+      }
+    },
+    {
+      "record_id": "oracle_0007",
+      "input_data": {
+        "pr_diff": "diff --git a/src/middleware/cors.py\n- ALLOWED_ORIGINS = ['http://localhost:3000']\n+ ALLOWED_ORIGINS = [\n+     'http://localhost:3000',\n+     'https://app.example.com',\n+     'https://staging.example.com',\n+ ]\n+ ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']",
+        "construct_summary": "Expands CORS allowed origins to include production and staging domains. Adds explicit allowed methods list. Previously only localhost was permitted.",
+        "followup_qa": [
+          {"question": "Is wildcard origin used?", "answer": "No, only specific origins are whitelisted."},
+          {"question": "Are credentials supported?", "answer": "The existing allow_credentials=True is preserved."},
+          {"question": "Should OPTIONS be listed?", "answer": "Yes, preflight OPTIONS requests need explicit allowance."},
+          {"question": "Is PATCH missing?", "answer": "PATCH is not used by the API currently, so it's intentionally excluded."},
+          {"question": "Environment-specific config?", "answer": "These are hardcoded. Consider moving to environment variables."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Expands allowed origins", "supported": true},
+            {"claim": "Includes production domain", "supported": true},
+            {"claim": "Includes staging domain", "supported": true},
+            {"claim": "Adds explicit allowed methods", "supported": true},
+            {"claim": "Previously only localhost", "supported": true}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "Two new origins added to whitelist", "surfaced": false},
+            {"change": "ALLOWED_METHODS constant added", "surfaced": true},
+            {"change": "Five HTTP methods allowed", "surfaced": false},
+            {"change": "OPTIONS method included", "surfaced": false}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "Is wildcard origin used?", "grounded": true},
+            {"question": "Are credentials supported?", "grounded": true},
+            {"question": "Should OPTIONS be listed?", "grounded": true},
+            {"question": "Is PATCH missing?", "grounded": true},
+            {"question": "Environment-specific config?", "grounded": true}
+          ]
+        }
+      }
+    },
+    {
+      "record_id": "oracle_0008",
+      "input_data": {
+        "pr_diff": "diff --git a/src/workers/task_queue.py\n  class TaskQueue:\n-     def process(self, task):\n-         result = task.execute()\n-         return result\n+     async def process(self, task):\n+         result = await task.execute()\n+         self._metrics.record(task.name, result.duration_ms)\n+         return result",
+        "construct_summary": "Converts TaskQueue.process to async and adds metrics recording after task execution. Each completed task now reports its name and duration.",
+        "followup_qa": [
+          {"question": "Is task.execute also async?", "answer": "Yes, the diff shows await, implying execute() is a coroutine."},
+          {"question": "What's _metrics?", "answer": "It's a MetricsCollector instance initialized in __init__, recording to StatsD."},
+          {"question": "Error handling for metrics?", "answer": "Metrics recording is fire-and-forget; failures are logged but don't affect task results."},
+          {"question": "Is this backward compatible?", "answer": "No, callers must now await process(). All callers in the codebase have been updated."},
+          {"question": "Performance impact?", "answer": "Minimal. Metrics recording adds approximately 0.1ms per task."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Converts process to async", "supported": true},
+            {"claim": "Adds metrics recording", "supported": true},
+            {"claim": "Records task name and duration", "supported": true},
+            {"claim": "Each completed task reports", "supported": true},
+            {"claim": "MetricsCollector uses StatsD", "supported": false}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "Method signature changed to async", "surfaced": true},
+            {"change": "await added to task.execute()", "surfaced": true},
+            {"change": "metrics.record call added", "surfaced": false},
+            {"change": "Return value unchanged", "surfaced": false}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "Is task.execute also async?", "grounded": true},
+            {"question": "What's _metrics?", "grounded": true},
+            {"question": "Error handling for metrics?", "grounded": true},
+            {"question": "Is this backward compatible?", "grounded": true},
+            {"question": "Performance impact?", "grounded": false}
+          ]
+        }
+      }
+    },
+    {
+      "record_id": "oracle_0009",
+      "input_data": {
+        "pr_diff": "diff --git a/src/config/settings.py\n+ import os\n+ \n+ DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///dev.db')\n+ SECRET_KEY = os.environ['SECRET_KEY']\n+ DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'\n+ LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')",
+        "construct_summary": "Adds environment-based configuration for database URL, secret key, debug mode, and log level. SECRET_KEY is required with no default. Other settings have sensible defaults.",
+        "followup_qa": [
+          {"question": "What if SECRET_KEY is missing?", "answer": "The app will crash with KeyError on startup, which is the intended behavior for required secrets."},
+          {"question": "Is sqlite the production DB?", "answer": "No, sqlite is only the development default. Production uses DATABASE_URL from env."},
+          {"question": "Is DEBUG safe in production?", "answer": "Yes, it defaults to false so production won't accidentally enable debug mode."},
+          {"question": "Should we use pydantic Settings?", "answer": "For this project size, os.environ is sufficient. Pydantic Settings adds unnecessary complexity."},
+          {"question": "Is .env file supported?", "answer": "Not directly. Use python-dotenv or direnv to load .env files before running."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Database URL from environment", "supported": true},
+            {"claim": "SECRET_KEY is required", "supported": true},
+            {"claim": "Debug mode from environment", "supported": true},
+            {"claim": "Log level configurable", "supported": true},
+            {"claim": "Sensible defaults provided", "supported": false}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "DATABASE_URL with sqlite default", "surfaced": true},
+            {"change": "SECRET_KEY required (no default)", "surfaced": true},
+            {"change": "DEBUG boolean parsing", "surfaced": true},
+            {"change": "LOG_LEVEL defaults to INFO", "surfaced": false}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "What if SECRET_KEY is missing?", "grounded": true},
+            {"question": "Is sqlite the production DB?", "grounded": true},
+            {"question": "Is DEBUG safe in production?", "grounded": true},
+            {"question": "Should we use pydantic Settings?", "grounded": false},
+            {"question": "Is .env file supported?", "grounded": false}
+          ]
+        }
+      }
+    },
+    {
+      "record_id": "oracle_0010",
+      "input_data": {
+        "pr_diff": "diff --git a/tests/test_auth.py\n+ def test_login_valid_credentials():\n+     response = client.post('/login', json={'user': 'test', 'pwd': 'pass123'})\n+     assert response.status_code == 200\n+     assert 'token' in response.json()\n+ \n+ def test_login_invalid_password():\n+     response = client.post('/login', json={'user': 'test', 'pwd': 'wrong'})\n+     assert response.status_code == 401",
+        "construct_summary": "Adds two authentication tests: successful login returning a token, and failed login returning 401. Uses the test client fixture for HTTP calls.",
+        "followup_qa": [
+          {"question": "Is the test user pre-seeded?", "answer": "Yes, the conftest.py seeds a test user with known credentials."},
+          {"question": "What token format?", "answer": "JWT token with user_id and expiry claims."},
+          {"question": "Is HTTPS enforced?", "answer": "Not in tests. Production enforces HTTPS via reverse proxy."},
+          {"question": "Rate limiting tested?", "answer": "Not in this PR. Rate limiting tests are in test_middleware.py."},
+          {"question": "Token expiry tested?", "answer": "No, but token TTL is set to 1 hour in the auth module."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Adds successful login test", "supported": true},
+            {"claim": "Adds failed login test", "supported": true},
+            {"claim": "Checks token in response", "supported": true},
+            {"claim": "Uses test client fixture", "supported": false},
+            {"claim": "Test user pre-seeded in conftest", "supported": false}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "test_login_valid_credentials function", "surfaced": true},
+            {"change": "test_login_invalid_password function", "surfaced": true},
+            {"change": "Asserts status 200 for valid login", "surfaced": false},
+            {"change": "Asserts status 401 for invalid login", "surfaced": false}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "Is the test user pre-seeded?", "grounded": true},
+            {"question": "What token format?", "grounded": true},
+            {"question": "Is HTTPS enforced?", "grounded": true},
+            {"question": "Rate limiting tested?", "grounded": true},
+            {"question": "Token expiry tested?", "grounded": true}
+          ]
+        }
+      }
+    },
+    {
+      "record_id": "oracle_0011",
+      "input_data": {
+        "pr_diff": "diff --git a/src/utils/retry.py\n+ from functools import wraps\n+ import asyncio\n+ \n+ def with_retry(max_attempts=3, backoff=1.0):\n+     def decorator(fn):\n+         @wraps(fn)\n+         async def wrapper(*args, **kwargs):\n+             for attempt in range(max_attempts):\n+                 try:\n+                     return await fn(*args, **kwargs)\n+                 except Exception:\n+                     if attempt == max_attempts - 1:\n+                         raise\n+                     await asyncio.sleep(backoff * (2 ** attempt))\n+         return wrapper\n+     return decorator",
+        "construct_summary": "Adds a with_retry decorator for async functions. Supports configurable max attempts and exponential backoff. Reraises the last exception after all attempts are exhausted.",
+        "followup_qa": [
+          {"question": "Is it async-only?", "answer": "Yes, the wrapper is an async function that uses await."},
+          {"question": "What's the backoff strategy?", "answer": "Exponential: backoff * 2^attempt, so 1s, 2s, 4s by default."},
+          {"question": "Can we filter exception types?", "answer": "Not currently. All exceptions trigger retry. Could add an exceptions parameter."},
+          {"question": "Is jitter included?", "answer": "No jitter. Consider adding random jitter to prevent thundering herd."},
+          {"question": "Thread-safe?", "answer": "Yes, each invocation creates its own attempt counter."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Adds with_retry decorator", "supported": true},
+            {"claim": "For async functions", "supported": true},
+            {"claim": "Configurable max attempts", "supported": true},
+            {"claim": "Exponential backoff", "supported": true},
+            {"claim": "Reraises last exception", "supported": false}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "New with_retry decorator function", "surfaced": true},
+            {"change": "Uses functools.wraps", "surfaced": true},
+            {"change": "asyncio.sleep for backoff delay", "surfaced": false},
+            {"change": "Exception handling with reraise", "surfaced": false}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "Is it async-only?", "grounded": true},
+            {"question": "What's the backoff strategy?", "grounded": true},
+            {"question": "Can we filter exception types?", "grounded": true},
+            {"question": "Is jitter included?", "grounded": true},
+            {"question": "Thread-safe?", "grounded": false}
+          ]
+        }
+      }
+    },
+    {
+      "record_id": "oracle_0012",
+      "input_data": {
+        "pr_diff": "diff --git a/src/api/pagination.py\n+ from dataclasses import dataclass\n+ \n+ @dataclass\n+ class Page:\n+     items: list\n+     total: int\n+     page: int\n+     per_page: int\n+     \n+     @property\n+     def has_next(self) -> bool:\n+         return self.page * self.per_page < self.total",
+        "construct_summary": "Adds a Page dataclass for paginated API responses. Includes items, total count, current page, and per_page. Computed has_next property for pagination control.",
+        "followup_qa": [
+          {"question": "Is there a has_previous property?", "answer": "Not included. Could add has_previous = self.page > 1."},
+          {"question": "What about total_pages?", "answer": "Not computed. Can derive from math.ceil(total / per_page)."},
+          {"question": "Is items typed?", "answer": "Uses bare list. Consider using Generic[T] for type safety."},
+          {"question": "Serialization support?", "answer": "Dataclass can be serialized with dataclasses.asdict(). Works with JSON serializers."},
+          {"question": "Default per_page?", "answer": "No default set. The caller must specify per_page explicitly."}
+        ]
+      },
+      "expected_output": {
+        "precision_annotations": {
+          "claims": [
+            {"claim": "Adds Page dataclass", "supported": true},
+            {"claim": "Includes items and total", "supported": true},
+            {"claim": "Current page tracked", "supported": true},
+            {"claim": "has_next computed property", "supported": true},
+            {"claim": "Serialization via asdict", "supported": false}
+          ]
+        },
+        "recall_annotations": {
+          "important_changes": [
+            {"change": "New Page dataclass defined", "surfaced": false},
+            {"change": "Four fields: items, total, page, per_page", "surfaced": true},
+            {"change": "has_next property implementation", "surfaced": false},
+            {"change": "Uses dataclasses module", "surfaced": false}
+          ]
+        },
+        "reply_accuracy_annotations": {
+          "answers": [
+            {"question": "Is there a has_previous property?", "grounded": true},
+            {"question": "What about total_pages?", "grounded": false},
+            {"question": "Is items typed?", "grounded": true},
+            {"question": "Serialization support?", "grounded": false},
+            {"question": "Default per_page?", "grounded": true}
+          ]
+        }
+      }
+    }
+  ]
+}

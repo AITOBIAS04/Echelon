@@ -1,0 +1,73 @@
+{
+  "schema_version": "2.0.1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "theatre_id": "product_replay_engine_v1",
+  "template_id": "CONSTRUCT_CALIBRATION_V1",
+  "display_name": "CONSTRUCT_CALIBRATION_V1 — Semantic Accuracy Calibration",
+  "description": "Deterministic replay theatre for construct output calibration. Scores precision, recall, and reply accuracy of construct-generated PR summaries against pre-annotated ground truth.",
+  "inquiry_class": "INSPECTION",
+  "domain": "construct_verification",
+  "criteria": {
+    "criteria_ids": ["precision", "recall", "reply_accuracy"],
+    "criteria_human": "Precision: fraction of oracle claims supported by PR diff. Recall: fraction of important changes surfaced. Reply Accuracy: factual grounding of follow-up responses.",
+    "weights": {
+      "precision": 0.40,
+      "recall": 0.40,
+      "reply_accuracy": 0.20
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "community_oracle_v1": "v1.0.0-fixtures"
+    },
+    "scorer_version": "construct-calibration-v1.0"
+  },
+  "dataset_hashes": {
+    "community_oracle_v1_fixtures.json": "c3a95cf1063f95180f13bd7aa477878337a0390d4bda61b492ad99d985e25b8b"
+  },
+  "product_theatre_config": {
+    "construct_under_test": {
+      "construct_id": "community_oracle_v1",
+      "construct_version": "v1.0.0-fixtures"
+    },
+    "adapter_type": "local",
+    "adapter_endpoint": "python:theatre.scoring.deterministic_oracle",
+    "replay_data_path": "theatre/fixtures/construct_calibration/datasets/community_oracle_v1_fixtures.json",
+    "ground_truth_source": "DETERMINISTIC_COMPUTATION"
+  },
+  "fork_definitions": [],
+  "resolution_programme": [
+    {
+      "step": "ingest",
+      "action": "load_dataset",
+      "input": "replay_data_path"
+    },
+    {
+      "step": "invoke_oracle",
+      "action": "deterministic_compute",
+      "oracle": "construct_calibration"
+    },
+    {
+      "step": "score",
+      "action": "binary_checks",
+      "criteria_ids": ["precision", "recall", "reply_accuracy"]
+    },
+    {
+      "step": "certify",
+      "action": "issue_certificate"
+    }
+  ],
+  "evidence_bundle": {
+    "manifest_required": true,
+    "hash_algorithm": "sha256",
+    "canonical_json": "Echelon Canonical JSON v0",
+    "required_paths": [
+      "inputs/",
+      "expected/",
+      "scores/",
+      "manifest.json"
+    ]
+  },
+  "version": "1.0.0"
+}
