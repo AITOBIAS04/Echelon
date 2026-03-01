@@ -1,0 +1,65 @@
+{
+  "template": "ledger_reconciliation_v1",
+  "composite_score": 0.8933,
+  "target_score": 0.9333,
+  "delta": -0.0400,
+  "record_count": 15,
+  "criteria": {
+    "bank_ref_match": {
+      "weight": 0.25,
+      "pass": 14,
+      "total": 15,
+      "pass_rate": 0.9333,
+      "contribution": 0.2333
+    },
+    "bucket_sum_matches_gross": {
+      "weight": 0.15,
+      "pass": 14,
+      "total": 15,
+      "pass_rate": 0.9333,
+      "contribution": 0.1400
+    },
+    "bucket_destination_valid": {
+      "weight": 0.15,
+      "pass": 14,
+      "total": 15,
+      "pass_rate": 0.9333,
+      "contribution": 0.1400
+    },
+    "event_log_complete": {
+      "weight": 0.30,
+      "pass": 14,
+      "total": 15,
+      "pass_rate": 0.9333,
+      "contribution": 0.2800
+    },
+    "exceptions_correct": {
+      "weight": 0.15,
+      "pass": 10,
+      "total": 15,
+      "pass_rate": 0.6667,
+      "contribution": 0.1000
+    }
+  },
+  "composite_check": "0.2333 + 0.1400 + 0.1400 + 0.2800 + 0.1000 = 0.8933",
+  "root_cause": "correlated_failure_coupling",
+  "coupled_criterion": "exceptions_correct",
+  "coupling_detail": "Records 0011-0015 each target a different criterion failure, but all 5 also fail exceptions_correct. Any record that fails another criterion naturally generates non-empty exception entries, which exceptions_correct flags as a failure.",
+  "per_record_matrix": {
+    "recon_0001": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 1.0},
+    "recon_0002": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 1.0},
+    "recon_0003": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 1.0},
+    "recon_0004": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 1.0},
+    "recon_0005": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 1.0},
+    "recon_0006": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 1.0},
+    "recon_0007": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 1.0},
+    "recon_0008": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 1.0},
+    "recon_0009": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 1.0},
+    "recon_0010": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 1.0},
+    "recon_0011": {"bank_ref_match": 0.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 0.0},
+    "recon_0012": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 0.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 0.0},
+    "recon_0013": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 0.0, "event_log_complete": 1.0, "exceptions_correct": 0.0},
+    "recon_0014": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 0.0, "exceptions_correct": 0.0},
+    "recon_0015": {"bank_ref_match": 1.0, "bucket_sum_matches_gross": 1.0, "bucket_destination_valid": 1.0, "event_log_complete": 1.0, "exceptions_correct": 0.0}
+  }
+}
