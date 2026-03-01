@@ -34,10 +34,42 @@
           "tasks": 6
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-002",
+      "label": "OSINT Pipeline — Live Collection & Evidence Bundles",
+      "status": "active",
+      "created_at": "2026-03-01T00:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 4,
+          "label": "Core Primitives & First Collector",
+          "status": "completed",
+          "tasks": 8
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 5,
+          "label": "Pipeline Engine",
+          "status": "pending",
+          "tasks": 7
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 6,
+          "label": "CLI, Config & End-to-End Integration",
+          "status": "pending",
+          "tasks": 6
+        }
+      ]
     }
   ],
-  "active_cycle": null,
+  "active_cycle": "cycle-002",
   "active_bugfix": null,
-  "global_sprint_counter": 3,
+  "global_sprint_counter": 6,
   "bugfix_cycles": []
 }
