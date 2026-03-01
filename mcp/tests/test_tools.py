@@ -8,7 +8,7 @@ from typing import Any, Dict
 
 import pytest
 
-from mcp.tools import verify, inspect, hash, schema_check
+from mcp.tools import verify, inspect, hash, schema_check, replay
 
 
 # ════════════════════════════════════════════════════════════════
@@ -189,3 +189,27 @@ class TestSchemaCheckTool:
     def test_missing_cert_returns_error(self):
         result = schema_check.handle({})
         assert result["overall_verdict"] == "ERROR"
+
+
+# ════════════════════════════════════════════════════════════════
+# echelon_replay
+# ════════════════════════════════════════════════════════════════
+
+class TestReplayTool:
+    def test_missing_template_returns_error(self):
+        result = replay.handle({"fixtures": _wrap_inline({"records": []})})
+        assert result["overall_verdict"] == "ERROR"
+        assert "template" in result["error_message"]
+
+    def test_missing_fixtures_returns_error(self):
+        result = replay.handle({"template": _wrap_inline({"schema_version": "1"})})
+        assert result["overall_verdict"] == "ERROR"
+        assert "fixtures" in result["error_message"]
+
+    def test_non_dict_template_returns_error(self):
+        result = replay.handle({
+            "template": _wrap_inline("not a dict"),
+            "fixtures": _wrap_inline({"records": []}),
+        })
+        assert result["overall_verdict"] == "ERROR"
+        assert "JSON object" in result["error_message"]

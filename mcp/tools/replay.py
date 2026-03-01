@@ -75,6 +75,8 @@ def handle(arguments: Dict[str, Any]) -> Dict[str, Any]:
         return error_response("INPUT_MALFORMED", "fixtures.value must be a JSON object")
 
     # Write to temp files for the verifier's check_deterministic_replay
+    template_path = None
+    fixtures_path = None
     try:
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".json", delete=False
@@ -92,15 +94,10 @@ def handle(arguments: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         return error_response("INTERNAL_ERROR", f"Replay check failed: {e}")
     finally:
-        # Clean up temp files
-        try:
+        if template_path:
             template_path.unlink(missing_ok=True)
-        except Exception:
-            pass
-        try:
+        if fixtures_path:
             fixtures_path.unlink(missing_ok=True)
-        except Exception:
-            pass
 
     mismatches = []
     for r in results:
