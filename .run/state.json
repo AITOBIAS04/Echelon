@@ -2,11 +2,11 @@
   "run_id": "run-20260301-c65b7999",
   "target": "sprint-1",
   "branch": "feature/sprint-7-registry-hardening",
-  "state": "RUNNING",
-  "phase": "IMPLEMENT",
+  "state": "JACKED_OUT",
+  "phase": "COMPLETE",
   "timestamps": {
     "started": "2026-03-01T15:17:58Z",
-    "last_activity": "2026-03-01T21:00:00Z"
+    "last_activity": "2026-03-01T21:30:00Z"
   },
   "cycles": {
     "current": 1,
@@ -16,7 +16,7 @@
   "metrics": {
     "files_changed": 12,
     "files_deleted": 0,
-    "commits": 0,
+    "commits": 1,
     "findings_fixed": 0
   },
   "options": {
@@ -31,6 +31,6 @@
     "pushed": false,
     "pr_created": false,
     "pr_url": null,
-    "skipped_reason": null
+    "skipped_reason": "local_mode"
   }
 }
