@@ -139,8 +139,10 @@
     {
       "cycle_id": "cycle-007",
       "label": "Two-Rail Deterministic Theatres — Unified Pipeline",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-01T00:00:00Z",
+      "archived": "2026-03-01T23:59:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-01-sprint-11-unified-pipeline",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -149,15 +151,40 @@
           "local_id": "sprint-1",
           "global_id": 11,
           "label": "Unified Pipeline + Arrears Scorer",
-          "status": "pending",
+          "status": "completed",
           "tasks": 9
+        }
+      ]
+    },
+    {
+      "cycle_id": "cycle-008",
+      "label": "Verifier MCP Server + Construct Calibration Pilot",
+      "status": "active",
+      "created_at": "2026-03-01T23:59:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 12,
+          "label": "Verifier MCP Server v1.0",
+          "status": "completed",
+          "tasks": 6
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 13,
+          "label": "Loa Construct Calibration Pilot",
+          "status": "completed",
+          "tasks": 6
         }
       ]
     }
   ],
-  "active_cycle": "cycle-007",
+  "active_cycle": "cycle-008",
   "active_bugfix": null,
-  "global_sprint_counter": 11,
+  "global_sprint_counter": 13,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }
