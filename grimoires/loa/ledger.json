@@ -135,10 +135,29 @@
           "tasks": 4
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-007",
+      "label": "Two-Rail Deterministic Theatres — Unified Pipeline",
+      "status": "active",
+      "created_at": "2026-03-01T00:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 11,
+          "label": "Unified Pipeline + Arrears Scorer",
+          "status": "pending",
+          "tasks": 9
+        }
+      ]
     }
   ],
-  "active_cycle": null,
+  "active_cycle": "cycle-007",
   "active_bugfix": null,
-  "global_sprint_counter": 10,
-  "bugfix_cycles": []
+  "global_sprint_counter": 11,
+  "bugfix_cycles": [],
+  "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

@@ -1,133 +1,127 @@
-# Sprint 11 (local sprint-7) — Implementation Report
+# Implementation Report: Sprint 11 — Unified Pipeline + Arrears Scorer
 
-## Sprint: Test Coverage Hardening — Trust Scopes, Multi-Adapter & Invariant Verification
-
-**Branch**: `feat/cycle-026-hounfour-routing`
-**Global Sprint ID**: sprint-11
-**Status**: Implementation complete, pending review
+**Cycle:** 007 — Two-Rail Deterministic Theatres — Unified Pipeline
+**Sprint:** 1 (Global Sprint 11)
+**Branch:** `feature/sprint-11-unified-pipeline`
+**Status:** All 9 tasks complete, all tests passing
 
 ---
 
 ## Summary
 
-Created 5 new test files and extended 1 existing test file, adding 192 new tests
-(+113 subtests) to the adapter test suite. Total suite now at 485 tests (all passing).
+Wired all four Two-Rail templates through the OSINT pipeline infrastructure. Built the missing arrears scorer. All four templates produce Verifier CLI PASS with deterministic evidence bundles.
 
-## Tasks Completed
+## Files Changed
 
-### Task 7.1: Trust Scopes Validation Tests
-**File**: `.claude/adapters/tests/test_trust_scopes.py`
-**Tests Added**: 27 (including subtests)
+### New Files (8)
 
-- `TestTrustScopesSchema` — validates all models have trust_scopes, all 6 dimensions,
-  no unknown dimensions, valid values, backward-compat trust_level
-- `TestClaudeCodeSessionScopes` — verifies claude-code:session has expected high-privilege scopes
-- `TestRemoteModelScopes` — openai, moonshot, qwen, anthropic have correct restricted scopes
-- `TestGoogleModelScopes` — gemini models all-none, deep-research-pro delegation:limited,
-  all Google models are execution_mode: remote_model
-- `TestModelCoverage` — minimum 9 entries, all have execution_mode and capabilities
+| File | Task | Description |
+|------|------|-------------|
+| `theatre/scoring/arrears_scorer.py` | T1 | ArrearsScorer — 6 criteria, 24 state transitions, Decimal arithmetic |
+| `scripts/run_two_rail_certificates.py` | T3-T6 | Unified runner — 10-step pipeline with CLI |
+| `tests/theatre/test_arrears_scorer.py` | T7 | 14 unit tests for arrears scorer |
+| `tests/theatre/test_unified_pipeline.py` | T8 | 5 integration tests (escrow end-to-end) |
+| `tests/theatre/test_determinism.py` | T8 | 3 determinism tests (dual-run hash comparison) |
+| `tests/theatre/test_all_templates.py` | T9 | 8 parametrised tests across all 4 templates |
+| `tests/theatre/test_cross_path_schema.py` | T9 | 2 cross-path schema validation tests |
 
-### Task 7.2: Multi-Flag Feature Flag Combination Tests
-**File**: `.claude/adapters/tests/test_feature_flags.py`
-**Tests Added**: 18
+### Modified Files (1)
 
-- `TestAllFlagsEnabled` — default config: all providers + metering + thinking resolve correctly
-- `TestGoogleDisabledDeepResearchEnabled` — alias resolution vs validation when provider removed
-- `TestMeteringDisabledAdaptersEnabled` — disabled metering returns ALLOW, routing independent
-- `TestThinkingDisabled` — thinking_budget=0 disables thinking config
-- `TestFlatlineRoutingWithoutGoogle` — native_runtime blocks fallback, unhealthy skips
-- `TestAllFlagsDisabled` — only native agents resolve with no external providers
-- `TestFlagPrecedence` — config overrides default, on_exceeded modes (block/downgrade/warn)
+| File | Task | Change |
+|------|------|--------|
+| `theatre/scoring/__init__.py` | T2 | Added `ArrearsScorer` import and `__all__` entry |
 
-### Task 7.3: Budget + Fallback Chain Integration Tests
-**File**: `.claude/adapters/tests/test_budget_fallback.py`
-**Tests Added**: 22
+## Task Completion
 
-- `TestDowngradeTriggersFallback` — DOWNGRADE triggers walk_downgrade_chain
-- `TestDowngradeRespectsNativeRuntime` — native_runtime blocks downgrade and fallback
-- `TestDowngradeChainWalk` — reviewer → cheap via config chain
-- `TestBlockAction` — BLOCK action halts invocation (pre_call and atomic)
-- `TestWarnAction` — WARN at threshold and on_exceeded: warn
-- `TestBudgetUsesConfigValues` — custom limit, high limit, standalone check_budget
-- `TestAtomicPreCallPostCallZeroCost` — interaction_id dedup, disabled metering no-op
-- `TestFallbackChainCapabilityCheck` — thinking_traces required, deep_research required
+### T1: Build Arrears Scorer
 
-### Task 7.4: Conservation Invariant Property-Based Tests
-**File**: `.claude/adapters/tests/test_conservation_invariant.py`
-**Tests Added**: 25
+- `ArrearsScorer` class with `async score()` matching existing scorer interface
+- 6 criteria: `state_transition_validity`, `ladder_redirection_arithmetic`, `reserve_fund_impact`, `distribution_adjustment`, `grace_period_enforcement`, `ladder_balance_protection`
+- `VALID_TRANSITIONS` frozenset with all 24 allowed `(from, to)` state pairs
+- All numeric comparisons use `Decimal(str(value))` with `TOLERANCE = Decimal("0.01")`
+- Unknown criteria IDs return 0.0
+- **Bug found during testing:** `_check_ladder_balance_protection` incorrectly failed when `output_balance < input_balance` even for legitimate dispositions (e.g. NAV redemption on lease termination, arrears_0010). Fixed: structural check now only fails when `ladder_balance_protected` is also `False`.
 
-- `TestConservationPropertyHypothesis` (conditional on hypothesis install) — 200-example
-  property tests for INV-001: cost*1M + remainder == tokens*price
-- `TestRemainderAccumulatorPropertyHypothesis` — accumulator conservation across 5 carries
-- `TestConservationPropertyRange` — deterministic conservation tests across representative
-  token/price samples (156 pairs)
-- `TestRemainderAccumulatorConservation` — exact carry, multi-step, large remainder,
-  independent scopes
-- `TestTotalCostConservation` — token mode, task mode, hybrid mode
-- `TestLedgerEntryRoundTrip` — known pricing, zero tokens, task pricing
-- `TestDailySpendNonNegative` — initial zero, monotonic increase
-- `TestOverflowGuard` — overflow detection, max safe product boundary
+### T2: Export ArrearsScorer from scoring __init__
 
-### Task 7.5: Google Adapter Recovery Edge Cases
-**File**: `.claude/adapters/tests/test_google_adapter.py` (extended)
-**Tests Added**: 13
+- Added `from theatre.scoring.arrears_scorer import ArrearsScorer` to imports
+- Added `"ArrearsScorer"` to `__all__` list
+- Additive only — no existing imports modified
 
-- `TestInteractionPersistence` additions — stale interactions loadable, corrupted file → empty dict
-- `TestSemaphorePools` — standard (max 5) and deep research (max 3) use separate pools
-- `TestApiVersionOverride` — default v1beta, URL construction with model colon, interactions
-  path, endpoint normalization (no double version), endpoint without version
-- `TestAuthHeader` — auth via x-goog-api-key header, not in URL query param
-- `TestMaxRetriesExhausted` — 503 exhaustion raises ProviderUnavailableError, poll retries
-  surface error (not swallowed)
+### T3: Build Evidence Bundle Writer
 
-### Task 7.6: Cross-Adapter Routing Integration Tests
-**File**: `.claude/adapters/tests/test_multi_adapter.py`
-**Tests Added**: 23
+- FR-2 directory layout: `inputs/`, `receipts/`, `gaps/`, `scores/`, `policy/`, `expected/`
+- Per-record input and expected JSON files with `sort_keys=True`
+- `scores/per_record.json` and `scores/aggregate.json`
+- Policy files per template mapping
+- `theatre_template.json` (original, unmutated — C-6 compliance)
+- `oracle_output.json` with deterministic timestamps
 
-- `TestCrossAdapterAgentResolution` — agents resolve to correct provider across all 3 + native
-- `TestGoogleToOpenAIFallback` — google → openai via alias, deep_research blocked, reverse
-  chains for openai → anthropic and anthropic → openai
-- `TestValidateBindingsMultiAdapter` — valid config, missing google/openai provider, missing
-  model, capability mismatch
-- `TestAliasChainResolution` — direct alias, chained alias, direct provider:model, native
-- `TestAdapterRegistry` — openai, google, anthropic registered, get_adapter returns GoogleAdapter
-- `TestChainValidation` — valid chains, unresolvable fallback, duplicate target detection
-- `TestModelOverride` — override to different providers, blocked for native_runtime
+### T4: Build OracleOutput Adapter
 
-## Test Coverage Metrics
+- `OracleOutput` constructed with `CriterionScore` list from per-criterion aggregates
+- `OracleCollectionSummary` with correct source counts
+- Deterministic `oracle_id` format: `replay_<template_key>`
+- Fixed epoch: `2026-01-01T00:00:00Z`
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Total test files | 14 | 19 |
-| Total tests | 293 | 485 |
-| Subtests | ~80 | 193 |
-| Trust scopes tests | 0 | 27 |
-| Multi-flag combo tests | 0 | 18 |
-| Budget+fallback integration | 0 | 22 |
-| Conservation invariant | 0 | 25 |
-| Google adapter edge cases | 54 | 67 |
-| Cross-adapter routing | 0 | 23 |
+### T5: Wire Certificate Generation and Verification
 
-## Key Design Decisions
+- Commitment hash via `canonical_hash(raw_template)`
+- Manifest via `build_manifest()` + `manifest_hash()`
+- Certificate with `execution_path="replay"`, `inquiry_class="INSPECTION"`, `pipeline_version="0.7.0"`
+- `echelon_verify()` runs post-generation
 
-1. **Fallback chain entries use aliases, not raw provider names**: The resolver only handles
-   `provider:model` format or aliases from the aliases dict. Chain entries like `"reviewer"`
-   resolve through the alias system.
+### T6: Assemble Unified Runner Script with CLI
 
-2. **Hypothesis property tests are conditionally defined**: Class bodies referencing `@given`
-   decorators execute at import time, so `skipif` is insufficient. The classes are inside a
-   `try/except ImportError` block.
+- `TEMPLATE_REGISTRY` maps all 4 templates to files, scorer classes, policy keys
+- CLI: `--template <key>`, `--all`, `--output-dir`, `--verbose`
+- Exit code 0 when all templates PASS
+- **Import order critical:** Theatre imports MUST precede `osint_pipeline.echelon_verify` because `echelon_verify.py` adds `osint/osint_pipeline/` to `sys.path`, which shadows root `theatre/` with `osint/osint_pipeline/theatre/` (no scoring submodule).
 
-3. **Conservation invariant tested as cross-cutting property**: Not just pricing, but the
-   full pipeline (pricing → budget → ledger) preserves the invariant.
+### T7: Unit Tests — Arrears Scorer
 
-## Acceptance Criteria Verification
+14 tests:
+- 6 parametrised: all 10 valid records pass all 6 criteria
+- 6 targeted failure tests: each failure record fails exactly one criterion
+- 1 unknown criterion returns 0.0
+- 1 Decimal arithmetic precision (records with `ladder_redirection_detail`)
 
-- [x] Trust scopes: all models have 6 dimensions, valid values, backward-compat trust_level
-- [x] Google models: all-none scopes, deep-research delegation:limited, execution_mode: remote_model
-- [x] Multi-flag: metering disabled + adapters, thinking disabled, no providers, flag precedence
-- [x] Budget + fallback: DOWNGRADE → chain walk, native_runtime guard, capability check
-- [x] Conservation: INV-001 (cost*1M + remainder == tokens*price) across representative range
-- [x] Google edge cases: stale interactions, semaphore pools, URL construction, auth header
-- [x] Cross-adapter: agent resolution, fallback chains, validation, alias resolution, registry
-- [x] All 485 tests passing (9 skipped — hypothesis not installed)
+### T8: Integration + Determinism Tests
+
+8 tests:
+- Integration: escrow pipeline PASS, FR-2 layout, manifest completeness, replay fields, CalibrationCertificate model compatibility
+- Determinism: dual-run identical manifests, commitment hashes, and file SHA-256s
+
+### T9: All-Templates + Cross-Path Schema
+
+10 tests:
+- 4 parametrised verifier PASS tests (all templates)
+- 4 parametrised composite score range tests
+- 1 CalibrationCertificate model validation
+- 1 required fields check
+
+## Test Results
+
+```
+New tests: 32 passed
+Existing OSINT pipeline tests: 239 passed
+Existing theatre tests (sync): 176 passed
+```
+
+## Pipeline Results
+
+```
+[PASS] escrow_milestone_release_v1: 0.8591
+[PASS] distribution_waterfall_v1: 0.9333
+[PASS] ledger_reconciliation_v1: 0.8933
+[PASS] arrears_resolution_v1: 0.9375
+```
+
+## SC-10 Compliance
+
+No existing files modified except the additive `theatre/scoring/__init__.py` change. `scripts/run_two_rail_theatres.py` untouched. No modifications to `theatre/engine/`, `osint/osint_pipeline/`, or existing scorer files.
+
+## Known Issues
+
+- Existing async theatre tests (escrow_scorer, waterfall_scorer, reconciliation_scorer) fail due to missing `pytest-asyncio` package — pre-existing issue, not caused by this sprint.
+- `echelon_verify.py` adds `osint/osint_pipeline/` to `sys.path` at import time, which can shadow root-level packages. Import order in consumers must account for this.

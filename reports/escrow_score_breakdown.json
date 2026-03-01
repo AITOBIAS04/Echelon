@@ -1,0 +1,61 @@
+{
+  "template": "escrow_milestone_release_v1",
+  "composite_score": 0.8591,
+  "target_score": 0.9091,
+  "delta": -0.0500,
+  "record_count": 11,
+  "criteria": {
+    "required_evidence_present": {
+      "weight": 0.25,
+      "pass": 10,
+      "total": 11,
+      "pass_rate": 0.9091,
+      "contribution": 0.2273
+    },
+    "signature_policy_satisfied": {
+      "weight": 0.30,
+      "pass": 10,
+      "total": 11,
+      "pass_rate": 0.9091,
+      "contribution": 0.2727
+    },
+    "validity_window_respected": {
+      "weight": 0.15,
+      "pass": 11,
+      "total": 11,
+      "pass_rate": 1.0000,
+      "contribution": 0.1500
+    },
+    "release_amount_correct": {
+      "weight": 0.20,
+      "pass": 6,
+      "total": 11,
+      "pass_rate": 0.5455,
+      "contribution": 0.1091
+    },
+    "idempotency": {
+      "weight": 0.10,
+      "pass": 11,
+      "total": 11,
+      "pass_rate": 1.0000,
+      "contribution": 0.1000
+    }
+  },
+  "composite_check": "0.2273 + 0.2727 + 0.1500 + 0.1091 + 0.1000 = 0.8591",
+  "root_cause": "correlated_failure_coupling",
+  "coupled_criterion": "release_amount_correct",
+  "coupling_detail": "Records 0007-0010 fail release_amount_correct as side-effect of their primary failure scenario. Each record targets a different criterion (validity_window, signature_policy, release_amount, idempotency) but all share corrupted release instructions that also fail the release_amount_correct check.",
+  "per_record_matrix": {
+    "escrow_0001": {"required_evidence_present": 1.0, "signature_policy_satisfied": 1.0, "validity_window_respected": 1.0, "release_amount_correct": 1.0, "idempotency": 1.0},
+    "escrow_0002": {"required_evidence_present": 1.0, "signature_policy_satisfied": 1.0, "validity_window_respected": 1.0, "release_amount_correct": 1.0, "idempotency": 1.0},
+    "escrow_0003": {"required_evidence_present": 1.0, "signature_policy_satisfied": 1.0, "validity_window_respected": 1.0, "release_amount_correct": 1.0, "idempotency": 1.0},
+    "escrow_0004": {"required_evidence_present": 1.0, "signature_policy_satisfied": 1.0, "validity_window_respected": 1.0, "release_amount_correct": 1.0, "idempotency": 1.0},
+    "escrow_0005": {"required_evidence_present": 1.0, "signature_policy_satisfied": 1.0, "validity_window_respected": 1.0, "release_amount_correct": 1.0, "idempotency": 1.0},
+    "escrow_0006": {"required_evidence_present": 1.0, "signature_policy_satisfied": 1.0, "validity_window_respected": 1.0, "release_amount_correct": 1.0, "idempotency": 1.0},
+    "escrow_0007": {"required_evidence_present": 0.0, "signature_policy_satisfied": 1.0, "validity_window_respected": 1.0, "release_amount_correct": 0.0, "idempotency": 1.0},
+    "escrow_0008": {"required_evidence_present": 1.0, "signature_policy_satisfied": 0.0, "validity_window_respected": 1.0, "release_amount_correct": 0.0, "idempotency": 1.0},
+    "escrow_0009": {"required_evidence_present": 1.0, "signature_policy_satisfied": 1.0, "validity_window_respected": 1.0, "release_amount_correct": 0.0, "idempotency": 1.0},
+    "escrow_0010": {"required_evidence_present": 1.0, "signature_policy_satisfied": 1.0, "validity_window_respected": 1.0, "release_amount_correct": 0.0, "idempotency": 1.0},
+    "escrow_0011": {"required_evidence_present": 1.0, "signature_policy_satisfied": 1.0, "validity_window_respected": 1.0, "release_amount_correct": 0.0, "idempotency": 1.0}
+  }
+}
