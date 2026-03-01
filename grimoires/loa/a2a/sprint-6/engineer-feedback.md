@@ -1,37 +1,41 @@
-# Sprint 6 Engineer Feedback
+# Sprint 6 (Cycle-002 Sprint 3) — Senior Lead Review
 
-**Sprint**: Sprint 2 — Deep Research Adapter
-**Reviewer**: Senior Technical Lead
-**Decision**: APPROVE (after fixes applied)
+**Sprint:** CLI, Config & End-to-End Integration
+**Global ID:** sprint-6
+**Date:** 2026-03-01
+**Reviewer:** Senior Technical Lead
 
-## Review Summary
+---
 
-All acceptance criteria met. Three concerns identified and resolved in commit `56f76e8`:
+## Verdict: All good
 
-### CONCERN-2: Missing Context Window Validation in DR Path — RESOLVED
+All 6 tasks (T3.1–T3.6) meet acceptance criteria. 228 OSINT tests + 35 theatre regression = 263 all passing. Code quality, architecture alignment, and test coverage are satisfactory.
 
-**Issue**: `_complete_deep_research()` did not call `enforce_context_window()` before sending requests, unlike the standard `complete()` path which checks model limits.
+---
 
-**Fix**: Added `enforce_context_window(request, model_config)` call before the semaphore acquisition in `_complete_deep_research()`.
+## Review Notes
 
-**Files**: `.claude/adapters/loa_cheval/providers/google_adapter.py:188`
+### Registry Alignment
 
-### CONCERN-4: Semaphore Timeout Too Short for DR — RESOLVED
+Same pattern as Sprint 2 — sprint plan estimates differ from registry:
 
-**Issue**: `FLockSemaphore` default timeout of 30s was inadequate for Deep Research which can run 600s+. If 3 concurrent DR requests were active, a 4th would fail after 30s.
+| Field | Sprint Plan Estimate | Registry Value (Used) |
+|-------|---------------------|-----------------------|
+| BoE source_id | `boe_statistics` | `boe_rates` |
+| Gazette source_id | `london_gazette` | `uk_gazette` |
 
-**Fix**: Extended `FLockSemaphore` to accept `timeout` in constructor (propagated to `acquire()` via `__enter__`). DR path now uses `timeout=max_poll_time` (default 600s).
+Implementation correctly uses registry as source of truth.
 
-**Files**: `.claude/adapters/loa_cheval/providers/concurrency.py:39-46`, `.claude/adapters/loa_cheval/providers/google_adapter.py:191`
+### CLI Verification
 
-### CONCERN-5: Race Condition in _persist_interaction() — RESOLVED
+- `python -m osint_pipeline --help` shows all 4 commands
+- `python -m osint_pipeline validate --registry <path>` correctly loads and reports registry (57 sources, v0.4.0)
+- No circular imports between `osint_pipeline` and `theatre`
 
-**Issue**: `_persist_interaction()` had an unprotected read-modify-write cycle on `.dr-interactions.json`. Concurrent DR requests could lose data.
+### End-to-End Pipeline
 
-**Fix**: Added `fcntl.flock(LOCK_EX)` around the entire read-modify-write cycle with proper try/finally unlock. Added concurrent safety test.
+Full 3-stage pipeline tested with 3 stub collectors through CollectionRunner -> CorroborationEngine -> CounterSignalChecker -> Scorer -> OracleOutput. Hash determinism verified within single collection. Serialisation round-trip works.
 
-**Files**: `.claude/adapters/loa_cheval/providers/google_adapter.py:738-770`
+### Gazette Counter-Signal
 
-## Verdict
-
-All good.
+Gazette collector includes counter-signal detection for insolvency notices — correctly sets `counter_signal_detected` and `counter_signal_detail` fields in structured extract.

@@ -1,35 +1,45 @@
-# Sprint 5 Engineer Feedback
+# Sprint 5 (Cycle-002 Sprint 2) — Senior Lead Review
 
-**Sprint**: Sprint 1 — GoogleAdapter — Standard Gemini Models
-**Reviewer**: Senior Technical Lead
-**Decision**: APPROVE (after fixes applied)
+**Sprint:** Pipeline Engine
+**Global ID:** sprint-5
+**Date:** 2026-03-01
+**Reviewer:** Senior Technical Lead
 
-## Review Summary
+---
 
-All acceptance criteria met. Two findings identified and resolved in commit `56f76e8`:
+## Verdict: All good
 
-### F1: _poll_get() Missing Exception Handling — RESOLVED
+All 7 tasks (T2.1–T2.7) meet acceptance criteria. 150 tests pass. Code quality, architecture alignment, and test coverage are satisfactory.
 
-**Issue**: `_poll_get()` only caught `urllib.error.HTTPError` but not `URLError` (DNS failures, connection refused), `socket.timeout`, or `JSONDecodeError` on the httpx path.
+---
 
-**Fix**: Added `URLError`, `OSError`, and `JSONDecodeError` catch blocks in urllib fallback. Added `httpx.HTTPError` and `ValueError`/`JSONDecodeError` catch in httpx path. All return `(503, error_dict)` for graceful degradation.
+## Review Notes
 
-**Files**: `.claude/adapters/loa_cheval/providers/google_adapter.py`
+### Registry Alignment
 
-### F2: No health_check() Tests — RESOLVED
+Sprint plan estimated source_ids differ from actual registry values. Implementation correctly uses registry as source of truth:
 
-**Issue**: `health_check()` method had zero test coverage.
+| Field | Sprint Plan Estimate | Registry Value (Used) |
+|-------|---------------------|-----------------------|
+| SEC source_id | `sec_edgar_efts` | `sec_edgar` |
+| ECB source_id | `ecb_sdw` | `ecb_data_api` |
+| ECB resolution_role | `secondary_corroboration` | `primary_evidence` |
 
-**Fix**: Added 4 tests: success (status < 400), failure (status >= 400), exception handling, URL construction verification.
+This is correct behaviour — registry is authoritative.
 
-**Files**: `.claude/adapters/tests/test_google_adapter.py`
+### Architectural Concerns Addressed
 
-### F3: Unused Import in health_check() — RESOLVED
+- **Concern 2 (Gap vs Absence):** Counter-signal checker correctly distinguishes `GapKind.SIGNAL_ABSENCE` (checked=True, signal absent = evidence) from `GapKind.INTELLIGENCE_GAP` (checked=False, source unreachable = uncertainty).
+- **Concern 6 (Timeout Gap Production):** Collection runner catches both builtin `TimeoutError` and `concurrent.futures.TimeoutError` (Python 3.9 compatibility), produces `GapReport` with `INTELLIGENCE_GAP` for unfinished futures.
 
-**Issue**: `import json as _json` at line 94 was redundant (module-level import exists).
+### Circular Import Avoidance
 
-**Fix**: Removed the unused local import.
+`engine/__init__.py` does NOT re-export CollectionRunner, CorroborationEngine, CounterSignalChecker, or Scorer. This avoids the circular import path: `engine/__init__.py` → `collection_runner` → `collectors.base` → `engine.canonical`. Users import directly from submodules. Documented in module docstring.
 
-## Verdict
+### Code Quality
 
-All good.
+- All modules use `from __future__ import annotations` for forward reference support
+- Pydantic v2 patterns throughout (no v1 leakage)
+- httpx.MockTransport used consistently in tests (no live API calls)
+- Scorer clamps composite to [0.0, 1.0]
+- Bundle hash uses canonical_json + sha256_hex for determinism

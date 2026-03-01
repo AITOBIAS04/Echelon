@@ -34,10 +34,111 @@
           "tasks": 6
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-002",
+      "label": "OSINT Pipeline — Live Collection & Evidence Bundles",
+      "status": "archived",
+      "created_at": "2026-03-01T00:00:00Z",
+      "archived": "2026-03-01T21:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-01-osint-pipeline-complete",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 4,
+          "label": "Core Primitives & First Collector",
+          "status": "completed",
+          "tasks": 8
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 5,
+          "label": "Pipeline Engine",
+          "status": "completed",
+          "tasks": 7
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 6,
+          "label": "CLI, Config & End-to-End Integration",
+          "status": "completed",
+          "tasks": 6
+        }
+      ]
+    },
+    {
+      "cycle_id": "cycle-003",
+      "label": "OSINT Registry v0.6.0 Merge & Pipeline Hardening",
+      "status": "archived",
+      "created_at": "2026-03-01T21:30:00Z",
+      "archived": "2026-03-01T22:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-01-osint-registry-v060-hardening",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 7,
+          "label": "Registry Merge + Enforcement Compatibility",
+          "status": "completed",
+          "tasks": 8
+        }
+      ]
+    },
+    {
+      "cycle_id": "cycle-004",
+      "label": "OSINT Pipeline Architectural Hardening",
+      "status": "archived",
+      "created_at": "2026-03-01T22:30:00Z",
+      "archived": "2026-03-01T23:45:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-01-osint-pipeline-architectural-hardening",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 8,
+          "label": "Architectural Concern Patches",
+          "status": "completed",
+          "tasks": 7
+        }
+      ]
+    },
+    {
+      "cycle_id": "cycle-005",
+      "label": "Intelligence Database Expansion v1.0.0",
+      "status": "archived",
+      "created_at": "2026-03-02T00:00:00Z",
+      "archived": "2026-03-02T03:30:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-02-intelligence-database-expansion-v100",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 9,
+          "label": "Schema Extension + Priority 1 Sources",
+          "status": "completed",
+          "tasks": 8
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 10,
+          "label": "Priority 2+3 Sources + Version Bump",
+          "status": "completed",
+          "tasks": 4
+        }
+      ]
     }
   ],
   "active_cycle": null,
   "active_bugfix": null,
-  "global_sprint_counter": 3,
+  "global_sprint_counter": 10,
   "bugfix_cycles": []
 }
