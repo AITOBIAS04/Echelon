@@ -1,119 +1,175 @@
-# Sprint 9 (sprint-13) — Code Review Feedback
+# Sprint 2 (Global Sprint-13) — Engineer Feedback
 
 **Reviewer**: Senior Technical Lead
-**Date**: 2026-02-19
-**Decision**: APPROVED (with minor notes)
+**Date**: 2026-03-01
+**Verdict**: All good (with minor notes)
 
 ---
 
 ## Summary
 
-Sprint 9 delivers epistemic trust scopes and the Jam geometry design. The `context_filter.py` implementation is notably strong — clean separation of concerns, proper immutability via deepcopy, inline BB-tagged limitation docs, and a file-stat cache invalidation mechanism for long-running sessions. The test suite is comprehensive (30+ tests, 8 test classes). The Jam geometry design document is well-grounded with concrete file:line references and honest cost/quality tradeoff analysis.
-
-**All good.** Proceed to `/audit-sprint sprint-9`.
+All 6 sprint tasks are implemented and meet their acceptance criteria. 23 new tests pass (19 scorer/fixture/template + 4 MCP integration). Code quality is high, follows existing patterns from the Two-Rail scorers, and the pipeline is verifiably deterministic. No blocking issues found.
 
 ---
 
-## Detailed Review
+## Task-by-Task Verification
 
-### Task 9.1: context_access in model-permissions.yaml — PASS
+### Task 1: CONSTRUCT_CALIBRATION_V1 Template
 
-- 7th trust dimension added with 4 sub-fields (architecture, business_logic, security, lore)
-- All model entries include appropriate context_access values
-- Claude (native): full/full/full/full
-- GPT-5.2: full/redacted/none/full
-- Google deep-research: summary/none/none/summary (minimal context)
-- Google gemini-3-pro: full/redacted/none/full
-- Schema JSON updated with context_access sub-schema
-- Backward compatible: optional field, defaults to all-full
+**File**: `theatre/fixtures/construct_calibration/templates/CONSTRUCT_CALIBRATION_V1.template.json`
+**Status**: PASS
 
-No issues.
+- `template_family: "PRODUCT"` -- confirmed (line 3)
+- `execution_path: "replay"` -- confirmed (line 4)
+- `inquiry_class: "INSPECTION"` -- confirmed (line 9)
+- `criteria.weights` sum: 0.40 + 0.40 + 0.20 = 1.0 -- confirmed
+- `dataset_hashes` present with 64-char hex value -- confirmed (line 27)
+- Template structure matches existing theatre templates -- confirmed (includes `schema_version`, `resolution_programme`, `evidence_bundle`, `version_pins`)
 
-### Task 9.2: context_filter.py — PASS (excellent quality)
+**Note**: The sprint plan AC says `dataset_hash` (singular) while the template uses `dataset_hashes` (plural, keyed by filename). This is actually better design -- it matches SDD section 3.1 and allows multiple datasets per template. No issue.
 
-**Strengths**:
-- Clear docstring with dimension definitions, modes, and known limitations (BB-502)
-- `get_context_access()` properly defaults missing/None/empty to all-full
-- `filter_context()` returns messages unmodified for native_runtime or all-full (early exit optimization)
-- `deepcopy(messages)` prevents mutation of caller's data
-- `filter_message_content()` applies all 4 dimension filters in correct order
-- BB-tagged inline comments for known limitations (BB-502 language coverage, BB-504 non-string passthrough, BB-507 lore false positives)
-- `_load_permissions()` uses file-stat mtime cache invalidation — smart for long-running sessions
-- `audit_filter_context()` runs filtering but returns originals — safe pre-enforcement visibility
+### Task 2: Construct Calibration Scorer
 
-**Architecture filtering**: `_summarize_architecture()` keeps headers + first paragraph, respects `ARCHITECTURE_SUMMARY_MAX_CHARS` constant. Clean.
+**File**: `theatre/scoring/construct_calibration_scorer.py`
+**Status**: PASS
 
-**Business logic filtering**: `_redact_function_bodies()` preserves signatures, replaces bodies with `[redacted]`. Known limitation (BB-502): only Python/JS/class defs, not Go/Rust/Java. Documented and acceptable.
+- Conforms to `ScoringFunction` protocol from `theatre/engine/scoring.py:15` -- verified. Method signature `async def score(criteria_id, ground_truth, oracle_output) -> float` matches exactly.
+- `precision = supported_claims / total_claims` -- confirmed (line 54-55)
+- `recall = surfaced_changes / total_important_changes` -- confirmed (line 65-66)
+- `reply_accuracy = grounded_answers / total_answers` -- confirmed (line 76-77)
+- Float arithmetic, no Decimal -- confirmed (only `float` division used)
+- Returns 0.0 for unknown criteria -- confirmed (line 42)
+- Returns 0.0 for empty annotations -- confirmed (lines 51, 62, 73)
+- Returns 0.0 for missing `expected_output` -- confirmed (line 32 `.get("expected_output", {})` yields empty dict, then empty list triggers 0.0)
 
-**Security filtering**: `_strip_security_content()` removes security-headed sections AND inline CVE markers. BB-503 documents that security content embedded in non-security sections may pass through. Honest about limitations.
+**Note**: The `oracle_output` parameter is unused (scores are computed entirely from `ground_truth`). This is correct for deterministic fixture-based scoring -- the ground truth already contains the annotations. This matches the pattern in `EscrowScorer` where `oracle_output` is also ignored when scoring from pre-annotated data.
 
-**Lore filtering**: `_summarize_lore()` strips `context:` blocks, keeps `short:` fields. BB-507 notes potential false positives on non-lore YAML `context:` fields.
+### Task 3: Fixture Dataset
 
-No blocking issues.
+**File**: `theatre/fixtures/construct_calibration/datasets/community_oracle_v1_fixtures.json`
+**Status**: PASS
 
-### Task 9.3: test_epistemic_scopes.py — PASS
+- 12 records (>=10 required) -- confirmed
+- Each record has `record_id`, `input_data`, `expected_output` -- confirmed for all 12
+- `expected_output` contains `precision_annotations`, `recall_annotations`, `reply_accuracy_annotations` -- confirmed for all 12
+- All annotations are binary booleans -- confirmed by test and manual inspection
+- Score distributions verified independently:
+  - precision mean = 0.8000 (target ~0.8) -- PASS
+  - recall mean = 0.5417 (target ~0.55) -- PASS
+  - reply_accuracy mean = 0.8000 (target ~0.8) -- PASS
+  - composite = 0.6967 (target ~0.70) -- PASS
+- `input_data` structure: all records contain `pr_diff`, `construct_summary`, `followup_qa` with 5 Q&A pairs each -- confirmed
+- Fixture data is diverse: 12 distinct PR scenarios (bugfix, feature, refactor, dependency, performance, API, migration, security, config, tests, documentation, CI/CD)
 
-- 30+ tests across 8 test classes
-- Fixture design is strong: `ARCHITECTURE_CONTENT`, `BUSINESS_LOGIC_CONTENT`, `SECURITY_CONTENT`, `LORE_CONTENT`, `MIXED_CONTENT` with identifiable content per category
-- Tests cover: backward compat (missing context_access), native runtime bypass, multiple messages, non-string content passthrough, deep-research model scopes, GPT reviewer scopes, mixed dimensions
-- BB-602 additions: audit mode, permissions lookup, cache invalidation
-- `test_does_not_mutate_original()` explicitly verifies immutability
+### Task 4: Dedicated Construct Calibration Runner
 
-No issues.
+**File**: `scripts/run_construct_calibration.py`
+**Status**: PASS
 
-### Task 9.4: jam-geometry.md — PASS (minor notes)
+- No imports from `run_two_rail_certificates.py` -- confirmed (grep returns zero matches)
+- Accepts `--construct community_oracle_v1` -- confirmed (line 456-459)
+- Accepts `--construct-source` -- confirmed (line 462-464)
+- Loads template from `theatre/fixtures/construct_calibration/templates/` -- confirmed (line 210)
+- Loads dataset from `theatre/fixtures/construct_calibration/datasets/` -- confirmed (line 211)
+- Scores each record via `ConstructCalibrationScorer` -- confirmed (via `ReplayEngine.run()`)
+- Builds evidence bundle with `inputs/`, `expected/`, `scores/`, `manifest.json` -- confirmed (lines 308-361)
+- Computes evidence bundle hash -- confirmed (line 350)
+- Generates certificate -- confirmed (lines 364-390)
+- Verifies via MCP `echelon_verify` -- confirmed (lines 427-444)
+- Writes to `output/construct_calibration/community_oracle_v1/` -- confirmed (line 302)
+- Produces `index.json` -- confirmed (lines 407-423)
+- Exits 0 on success -- confirmed (test passes)
 
-**Strengths**:
-- Well-grounded with actual `file:line` references to cheval.py, resolver.py, context_filter.py
-- Three-phase workflow clearly documented (Divergent → Synthesis → Harmony)
-- ASCII diagram of parallel review flow
-- Concrete output format example with Consensus/Unique/Disagreement tags
-- Cost analysis with per-component breakdown
-- Graceful degradation table covering 5 failure scenarios
-- Honest risk assessment (noise amplification, synthesis quality, latency, availability)
-- Miles Davis and academic peer review references add depth without being gratuitous
+**Determinism design**:
+- `_FIXTURE_EPOCH = datetime(2026, 3, 1, 0, 0, 0)` for fixed timestamps -- confirmed (line 46)
+- `uuid.uuid5()` for deterministic certificate ID -- confirmed (line 206)
+- `shutil.rmtree()` cleanup before each run -- confirmed (lines 304-306)
+- Direct `CommitmentReceipt` creation bypassing `datetime.utcnow()` -- confirmed (line 249)
 
-**Minor note**: Cost table labels are slightly confusing. The "Total" column shows `$0.250` for GPT-5.2 but the footnote says "Costs in milli-dollars (thousandths). Actual cost: ~$0.000635 per review." The table values are already in milli-dollars, but the `$` prefix suggests full dollars. Consider using `m$` or `m-USD` prefix, or dropping the `$` sign in favor of a unit column.
+### Task 5: MCP Verification Loop + Integration Tests
 
-**Minor note**: The comparison table shows Seance at ~$0.25m and Flatline at ~$0.60m, while the detailed breakdown totals $0.635m for Jam. The 7% delta claim checks out (0.635 / 0.60 = ~6% more). Good.
+**File**: `tests/test_mcp_integration.py`
+**Status**: PASS
 
-### Task 9.5: model-config.yaml Jam bindings — PASS
+- Test generates certificate via `run_construct_calibration` flow -- confirmed (line 34)
+- Test calls MCP `echelon_verify` programmatically -- confirmed (line 36-38)
+- PASS assertion succeeds -- confirmed (line 40)
+- Tampered certificate FAIL assertion succeeds -- confirmed (lines 47-56)
+- Determinism test: two runs produce identical evidence bundle hash -- confirmed (lines 58-64)
+- Certificate has all required fields -- confirmed (lines 66-75)
+- Total: 4 MCP integration tests
 
-- 4 agent bindings: jam-reviewer-claude (native), jam-reviewer-gpt (reviewer), jam-reviewer-kimi (reasoning), jam-synthesizer (cheap)
-- Temperatures appropriate: reviewers at 0.3-0.5, synthesizer at 0.3
-- Feature flag: `hounfour.feature_flags.jam_geometry: false` (opt-in)
+**File location note**: Tests are at `tests/test_mcp_integration.py` instead of `tests/mcp/test_mcp_integration.py` per SDD. Implementation report explains the change -- `tests/mcp/` shadowed the project's `mcp/` package. This is a valid engineering decision.
 
-No issues.
+### Task 6: Results Summary Report
 
-### Task 9.6: BUTTERFREEZONE + Ground Truth — PARTIAL
+**File**: `reports/construct_calibration_pilot.md`
+**Status**: PASS
 
-- Sprint plan marks this [x] but `BUTTERFREEZONE.md` does not exist in the repo
-- This may be expected if BUTTERFREEZONE generation is an upstream operation
-- Not blocking the review
+- Contains: construct, template, criteria, weights, per-criterion scores, composite score -- confirmed
+- Evidence bundle hash present -- confirmed
+- Verifier verdict: PASS -- confirmed
+- Verification tier: UNVERIFIED with explanation -- confirmed
+- Independent verification command (copy-pasteable) -- confirmed
+- Scores match actual pipeline output (precision=0.8000, recall=0.5417, reply_accuracy=0.8000, composite=0.6967) -- independently verified
 
 ---
 
-## Acceptance Criteria Checklist
+## Cross-Cutting Checks
 
-| AC | Status |
-|----|--------|
-| context_access 7th dimension with 4 sub-fields | PASS |
-| All model entries have appropriate scopes | PASS |
-| Schema JSON updated | PASS |
-| Backward compatible (optional, defaults all-full) | PASS |
-| filter_context() filters per context_access | PASS |
-| Filtering applied after binding resolution, before adapter.complete() | PASS |
-| Logging of filtered dimensions | PASS |
-| Native runtime bypass | PASS |
-| 10 test scenarios covering all filtering modes | PASS |
-| Fixture messages with identifiable content | PASS |
-| Jam geometry 3-phase workflow documented | PASS |
-| Cost analysis with comparison to Seance/Flatline | PASS |
-| Graceful degradation documented | PASS |
-| Miles Davis + academic peer review references | PASS |
-| 4 agent bindings in model-config.yaml | PASS |
-| Feature flag default false | PASS |
+### Architecture Alignment (SDD Section 3)
+
+- Template structure matches SDD 3.1 -- PASS
+- Scorer matches SDD 3.2 -- PASS
+- Fixture format matches SDD 3.3 -- PASS
+- Runner pipeline matches SDD 3.4 (13-step) -- PASS
+- MCP verification loop matches SDD 3.5 -- PASS
+- Integration point imports match SDD Section 5 -- PASS
+
+### Security
+
+- No hardcoded secrets -- PASS
+- No hardcoded API keys -- PASS
+- No external network calls in scorer or runner -- PASS (fixture-mode is fully offline)
+- Input validation in scorer (empty list checks, unknown criteria) -- PASS
+
+### Performance
+
+- No obvious performance issues -- PASS
+- Scorer is O(n) per criterion per record -- appropriate
+- 12 records, 3 criteria each = 36 scoring operations total -- trivial
+
+### Determinism
+
+- Fixed epoch timestamp -- PASS
+- Deterministic UUID (uuid5) -- PASS
+- Bundle cleanup before each run -- PASS
+- No LLM calls at scoring time -- PASS
+- Test `test_deterministic_evidence_bundle_hash` verifies this end-to-end -- PASS
+
+### Code Quality
+
+- Clean, well-documented code with module docstrings -- PASS
+- Follows existing patterns (compare `ConstructCalibrationScorer` to `EscrowScorer`) -- PASS
+- `theatre/scoring/__init__.py` updated with export -- PASS
+- Tests organized logically (scorer, fixture, template, distribution, integration) -- PASS
+
+### Existing Tests
+
+- All pre-existing tests unaffected by Sprint 2 changes -- confirmed (test run shows no new failures attributable to Sprint 2 code)
 
 ---
 
-## Status: REVIEW_APPROVED
+## Minor Notes (Non-Blocking)
+
+1. **`--construct-source` not wired through**: The CLI accepts `--construct-source` (line 462) but `args.construct_source` is never passed to `run_construct_calibration()`. The help text says "not used in fixture mode" which is accurate for current use. When non-fixture mode is needed later, this will need wiring. Acceptable for now since the sprint plan explicitly says fixture mode.
+
+2. **`asyncio.get_event_loop()` deprecation**: Both test files use `asyncio.get_event_loop().run_until_complete(coro)`. This was deprecated in Python 3.10+ in favor of `asyncio.run()`. Since the project targets Python 3.9+ (per the traceback headers), this is currently fine but will emit DeprecationWarning in 3.12+. Consider migrating to `pytest-asyncio` or `asyncio.run()` in a future cleanup.
+
+3. **`import shutil` inside function**: Line 305 in `run_construct_calibration.py` has `import shutil` inside the function body. This is a minor style inconsistency -- other imports are at module level. Non-blocking.
+
+---
+
+## Conclusion
+
+Sprint 2 is complete. All 6 tasks meet their acceptance criteria. The implementation is clean, deterministic, well-tested (23 tests), and architecturally aligned with the SDD. The construct calibration pipeline successfully generates certificates that pass MCP verification, and the evidence bundle hash is reproducible across runs.

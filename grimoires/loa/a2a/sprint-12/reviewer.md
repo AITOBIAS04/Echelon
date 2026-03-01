@@ -1,141 +1,91 @@
-# Sprint 8 (Global Sprint-12) Implementation Report
+# Sprint-12 Implementation Report — Verifier MCP Server v1.0
 
-## Sprint: Cross-Repository Invariant Infrastructure & Eval Harness Fix
+**Branch**: `feature/cycle-008-mcp-server`
+**Cycle**: 008 | **Global Sprint**: 12 | **Local Sprint**: 1
 
-**Implementer**: Claude (implementing-tasks agent)
-**Date**: 2026-02-18
-**Branch**: feat/cycle-026-hounfour-routing
+## Summary
 
----
+Implemented the Echelon Verifier MCP Server — a stateless, zero-dependency MCP server exposing 5 verification tools over stdio transport using JSON-RPC 2.0 protocol. The server wraps the existing `tools/echelon_verify.py` without modifying it.
 
-## Task Summary
+**Key decision**: Implemented MCP protocol directly (no `mcp` SDK) because the system Python is 3.9.6 and the MCP SDK requires 3.10+. The server is fully compatible with MCP clients and has zero external dependencies beyond the standard library.
 
-| Task | Title | Status | Files |
-|------|-------|--------|-------|
-| 8.1 | Create invariants declaration schema | DONE | `.claude/schemas/invariants.schema.json` |
-| 8.2 | Declare Hounfour economic invariants | DONE | `grimoires/loa/invariants.yaml` |
-| 8.3 | Implement invariant verification script | DONE | `.claude/scripts/verify-invariants.sh` |
-| 8.4 | Add invariant verification to test suite | DONE | `tests/unit/invariant-verification.bats` |
-| 8.5 | Investigate eval regression 50% pass rate | DONE | `.claude/scripts/tests/eval-regression-analysis.sh` |
-| 8.6 | Fix eval harness (conditional on 8.5) | N/A | No fix needed — see findings below |
+## Tasks Completed
 
----
+### Task 1: SDK Evaluation + Project Scaffold
+- Evaluated `mcp` Python SDK — incompatible with Python 3.9.6
+- Created `mcp/` package with `__init__.py`, `__main__.py`, `server.py`
+- Implemented JSON-RPC 2.0 dispatch (initialize, tools/list, tools/call)
+- CLI interface: `--list-tools`, `--call <tool> '<json>'`
 
-## Task 8.1: Invariants Declaration Schema
+### Task 2: Shared Models
+- `mcp/models/meta.py` — `build_meta()` for `_meta` envelope (engine_version, schema_versions, timestamp)
+- `mcp/models/errors.py` — 4 committed error codes (SCHEMA_INVALID, HASH_MISMATCH, INPUT_MALFORMED, INTERNAL_ERROR)
+- `mcp/models/inputs.py` — `parse_input()` for inline mode objects (id mode deferred to v1.1)
 
-**File**: `.claude/schemas/invariants.schema.json`
+### Task 3: echelon_verify Tool
+- Full verification handler delegating to `tools/echelon_verify.py` check functions
+- Schema compliance, arithmetic, temporal, hash, and structure checks
+- Optional `evidence_bundle_path` parameter for evidence directory
+- Returns `overall_verdict`, `checks[]`, `summary` counts
 
-Created JSON Schema (draft 2020-12) for cross-repository invariant declarations. The schema defines:
+### Task 4: echelon_inspect + echelon_hash Tools
+- Inspect: extracts 17 summary fields + scores + criteria without verification
+- Hash: Echelon Canonical JSON v0 for objects, raw SHA-256 for strings
+- Both return `_meta` envelope
 
-- `schema_version` (const 1) for forward compatibility
-- `protocol` field with pattern `^loa-hounfour@[0-9]+\.[0-9]+\.[0-9]+$` for ecosystem traceability
-- `invariants` array with required fields: `id` (INV-NNN pattern), `description`, `severity` (critical/important/advisory), `category` (conservation/monotonicity/ordering/bounded/idempotent), `properties` (formal property expressions), `verified_in` (repo+file+symbol references)
-- `verification_reference` sub-schema with required `repo`, `file`, `symbol` and optional `note`
-- `additionalProperties: false` at all levels for strict validation
+### Task 5: echelon_schema_check + echelon_replay Tools
+- Schema check: delegates to `check_schema_compliance()`, returns `valid`, `errors[]`, `checks_run`
+- Replay: writes template/fixtures to temp files, calls `check_deterministic_replay()`, returns `consistent`, `mismatches[]`
 
-## Task 8.2: Hounfour Economic Invariants
-
-**File**: `grimoires/loa/invariants.yaml`
-
-Declared 5 invariants spanning the metering pipeline with 17 total verification references:
-
-| ID | Category | Severity | References | Description |
-|----|----------|----------|------------|-------------|
-| INV-001 | conservation | critical | 4 | `cost_micro * 1M + remainder == tokens * price` |
-| INV-002 | bounded | critical | 3 | `daily_spend >= 0` at all times |
-| INV-003 | idempotent | important | 3 | Interaction ID uniqueness prevents double-counting |
-| INV-004 | monotonicity | critical | 3 | Daily spend counter only increases within a day |
-| INV-005 | bounded | critical | 4 | No model exceeds its trust_scopes at runtime |
-
-All references point to verified function/class names in the codebase. Cross-repo references (hounfour, arrakis) are annotated with `protocol: loa-hounfour@7.0.0`.
-
-## Task 8.3: Invariant Verification Script
-
-**File**: `.claude/scripts/verify-invariants.sh`
-
-Implements verification compatible with `butterfreezone-validate.sh` output pattern:
-
-- Reads invariants.yaml, iterates each `verified_in` entry
-- For `repo == "loa"`: verifies file exists and symbol is defined (Python def/class, YAML key, Shell function, or generic grep)
-- For cross-repo references: reports SKIP with note about external CI
-- `--json` mode outputs structured JSON with `status`, `passes`, `failures`, `skips`, and `checks` array
-- `--json` implies `--quiet` to prevent mixing text/JSON output
-- Exit codes: 0 (all pass), 1 (any fail), 2 (config error)
-
-**Verification result**: 17 passed, 0 failed, 0 skipped.
-
-## Task 8.4: BATS Test Suite
-
-**File**: `tests/unit/invariant-verification.bats`
-
-19 BATS tests covering:
-
-- Pre-flight: script exists, invariants.yaml exists, schema exists
-- Valid codebase: all pass, JSON output, check count (>=15), all 5 INV IDs verified
-- Missing function: non-existent symbol detected, reported as FAIL in JSON
-- Missing file: non-existent file detected, reported as FAIL in JSON
-- Empty invariants: graceful handling, JSON output with passes=0
-- Cross-repo: references SKIPped not FAILed, repo name in detail
-- Exit codes: 0 for all-pass, 1 for any-fail, 2 for missing file
-- Mixed: correct pass/fail counts with mixed references
-
-**Result**: 19/19 tests passing.
-
-## Task 8.5: Eval Regression Analysis
-
-**File**: `.claude/scripts/tests/eval-regression-analysis.sh`
-
-Created analysis infrastructure with:
-
-- Configurable trials per task (default: 4)
-- Single-task or all-task modes
-- Classification logic: HARNESS_BUG (systematic alternating pattern with >=4 trials), FLAKY (random), REGRESSION (always fails), HEALTHY (always passes)
-- JSON output to `.run/eval-regression-analysis.json`
-- Dry-run mode tested: found 11 regression tasks
-
-**Key Finding**: The regression baseline is **empty** (`tasks: {}` in `evals/baselines/regression.baseline.yaml`). No regression eval run has been recorded. The 50% pass rate observation from Bridgebuilder Part I cannot be reproduced because:
-
-1. Regression tasks require model-in-the-loop agent execution (sandbox → agent → graders pipeline)
-2. The baseline was initialized with `tasks: {}` and `recorded_from_run: "pending"`
-3. No historical eval run data exists to analyze
-
-The analysis infrastructure is ready and will produce actionable results once the first regression eval run is executed.
-
-## Task 8.6: Fix Eval Harness (Conditional)
-
-**Status**: N/A — no fix needed at this time.
-
-Task 8.6 states "conditional on Task 8.5 findings." The findings from Task 8.5 show:
-
-- **No reproducible failure pattern exists** — the regression baseline is empty
-- **The harness code is structurally sound** — trial execution uses clean per-trial sandboxes, grader output is parsed correctly, JSONL results are written atomically
-- **The 50% pass rate** flagged by Bridgebuilder was a forward-looking concern about what *might* happen once regression evals run, not a current observable bug
-
-When regression eval runs do occur, the analysis script from Task 8.5 can classify any failures and Task 8.6 acceptance criteria can be re-evaluated.
-
----
+### Task 6: Errata Application + Integration Verification
+- Confirmed zero "RFC 8785" references in `mcp/` — all use "Echelon Canonical JSON v0"
+- Verified real certificate (arrears_resolution_v1) through MCP verify tool
+- CLI `--call` and `--list-tools` modes verified functional
 
 ## Test Results
 
-```
-Python:  485 passed, 9 skipped, 113 subtests
-BATS:    19 passed (invariant-verification.bats)
-Invariants: 17/17 passed, 0 failed, 0 skipped
-```
+**44 new tests, all passing:**
 
-## Files Changed
+| File | Tests | Coverage |
+|------|-------|----------|
+| `mcp/tests/test_models.py` | 14 | meta, errors, inputs |
+| `mcp/tests/test_tools.py` | 20 | verify, inspect, hash, schema_check |
+| `mcp/tests/test_server.py` | 10 | JSON-RPC dispatch, registry |
 
-| File | Action | Lines |
-|------|--------|-------|
-| `.claude/schemas/invariants.schema.json` | Created | 97 |
-| `grimoires/loa/invariants.yaml` | Created | 127 |
-| `.claude/scripts/verify-invariants.sh` | Created | 278 |
-| `tests/unit/invariant-verification.bats` | Created | 315 |
-| `.claude/scripts/tests/eval-regression-analysis.sh` | Created | 274 |
+**Existing test suite**: 202 pass, 90 pre-existing failures (unrelated to MCP — `jsonschema` dependency and Python 3.10 syntax). Zero regressions.
 
-## Notes
+## Files Created
 
-- The invariant verification script integrates cleanly with existing quality-gates patterns
-- All 5 invariants reference real, verified function/class names in the codebase
-- The eval regression analysis infrastructure is ready for use once model-in-the-loop evals are operational
-- No cross-repo references exist in the current invariants.yaml (all `repo: loa`), but the SKIP mechanism is tested and ready
+| File | Lines | Purpose |
+|------|-------|---------|
+| `mcp/__init__.py` | 17 | Package init, version |
+| `mcp/__main__.py` | 5 | `python3 -m mcp` entry |
+| `mcp/server.py` | 252 | JSON-RPC 2.0 stdio server |
+| `mcp/models/__init__.py` | 1 | Models package |
+| `mcp/models/meta.py` | 34 | _meta envelope builder |
+| `mcp/models/errors.py` | 42 | Error codes + response format |
+| `mcp/models/inputs.py` | 42 | Input mode parser |
+| `mcp/tools/__init__.py` | 1 | Tools package |
+| `mcp/tools/verify.py` | 136 | Full verification tool |
+| `mcp/tools/inspect.py` | 89 | Certificate summary tool |
+| `mcp/tools/hash.py` | 79 | Canonical hash tool |
+| `mcp/tools/schema_check.py` | 78 | Schema validation tool |
+| `mcp/tools/replay.py` | 122 | Replay consistency tool |
+| `mcp/tests/__init__.py` | 1 | Tests package |
+| `mcp/tests/test_models.py` | 80 | Model tests |
+| `mcp/tests/test_tools.py` | 149 | Tool handler tests |
+| `mcp/tests/test_server.py` | 100 | Server dispatch tests |
+
+**Total**: 17 files, ~1,228 lines
+
+## Files Modified
+
+None. The existing `tools/echelon_verify.py` is used as-is via import.
+
+## Architecture Notes
+
+- **Transport**: stdio (newline-delimited JSON-RPC 2.0)
+- **Protocol**: MCP 2024-11-05 (initialize, tools/list, tools/call, notifications)
+- **Import strategy**: `sys.path` manipulation to import `tools/echelon_verify.py` from repo root
+- **No SDK dependency**: Pure Python 3.9+ implementation
+- **Stateless**: Each tool call is independent, no server state

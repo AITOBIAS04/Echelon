@@ -1,156 +1,86 @@
-# Sprint 9 (sprint-13) — Security Audit Feedback
+# Sprint 2 (Global Sprint-13) — Security Audit
 
-**Auditor**: Security Auditor
-**Date**: 2026-02-19
-**Decision**: APPROVED (with noted findings)
-
----
-
-## Summary
-
-Sprint 9 delivers epistemic trust scopes (context_filter.py, context_access in model-permissions.yaml), comprehensive tests, and the Jam geometry design document. The code is explicitly transparent about its threat model: "This is best-effort content reduction, not a security boundary" (context_filter.py docstring, line 26). Given this declared scope, the implementation is well-engineered with proper immutability (deepcopy), logging of bypass conditions (BB-504), cache invalidation, and documented limitations (BB-502 through BB-507).
-
-**Approved for completion.** Findings noted for hardening when/if this becomes a security boundary.
+**Auditor**: Paranoid Cypherpunk Security Auditor
+**Date**: 2026-03-01
+**Verdict**: APPROVED
 
 ---
 
-## Findings
+## Scope
 
-### SEC-13-001: Non-string content bypasses filtering (MEDIUM)
+8 files audited across the Loa Construct Calibration Pilot sprint:
 
-**File**: `.claude/adapters/loa_cheval/routing/context_filter.py:337-346`
-**Type**: Filter bypass
-**Severity**: MEDIUM
-
-```python
-if isinstance(content, str) and content:
-    msg["content"] = filter_message_content(content, context_access)
-elif content and not isinstance(content, str):
-    # BB-504: Non-string content (list/dict) bypasses filtering.
-    logger.warning(...)
-```
-
-When `content` is a list (e.g., Anthropic's structured content blocks: `[{"type": "text", "text": "CVE-..."}]`), all filtering is bypassed. A message constructed with list-of-blocks format would pass security, architecture, business_logic, and lore content through unfiltered.
-
-**Mitigating factors**:
-- Documented as BB-504 with logging
-- Module docstring declares "not a security boundary"
-- The warning log creates an audit trail
-- Content format is controlled by the calling code (cheval.py), not by external input
-
-**Recommendation**: When content is a list of dicts with `type: "text"`, iterate and filter each text block's `text` field. This would close the structured content bypass without changing the non-security-boundary stance.
-
-### SEC-13-002: Test coverage gap for list content bypass (LOW)
-
-**File**: `.claude/adapters/tests/test_epistemic_scopes.py:275-280`
-**Type**: Insufficient test coverage
-
-```python
-def test_non_string_content_passes_through(self):
-    messages = [{"role": "tool", "content": 42}]
-```
-
-Tests the bypass with `content: 42` (integer) but not with the realistic bypass scenario: `content: [{"type": "text", "text": "<security content>"}]`. A test with structured content blocks containing filterable content (CVE references, architecture sections) would validate the BB-504 behavior and serve as a regression guard if the bypass is later fixed.
-
-### SEC-13-003: Regex-based content detection is evasion-prone (LOW)
-
-**File**: `.claude/adapters/loa_cheval/routing/context_filter.py:52-82`
-**Type**: Filter evasion
-
-The `_SECURITY_MARKERS`, `_ARCHITECTURE_MARKERS`, `_LORE_MARKERS`, and `_FUNCTION_BODY_PATTERN` regexes can be evaded through:
-
-- Unicode homoglyphs (e.g., Cyrillic `С` instead of Latin `C` in `CVE-`)
-- Creative formatting (e.g., `C V E - 2024-12345` with spaces)
-- Nested code blocks or escaped markdown
-- Language patterns not covered by BB-502 (Go, Rust, Java methods)
-
-**Mitigating factors**:
-- Explicitly documented as "heuristic-based" and "not a security boundary" (docstring, module header)
-- BB-502 documents language coverage gaps
-- BB-503 documents inline security content leakage
-- BB-507 documents lore false positives
-- Comprehensive BB-tag documentation shows intentional design decisions
-
-**No action required** — the code is honest about its limitations.
-
-### SEC-13-004: Missing jam-synthesizer in model-permissions.yaml (MEDIUM)
-
-**File**: `.claude/data/model-permissions.yaml`
-**Type**: Trust boundary gap
-
-The Jam geometry design specifies `anthropic:claude-sonnet-4-6` as the synthesis model (jam-geometry.md line 68, model-config.yaml). However, `model-permissions.yaml` has no entry for `anthropic:claude-sonnet-4-6`. When `lookup_trust_scopes("anthropic", "claude-sonnet-4-6")` is called, it returns `None`, which defaults to all-full context_access.
-
-**Impact**: The synthesizer would receive ALL content including security findings from Claude's review (which has `security: full`). This creates an information flow: Claude reviews with full security context → synthesizer receives Claude's security-aware review → unified output contains security-derived findings → unified output is posted (potentially visible to models/users that should not see security content).
-
-**Mitigating factors**:
-- Jam geometry is feature-flagged `false` (opt-in only, not active)
-- This is a design document, not running code
-- The synthesizer arguably NEEDS full context to synthesize correctly
-- The default-to-all-full behavior is documented and intentional (backward compatible)
-
-**Recommendation**: When Jam is implemented, add explicit `anthropic:claude-sonnet-4-6` entry to model-permissions.yaml with appropriate context_access scopes. Consider whether the unified output should inherit the most restrictive reviewer's scopes.
-
-### SEC-13-005: TOCTOU in permissions cache (LOW)
-
-**File**: `.claude/adapters/loa_cheval/routing/context_filter.py:379-386`
-**Type**: Race condition
-
-```python
-current_mtime = permissions_path.stat().st_mtime
-if _PERMISSIONS_CACHE is not None and current_mtime == _PERMISSIONS_MTIME:
-    return _PERMISSIONS_CACHE
-```
-
-Between `stat().st_mtime` check and `open()` (line 398), the file could change. In a concurrent environment, this could serve stale permissions.
-
-**Mitigating factors**:
-- Python GIL serializes thread access
-- Single-process architecture (cheval.py is invoked per-request)
-- File is developer-managed configuration, not frequently modified
-- The mtime check is a cache optimization, not a security gate
-
-**No action required** — appropriate for the execution model.
-
-### SEC-13-006: Hardcoded regex for security section detection (INFO)
-
-**File**: `.claude/adapters/loa_cheval/routing/context_filter.py:172`
-
-```python
-if re.match(r"^#{1,4}\s*(?:Security|Audit|Vulnerability|Findings)", line, re.IGNORECASE):
-```
-
-Security sections with non-English headers (e.g., `## Sicherheit`, `## Seguridad`) would not be detected. This is consistent with BB-502's documented limitation (English-only content patterns) but worth noting for internationalized codebases.
-
-### SEC-13-007: context_access defaults favor openness (INFO)
-
-**File**: `.claude/adapters/loa_cheval/routing/context_filter.py:44-49`
-
-```python
-DEFAULT_CONTEXT_ACCESS: Dict[str, str] = {
-    "architecture": "full",
-    "business_logic": "full",
-    "security": "full",
-    "lore": "full",
-}
-```
-
-Default-open is the correct choice for backward compatibility (pre-v7 models work without changes). However, in a defense-in-depth model, default-closed would be more secure. The current design prioritizes compatibility over restriction. Documented as intentional.
+| # | File | Verdict |
+|---|------|---------|
+| 1 | `theatre/scoring/construct_calibration_scorer.py` | CLEAN |
+| 2 | `scripts/run_construct_calibration.py` | CLEAN |
+| 3 | `theatre/fixtures/construct_calibration/templates/CONSTRUCT_CALIBRATION_V1.template.json` | CLEAN |
+| 4 | `theatre/fixtures/construct_calibration/datasets/community_oracle_v1_fixtures.json` | CLEAN |
+| 5 | `tests/theatre/test_construct_calibration.py` | CLEAN |
+| 6 | `tests/test_mcp_integration.py` | CLEAN |
+| 7 | `reports/construct_calibration_pilot.md` | CLEAN |
+| 8 | `theatre/scoring/__init__.py` | CLEAN |
 
 ---
 
-## Acceptance Criteria Security Review
+## Security Checklist Results
 
-| AC | Security Status |
-|----|----------------|
-| context_access 7th dimension with 4 sub-fields | PASS — clean implementation |
-| deepcopy prevents mutation of caller data | PASS — verified in code and tests |
-| Logging of filtered dimensions and bypass conditions | PASS — BB-504 warning, dimension logging |
-| Native runtime bypass | PASS — correct (native models have file access anyway) |
-| Test coverage for all filtering modes | PASS — 30+ tests, 8 classes |
-| Jam geometry design grounded in existing infrastructure | PASS — file:line references verified |
-| Feature flag default false | PASS — opt-in only |
-| No command injection or code execution paths | PASS — pure text transformation |
+### Secrets
+No hardcoded credentials, API keys, tokens, or passwords found in any file. All hash values present (evidence bundle hash, commitment hash, dataset hash) are content integrity hashes, not secrets.
+
+### Input Validation
+- Scorer: Unknown `criteria_id` returns 0.0. Empty annotations return 0.0. Missing `expected_output` returns 0.0. No division-by-zero possible (empty list guards precede all division).
+- Runner CLI: `--construct` validated against `CONSTRUCTS` registry via argparse `choices`. `--output-dir` used as a `Path()` for file output only, not interpolated into shell commands.
+
+### Path Traversal
+- Template and dataset paths are hardcoded relative to `FIXTURE_BASE` (a constant derived from `__file__`).
+- Output paths are constructed from the user-specified `--output-dir` plus internal constants. No user input is interpolated into file paths beyond the output directory root.
+- All components of `shutil.rmtree()` target are programmatically constructed from constants.
+
+### Data Privacy
+- Fixture dataset contains only synthetic PR diffs with no real PII.
+- No real usernames, email addresses, API keys, repository URLs, or internal paths exposed.
+- Single public CVE reference (CVE-2023-32681) is publicly known information.
+
+### Error Handling
+- ImportError for MCP tools caught gracefully with "SKIPPED" message.
+- Missing evidence bundle files produce logger warning (no stack trace exposure).
+- No information disclosure in error paths.
+
+### Dependencies
+- No `eval`, `exec`, `subprocess`, `pickle`, or `os.system` in any sprint file.
+- All imports are from standard library or project's own modules.
+- No third-party library additions.
+
+### File Operations
+- `shutil.rmtree()` targets only the evidence bundle subdirectory (deterministic cleanup).
+- All file writes use `Path.write_text()` with `json.dumps()` (safe serialization).
+- `mkdir(parents=True, exist_ok=True)` for directory creation (safe).
+- No race conditions (single-threaded pipeline).
+
+### Cryptographic
+- SHA-256 used for content integrity hashing (appropriate).
+- `uuid.uuid5()` uses SHA-1 per UUID spec for deterministic ID generation (acceptable -- not a cryptographic security context).
+- No weak algorithms. No custom crypto.
 
 ---
 
-## Status: AUDIT_APPROVED
+## Cross-Cutting Findings
+
+### Positive Security Properties
+1. **Fully deterministic pipeline**: Fixed epoch, deterministic UUIDs, cleanup-before-write. Eliminates timing leakage and ensures reproducibility.
+2. **No network calls in scoring path**: Scorer and fixtures are fully offline. MCP verify is local-only and import-guarded.
+3. **No shell command construction**: No subprocess/os.system/shell string interpolation.
+4. **No deserialization of untrusted data**: All JSON from own fixtures or pipeline outputs.
+5. **Tamper detection tested**: Integration test verifies that mutated certificates are caught by the verifier.
+
+### Advisory Notes (Non-Blocking)
+1. **`asyncio.get_event_loop()` deprecation**: Both test files use the deprecated pattern. No security impact. Future cleanup recommended (matches reviewer note #2).
+2. **`import shutil` inside function body**: Minor style inconsistency. No security impact.
+3. **`--construct-source` CLI arg accepted but unused**: Documented as "not used in fixture mode". No security impact since it's never processed.
+
+---
+
+## Decision
+
+**APPROVED**. No security issues found. The sprint code is clean, defensive, and well-structured. The deterministic design is a security positive. All 8 files pass the full security checklist.
