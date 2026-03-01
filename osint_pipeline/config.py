@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 # Default registry path relative to monorepo root
 _DEFAULT_REGISTRY_PATH = (
     "theatre/fixtures/two_rail_theatres_v0_1/datasets/"
-    "echelon_osint_source_registry_v0_4_0.json"
+    "echelon_osint_source_registry_v0_6_0.json"
 )
 
 

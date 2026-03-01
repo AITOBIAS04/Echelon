@@ -220,3 +220,76 @@ class TestHTTPTranscriptCanonical:
         assert "authorization" not in CANONICAL_HEADER_ALLOWLIST
         assert "cookie" not in CANONICAL_HEADER_ALLOWLIST
         assert "x-request-id" not in CANONICAL_HEADER_ALLOWLIST
+
+
+class TestAuthRedaction:
+    """E3: Auth + receipt redaction regression tests.
+
+    Verifies that api_key material is stripped from canonical forms
+    and receipt hashes are identical with or without auth headers.
+    """
+
+    def test_auth_headers_stripped_from_canonical(self):
+        """Authorization and X-Api-Key are absent from canonical form."""
+        with_auth = http_transcript_canonical(
+            method="GET",
+            url="https://api.bls.gov/publicAPI/v2/timeseries/data/",
+            headers={
+                "Authorization": "Bearer secret",
+                "X-Api-Key": "key123",
+                "Accept": "application/json",
+            },
+            response_status=200,
+            response_body=b'{"status":"OK"}',
+            timestamp_ms=1709251200000,
+        )
+        without_auth = http_transcript_canonical(
+            method="GET",
+            url="https://api.bls.gov/publicAPI/v2/timeseries/data/",
+            headers={"Accept": "application/json"},
+            response_status=200,
+            response_body=b'{"status":"OK"}',
+            timestamp_ms=1709251200000,
+        )
+        assert with_auth == without_auth
+
+    def test_secret_material_absent(self):
+        """Secret values never appear in canonical form."""
+        canonical = http_transcript_canonical(
+            method="GET",
+            url="https://api.example.com/data",
+            headers={
+                "Authorization": "Bearer secret",
+                "X-Api-Key": "key123",
+                "Accept": "application/json",
+            },
+            response_status=200,
+            response_body=b"{}",
+            timestamp_ms=1000,
+        )
+        assert "secret" not in canonical
+        assert "key123" not in canonical
+        assert "Bearer" not in canonical
+
+    def test_receipt_hash_identical_with_without_auth(self):
+        """Receipt hashes are identical regardless of auth headers."""
+        base = dict(
+            method="GET",
+            url="https://api.bls.gov/publicAPI/v2/timeseries/data/",
+            response_status=200,
+            response_body=b'{"status":"OK"}',
+            timestamp_ms=1709251200000,
+        )
+        hash_with = http_transcript_hash(
+            **base,
+            headers={
+                "Authorization": "Bearer secret",
+                "X-Api-Key": "key123",
+                "Accept": "application/json",
+            },
+        )
+        hash_without = http_transcript_hash(
+            **base,
+            headers={"Accept": "application/json"},
+        )
+        assert hash_with == hash_without

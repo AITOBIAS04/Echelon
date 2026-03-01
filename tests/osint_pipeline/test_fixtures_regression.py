@@ -15,7 +15,7 @@ from osint_pipeline.models.registry import RegistryLoader
 
 REGISTRY_PATH = Path(
     "theatre/fixtures/two_rail_theatres_v0_1/datasets/"
-    "echelon_osint_source_registry_v0_4_0.json"
+    "echelon_osint_source_registry_v0_6_0.json"
 )
 
 
@@ -31,7 +31,7 @@ class TestRegistryFixtureRegression:
     """Verify registry fixture loads and validates correctly."""
 
     def test_registry_loads(self, registry):
-        assert registry.version == "0.4.0"
+        assert registry.version == "0.6.0"
 
     def test_registry_has_sources(self, registry):
         assert registry.total_sources > 0
@@ -120,6 +120,44 @@ class TestCollectorRegistryAlignment:
         assert source.independence_upstream_id == "uk_tso_gazette_backend"
         assert source.jurisdiction == "GB"
         assert source.source_group == "official_gov"
+
+
+class TestExpansionSourcesPresent:
+    """Verify all 9 v0.6.0 expansion sources are present and queryable."""
+
+    EXPANSION_SOURCE_IDS = [
+        "uk_caselaw_tna",
+        "uk_legislation_gov",
+        "uk_parliament_api",
+        "imf_sdmx_api",
+        "usa_spending_api",
+        "bls_api",
+        "worldbank_api",
+        "nih_reporter_api",
+        "npi_registry_cms",
+    ]
+
+    def test_all_expansion_sources_present(self, registry):
+        for source_id in self.EXPANSION_SOURCE_IDS:
+            source = registry.get(source_id)
+            assert source is not None, f"Expansion source missing: {source_id}"
+
+    def test_expansion_count(self, registry):
+        found = sum(
+            1 for sid in self.EXPANSION_SOURCE_IDS if registry.get(sid) is not None
+        )
+        assert found == 9
+
+
+class TestIndependenceFieldCompleteness:
+    """E4: All settlement-eligible sources must have non-blank independence_upstream_id."""
+
+    def test_settlement_sources_have_upstream_id(self, registry):
+        for source in registry.settlement_eligible():
+            assert source.independence_upstream_id, (
+                f"{source.source_id} is settlement_eligible but has "
+                f"blank independence_upstream_id"
+            )
 
 
 if __name__ == "__main__":

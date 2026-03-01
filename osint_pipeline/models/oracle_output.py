@@ -142,6 +142,9 @@ class OracleOutput(BaseModel):
     counter_signals_checked: int = 0
     counter_signals_found: int = 0
 
+    # Settlement guard: requires at least one primary_evidence bundle
+    settlement_safe: bool = False
+
     @property
     def all_criteria_passed(self) -> bool:
         return all(cs.passed for cs in self.criterion_scores)

@@ -14,7 +14,7 @@ class TestPipelineConfigDefaults:
 
     def test_default_registry_path(self):
         config = PipelineConfig()
-        assert "echelon_osint_source_registry_v0_4_0.json" in config.registry_path
+        assert "echelon_osint_source_registry_v0_6_0.json" in config.registry_path
 
     def test_default_max_workers(self):
         config = PipelineConfig()

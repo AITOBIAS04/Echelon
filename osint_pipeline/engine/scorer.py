@@ -181,6 +181,12 @@ class Scorer:
             1 for cs in counter_signal_results if cs.checked and cs.signal_found
         )
 
+        # Settlement guard: at least one primary_evidence bundle required
+        settlement_safe = any(
+            getattr(b, "resolution_role", "") == "primary_evidence"
+            for b in bundles
+        )
+
         return OracleOutput(
             oracle_id=str(uuid.uuid4()),
             theatre_id=theatre_id,
@@ -195,4 +201,5 @@ class Scorer:
             coverage_percentage=coverage_pct,
             counter_signals_checked=cs_checked,
             counter_signals_found=cs_found,
+            settlement_safe=settlement_safe,
         )

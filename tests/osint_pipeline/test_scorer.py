@@ -286,5 +286,79 @@ class TestScorerOracleOutput:
         assert output.gap_report[0].source_id == "gap_0"
 
 
+class TestSettlementSafe:
+    """E2: Settlement eligibility policy guard."""
+
+    def test_secondary_only_not_settlement_safe(self):
+        """Collection with only secondary_corroboration -> settlement_safe=False."""
+        bundles = [
+            make_bundle(
+                source_id="sec_src",
+                upstream_id="sec_up",
+                resolution_role="secondary_corroboration",
+            ),
+        ]
+        collection = OracleCollectionSummary(
+            theatre_id="test",
+            bundles=bundles,
+            gaps=[],
+            total_sources_attempted=1,
+            total_sources_succeeded=1,
+            total_sources_failed=0,
+        )
+        scorer = Scorer()
+        output = scorer.score(collection, [], [])
+        assert output.settlement_safe is False
+
+    def test_primary_and_secondary_is_settlement_safe(self):
+        """Collection with primary_evidence + secondary -> settlement_safe=True."""
+        bundles = [
+            make_bundle(
+                source_id="pri_src",
+                upstream_id="pri_up",
+                resolution_role="primary_evidence",
+            ),
+            make_bundle(
+                source_id="sec_src",
+                upstream_id="sec_up",
+                resolution_role="secondary_corroboration",
+            ),
+        ]
+        collection = OracleCollectionSummary(
+            theatre_id="test",
+            bundles=bundles,
+            gaps=[],
+            total_sources_attempted=2,
+            total_sources_succeeded=2,
+            total_sources_failed=0,
+        )
+        scorer = Scorer()
+        output = scorer.score(collection, [], [])
+        assert output.settlement_safe is True
+
+    def test_settlement_safe_does_not_change_composite(self):
+        """settlement_safe is advisory; composite score unchanged."""
+        bundles = [
+            make_bundle(
+                source_id="sec_src",
+                upstream_id="sec_up",
+                resolution_role="secondary_corroboration",
+            ),
+        ]
+        collection = OracleCollectionSummary(
+            theatre_id="test",
+            bundles=bundles,
+            gaps=[],
+            total_sources_attempted=1,
+            total_sources_succeeded=1,
+            total_sources_failed=0,
+        )
+        scorer = Scorer()
+        output = scorer.score(collection, [], [])
+        # Composite should still be > 0 even though settlement_safe=False
+        assert output.composite_score > 0.0
+        assert output.settlement_safe is False
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

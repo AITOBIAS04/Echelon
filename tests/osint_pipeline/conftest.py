@@ -21,7 +21,7 @@ from osint_pipeline.models.registry import RegistryLoader
 
 REGISTRY_PATH = Path(
     "theatre/fixtures/two_rail_theatres_v0_1/datasets/"
-    "echelon_osint_source_registry_v0_4_0.json"
+    "echelon_osint_source_registry_v0_6_0.json"
 )
 
 

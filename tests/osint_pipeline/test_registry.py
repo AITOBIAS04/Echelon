@@ -16,7 +16,7 @@ from osint_pipeline.models.registry import RegistryLoader, RegistrySource
 
 REGISTRY_PATH = Path(
     "theatre/fixtures/two_rail_theatres_v0_1/datasets/"
-    "echelon_osint_source_registry_v0_4_0.json"
+    "echelon_osint_source_registry_v0_6_0.json"
 )
 
 
@@ -24,15 +24,15 @@ class TestRegistryLoading:
     """Registry loading and validation tests."""
 
     def test_load_from_real_fixture(self):
-        """Successfully loads the actual v0.4.0 registry fixture."""
+        """Successfully loads the actual v0.6.0 registry fixture."""
         registry = RegistryLoader.from_file(REGISTRY_PATH)
-        assert registry.version == "0.4.0"
-        assert registry.total_sources == 57
+        assert registry.version == "0.6.0"
+        assert registry.total_sources == 65
 
     def test_version_validation_rejects_mismatch(self, tmp_path):
-        """K-7: from_file() validates version == '0.4.0'."""
+        """K-7: from_file() validates version == '0.6.0'."""
         bad_registry = tmp_path / "bad.json"
-        bad_registry.write_text('{"version": "0.3.0", "sources": []}')
+        bad_registry.write_text('{"version": "0.4.0", "sources": []}')
         with pytest.raises(ValueError, match="version mismatch"):
             RegistryLoader.from_file(bad_registry)
 
@@ -147,4 +147,42 @@ class TestRegistryQueries:
     def test_len(self):
         """__len__ returns source count."""
         registry = RegistryLoader.from_file(REGISTRY_PATH)
-        assert len(registry) == 57
+        assert len(registry) == 65
+
+
+class TestSourceGroupTaxonomy:
+    """E1: Source group taxonomy drift detection."""
+
+    def test_non_committed_groups_have_mapping(self):
+        """Every source with a non-committed group must have mapped_source_group."""
+        import json
+
+        with open(REGISTRY_PATH) as f:
+            raw = json.load(f)
+        committed = set(raw["source_group_enum"]["committed_values"])
+
+        registry = RegistryLoader.from_file(REGISTRY_PATH)
+        for source in registry.all_sources():
+            if source.source_group not in committed:
+                assert source.mapped_source_group is not None, (
+                    f"{source.source_id} has non-committed group "
+                    f"'{source.source_group}' but no mapped_source_group"
+                )
+
+    def test_mapped_groups_are_valid(self):
+        """All mapped_source_group values are in proposed_source_groups or committed enum."""
+        import json
+
+        with open(REGISTRY_PATH) as f:
+            raw = json.load(f)
+        committed = set(raw["source_group_enum"]["committed_values"])
+        proposed = set(raw.get("proposed_source_groups", []))
+        valid = committed | proposed
+
+        registry = RegistryLoader.from_file(REGISTRY_PATH)
+        for source in registry.all_sources():
+            if source.mapped_source_group is not None:
+                assert source.mapped_source_group in valid, (
+                    f"{source.source_id} mapped_source_group "
+                    f"'{source.mapped_source_group}' not in valid set"
+                )

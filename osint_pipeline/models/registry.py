@@ -1,6 +1,6 @@
 """OSINT Source Registry loader and query interface.
 
-Reads the Echelon OSINT Source Registry (v0.4.0, 57 sources) and
+Reads the Echelon OSINT Source Registry (v0.6.0, 65 sources) and
 provides typed access to source metadata for the pipeline.
 """
 
@@ -47,6 +47,8 @@ class RegistrySource(BaseModel):
     evidence_capture: dict[str, Any] = Field(default_factory=dict)
     notes: str = ""
     theatre_families: list[str] = Field(default_factory=list)
+    # v0.6.0: optional mapping to proposed v2 taxonomy group
+    mapped_source_group: str | None = None
 
 
 class RegistryLoader:
@@ -60,7 +62,7 @@ class RegistryLoader:
         gb_sources = registry.by_jurisdiction("GB")
     """
 
-    SUPPORTED_VERSION = "0.4.0"
+    SUPPORTED_VERSION = "0.6.0"
 
     def __init__(self, sources: list[RegistrySource], metadata: dict[str, Any]):
         self._sources: dict[str, RegistrySource] = {s.source_id: s for s in sources}
@@ -70,7 +72,7 @@ class RegistryLoader:
     def from_file(cls, path: str | Path) -> RegistryLoader:
         """Load registry from JSON file.
 
-        K-7 fix: validates ``version == "0.4.0"``. Raises ValueError on mismatch.
+        K-7 fix: validates ``version == SUPPORTED_VERSION``. Raises ValueError on mismatch.
         """
         path = Path(path)
         with open(path, "r", encoding="utf-8") as f:
