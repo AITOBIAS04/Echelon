@@ -128,90 +128,90 @@ Implement tests for all Sprint 1 code.
 Implement parallel collection orchestrator with timeout budget and gap reporting.
 
 **Acceptance Criteria:**
-- [ ] `CollectionRunner.__init__` accepts list of `BaseCollector`, `max_workers`, `timeout_budget_seconds`
-- [ ] `run()` executes collectors in parallel via `ThreadPoolExecutor`
-- [ ] `required_source_ids` filtering works (only runs specified collectors)
-- [ ] `allow_gaps_for` propagates to `GapReport.allow_gap`
-- [ ] Failed/timed-out collections produce `GapReport` entries
-- [ ] Missing collectors (in `required_source_ids` but not configured) logged as warning + gap
-- [ ] `run_sequential()` mode for debugging with full logging
-- [ ] `close_all()` closes all collector HTTP clients
-- [ ] Returns `OracleCollectionSummary` with correct counts
+- [x] `CollectionRunner.__init__` accepts list of `BaseCollector`, `max_workers`, `timeout_budget_seconds`
+- [x] `run()` executes collectors in parallel via `ThreadPoolExecutor`
+- [x] `required_source_ids` filtering works (only runs specified collectors)
+- [x] `allow_gaps_for` propagates to `GapReport.allow_gap`
+- [x] Failed/timed-out collections produce `GapReport` entries
+- [x] Missing collectors (in `required_source_ids` but not configured) logged as warning + gap
+- [x] `run_sequential()` mode for debugging with full logging
+- [x] `close_all()` closes all collector HTTP clients
+- [x] Returns `OracleCollectionSummary` with correct counts
 
 #### T2.2: `collectors/sec_edgar.py` — SEC EDGAR EFTS Collector
 Implement US SEC EDGAR full-text search collector.
 
 **Acceptance Criteria:**
-- [ ] `source_id = "sec_edgar_efts"`, `jurisdiction = "US"`, `source_group = "official_gov"`
-- [ ] `resolution_role = "primary_evidence"`
-- [ ] `independence_upstream_id` matches registry value
-- [ ] User-Agent header set from config (SEC requires email-based User-Agent)
-- [ ] `build_request()` constructs EDGAR EFTS search URL with query params
-- [ ] `extract()` parses SEC JSON response into structured extract
-- [ ] Respects SEC rate limit guidance (10 req/sec)
+- [x] `source_id = "sec_edgar"` (registry value), `jurisdiction = "US"`, `source_group = "official_gov"`
+- [x] `resolution_role = "primary_evidence"`
+- [x] `independence_upstream_id` matches registry value (`us_sec_edgar_backend`)
+- [x] User-Agent header set from config (SEC requires email-based User-Agent)
+- [x] `build_request()` constructs EDGAR EFTS search URL with query params
+- [x] `extract()` parses SEC JSON response into structured extract
+- [x] Respects SEC rate limit guidance (10 req/sec)
 
 #### T2.3: `collectors/ecb_sdmx.py` — ECB SDW Collector
 Implement EU ECB Statistical Data Warehouse collector using JSON format endpoint.
 
 **Acceptance Criteria:**
-- [ ] `source_id = "ecb_sdw"`, `jurisdiction = "EU"`, `source_group = "market_data"`
-- [ ] `resolution_role = "secondary_corroboration"`
-- [ ] `independence_upstream_id` matches registry value
-- [ ] No auth required
-- [ ] `build_request()` constructs ECB data API URL with series key and format params
-- [ ] `extract()` parses ECB JSON response into structured extract with key rates/measures
-- [ ] Uses JSON format endpoint (not SDMX XML)
+- [x] `source_id = "ecb_data_api"` (registry value), `jurisdiction = "EU"`, `source_group = "market_data"`
+- [x] `resolution_role = "primary_evidence"` (registry value)
+- [x] `independence_upstream_id` matches registry value (`eu_ecb_sdw_backend`)
+- [x] No auth required
+- [x] `build_request()` constructs ECB data API URL with series key and format params
+- [x] `extract()` parses ECB JSON response into structured extract with key rates/measures
+- [x] Uses JSON format endpoint (not SDMX XML)
 
 #### T2.4: `engine/corroboration.py` — Stage 2 Corroboration Engine
 Implement the corroboration evaluation algorithm per the Composed Oracle Spec v2.
 
 **Acceptance Criteria:**
-- [ ] `evaluate()` excludes primary bundle by `bundle_id`
-- [ ] Filters candidates by `resolution_role` in (`secondary_corroboration`, `primary_evidence`)
-- [ ] Deduplicates by `independence_upstream_id` — first seen wins
-- [ ] Excludes candidates sharing `independence_upstream_id` with primary
-- [ ] Time window check: `|delta_t| <= corroboration_window_seconds * 1000` ms
-- [ ] Counts distinct `source_groups` differing from primary's
-- [ ] `.passed` when `distinct_groups >= corroboration_minimum`
-- [ ] `evaluate_all()` returns one `CorroborationResult` per primary_evidence bundle
-- [ ] `excluded_by_dedup` and `outside_window` lists populated correctly
+- [x] `evaluate()` excludes primary bundle by `bundle_id`
+- [x] Filters candidates by `resolution_role` in (`secondary_corroboration`, `primary_evidence`)
+- [x] Deduplicates by `independence_upstream_id` — first seen wins
+- [x] Excludes candidates sharing `independence_upstream_id` with primary
+- [x] Time window check: `|delta_t| <= corroboration_window_seconds * 1000` ms
+- [x] Counts distinct `source_groups` differing from primary's
+- [x] `.passed` when `distinct_groups >= corroboration_minimum`
+- [x] `evaluate_all()` returns one `CorroborationResult` per primary_evidence bundle
+- [x] `excluded_by_dedup` and `outside_window` lists populated correctly
 
 #### T2.5: `engine/counter_signal.py` — Stage 2b Counter-Signal Checker
 Implement counter-signal evaluation for all 11 committed classes.
 
 **Acceptance Criteria:**
-- [ ] `COUNTER_SIGNAL_CLASSES` list contains all 11 classes
-- [ ] `evaluate()` indexes bundles by `query_context["counter_signal_class"]`
-- [ ] Gaps indexed by `source_group` as approximation
-- [ ] For each class: bundles exist -> `checked=True`, checks `structured_extract["counter_signal_detected"]`
-- [ ] For each class: only gaps -> `checked=False`, detail explains gap
-- [ ] For each class: neither -> `checked=False`, `signal_detail="No source configured"`
-- [ ] `allow_gap` per-class from constructor parameter
-- [ ] Pass: `checked=True AND (signal_found=False OR allow_gap=True)`
+- [x] `COUNTER_SIGNAL_CLASSES` list contains all 11 classes
+- [x] `evaluate()` indexes bundles by `query_context["counter_signal_class"]`
+- [x] Gaps indexed by `source_group` as approximation
+- [x] For each class: bundles exist -> `checked=True`, checks `structured_extract["counter_signal_detected"]`
+- [x] For each class: only gaps -> GapKind-aware (Concern 2): SIGNAL_ABSENCE=checked, INTELLIGENCE_GAP=unchecked
+- [x] For each class: neither -> `checked=False`, `signal_detail="No source configured"`
+- [x] `allow_gap` per-class from constructor parameter
+- [x] Pass: `checked=True AND (signal_found=False OR allow_gap=True)`
 
 #### T2.6: `engine/scorer.py` — Stage 3 Scorer (New File, K-4)
 Create the scoring engine that assembles `OracleOutput` from Stages 1-2.
 
 **Acceptance Criteria:**
-- [ ] Accepts `OracleCollectionSummary`, list of `CorroborationResult`, list of `CounterSignalResult`
-- [ ] Computes 5 criterion scores: `source_coverage`, `receipt_validity`, `corroboration_met`, `counter_signal_clear`, `confidence_weighted`
-- [ ] Weighted composite score with default weights (0.20, 0.15, 0.30, 0.15, 0.20)
-- [ ] Bundle hash: SHA-256 of canonical JSON of sorted evidence bundles
-- [ ] Coverage percentage: `(succeeded / attempted) * 100`
-- [ ] Counter-signal summary: `counter_signals_checked`, `counter_signals_found`
-- [ ] Assembles complete `OracleOutput` with `oracle_id` (UUID), `theatre_id`, `evaluated_at`
-- [ ] Gap report populated from `OracleCollectionSummary.gaps`
+- [x] Accepts `OracleCollectionSummary`, list of `CorroborationResult`, list of `CounterSignalResult`
+- [x] Computes 5 criterion scores: `source_coverage`, `receipt_validity`, `corroboration_met`, `counter_signal_clear`, `confidence_weighted`
+- [x] Weighted composite score with default weights (0.20, 0.15, 0.30, 0.15, 0.20)
+- [x] Bundle hash: SHA-256 of canonical JSON of sorted evidence bundles
+- [x] Coverage percentage: `(succeeded / attempted) * 100`
+- [x] Counter-signal summary: `counter_signals_checked`, `counter_signals_found`
+- [x] Assembles complete `OracleOutput` with `oracle_id` (UUID), `theatre_id`, `evaluated_at`
+- [x] Gap report populated from `OracleCollectionSummary.gaps`
 
 #### T2.7: Pipeline Engine Tests
 Implement tests for all Sprint 2 engine and collector code.
 
 **Acceptance Criteria:**
-- [ ] `test_collection_runner.py`: parallel execution, timeout budget, gap reporting, `required_source_ids` filtering, `allow_gaps_for`, `run_sequential` mode
-- [ ] `test_corroboration.py`: dedup by upstream, shared upstream exclusion, time window enforcement, distinct group counting, pass/fail for minimum, `evaluate_all`
-- [ ] `test_counter_signal.py`: all 11 class names, checked+not-found passes, checked+found+allow_gap passes, checked+found+no-allow fails, unchecked fails
-- [ ] `test_scorer.py`: per-criterion scores, composite weighted average, bundle hash determinism, coverage percentage, `OracleOutput` assembly
-- [ ] `test_collectors.py`: mock HTTP responses for base collector, error mapping verification
-- [ ] All tests use `httpx.MockTransport` (no live API calls)
+- [x] `test_collection_runner.py`: parallel execution, timeout budget, gap reporting, `required_source_ids` filtering, `allow_gaps_for`, `run_sequential` mode (13 tests)
+- [x] `test_corroboration.py`: dedup by upstream, shared upstream exclusion, time window enforcement, distinct group counting, pass/fail for minimum, `evaluate_all` (10 tests)
+- [x] `test_counter_signal.py`: all 11 class names, checked+not-found passes, checked+found+allow_gap passes, checked+found+no-allow fails, unchecked fails (11 tests)
+- [x] `test_scorer.py`: per-criterion scores, composite weighted average, bundle hash determinism, coverage percentage, `OracleOutput` assembly (16 tests)
+- [x] `test_collectors.py`: SEC EDGAR + ECB mock HTTP responses, error mapping verification (17 tests)
+- [x] All tests use `httpx.MockTransport` (no live API calls)
 
 ---
 

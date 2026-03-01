@@ -55,7 +55,7 @@
           "local_id": "sprint-2",
           "global_id": 5,
           "label": "Pipeline Engine",
-          "status": "pending",
+          "status": "completed",
           "tasks": 7
         },
         {
