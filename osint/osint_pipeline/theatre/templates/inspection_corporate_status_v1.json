@@ -1,0 +1,54 @@
+{
+  "template_id": "inspection_corporate_status_v1",
+  "template_version": "1.0.0",
+  "inquiry_class": "INSPECTION",
+  "execution_path": "replay",
+  "description": "Point-in-time verification of UK corporate status",
+  "jurisdiction": "GB",
+  "oracle_config": {
+    "sources": [
+      {
+        "source_id": "companies_house_api",
+        "role": "primary_evidence",
+        "required": true,
+        "queries": ["profile", "filing-history"]
+      },
+      {
+        "source_id": "london_gazette_api",
+        "role": "secondary_corroboration",
+        "required": true,
+        "queries": ["insolvency_search"]
+      }
+    ],
+    "corroboration_minimum": 2,
+    "corroboration_window_seconds": 3600,
+    "counter_signal_classes": ["corporate_event"]
+  },
+  "criteria": [
+    {
+      "id": "company_exists",
+      "description": "Company profile returned by Companies House",
+      "weight": 1.0
+    },
+    {
+      "id": "company_active",
+      "description": "company_status equals active",
+      "weight": 1.0
+    },
+    {
+      "id": "filing_current",
+      "description": "Most recent filing within 365-day window",
+      "weight": 1.0
+    },
+    {
+      "id": "corroboration_met",
+      "description": "At least 2 independent source groups confirm primary claim",
+      "weight": 1.0
+    },
+    {
+      "id": "counter_signal_absent",
+      "description": "No insolvency or striking-off notices in London Gazette",
+      "weight": 1.0
+    }
+  ]
+}
