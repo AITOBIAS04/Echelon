@@ -1,3 +1,4 @@
-sprint-6 completed 2026-02-18T12:30:00Z
-audit: APPROVED
-reviewer: APPROVED
+Sprint 6 (Cycle-002 Sprint 3): CLI, Config & End-to-End Integration
+Audited: 2026-03-01
+Verdict: APPROVED
+Tests: 228 OSINT + 35 theatre regression = 263 passing

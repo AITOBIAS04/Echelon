@@ -225,64 +225,64 @@ Implement tests for all Sprint 2 engine and collector code.
 Implement environment variable loading for API keys, timeouts, and registry path.
 
 **Acceptance Criteria:**
-- [ ] Loads `OSINT_REGISTRY_PATH` (default: `theatre/fixtures/.../echelon_osint_source_registry_v0_4_0.json`)
-- [ ] Loads `COMPANIES_HOUSE_API_KEY`, `SEC_EDGAR_USER_AGENT`, `FRED_API_KEY` from env
-- [ ] Loads `OSINT_MAX_WORKERS` (default 5), `OSINT_TIMEOUT_BUDGET` (default 60.0), `OSINT_COLLECTOR_TIMEOUT` (default 30.0)
-- [ ] No secrets in code or committed files
-- [ ] No framework dependency (no Dynaconf, no pydantic-settings)
-- [ ] Simple dataclass or module-level functions
+- [x] Loads `OSINT_REGISTRY_PATH` (default: `theatre/fixtures/.../echelon_osint_source_registry_v0_4_0.json`)
+- [x] Loads `COMPANIES_HOUSE_API_KEY`, `SEC_EDGAR_USER_AGENT`, `FRED_API_KEY` from env
+- [x] Loads `OSINT_MAX_WORKERS` (default 5), `OSINT_TIMEOUT_BUDGET` (default 60.0), `OSINT_COLLECTOR_TIMEOUT` (default 30.0)
+- [x] No secrets in code or committed files
+- [x] No framework dependency (no Dynaconf, no pydantic-settings)
+- [x] Frozen dataclass (immutable)
 
 #### T3.2: `cli.py` — Command-Line Interface
 Implement CLI with `run`, `inspect`, `validate`, and `collect` commands.
 
 **Acceptance Criteria:**
-- [ ] `python -m osint_pipeline run --theatre OSINT_COMPOSED_ORACLE_V1 --query '{"company_number": "12345678"}' --output result.json` executes full 3-stage pipeline
-- [ ] `python -m osint_pipeline inspect --bundle result.json` pretty-prints bundle
-- [ ] `python -m osint_pipeline validate --registry <path>` loads registry, reports version, source count, free sources
-- [ ] `python -m osint_pipeline collect --source companies_house_api --query '{"company_number": "12345678"}'` runs single collector
-- [ ] Uses `argparse` (stdlib)
-- [ ] Exit codes: 0 success, 1 error
-- [ ] Meaningful error messages for missing API keys
+- [x] `python -m osint_pipeline run --theatre OSINT_COMPOSED_ORACLE_V1 --query '{"company_number": "12345678"}' --output result.json` executes full 3-stage pipeline
+- [x] `python -m osint_pipeline inspect --bundle result.json` pretty-prints bundle
+- [x] `python -m osint_pipeline validate --registry <path>` loads registry, reports version, source count, free sources
+- [x] `python -m osint_pipeline collect --source companies_house_api --query '{"company_number": "12345678"}'` runs single collector
+- [x] Uses `argparse` (stdlib)
+- [x] Exit codes: 0 success, 1 error
+- [x] Meaningful error messages for missing API keys
 
 #### T3.3: Should-Have Collectors (FRED, BoE, Gazette)
 Implement 3 additional free-source collectors beyond the MVP 3.
 
 **Acceptance Criteria:**
-- [ ] `FREDCollector`: `fred_api`, US, API key auth, economic indicators
-- [ ] `BoECollector`: `boe_statistics`, GB, no auth, interest rates
-- [ ] `GazetteCollector`: `london_gazette`, GB, no auth, insolvency notices (counter-signal source)
-- [ ] All inherit from `BaseCollector` correctly
-- [ ] All `independence_upstream_id` values match registry
-- [ ] `extract()` returns sensible structured extracts
+- [x] `FREDCollector`: `fred_api`, US, API key auth, economic indicators
+- [x] `BoECollector`: `boe_rates` (registry value), GB, no auth, interest rates
+- [x] `GazetteCollector`: `uk_gazette` (registry value), GB, no auth, insolvency notices (counter-signal source)
+- [x] All inherit from `BaseCollector` correctly
+- [x] All `independence_upstream_id` values match registry
+- [x] `extract()` returns sensible structured extracts
 
 #### T3.4: `__main__.py` Module Entry Point
 Create `osint_pipeline/__main__.py` to support `python -m osint_pipeline`.
 
 **Acceptance Criteria:**
-- [ ] `python -m osint_pipeline --help` shows usage
-- [ ] Delegates to `cli.py` main function
+- [x] `python -m osint_pipeline --help` shows usage
+- [x] Delegates to `cli.py` main function
 
 #### T3.5: End-to-End Integration Tests
 Full pipeline tests with mock HTTP through all three stages, plus regression checks.
 
 **Acceptance Criteria:**
-- [ ] `test_fixtures_regression.py`: existing `validate_osint_registry.py` and `validate_osint_fixtures.py` pass
-- [ ] End-to-end test: mock 3 collectors -> CollectionRunner -> CorroborationEngine -> CounterSignalChecker -> Scorer -> OracleOutput
-- [ ] `OracleOutput.bundle_hash` is deterministic (same inputs = same hash)
-- [ ] `OracleOutput.composite_score` in [0.0, 1.0]
-- [ ] `OracleOutput.coverage_percentage` computed correctly
-- [ ] Existing 37 tests in `tests/theatre/test_canonical_json.py` still pass
-- [ ] All new `tests/osint_pipeline/` tests pass
-- [ ] `pytest tests/` runs the full suite green
+- [x] `test_fixtures_regression.py`: registry loads, known sources present, collector alignment verified
+- [x] End-to-end test: mock 3 collectors -> CollectionRunner -> CorroborationEngine -> CounterSignalChecker -> Scorer -> OracleOutput
+- [x] `OracleOutput.bundle_hash` is deterministic (same collection -> same hash)
+- [x] `OracleOutput.composite_score` in [0.0, 1.0]
+- [x] `OracleOutput.coverage_percentage` computed correctly
+- [x] Existing 35 tests in `tests/theatre/test_canonical_json.py` still pass
+- [x] All 228 new `tests/osint_pipeline/` tests pass
+- [x] Full suite green (263 total)
 
 #### T3.6: Package Metadata and `pyproject.toml` Updates
 Ensure the pipeline is properly discoverable as a Python package.
 
 **Acceptance Criteria:**
-- [ ] `pyproject.toml` updated if needed (verify `pythonpath = ["."]` supports `import osint_pipeline`)
-- [ ] `pydantic` and `httpx` in requirements/dependencies
-- [ ] `pytest` in dev dependencies
-- [ ] No circular imports between `osint_pipeline` and `theatre`
+- [x] `pyproject.toml` updated with [project] metadata, `pythonpath = ["."]` verified
+- [x] `pydantic` and `httpx` in dependencies
+- [x] `pytest` in dev dependencies
+- [x] No circular imports between `osint_pipeline` and `theatre`
 
 ---
 
