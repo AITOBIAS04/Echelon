@@ -210,11 +210,73 @@
           "tasks": 5
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-010b",
+      "label": "Engines + Heartbeat + VRF + Base Sepolia",
+      "status": "archived",
+      "created_at": "2026-03-02T18:50:00Z",
+      "archived": "2026-03-02T23:30:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-02-engines-heartbeat-vrf-base-sepolia",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 18,
+          "label": "Butterfly Engine + Entropy Engine + Heartbeat Scheduler",
+          "status": "completed",
+          "tasks": 8
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 19,
+          "label": "Paradox Engine + Logic Gap + Circuit Breakers",
+          "status": "completed",
+          "tasks": 8
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 20,
+          "label": "VRF + Base Sepolia + MCP Status + FULL Mode",
+          "status": "completed",
+          "tasks": 11
+        }
+      ]
+    },
+    {
+      "cycle_id": "cycle-010a",
+      "label": "LMSR Market Engine (Local Mode)",
+      "status": "archived",
+      "created_at": "2026-03-02T12:00:00Z",
+      "archived": "2026-03-02T18:47:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-02-lmsr-market-engine-complete",
+      "archive_sprint1": "grimoires/loa/archive/2026-03-02-lmsr-market-engine-local-mode",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 16,
+          "label": "LMSR Core + Market Lifecycle",
+          "status": "completed",
+          "tasks": 8
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 17,
+          "label": "Trade Execution + Positions + Settlement",
+          "status": "completed",
+          "tasks": 8
+        }
+      ]
     }
   ],
   "active_cycle": null,
   "active_bugfix": null,
-  "global_sprint_counter": 15,
+  "global_sprint_counter": 20,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

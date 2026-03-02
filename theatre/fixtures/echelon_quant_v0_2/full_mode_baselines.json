@@ -1,0 +1,49 @@
+{
+  "version": "v0.1",
+  "description": "FULL mode baselines — engine state expectations when quant fixture suites are executed with all engines active (Butterfly, Entropy, VRF, Heartbeat, Paradox). LMSR outputs are identical to LMSR-only mode; engines add tracking, fairness, and integrity on top.",
+  "engine_config": {
+    "trade_impact_k": 0.1,
+    "impact_clamp": [-0.05, 0.05],
+    "base_decay_rate": 0.01,
+    "vrf_mode": "local",
+    "vrf_seed": "full_mode_seed"
+  },
+  "suites": {
+    "quant_market_hygiene_v0_1": {
+      "fixture_path": "quant_market_hygiene_v0_1/quant_market_hygiene_fixtures_10.json",
+      "records": 10,
+      "engine_defaults": {
+        "trade_impact_k": 0.1,
+        "vrf_mode": "local"
+      },
+      "full_mode_notes": "LMSR costs identical. Each valid trade produces one TRADE Wing Flap. High-impact trades (small b) hit impact clamp at ±0.05."
+    },
+    "b_sensitivity_suite_v0_1": {
+      "fixture_path": "b_sensitivity_suite_v0_1/b_sensitivity_fixtures_5.json",
+      "records": 5,
+      "engine_defaults": {
+        "trade_impact_k": 0.1,
+        "vrf_mode": "local"
+      },
+      "full_mode_notes": "LMSR costs identical. Impact magnitude varies with b: small b → larger raw impact (often clamped), large b → smaller raw impact."
+    },
+    "api_fidelity_suite_v0_1": {
+      "fixture_path": "api_fidelity_suite_v0_1/api_fidelity_fixtures_10.json",
+      "records": 10,
+      "engine_defaults": {
+        "trade_impact_k": 0.1,
+        "vrf_mode": "local"
+      },
+      "full_mode_notes": "Quote correctness and state feed completeness verified. Engine state (stability, logic_gap) fields now populated by real engine outputs rather than fixture stubs."
+    },
+    "perturbation_suite_v0_1": {
+      "fixture_path": "perturbation_suite_v0_1/perturbation_fixtures_10.json",
+      "records": 10,
+      "engine_defaults": {
+        "trade_impact_k": 0.1,
+        "vrf_mode": "local"
+      },
+      "full_mode_notes": "VRF seeds from fixtures produce deterministic outputs. Saboteur pressure and paradox trigger cases exercised with real engine stack."
+    }
+  }
+}
