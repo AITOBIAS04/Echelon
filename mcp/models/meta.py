@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 
-ENGINE_VERSION = "0.8.0"
+ENGINE_VERSION = "1.0.0"
 
 SCHEMA_VERSIONS = {
     "certificate": "1.0.0",
