@@ -204,7 +204,7 @@
           "local_id": "sprint-2",
           "global_id": 15,
           "label": "HTTP Transport + Version Bump",
-          "status": "pending",
+          "status": "completed",
           "tasks": 5
         }
       ]
