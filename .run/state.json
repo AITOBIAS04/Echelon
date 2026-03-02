@@ -2,11 +2,11 @@
   "run_id": "run-20260302-a1b2c3d4",
   "target": "sprint-1",
   "branch": "feature/cycle-009-mcp-v1",
-  "state": "RUNNING",
-  "phase": "IMPLEMENT",
+  "state": "JACKED_OUT",
+  "phase": "COMPLETE",
   "timestamps": {
     "started": "2026-03-02T12:00:00Z",
-    "last_activity": "2026-03-02T12:00:00Z"
+    "last_activity": "2026-03-02T12:35:00Z"
   },
   "cycles": {
     "current": 1,
@@ -14,9 +14,9 @@
     "history": []
   },
   "metrics": {
-    "files_changed": 0,
+    "files_changed": 6,
     "files_deleted": 0,
-    "commits": 0,
+    "commits": 1,
     "findings_fixed": 0
   },
   "options": {
@@ -31,6 +31,6 @@
     "pushed": false,
     "pr_created": false,
     "pr_url": null,
-    "skipped_reason": null
+    "skipped_reason": "local_mode"
   }
 }
