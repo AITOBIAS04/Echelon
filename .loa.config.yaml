@@ -74,3 +74,12 @@ upgrade:
   auto_tag: true
   # Conventional commit prefix (default: "chore")
   commit_prefix: "chore"
+
+# =============================================================================
+# Run Mode (Autonomous Execution)
+# =============================================================================
+run_mode:
+  enabled: true
+  defaults:
+    max_cycles: 20
+    timeout_hours: 8

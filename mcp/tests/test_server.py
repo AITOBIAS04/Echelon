@@ -57,7 +57,7 @@ class TestDispatch:
         assert resp is not None
         tools = resp["result"]["tools"]
         assert isinstance(tools, list)
-        assert len(tools) == 5
+        assert len(tools) == 7
         names = {t["name"] for t in tools}
         assert names == {
             "echelon_verify",
@@ -65,6 +65,8 @@ class TestDispatch:
             "echelon_hash",
             "echelon_schema_check",
             "echelon_replay",
+            "echelon_status",
+            "echelon_calibrate",
         }
 
     def test_tools_call_hash(self):

@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-Echelon Verifier MCP Server — stdio transport.
+Echelon Verifier MCP Server — stdio and HTTP transport.
 
-Implements MCP protocol (JSON-RPC 2.0) directly over stdin/stdout.
-Five stateless tools, no external SDK dependency, Python 3.9+.
+Implements MCP protocol (JSON-RPC 2.0) over stdin/stdout or HTTP.
+Seven verification and calibration tools, no external SDK dependency, Python 3.9+.
 
 Usage:
-    python3 -m mcp.server                  # Start stdio server
-    python3 -m mcp.server --list-tools     # Print tool definitions
+    python3 -m mcp.server                    # Start stdio server
+    python3 -m mcp.server --http             # Start HTTP server on port 3100
+    python3 -m mcp.server --http --port 8080 # Start HTTP server on custom port
+    python3 -m mcp.server --list-tools       # Print tool definitions
     python3 -m mcp.server --call <tool> '{"arg": "val"}'  # One-shot call
-
-The server reads newline-delimited JSON-RPC messages from stdin and
-writes responses to stdout. Compatible with MCP SDK clients.
 """
 
 from __future__ import annotations
@@ -20,7 +19,7 @@ import json
 import sys
 from typing import Any, Dict, List, Optional
 
-from mcp.tools import verify, inspect, hash, schema_check, replay
+from mcp.tools import verify, inspect, hash, schema_check, replay, status, calibrate
 
 
 # ════════════════════════════════════════════════════════════════
@@ -47,6 +46,14 @@ TOOLS = {
     "echelon_replay": {
         "definition": replay.TOOL_DEFINITION,
         "handler": replay.handle,
+    },
+    "echelon_status": {
+        "definition": status.TOOL_DEFINITION,
+        "handler": status.handle,
+    },
+    "echelon_calibrate": {
+        "definition": calibrate.TOOL_DEFINITION,
+        "handler": calibrate.handle,
     },
 }
 
@@ -80,7 +87,7 @@ def handle_initialize(params: Dict[str, Any]) -> Dict[str, Any]:
         },
         "serverInfo": {
             "name": "echelon-verifier",
-            "version": "0.8.0",
+            "version": "1.0.0",
         },
     }
 
@@ -234,12 +241,28 @@ def main() -> int:
             return call_tool(sys.argv[2], sys.argv[3])
         elif sys.argv[1] == "--call" and len(sys.argv) == 3:
             return call_tool(sys.argv[2], "{}")
+        elif sys.argv[1] == "--http":
+            port = 3100
+            if "--port" in sys.argv:
+                port_idx = sys.argv.index("--port")
+                if port_idx + 1 < len(sys.argv):
+                    try:
+                        port = int(sys.argv[port_idx + 1])
+                    except ValueError:
+                        print(f"Invalid port: {sys.argv[port_idx + 1]}", file=sys.stderr)
+                        return 2
+                else:
+                    print("--port requires a value", file=sys.stderr)
+                    return 2
+            from mcp.http import run_http
+            run_http(port)
+            return 0
         elif sys.argv[1] == "--help":
             print(__doc__)
             return 0
         else:
             print(f"Unknown argument: {sys.argv[1]}", file=sys.stderr)
-            print("Usage: python3 -m mcp.server [--list-tools | --call <tool> '<json>']", file=sys.stderr)
+            print("Usage: python3 -m mcp.server [--list-tools | --call <tool> '<json>' | --http [--port N]]", file=sys.stderr)
             return 2
 
     # Default: run stdio server
