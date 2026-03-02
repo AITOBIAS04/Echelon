@@ -159,8 +159,11 @@
     {
       "cycle_id": "cycle-008",
       "label": "Verifier MCP Server + Construct Calibration Pilot",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-01T23:59:00Z",
+      "archived": "2026-03-02T00:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-01-verifier-mcp-server-construct-calibration-pilot",
+      "closeout": "grimoires/loa/a2a/cycle-008/closeout.md",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -180,11 +183,36 @@
           "tasks": 6
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-009",
+      "label": "MCP Server v1.0 — Status Tool, Calibrate Tool, HTTP Transport",
+      "status": "active",
+      "created_at": "2026-03-02T00:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 14,
+          "label": "Status + Calibrate Tools",
+          "status": "pending",
+          "tasks": 7
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 15,
+          "label": "HTTP Transport + Version Bump",
+          "status": "pending",
+          "tasks": 5
+        }
+      ]
     }
   ],
-  "active_cycle": "cycle-008",
+  "active_cycle": "cycle-009",
   "active_bugfix": null,
-  "global_sprint_counter": 13,
+  "global_sprint_counter": 15,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

@@ -1,219 +1,236 @@
-# Sprint Plan: Two-Rail Deterministic Theatres — Unified Pipeline
+# Sprint Plan: MCP Server v1.0 — Status Tool, Calibrate Tool, HTTP Transport
 
-**Cycle:** 007
-**Sprints:** 1
-**Total Tasks:** 9
-
----
-
-## Sprint 1: Unified Pipeline + Arrears Scorer
-
-**Goal:** Wire all four Two-Rail templates through the OSINT pipeline infrastructure. Build the missing arrears scorer. All four templates produce Verifier CLI PASS with deterministic evidence bundles.
-
-**Global Sprint ID:** 11
-
-### Tasks
-
-#### T1: Build Arrears Scorer
-
-**Description:** Create `theatre/scoring/arrears_scorer.py` implementing the 6 criteria from the ARREARS_RESOLUTION_V1 template. The scorer follows the identical async interface as the three existing scorers (`WaterfallScorer`, `EscrowScorer`, `ReconciliationScorer`): an `async score(criteria_id, ground_truth, oracle_output) -> float` method returning 1.0 (pass) or 0.0 (fail). Uses a dispatch dict mapping criteria IDs to check methods. Each check method performs structural validation (Decimal arithmetic, state machine transition checks) and cross-checks against `expected_outputs.criteria_verdicts`. All monetary comparisons use `decimal.Decimal` with `ROUND_HALF_UP` and `TOLERANCE = Decimal("0.01")`. Embeds the `VALID_TRANSITIONS` frozenset (24 transitions from the template state machine) as a compile-time constant.
-
-**Acceptance Criteria:**
-- [ ] File `theatre/scoring/arrears_scorer.py` exists with `ArrearsScorer` class
-- [ ] `ArrearsScorer.score()` is `async def` matching the existing scorer signature
-- [ ] All 6 criteria implemented: `state_transition_validity`, `ladder_redirection_arithmetic`, `reserve_fund_impact`, `distribution_adjustment`, `grace_period_enforcement`, `ladder_balance_protection`
-- [ ] Dispatch dict maps criteria IDs to `_check_*` methods
-- [ ] `VALID_TRANSITIONS` frozenset contains all 24 allowed `(from, to)` state pairs from the template
-- [ ] All numeric comparisons use `Decimal(str(value))` conversion, `ROUND_HALF_UP`, and `TOLERANCE = Decimal("0.01")`
-- [ ] Unknown criteria IDs return 0.0
-
-**Dependencies:** None
-**Files:** `theatre/scoring/arrears_scorer.py` (new)
+**Cycle**: 009
+**PRD**: `grimoires/loa/prd.md`
+**SDD**: `grimoires/loa/sdd.md`
+**Date**: 2026-03-02
 
 ---
 
-#### T2: Export ArrearsScorer from scoring __init__
+## Sprint Overview
 
-**Description:** Add `ArrearsScorer` to `theatre/scoring/__init__.py` imports and `__all__` list. This is an additive-only change (2 lines). No existing imports or exports are modified.
+Two sprints. Sprint 1 delivers the two new tools (`echelon_status`, `echelon_calibrate`) with their tests and the server registry update. Sprint 2 delivers the HTTP transport, version bump to 1.0.0, and full acceptance criteria validation.
 
-**Acceptance Criteria:**
-- [ ] `from theatre.scoring.arrears_scorer import ArrearsScorer` added to imports
-- [ ] `"ArrearsScorer"` added to `__all__` list
-- [ ] Existing imports and `__all__` entries unchanged
-- [ ] `from theatre.scoring import ArrearsScorer` resolves correctly
-
-**Dependencies:** T1
-**Files:** `theatre/scoring/__init__.py` (modified, additive only)
+**Team**: Single developer (AI agent)
+**Approach**: Implement, test, commit per sprint. Each sprint is independently shippable.
 
 ---
 
-#### T3: Build Evidence Bundle Writer in Unified Runner
+## Sprint 1 — Status + Calibrate Tools
 
-**Description:** Implement the evidence bundle directory writer as part of the unified runner script. Writes replay data into the FR-2 directory layout: `inputs/`, `receipts/` (empty), `gaps/` (empty), `scores/`, `policy/`, `expected/`, plus `theatre_template.json` and `oracle_output.json`. All JSON files written with `sort_keys=True` for determinism. Policy file mapping: `arrears_policy.json` from template `arrears_policy` key; `waterfall_policy.json`, `escrow_policy.json`, `reconciliation_policy.json` from template-specific sections (or empty `{}` if absent). Empty directories (`receipts/`, `gaps/`) are created but left empty for replay.
+**Goal**: Add `echelon_status` and `echelon_calibrate` tools to the MCP server. Server exposes 7 tools. All existing tests pass unchanged.
 
-**Acceptance Criteria:**
-- [ ] Evidence directory created with all 6 subdirectories: `inputs/`, `receipts/`, `gaps/`, `scores/`, `policy/`, `expected/`
-- [ ] `inputs/<record_id>.json` written for each fixture record with `sort_keys=True`
-- [ ] `expected/<record_id>.json` written for each fixture record with `sort_keys=True`
-- [ ] `scores/per_record.json` contains all per-record criterion scores
-- [ ] `scores/aggregate.json` contains per-criterion aggregates and composite score
-- [ ] `policy/<policy_key>.json` written per template mapping
-- [ ] `theatre_template.json` is the original unmutated template (C-6 compliance)
-- [ ] `oracle_output.json` uses deterministic `evaluated_at` epoch and deterministic `oracle_id` format (`replay_<template_key>`)
-- [ ] `receipts/` and `gaps/` directories exist but are empty
+### Task 1.1: Create `mcp/tools/status.py`
 
-**Dependencies:** T1
-**Files:** `scripts/run_two_rail_certificates.py` (new, partial -- evidence writing portion)
+Implement `echelon_status` tool per SDD 3.1.
 
----
+- `TOOL_DEFINITION` dict with `construct_id` (required) and `output_dir` (optional, default `"output"`)
+- `handle()` function: scan certificate directory, parse JSON files, return latest certificate + tier summary
+- Edge cases: missing directory (return `certificates_found: 0`), corrupt JSON (skip + warn), missing `issued_at` (sort to earliest), empty `construct_id` (return `INPUT_MALFORMED`)
+- `_meta` envelope via `build_meta()`
 
-#### T4: Build OracleOutput Adapter
+**Acceptance**:
+- [ ] `status.handle({"construct_id": "community_oracle_v1", "output_dir": "output"})` returns correct certificate data when certificates exist
+- [ ] Returns `certificates_found: 0` when no certificates directory exists
+- [ ] Returns `INPUT_MALFORMED` for missing `construct_id`
 
-**Description:** Construct an `OracleOutput` from replay scorer results, adapting the per-criterion aggregate scores into `CriterionScore` objects. Build `OracleCollectionSummary` with `total_sources_attempted = len(records)`, `total_sources_succeeded = len(records)`, `total_sources_failed = 0`. Leave `corroboration_results` and `counter_signal_results` as empty lists (defaults). Set `oracle_id` to `replay_<template_key>` and `evaluated_at` to a fixed deterministic epoch for manifest reproducibility.
+### Task 1.2: Create `mcp/tests/test_status.py`
 
-**Acceptance Criteria:**
-- [ ] `OracleOutput` constructed with `CriterionScore` list from per-criterion aggregates
-- [ ] `OracleCollectionSummary` populated with correct source counts from fixture records
-- [ ] `oracle_id` is deterministic: `"replay_<template_key>"`
-- [ ] `evaluated_at` is a fixed deterministic epoch (not current time)
-- [ ] Corroboration and counter-signal results are empty lists
-- [ ] `composite_score` matches weighted sum of per-criterion aggregates
-- [ ] Each `CriterionScore.passed` is `True` when `score >= 0.5`
+8 tests per SDD 4.1.
 
-**Dependencies:** T1
-**Files:** `scripts/run_two_rail_certificates.py` (new, partial -- OracleOutput construction portion)
+- `test_status_existing_construct` — valid certificate, all fields correct
+- `test_status_no_certificates` — empty directory
+- `test_status_missing_output_dir` — non-existent path
+- `test_status_corrupt_json_skipped` — one valid + one corrupt
+- `test_status_missing_construct_id` — `{}` input
+- `test_status_multiple_certificates_returns_latest` — two certs, latest by `issued_at`
+- `test_status_replays_needed_calculation` — 12 replays -> 38 needed; 60 replays -> 0 needed
+- `test_status_has_meta` — `_meta` envelope present
 
----
+**Acceptance**:
+- [ ] All 8 tests pass with `pytest mcp/tests/test_status.py -v`
 
-#### T5: Wire Certificate Generation and Verification
+### Task 1.3: Create `mcp/tools/calibrate.py`
 
-**Description:** Integrate `CertificateGenerator.generate()` from `osint/osint_pipeline/engine/certificate_generator.py` into the unified runner. Compute commitment hash via `canonical_hash(raw_template)`. Compute manifest hash via `build_manifest()` + `manifest_hash()` from `osint/osint_pipeline/engine/manifest_builder.py`. Generate `CalibrationCertificate` with `execution_path="replay"`, `inquiry_class="INSPECTION"`, `pipeline_version="0.7.0"`. Write certificate to `evidence_dir/certificate.json`. Run `echelon_verify.py verify` on the produced certificate + evidence directory.
+Implement `echelon_calibrate` tool per SDD 3.2.
 
-**Acceptance Criteria:**
-- [ ] Commitment hash computed from original template via `canonical_hash(raw_template)`
-- [ ] Manifest built by `build_manifest(evidence_dir)` and hashed by `manifest_hash(manifest)`
-- [ ] `manifest.json` written to evidence directory (excluded from its own hash)
-- [ ] Certificate generated with `execution_path="replay"`, `verification_tier="UNVERIFIED"`
-- [ ] Certificate written to `evidence_dir/certificate.json` with `sort_keys=True`
-- [ ] `target_entity` contains `template_id`, `construct_id`, `dataset_id`, `record_count`
-- [ ] Verifier CLI invoked post-generation and result reported
+- `TOOL_DEFINITION` dict with `construct_id` (required) and `output_dir` (optional)
+- `handle()` function: validate construct against `CONSTRUCTS` registry, bridge async via `asyncio.run()`, build `pipeline_summary`, run `echelon_verify` against certificate
+- Return: `certificate` dict + `pipeline_summary` + `_meta`
+- Error handling: `INPUT_MALFORMED` for unknown construct, `INTERNAL_ERROR` for pipeline exceptions
+- `sys.path` setup for runner import (same pattern as `verify.py`)
 
-**Dependencies:** T3, T4
-**Files:** `scripts/run_two_rail_certificates.py` (new, partial -- certificate + verify portion)
+**Acceptance**:
+- [ ] `calibrate.handle({"construct_id": "community_oracle_v1"})` returns certificate + pipeline_summary
+- [ ] `pipeline_summary` includes `mcp_verify_verdict`
+- [ ] Unknown construct returns `INPUT_MALFORMED` with available constructs list
 
----
+### Task 1.4: Create `mcp/tests/test_calibrate.py`
 
-#### T6: Assemble Unified Runner Script with CLI
+6 tests per SDD 4.2.
 
-**Description:** Assemble `scripts/run_two_rail_certificates.py` as the complete unified runner. Implements the CLI interface with `--template <key>`, `--all`, `--output-dir`, and `--verbose` flags. Contains the `TEMPLATE_REGISTRY` mapping all 4 templates to their template file, dataset file, and scorer class. Handles `sys.path` setup (project root + `osint/` directory). Uses `asyncio.run()` at the top level for async scorer calls. Reports results (PASS/FAIL, composite scores) to stdout. Returns exit code 0 if all requested templates pass.
+- `test_calibrate_known_construct` — runs pipeline, returns certificate + summary
+- `test_calibrate_unknown_construct` — `INPUT_MALFORMED` error
+- `test_calibrate_certificate_passes_verify` — calibrate then verify integration
+- `test_calibrate_missing_construct_id` — `{}` input
+- `test_calibrate_deterministic` — two runs produce identical output
+- `test_calibrate_has_meta` — `_meta` envelope present
 
-**Acceptance Criteria:**
-- [ ] Script executable as `python scripts/run_two_rail_certificates.py --template escrow_milestone_release_v1`
-- [ ] `--all` flag runs all 4 templates
-- [ ] `--output-dir` flag controls output location (default: `output/unified_certificates`)
-- [ ] `--verbose` flag enables detailed logging
-- [ ] `TEMPLATE_REGISTRY` maps all 4 template keys to correct files and scorer classes
-- [ ] `sys.path` includes project root and `osint/` directory
-- [ ] Exit code 0 when all templates PASS, non-zero on any FAIL
-- [ ] Existing `scripts/run_two_rail_theatres.py` is NOT modified (SC-10)
+**Acceptance**:
+- [ ] All 6 tests pass with `pytest mcp/tests/test_calibrate.py -v`
 
-**Dependencies:** T2, T3, T4, T5
-**Files:** `scripts/run_two_rail_certificates.py` (new, final assembly)
+### Task 1.5: Update `mcp/server.py` — Tool Registration
 
----
+Per SDD 3.4.1 and 3.4.2.
 
-#### T7: Unit Tests -- Arrears Scorer
+- Add `status, calibrate` to the import line
+- Add `echelon_status` and `echelon_calibrate` entries to the `TOOLS` dict
 
-**Description:** Create `tests/test_arrears_scorer.py` with comprehensive tests for all 16 fixture records across all 6 criteria. Test valid records (arrears_0001 through arrears_0010, all 6 criteria return 1.0), targeted failure records (arrears_0011 through arrears_0016, exactly one criterion returns 0.0 each), unknown criterion handling, and Decimal arithmetic precision.
+**Acceptance**:
+- [ ] `--list-tools` returns 7 tools
+- [ ] `tools/list` JSON-RPC method returns 7 tool definitions
 
-**Acceptance Criteria:**
-- [ ] `test_all_valid_records_pass_all_criteria`: records arrears_0001--arrears_0010 return 1.0 for all 6 criteria
-- [ ] `test_state_transition_failure`: arrears_0011 returns 0.0 for `state_transition_validity`, 1.0 for other 5
-- [ ] `test_ladder_redirection_failure`: arrears_0012 returns 0.0 for `ladder_redirection_arithmetic`, 1.0 for other 5
-- [ ] `test_reserve_fund_failure`: arrears_0013 returns 0.0 for `reserve_fund_impact`, 1.0 for other 5
-- [ ] `test_distribution_adjustment_failure`: arrears_0014 returns 0.0 for `distribution_adjustment`, 1.0 for other 5
-- [ ] `test_grace_period_failure`: arrears_0015 returns 0.0 for `grace_period_enforcement`, 1.0 for other 5
-- [ ] `test_ladder_balance_protection_failure`: arrears_0016 returns 0.0 for `ladder_balance_protection`, 1.0 for other 5
-- [ ] `test_unknown_criterion_returns_zero`: unknown criterion ID returns 0.0
-- [ ] `test_decimal_arithmetic_precision`: verifies Decimal usage with no float imprecision in ladder redirection sums
-- [ ] All tests pass via `pytest tests/test_arrears_scorer.py`
+### Task 1.6: Update `mcp/tests/test_server.py` — Tool Count
 
-**Dependencies:** T1, T2
-**Files:** `tests/test_arrears_scorer.py` (new)
+Per SDD 4.4.
 
----
+- Update `test_tools_list`: expected count 5 -> 7
+- Add `echelon_status` and `echelon_calibrate` to expected names set
 
-#### T8: Integration + Determinism Tests
+**Acceptance**:
+- [ ] `pytest mcp/tests/test_server.py -v` — all existing tests pass
+- [ ] Tool count assertion is 7
 
-**Description:** Create `tests/test_unified_pipeline.py` and `tests/test_determinism.py`. Integration test: run full pipeline for escrow template, verify `echelon_verify.verify()` returns True, validate FR-2 directory layout, check certificate has `execution_path="replay"` and validates against `CalibrationCertificate` model. Determinism test: run pipeline for escrow twice to separate temp dirs, assert manifest hash, commitment hash, and all file SHA-256s are identical across runs.
+### Task 1.7: Run Full Test Suite
 
-**Acceptance Criteria:**
-- [ ] `test_escrow_pipeline_produces_pass`: full pipeline for escrow produces Verifier CLI PASS
-- [ ] `test_evidence_bundle_directory_layout`: all 6 FR-2 subdirectories exist
-- [ ] `test_manifest_contains_all_files`: manifest has entries for every non-excluded file
-- [ ] `test_certificate_has_replay_fields`: `execution_path == "replay"`, `verification_tier == "UNVERIFIED"`
-- [ ] `test_certificate_model_matches_osint`: certificate dict validates as `CalibrationCertificate(**data)`
-- [ ] `test_deterministic_manifest_hash`: dual-run produces identical manifest hash
-- [ ] `test_deterministic_commitment_hash`: dual-run produces identical commitment hash
-- [ ] `test_deterministic_file_contents`: every evidence file has identical SHA-256 across runs
-- [ ] All tests pass via `pytest tests/test_unified_pipeline.py tests/test_determinism.py`
+Run all MCP tests and verify no regressions.
 
-**Dependencies:** T6
-**Files:** `tests/test_unified_pipeline.py` (new), `tests/test_determinism.py` (new)
+**Acceptance**:
+- [ ] All 17 existing tests pass unchanged
+- [ ] All 14 new tests (8 status + 6 calibrate) pass
+- [ ] Total: 31 tests passing
 
 ---
 
-#### T9: All-Templates Verification + Cross-Path Schema Tests
+## Sprint 2 — HTTP Transport + Version Bump
 
-**Description:** Create `tests/test_all_templates.py` and `tests/test_cross_path_schema.py`. All-templates test: run pipeline for each of the 4 templates, verify `echelon_verify.verify()` returns True for all, assert composite scores within 0.01 of expected values (escrow ~0.9091, waterfall ~0.9333, reconciliation ~0.9333, arrears ~0.9375). Cross-path schema test: load a replay certificate JSON and validate it against the `CalibrationCertificate` Pydantic model, check all required fields present. Also verify all existing tests (70+ osint + theatre) still pass (SC-08).
+**Goal**: Add HTTP transport at `/mcp`, `/health`, `/sse` stub. Bump version to 1.0.0 across all three locations. All 11 PRD acceptance criteria met.
 
-**Acceptance Criteria:**
-- [ ] `test_all_four_templates_pass_verifier`: all 4 templates produce Verifier CLI PASS
-- [ ] `test_composite_scores_in_expected_range`: composite scores within 0.01 of expected values
-- [ ] `test_replay_certificate_validates_as_calibration_certificate`: replay cert validates with `CalibrationCertificate(**data)`
-- [ ] `test_certificate_required_fields_present`: all required `CalibrationCertificate` fields exist
-- [ ] All existing tests remain green (SC-08) -- no regressions
-- [ ] All new tests pass via `pytest tests/test_all_templates.py tests/test_cross_path_schema.py`
+### Task 2.1: Create `mcp/http.py`
 
-**Dependencies:** T6, T7, T8
-**Files:** `tests/test_all_templates.py` (new), `tests/test_cross_path_schema.py` (new)
+Implement HTTP transport per SDD 3.3.
+
+- `MCPHttpHandler(BaseHTTPRequestHandler)`:
+  - `do_POST`: route `/mcp` to `dispatch()`, 404 for others
+  - `do_GET`: `/health` -> status/version/tools, `/sse` -> stub, 404 for others
+  - `_send_json` helper for consistent JSON responses
+  - JSON-RPC parse errors sent as HTTP 200 with JSON-RPC error body
+  - Notifications get HTTP 204
+- `run_http(port=3100)`: start `HTTPServer` on given port
+- Import `dispatch` and `jsonrpc_error` from `mcp.server`
+- No CORS, no auth, single-threaded
+
+**Acceptance**:
+- [ ] `POST /mcp` dispatches JSON-RPC requests
+- [ ] `GET /health` returns `{"status": "ok", "version": "1.0.0", "tools": 7}`
+- [ ] `GET /sse` returns `{"status": "not_implemented", "available_from": "v1.3"}`
+- [ ] Unknown paths return 404
+
+### Task 2.2: Create `mcp/tests/test_http.py`
+
+8 tests per SDD 4.3.
+
+- `test_health_endpoint` — GET /health, verify JSON body
+- `test_sse_stub` — GET /sse, verify stub response
+- `test_mcp_endpoint_tools_list` — POST /mcp with tools/list, verify 7 tools
+- `test_mcp_endpoint_tool_call` — POST /mcp with echelon_hash call
+- `test_mcp_endpoint_malformed` — POST /mcp with invalid JSON, verify JSON-RPC error
+- `test_mcp_endpoint_notification` — POST /mcp with notification, verify 204
+- `test_unknown_get_path` — GET /unknown, verify 404
+- `test_unknown_post_path` — POST /unknown, verify 404
+
+Uses module-scoped fixture with `HTTPServer` on random port + daemon thread.
+
+**Acceptance**:
+- [ ] All 8 tests pass with `pytest mcp/tests/test_http.py -v`
+
+### Task 2.3: Update `mcp/server.py` — HTTP CLI + Docstring
+
+Per SDD 3.4.4 and 3.4.5.
+
+- Add `--http` and `--port` CLI argument handling in `main()`
+- Lazy import: `from mcp.http import run_http` inside the `--http` branch only
+- Update module docstring to reflect both transports and 7 tools
+
+**Acceptance**:
+- [ ] `python3 -m mcp.server --http` starts HTTP server on port 3100
+- [ ] `python3 -m mcp.server --http --port 8080` uses custom port
+- [ ] Default stdio mode unchanged
+
+### Task 2.4: Version Bump to 1.0.0
+
+Per SDD 3.4.3, 3.5, 3.6.
+
+- `mcp/__init__.py`: `__version__ = "1.0.0"`, updated docstring listing 7 tools
+- `mcp/models/meta.py`: `ENGINE_VERSION = "1.0.0"`
+- `mcp/server.py`: `serverInfo.version = "1.0.0"` (in `handle_initialize()`)
+
+**Acceptance**:
+- [ ] `python3 -c "from mcp import __version__; print(__version__)"` outputs `1.0.0`
+- [ ] `_meta.engine_version` in tool responses is `"1.0.0"`
+- [ ] `handle_initialize()` returns `serverInfo.version: "1.0.0"`
+
+### Task 2.5: Full Test Suite + Acceptance Criteria
+
+Run complete test suite. Validate all 11 PRD acceptance criteria.
+
+**Acceptance**:
+- [ ] All 17 existing MCP tests pass unchanged
+- [ ] All 22 new tests pass (8 status + 6 calibrate + 8 HTTP)
+- [ ] Total: 39 tests passing
+- [ ] PRD AC-1: `echelon_status` returns correct tier and certificate data
+- [ ] PRD AC-2: `echelon_status` returns `certificates_found: 0` for unknown construct
+- [ ] PRD AC-3: `echelon_calibrate` runs pipeline and returns certificate that passes `echelon_verify`
+- [ ] PRD AC-4: `echelon_calibrate` returns `INPUT_MALFORMED` for unknown construct keys
+- [ ] PRD AC-5: HTTP server responds to `POST /mcp` with valid JSON-RPC
+- [ ] PRD AC-6: HTTP server responds to `GET /health` with status, version, tool count
+- [ ] PRD AC-7: HTTP server responds to `GET /sse` with stub
+- [ ] PRD AC-8: `tools/list` returns 7 tools
+- [ ] PRD AC-9: All existing 17 MCP tests pass unchanged
+- [ ] PRD AC-10: All existing theatre/integration tests pass unchanged
+- [ ] PRD AC-11: Server version is 1.0.0 in all three locations
 
 ---
 
-## Summary
+## File Manifest
 
-| Task | Title | Dependencies | New/Modified Files |
-|------|-------|--------------|--------------------|
-| T1 | Build Arrears Scorer | None | `theatre/scoring/arrears_scorer.py` (new) |
-| T2 | Export ArrearsScorer from scoring __init__ | T1 | `theatre/scoring/__init__.py` (modified) |
-| T3 | Build Evidence Bundle Writer | T1 | `scripts/run_two_rail_certificates.py` (new, partial) |
-| T4 | Build OracleOutput Adapter | T1 | `scripts/run_two_rail_certificates.py` (new, partial) |
-| T5 | Wire Certificate Generation and Verification | T3, T4 | `scripts/run_two_rail_certificates.py` (new, partial) |
-| T6 | Assemble Unified Runner Script with CLI | T2, T3, T4, T5 | `scripts/run_two_rail_certificates.py` (new, final) |
-| T7 | Unit Tests -- Arrears Scorer | T1, T2 | `tests/test_arrears_scorer.py` (new) |
-| T8 | Integration + Determinism Tests | T6 | `tests/test_unified_pipeline.py` (new), `tests/test_determinism.py` (new) |
-| T9 | All-Templates Verification + Cross-Path Schema | T6, T7, T8 | `tests/test_all_templates.py` (new), `tests/test_cross_path_schema.py` (new) |
+### New Files (6)
 
-## Dependency Graph
+| File | Sprint | Description |
+|------|--------|-------------|
+| `mcp/tools/status.py` | 1 | `echelon_status` tool |
+| `mcp/tests/test_status.py` | 1 | 8 status tool tests |
+| `mcp/tools/calibrate.py` | 1 | `echelon_calibrate` tool |
+| `mcp/tests/test_calibrate.py` | 1 | 6 calibrate tool tests |
+| `mcp/http.py` | 2 | HTTP transport |
+| `mcp/tests/test_http.py` | 2 | 8 HTTP transport tests |
 
-```
-T1 (Arrears Scorer)
-├── T2 (Export __init__)
-│   └── T6 (Assemble Runner CLI)
-│       ├── T8 (Integration + Determinism Tests)
-│       │   └── T9 (All-Templates + Cross-Path Tests)
-│       └── T9
-├── T3 (Evidence Bundle Writer)
-│   └── T5 (Certificate Generation + Verify)
-│       └── T6
-├── T4 (OracleOutput Adapter)
-│   └── T5
-└── T7 (Arrears Scorer Unit Tests)
-    └── T9
-```
+### Modified Files (4)
 
-## Notes
+| File | Sprint | Change |
+|------|--------|--------|
+| `mcp/server.py` | 1+2 | Sprint 1: import + register tools. Sprint 2: --http CLI + docstring + version |
+| `mcp/tests/test_server.py` | 1 | Tool count 5 -> 7 |
+| `mcp/__init__.py` | 2 | Version 0.8.0 -> 1.0.0, docstring |
+| `mcp/models/meta.py` | 2 | ENGINE_VERSION 0.8.0 -> 1.0.0 |
 
-- **Fixture record count discrepancy**: The PRD table says 18 fixtures for ARREARS_RESOLUTION_V1 and the dataset file is named `arrears_fixtures_v02_18.json`, but the actual file contains 16 records (arrears_0001 through arrears_0016: 10 valid + 6 targeted failures). The SDD composite score example correctly uses 16 records. Implementation uses the actual 16 records.
-- **SC-10 compliance**: No existing files in `theatre/engine/`, `theatre/scoring/` (except additive `__init__.py` change), `scripts/run_two_rail_theatres.py`, or `osint/osint_pipeline/` are modified.
-- **Tasks T3--T5 are logical subdivisions** of the single runner script (`scripts/run_two_rail_certificates.py`). They will be implemented together as parts of the same file during `/implement`, but are tracked separately for review granularity and clear acceptance criteria.
+---
+
+## Risks
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| `asyncio.run()` in calibrate tool | LOW | No pre-existing event loop in either transport. Single-threaded. |
+| HTTP server blocking during calibration | LOW | Calibration <1s for 12 fixture records. Single-threaded acceptable for v1.0. |
+| `http.server` not production-grade | LOW | Out of scope — dev/integration server only. |
+| Lazy import circular dependency | LOW | `mcp/http.py` imports from `mcp/server.py`; reverse is lazy (inside CLI branch). |

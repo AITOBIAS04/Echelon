@@ -20,7 +20,7 @@ import json
 import sys
 from typing import Any, Dict, List, Optional
 
-from mcp.tools import verify, inspect, hash, schema_check, replay
+from mcp.tools import verify, inspect, hash, schema_check, replay, status, calibrate
 
 
 # ════════════════════════════════════════════════════════════════
@@ -47,6 +47,14 @@ TOOLS = {
     "echelon_replay": {
         "definition": replay.TOOL_DEFINITION,
         "handler": replay.handle,
+    },
+    "echelon_status": {
+        "definition": status.TOOL_DEFINITION,
+        "handler": status.handle,
+    },
+    "echelon_calibrate": {
+        "definition": calibrate.TOOL_DEFINITION,
+        "handler": calibrate.handle,
     },
 }
 
