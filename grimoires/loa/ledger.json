@@ -272,11 +272,38 @@
           "tasks": 8
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-011",
+      "label": "WorldMonitor OSINT Integration — Live Evidence Pipeline + Convergence Signals",
+      "status": "archived",
+      "created_at": "2026-03-03T00:00:00Z",
+      "archived": "2026-03-03T12:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-03-worldmonitor-osint-integration",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 21,
+          "label": "Evidence Pipeline Core + WorldMonitor Collector",
+          "status": "completed",
+          "tasks": 13
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 22,
+          "label": "Corroboration + Scoring + Paradox Wiring + Convergence",
+          "status": "completed",
+          "tasks": 13
+        }
+      ]
     }
   ],
   "active_cycle": null,
   "active_bugfix": null,
-  "global_sprint_counter": 20,
+  "global_sprint_counter": 22,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

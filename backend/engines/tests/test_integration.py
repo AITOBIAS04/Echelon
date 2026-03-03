@@ -213,6 +213,7 @@ class TestPackageExports:
             "LogicGapStatus", "LogicGapReading", "LogicGapCalculator",
             "RealitySignal", "RealitySignalProvider",
             "OsintRealityProvider", "DeterministicRealityProvider", "StubRealityProvider",
+            "LiveOSINTRealityProvider",
             "ParadoxMode", "ParadoxAction", "ParadoxConfig",
             "ParadoxRuntimeState", "ParadoxEngine",
             # Sprint 3: VRF + Status

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Echelon OSINT Source Registry — WorldMonitor Subset",
+  "description": "Cycle-011 WorldMonitor sources. Aligned with PRD Section 4.6 requirements.",
+  "version": "0.3.2-wm",
+  "generated_at": "2026-03-03T00:00:00Z",
+  "sources": [
+    {
+      "source_id": "worldmonitor_cii",
+      "source_name": "World Monitor Country Instability Index",
+      "source_group": "alt_data_behavioural",
+      "priority_bucket": "scoring_grade",
+      "resolution_role": "primary_evidence",
+      "independence_upstream_id": "worldmonitor",
+      "receipt_mode_minimum": "http_transcript",
+      "world_monitor_domain": "intelligence",
+      "settlement_eligible": false,
+      "jurisdiction": "GLOBAL",
+      "replayability": "strong",
+      "legal_risk": "low",
+      "cost_model": "free",
+      "rate_limit_notes": "Self-hosted fork (AITOBIAS04/worldmonitor). AGPL-3.0.",
+      "gap_policy_default": false,
+      "evidence_capture": {
+        "request_params": true,
+        "response_headers": true,
+        "payload_hash": true,
+        "timestamp_precision": "second"
+      },
+      "theatre_families": ["OSINT_COMPOSED_ORACLE"],
+      "collector_status": "active"
+    },
+    {
+      "source_id": "worldmonitor_finance",
+      "source_name": "World Monitor Finance Monitor",
+      "source_group": "market_data",
+      "priority_bucket": "scoring_grade",
+      "resolution_role": "primary_evidence",
+      "independence_upstream_id": "worldmonitor",
+      "receipt_mode_minimum": "http_transcript",
+      "world_monitor_domain": "market",
+      "settlement_eligible": false,
+      "jurisdiction": "GLOBAL",
+      "replayability": "medium",
+      "legal_risk": "low",
+      "cost_model": "free",
+      "rate_limit_notes": "Self-hosted fork. Finance Monitor variant.",
+      "gap_policy_default": true,
+      "evidence_capture": {
+        "request_params": true,
+        "response_headers": true,
+        "payload_hash": true,
+        "timestamp_precision": "second"
+      },
+      "theatre_families": ["OSINT_COMPOSED_ORACLE"],
+      "collector_status": "active"
+    },
+    {
+      "source_id": "worldmonitor_maritime",
+      "source_name": "World Monitor Maritime/AIS",
+      "source_group": "maritime_ais",
+      "priority_bucket": "scoring_grade",
+      "resolution_role": "primary_evidence",
+      "independence_upstream_id": "worldmonitor",
+      "receipt_mode_minimum": "http_transcript",
+      "world_monitor_domain": "maritime",
+      "settlement_eligible": false,
+      "jurisdiction": "GLOBAL",
+      "replayability": "medium",
+      "legal_risk": "low",
+      "cost_model": "free",
+      "rate_limit_notes": "Self-hosted fork. AIS chokepoint monitoring.",
+      "gap_policy_default": true,
+      "evidence_capture": {
+        "request_params": true,
+        "response_headers": true,
+        "payload_hash": true,
+        "timestamp_precision": "second"
+      },
+      "theatre_families": ["OSINT_COMPOSED_ORACLE"],
+      "collector_status": "active"
+    }
+  ]
+}

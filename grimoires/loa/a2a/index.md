@@ -22,3 +22,10 @@
 | Sprint 1 | sprint-18 | COMPLETED | [reviewer.md](sprint-18/reviewer.md) | [engineer-feedback.md](sprint-18/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-18/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-19 | COMPLETED | [reviewer.md](sprint-19/reviewer.md) | [engineer-feedback.md](sprint-19/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-19/auditor-sprint-feedback.md) |
 | Sprint 3 | sprint-20 | COMPLETED | [reviewer.md](sprint-20/reviewer.md) | [engineer-feedback.md](sprint-20/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-20/auditor-sprint-feedback.md) |
+
+## Cycle-011: WorldMonitor OSINT Integration
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 1 | sprint-21 | COMPLETED | [reviewer.md](sprint-21/reviewer.md) | [engineer-feedback.md](sprint-21/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-21/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-22 | COMPLETED | [reviewer.md](sprint-22/reviewer.md) | [engineer-feedback.md](sprint-22/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-22/auditor-sprint-feedback.md) |

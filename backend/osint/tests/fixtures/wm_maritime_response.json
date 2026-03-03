@@ -1,0 +1,53 @@
+{
+  "domain": "maritime",
+  "bundle": {
+    "bundle_id": "eb_worldmonitor_maritime_1709424000",
+    "source_id": "worldmonitor_maritime",
+    "source_group": "maritime_ais",
+    "resolution_role": "primary_evidence",
+    "evidence_timestamp": "2026-03-03T00:00:00Z",
+    "raw_payload_hash": "placeholder_will_be_computed",
+    "receipt": {
+      "timestamp": "2026-03-03T00:00:00Z",
+      "request_parameters": {
+        "method": "POST",
+        "url": "http://localhost:8080/api/v1/maritime/anomaly",
+        "query": "",
+        "headers": "content-type:application/json"
+      },
+      "source_id": "worldmonitor_maritime",
+      "source_version": "v0.1.0",
+      "http_status": 200,
+      "content_hash": "placeholder_will_be_computed",
+      "receipt_hash": null
+    },
+    "normalised_event": {
+      "event_id": "evt_mar_hormuz_001",
+      "geo": {
+        "lat": 26.5667,
+        "lon": 56.2500,
+        "radius_m": 50000
+      },
+      "measure": {
+        "type": "vessel_density_anomaly",
+        "value": 2.3,
+        "unit": "z_score",
+        "metadata": {
+          "chokepoint": "strait_of_hormuz",
+          "vessel_count": 47,
+          "baseline_count": 32,
+          "ais_gap_detected": false,
+          "dark_fleet_probability": 0.12
+        }
+      },
+      "confidence": 0.68,
+      "timestamp": "2026-03-03T00:00:00Z"
+    },
+    "confirms_primary": null
+  },
+  "anomaly_count": 3,
+  "upstream_sources_consulted": [
+    "ais_public_feed",
+    "chokepoint_baseline_db"
+  ]
+}

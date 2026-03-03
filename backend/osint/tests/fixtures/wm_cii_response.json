@@ -1,0 +1,55 @@
+{
+  "domain": "intelligence",
+  "bundle": {
+    "bundle_id": "eb_worldmonitor_cii_1709424000",
+    "source_id": "worldmonitor_cii",
+    "source_group": "alt_data_behavioural",
+    "resolution_role": "primary_evidence",
+    "evidence_timestamp": "2026-03-03T00:00:00Z",
+    "raw_payload_hash": "placeholder_will_be_computed",
+    "receipt": {
+      "timestamp": "2026-03-03T00:00:00Z",
+      "request_parameters": {
+        "method": "POST",
+        "url": "http://localhost:8080/api/v1/intelligence/cii",
+        "query": "",
+        "headers": "content-type:application/json"
+      },
+      "source_id": "worldmonitor_cii",
+      "source_version": "v0.1.0",
+      "http_status": 200,
+      "content_hash": "placeholder_will_be_computed",
+      "receipt_hash": null
+    },
+    "normalised_event": {
+      "event_id": "evt_cii_irn_001",
+      "geo": {
+        "lat": 32.4279,
+        "lon": 53.6880,
+        "radius_m": 500000
+      },
+      "measure": {
+        "type": "country_instability_index",
+        "value": 0.78,
+        "unit": "0_1",
+        "metadata": {
+          "baseline_risk": 0.65,
+          "unrest_events": 12,
+          "security_activity": 0.82,
+          "information_velocity": 0.71,
+          "hotspot_proximity_boost": 0.05,
+          "focal_point_urgency": "high",
+          "conflict_zone_floor": 0.60
+        }
+      },
+      "confidence": 0.85,
+      "timestamp": "2026-03-03T00:00:00Z"
+    },
+    "confirms_primary": null
+  },
+  "upstream_sources_consulted": [
+    "gdelt_events",
+    "acled_conflict",
+    "social_velocity_aggregator"
+  ]
+}

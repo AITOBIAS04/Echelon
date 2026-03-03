@@ -1,0 +1,32 @@
+{
+  "http_500": {
+    "status_code": 500,
+    "body": {
+      "error": "Internal Server Error",
+      "detail": "CII scoring pipeline failed: upstream GDELT timeout"
+    }
+  },
+  "http_503": {
+    "status_code": 503,
+    "body": {
+      "error": "Service Unavailable",
+      "detail": "WorldMonitor is starting up, CII domain not ready"
+    }
+  },
+  "timeout": {
+    "description": "Simulates a request that exceeds the timeout_s threshold",
+    "delay_seconds": 60
+  },
+  "malformed_json": {
+    "status_code": 200,
+    "body_raw": "{invalid json: true, missing closing brace"
+  },
+  "empty_body": {
+    "status_code": 200,
+    "body_raw": ""
+  },
+  "connection_refused": {
+    "description": "Simulates ECONNREFUSED — WorldMonitor not running",
+    "error_type": "ConnectionRefusedError"
+  }
+}

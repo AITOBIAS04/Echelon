@@ -1,0 +1,53 @@
+{
+  "domain": "market",
+  "bundle": {
+    "bundle_id": "eb_worldmonitor_finance_1709424000",
+    "source_id": "worldmonitor_finance",
+    "source_group": "market_data",
+    "resolution_role": "primary_evidence",
+    "evidence_timestamp": "2026-03-03T00:00:00Z",
+    "raw_payload_hash": "placeholder_will_be_computed",
+    "receipt": {
+      "timestamp": "2026-03-03T00:00:00Z",
+      "request_parameters": {
+        "method": "POST",
+        "url": "http://localhost:8080/api/v1/market/snapshot",
+        "query": "",
+        "headers": "content-type:application/json"
+      },
+      "source_id": "worldmonitor_finance",
+      "source_version": "v0.1.0",
+      "http_status": 200,
+      "content_hash": "placeholder_will_be_computed",
+      "receipt_hash": null
+    },
+    "normalised_event": {
+      "event_id": "evt_mkt_fx_usdirr_001",
+      "geo": {
+        "lat": 35.6892,
+        "lon": 51.3890,
+        "radius_m": 100000
+      },
+      "measure": {
+        "type": "fx_volatility",
+        "value": 0.92,
+        "unit": "z_score",
+        "metadata": {
+          "asset_class": "fx",
+          "symbol": "USDIRR",
+          "signal_count": 7,
+          "verdict": "CASH",
+          "corridor_breach": true
+        }
+      },
+      "confidence": 0.72,
+      "timestamp": "2026-03-03T00:00:00Z"
+    },
+    "confirms_primary": null
+  },
+  "upstream_sources_consulted": [
+    "polygon_io_delayed",
+    "commodities_api",
+    "central_bank_feeds"
+  ]
+}

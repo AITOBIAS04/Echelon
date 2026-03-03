@@ -17,6 +17,7 @@ from backend.engines.paradox import (
 )
 from backend.engines.reality_signal import (
     DeterministicRealityProvider,
+    LiveOSINTRealityProvider,
     OsintRealityProvider,
     RealitySignal,
     RealitySignalProvider,
@@ -51,6 +52,7 @@ __all__ = [
     "OsintRealityProvider",
     "DeterministicRealityProvider",
     "StubRealityProvider",
+    "LiveOSINTRealityProvider",
     # Paradox Engine
     "ParadoxMode",
     "ParadoxAction",
