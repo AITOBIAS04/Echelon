@@ -36,3 +36,11 @@
 |--------|-----------|--------|----------|----------|---------|
 | Sprint 1 | sprint-23 | COMPLETED | [reviewer.md](sprint-23/reviewer.md) | [engineer-feedback.md](sprint-23/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-23/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-24 | COMPLETED | [reviewer.md](sprint-24/reviewer.md) | [engineer-feedback.md](sprint-24/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-24/auditor-sprint-feedback.md) |
+
+## Cycle-013: Agent Runtime -- Four-Tier Hierarchical Intelligence
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 1 | sprint-25 | COMPLETED | [reviewer.md](sprint-25/reviewer.md) | [engineer-feedback.md](sprint-25/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-25/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-26 | COMPLETED | [reviewer.md](sprint-26/reviewer.md) | [engineer-feedback.md](sprint-26/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-26/auditor-sprint-feedback.md) |
+| Sprint 3 | sprint-27 | COMPLETED | [reviewer.md](sprint-27/reviewer.md) | [engineer-feedback.md](sprint-27/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-27/auditor-sprint-feedback.md) |

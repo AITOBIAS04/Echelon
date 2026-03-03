@@ -28,6 +28,7 @@ from backend.osint.models.evidence import EvidenceBundle
 from backend.services.certificate_pipeline import (
     CalibrationCertificate,
     CertificatePipeline,
+    CertificateSigningRefused,
 )
 from backend.services.theatre_resolution import TheatreResolutionResult
 
@@ -292,3 +293,14 @@ class TestCertificatePipeline:
 
         assert cert.winning_outcome == 2
         assert cert.winning_outcome_label == "Not filed"
+
+    def test_local_mode_refuses_certificate_signing(self, pipeline, resolution_result, settlement_report):
+        """local_mode=True refuses to sign — mock adapter data is not promotable."""
+        with pytest.raises(CertificateSigningRefused, match="local_mode=True"):
+            pipeline.generate(resolution_result, settlement_report, local_mode=True)
+
+    def test_local_mode_false_allows_signing(self, pipeline, resolution_result, settlement_report):
+        """local_mode=False (default) allows normal certificate generation."""
+        cert = pipeline.generate(resolution_result, settlement_report, local_mode=False)
+        assert cert.schema_version == "1.0.0"
+        assert cert.verification_tier == "UNVERIFIED"

@@ -47,6 +47,11 @@ class SponsoredTheatreConfig(BaseModel):
         ..., min_length=1,
         description="Sponsor identifier",
     )
+    corroboration_minimum: int = Field(
+        default=2,
+        ge=1,
+        description="Minimum independent sources required for oracle corroboration",
+    )
     sponsor_metadata: dict[str, Any] = Field(
         default_factory=dict,
         description="Freeform sponsor context (company name, jurisdiction, etc.)",

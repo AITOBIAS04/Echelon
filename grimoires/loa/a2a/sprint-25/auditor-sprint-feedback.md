@@ -1,91 +1,148 @@
-# Sprint 25 — Security Audit
+APPROVED - LETS FUCKING GO
 
-**Verdict: APPROVED - LETS FUCKING GO**
+# Sprint 25 (Cycle-013 Sprint 1) -- Security & Quality Audit
+
+**Sprint**: 1 (local) / 25 (global)
+**Cycle**: 013 -- Agent Runtime: Four-Tier Hierarchical Intelligence
+**Auditor**: Paranoid Cypherpunk Auditor
+**Date**: 2026-03-03
+**Verdict**: APPROVED
 
 ---
 
-## Audit Summary
+## Pre-flight Checks
 
-Sprint-25 (Core Engine Foundation) passes security audit. No vulnerabilities found. All code reviewed line-by-line with paranoid scrutiny. This sprint implements internal engine components with no HTTP surface — the attack surface is minimal by design.
+| Check | Result |
+|-------|--------|
+| Senior lead approved | PASS -- engineer-feedback.md starts with "All good", verdict APPROVED |
+| Previous COMPLETED marker | STALE -- old marker from "Core Engine Foundation" (2026-02-20), overwritten by this audit |
 
 ---
 
 ## Security Checklist
 
-### Secrets — PASS
-- No hardcoded credentials, API keys, tokens, or secrets anywhere in `theatre/` or `tests/theatre/`
-- No `.env` files, no environment variable reads
-- Test fixtures use dummy data (`"abc123def456"`, `"a" * 64`) — no real secrets
-
-### Auth/Authz — PASS (N/A this sprint)
-- Sprint 1 is internal engine components — no HTTP endpoints, no auth required
-- DB tables include `user_id` FK on `Theatre` table — auth will be enforced at API layer in sprint 3
-- No privilege escalation vectors in pure domain logic
-
-### Input Validation — PASS
-- `TemplateValidator` validates all template input against JSON Schema + 7 runtime rules before processing
-- `TheatreCriteria` model_validator enforces weight key subset and sum constraints
-- `canonical_json()` rejects NaN/Infinity with explicit `ValueError` — prevents IEEE 754 edge cases from poisoning hashes
-- `_normalise_value()` raises `TypeError` on unsupported types — no silent type coercion
-- State machine `VALID_TRANSITIONS` dict is exhaustive — all 6 states accounted for, no default fallthrough
-
-### Injection — PASS
-- No SQL queries — all DB access via SQLAlchemy ORM with `Mapped[]` typed columns
-- No string interpolation into queries
-- No `eval()`, `exec()`, `subprocess`, `os.system()`, `pickle.loads()`, `yaml.load()`
-- JSON Schema loaded via `json.loads(path.read_text())` — not user-controlled path, constructor-time only
-
-### Cryptographic Integrity — PASS
-- SHA-256 via `hashlib.sha256` — standard library, no custom crypto
-- Hash computed over canonical JSON (deterministic) — prevents hash collision via key reordering
-- `CommitmentProtocol.verify_hash()` uses equality comparison (`==`) — acceptable since this is commitment verification, not authentication (timing side-channel irrelevant)
-- Composite hash input has exactly 3 fixed keys — prevents attackers from injecting extra data into hash computation
-
-### Data Privacy — PASS
-- No PII handling in engine layer
-- `template_snapshot` in `CommitmentReceipt` stores template config, not user data
-- Error messages in `InvalidTransitionError` include `theatre_id` (internal ID) — no PII leakage
-
-### Error Handling — PASS
-- `InvalidTransitionError` includes state names and theatre_id — useful for debugging, no sensitive data
-- `TemplateValidator` returns structured error strings — no stack traces, no path disclosure
-- `canonical_json` raises clear `ValueError`/`TypeError` — no silent failures
-- Schema validation errors include JSON path but no system paths
-
-### Code Quality — PASS
-- All 113 tests pass
-- No `# type: ignore` or `# noqa` suppression markers
-- No TODO/FIXME comments hiding known issues
-- Pydantic v2 `BaseModel` used correctly — `model_validator(mode="after")` is the canonical pattern
-- DB models use `Mapped[]` typed columns consistently — no raw SQL, no `text()` calls
-
-### Database Security — PASS
-- All FK relationships properly defined — no orphan records possible
-- `commitment_hash` stored as `String(64)` — exact SHA-256 hex length, prevents overflow
-- JSON columns (`template_json`, `version_pins`, `dataset_hashes`, etc.) store structured data — no SQL injection vector
-- Index strategy is sensible — no over-indexing, composite indexes match expected query patterns
-- No `CASCADE` deletes that could cause unintended data loss
-
-### Dependency Security — PASS
-- `jsonschema` — well-maintained, no known CVEs for Draft202012Validator
-- `pydantic` v2 — actively maintained, type-safe validation
-- `hashlib` — Python stdlib, no external crypto dependency
-- No new external dependencies introduced beyond what's already in the project
+| Category | Verdict | Notes |
+|----------|---------|-------|
+| Secrets / Hardcoded Credentials | **PASS** | Zero API keys, tokens, passwords, or secrets in any Sprint 1 file. Grep confirms all credential references are in pre-existing frozen files (autonomous_agent.py, brain.py, multi_brain.py) -- untouched by this sprint. |
+| Code Injection (eval/exec/subprocess) | **PASS** | Zero instances of `eval()`, `exec()`, `subprocess`, `os.system()`, `pickle.load()`, `__import__()`, `yaml.load()` in any Sprint 1 file. Verified via grep across entire `backend/agents/` directory. |
+| Input Validation | **PASS** | AgentGenome uses Pydantic v2 `Field(ge=0.0, le=1.0)` constraints on all 8 archetype parameters. `model_config = {"frozen": True}` on both Pydantic models. DecisionTrace enforces `Literal["T1-RULES", "T1-LOCAL-LLM", "T3"]` on `tier_used` and `Field(ge=0.0, le=1.0)` on `confidence`. T0Context and T1Decision use `@dataclass(frozen=True)`. |
+| Auth / Access Control | **N/A** | Sprint 1 has no API endpoints, no HTTP surface, no auth. Purely internal engine components. |
+| Data Privacy / PII | **PASS** | No PII processed, stored, or logged. Test fixtures use synthetic IDs ("mkt_test", "theatre_test", "agent_test"). Decision traces contain only market state, no user data. |
+| Error Handling / Info Disclosure | **PASS** | Error messages contain only internal IDs (theatre_id, agent_id, tick numbers) and mathematical values (price_delta, thresholds). No stack traces, filesystem paths, or system information in error strings. The `except Exception: pass` at agent_instance.py:170-172 is intentional and tested -- trade failures are silently caught so the decision trace is always recorded. |
+| Dependency Safety | **PASS** | All imports are from Python stdlib (`hashlib`, `json`, `dataclasses`, `random`, `datetime`, `enum`, `typing`) or existing project modules (`backend.agents.genome`, `backend.market.lmsr`, etc.) or Pydantic. Zero new runtime dependencies. |
+| Path Traversal / File I/O | **PASS** | Zero file operations in any Sprint 1 file. No `open()`, `Path()`, `os.path`, `.read()`, `.write()` calls. All data flows are in-memory. |
+| Integer Overflow | **PASS** | All financial values use Python float (64-bit IEEE 754). Position limits enforced by `genome.position_limit` cap at agent_instance.py:153. Shares bounded by `min()` chains throughout rules_engine.py. `MIN_TRADE_SHARES = 1.0` prevents zero-share trades. No Decimal arithmetic used (acceptable for Sprint 1's simulation scope). |
+| Race Conditions | **PASS** | `TheatreAgentInstance` has mutable instance state (`_decision_traces`, `_trade_count`, `_settled`) but is designed for single-threaded, sequential tick execution within a Theatre lifecycle. No shared mutable state between instances. `AgentGenome` and `T0Context` are frozen/immutable. |
+| Supply Chain | **PASS** | No new packages. All imports from Python stdlib, Pydantic (existing dep), or project internals. |
+| Cryptographic Safety | **PASS** | SHA-256 via `hashlib.sha256` (stdlib). Hash computed over Echelon Canonical JSON v0 (sorted keys, no whitespace via `separators=(",", ":")`) at context_compiler.py:170. Hash excludes `context_hash` field itself to avoid circular dependency. All 24 non-hash fields explicitly enumerated in `compute_hash()` -- no implicit serialisation that could leak or omit fields. UTF-8 encoding explicit. |
 
 ---
 
-## Potential Future Concerns (Not Blockers)
+## Findings
 
-1. **`datetime.utcnow()` deprecation**: Python 3.12+ deprecates this in favour of `datetime.now(datetime.UTC)`. 3 warnings in commitment.py, 1 in models.py. Matches existing codebase pattern — address as a separate cleanup. **Severity: LOW**
+**0 CRITICAL | 0 HIGH | 1 MEDIUM | 3 LOW**
 
-2. **Template validator `schema_path` parameter**: Currently accepts any `Path`. When this is wired to HTTP endpoints in sprint 3, ensure the schema path is hardcoded at application startup, never derived from user input. **Severity: INFORMATIONAL — no current risk, note for sprint 3 review.**
+### MEDIUM-01: Unreachable Shark stop-loss path
 
-3. **`TheatreCertificate.theatre_id` missing ForeignKey**: The column is `String(50), index=True` but has no `ForeignKey("theatres.id")` constraint. The relationship is via `back_populates` but the FK constraint is missing at the DB level. The ORM relationship will still work, but a raw INSERT could create orphan certificates. **Severity: LOW — ORM enforces it, DB doesn't. Acceptable for this sprint; consider adding FK in migration.**
+- **File**: `backend/agents/rules_engine.py`, lines 165-186
+- **Severity**: MEDIUM
+- **Description**: The stop-loss check computes `loss_ratio = -price_delta * held_shares / net_cashflow`. Since `price_delta` is calculated as `prices[leading_idx] - uniform` and `leading_idx = argmax(prices)`, `price_delta` is always >= 0 for the leading outcome. Therefore `loss_ratio` is always <= 0, and the condition `loss_ratio > ctx.stop_loss_threshold` (threshold > 0) is unreachable. This means Shark agents cannot trigger stop-loss protection.
+- **Status**: ACCEPTED -- Senior review identified this as a known Sprint 1 simplification (engineer-feedback.md Challenge 1). SDD specifies Sprint 2's T1-LOCAL-LLM will provide more sophisticated P&L estimation. The dead code path exists as scaffolding. No test exercises this path, which is honest -- unreachable code should not have passing tests that claim it works.
+
+### LOW-01: Unused import `field_validator` in genome.py
+
+- **File**: `backend/agents/genome.py`, line 14
+- **Severity**: LOW
+- **Description**: `field_validator` is imported from `pydantic` but never used in the module. Likely a leftover from development.
+- **Status**: NON-BLOCKING -- cosmetic only, no runtime impact.
+
+### LOW-02: Unused import `field` in rules_engine.py
+
+- **File**: `backend/agents/rules_engine.py`, line 12
+- **Severity**: LOW
+- **Description**: `field` is imported from `dataclasses` but never used. `T1Decision.options_considered` uses `= ()` default directly rather than `field(default_factory=tuple)`.
+- **Status**: NON-BLOCKING -- cosmetic only.
+
+### LOW-03: Unused import `field` in agent_instance.py
+
+- **File**: `backend/agents/agent_instance.py`, line 11
+- **Severity**: LOW
+- **Description**: `field` is imported from `dataclasses` but never used in the module.
+- **Status**: NON-BLOCKING -- cosmetic only.
 
 ---
 
-## Conclusion
+## Observations (Non-findings)
 
-Clean sprint. No vulnerabilities. No secrets. No injection vectors. The engine layer is properly isolated from HTTP input and enforces strict validation at every boundary. The state machine is deterministic, the commitment protocol is cryptographically sound, and the test coverage is exhaustive.
+### OBS-1: `hash()` non-determinism across Python sessions
+
+`agent_instance.py:143` uses `hash(self.agent_id) % 10000` in RNG seed computation. Python's `hash()` is randomised across sessions since Python 3.3 (PYTHONHASHSEED). Within a single Theatre lifecycle (same process), this is deterministic. Cross-session reproducibility requires setting `PYTHONHASHSEED=0` or switching to a deterministic hash. Acceptable for Sprint 1. Sprint 3's MEGALODON reproducibility test should pin `PYTHONHASHSEED`.
+
+### OBS-2: Implementation report inaccuracy on SABOTAGE handling
+
+The reviewer.md (line 167) states SABOTAGE is "treated as a BUY by the trading engine." Code at agent_instance.py:150 checks `if t1_decision.action in (TradeAction.BUY, TradeAction.SELL)`, so SABOTAGE falls through with no trade executed. The code behaviour is actually more correct -- safer default. Discrepancy is in documentation, not code. Confirmed by senior review (engineer-feedback.md Concern 1).
+
+### OBS-3: Broad `except Exception: pass` in trade execution
+
+`agent_instance.py:170-172` catches all exceptions silently during trade execution. This is intentional and tested by `test_failed_trade_graceful_handling`. In a production context, logging the exception would be preferable, but for Sprint 1's local-mode testing scope, this is acceptable. The decision trace is always recorded regardless.
+
+### OBS-4: `TradeIntent` dataclass defined but never instantiated
+
+`agent_instance.py:23-30` defines `TradeIntent` but it is never instantiated in Sprint 1. This is forward-declared for Sprint 2's interface. Acceptable.
+
+### OBS-5: Evidence coverage is binary (0.0 or 0.5)
+
+`agent_instance.py:131` uses `0.0 if evidence is None else 0.5`. Full evidence coverage computation will come in Sprint 3. This is documented and expected.
+
+---
+
+## Test Coverage Verification
+
+| File | Tests | Status |
+|------|-------|--------|
+| `test_context_compiler.py` | 19 | 19/19 PASS |
+| `test_rules_engine.py` | 19 | 19/19 PASS |
+| `test_decision_trace.py` | 15 | 15/15 PASS |
+| `test_agent_instance.py` | 21 | 21/21 PASS |
+| **Total Sprint 1** | **74** | **74/74 PASS in 0.10s** |
+| **Scoped Regression** | **242** | **242/242 PASS in 0.29s** |
+
+Test quality is high:
+- All tests deterministic (fixed seeds, in-memory state)
+- Good use of `@pytest.mark.parametrize` for all 6 archetypes
+- Integration tests verify full stack (genome -> compile -> decide -> trade -> settle)
+- Edge cases covered (zero balance, empty position, frozen enforcement, unknown archetype)
+- RLMF compatibility verified via `to_rlmf_dict()` round-trip
+- P&L correctness verified with exact float comparison
+
+---
+
+## Acceptance Criteria (PRD Section 9a)
+
+All 15 acceptance criteria verified:
+
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | AgentGenome captures 8 params + variants + Theatre + position constraints + routing + version | PASS |
+| 2 | Factory functions for all 6 archetypes | PASS |
+| 3 | T0 Context Compiler deterministic | PASS |
+| 4 | SHA-256 hash for reproducibility | PASS |
+| 5 | T1 Rules Engine valid T1Decision for all 6 archetypes | PASS |
+| 6 | Per-archetype logic parameterised by genome (not hard-coded) | PASS |
+| 7 | Confidence scoring with T3 escalation | PASS |
+| 8 | DecisionTrace schema validates all required fields | PASS |
+| 9 | Every archetype produces valid DecisionTrace with pattern_name and options_considered | PASS |
+| 10 | Agent lifecycle: spawn -> 10 ticks -> settle with correct P&L | PASS |
+| 11 | Agent-LMSR integration with position limits and TradingEngine.execute_trade() | PASS |
+| 12 | Decision traces conform to RLMF schema v2.0.1 | PASS |
+| 13 | No modifications to backend/market/, backend/engines/, backend/osint/, backend/services/ | PASS |
+| 14 | Scoped regression: 242/242 pass | PASS |
+| 15 | 25+ new Sprint 1 tests (74/74) | PASS |
+
+---
+
+## Verdict
+
+**APPROVED**. Clean sprint. Zero security vulnerabilities. No injection vectors, no secrets, no file I/O, no network calls, no dangerous imports. The attack surface is nil -- this is a pure in-memory computation engine with frozen immutable data structures and comprehensive Pydantic validation. 74 tests pass with excellent coverage. 242 scoped regression tests pass unchanged. All 15 PRD acceptance criteria met. Three unused imports and one unreachable code path are the only findings, all non-blocking.
 
 Ship it.

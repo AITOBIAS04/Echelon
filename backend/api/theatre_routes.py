@@ -316,6 +316,7 @@ async def settle_theatre(
         )
 
     now = datetime.utcnow()
+    previous_state = theatre.state
     theatre.state = "RESOLVED"
     theatre.resolved_at = now
     theatre.updated_at = now
@@ -324,7 +325,7 @@ async def settle_theatre(
         id=str(uuid.uuid4()),
         theatre_id=theatre_id,
         event_type="theatre_settled",
-        from_state=theatre.state,
+        from_state=previous_state,
         to_state="RESOLVED",
         detail_json=body.settlement_data,
     )

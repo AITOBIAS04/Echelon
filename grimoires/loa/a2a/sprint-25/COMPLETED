@@ -1,4 +1,4 @@
-Sprint 25 (Core Engine Foundation) completed 2026-02-20.
+Sprint 25 (Cycle-013 Sprint 1: T0 Context Compiler + T1 Rules Engine) completed 2026-03-03.
 Review: APPROVED (All good)
 Audit: APPROVED - LETS FUCKING GO
-Tests: 113 passed, 0 failed
+Tests: 74 passed (sprint), 242 passed (regression)

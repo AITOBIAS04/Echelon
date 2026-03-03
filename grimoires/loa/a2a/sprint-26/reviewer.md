@@ -1,8 +1,8 @@
-# Sprint 26 — Execution Engine: Implementation Report
+# Sprint 26 -- Agent Runtime: T2/T3/Routing Implementation Report
 
 > Sprint: sprint-26 (global) | sprint-2 (local)
-> Cycle: cycle-031 — Theatre Template Engine
-> Status: **COMPLETE** — All 6 tasks implemented, 212 tests passing (99 new + 113 from sprint-25)
+> Cycle: cycle-013 -- Agent Runtime: Four-Tier Hierarchical Intelligence
+> Status: **COMPLETE** -- All 7 tasks implemented, 134 tests passing (60 new + 74 from sprint-25)
 
 ---
 
@@ -10,243 +10,149 @@
 
 | Task | Title | Status | Tests |
 |------|-------|--------|-------|
-| T2.1 | Oracle Invocation Contract | Done | 15 |
-| T2.2 | Theatre Scoring Provider | Done | 11 |
-| T2.3 | Replay Engine | Done | 9 |
-| T2.4 | Resolution State Machine | Done | 11 |
-| T2.5 | Evidence Bundle Builder | Done | 16 |
-| T2.6 | Certificate + Tier + Gate | Done | 38 |
-| **Total** | | **6/6** | **99 new (212 total)** |
+| T2.1 | T2 Personality Engine | Done | 14 |
+| T2.2 | T3 Deep Reasoning Engine | Done | 14 |
+| T2.3 | Novelty Threshold Router | Done | 12 |
+| T2.4 | Ollama Provider (T1) | Done | 7 |
+| T2.5 | Mistral Provider (T2) | Done | 5 |
+| T2.6 | Anthropic Provider (T3) | Done | 5 |
+| T2.7 | Sprint 2 Tests | Done | (included above) |
+| **Total** | | **7/7** | **60 new (134 total)** |
 
 ---
 
-## T2.1: Oracle Invocation Contract
-
-**File:** `theatre/engine/oracle_contract.py`
-**Tests:** `tests/theatre/test_oracle_contract.py` (15 tests)
-
-### What was built
-
-- `OracleInvocationRequest` — standardised request envelope with auto-generated `invocation_id`, theatre/episode/construct identifiers, input data, and configurable metadata
-- `OracleInvocationResponse` — response envelope with status enum (SUCCESS/TIMEOUT/ERROR/REFUSED), latency tracking, error detail
-- `OracleInvocationMetadata` — timeout (30s default), retry count (2 default), exponential backoff (5s default), deterministic flag, sanitise flag
-- `OracleAdapter` Protocol — matches existing echelon-verify contract
-- `MockOracleAdapter` — configurable responses, fail/timeout/refuse per-episode
-- `invoke_oracle()` async function — full retry loop with exponential backoff, timeout via `asyncio.wait_for()`, REFUSED bypasses retry, structured status reporting
-
-### Acceptance Criteria
-
-- [x] `OracleInvocationRequest` with all fields from SDD §4.5
-- [x] `OracleInvocationResponse` with status enum: SUCCESS, TIMEOUT, ERROR, REFUSED
-- [x] `OracleInvocationMetadata` with timeout, retry, deterministic, sanitise_input defaults
-- [x] Adapter wrapper function: takes request, calls adapter, returns response
-- [x] Retry logic with configurable backoff
-- [x] Timeout handling returns `TIMEOUT` status
-- [x] Error handling returns `ERROR` status with detail
-
----
-
-## T2.2: Theatre Scoring Provider
-
-**File:** `theatre/engine/scoring.py`
-**Tests:** `tests/theatre/test_scoring.py` (11 tests)
-
-### What was built
-
-- `ScoringFunction` Protocol — pluggable scoring interface
-- `SimpleScoringFunction` — exact-match scoring for testing
-- `TheatreScoringProvider` — scores construct outputs per committed criteria_ids
-  - `score_episode()` — invokes scoring function per criterion, clamps to [0.0, 1.0]
-  - `compute_composite()` — weighted aggregate using `TheatreCriteria.weights`, equal weight fallback when weights dict is empty
-
-### Acceptance Criteria
-
-- [x] `score_episode()` returns `dict[str, float]` mapping criteria_id → score (0.0–1.0)
-- [x] `compute_composite()` produces weighted aggregate using `TheatreCriteria.weights`
-- [x] Equal weight fallback when `weights` dict is empty
-- [x] Handles missing criteria gracefully (score = 0.0 for missing)
-
----
-
-## T2.3: Replay Engine
-
-**File:** `theatre/engine/replay.py`
-**Tests:** `tests/theatre/test_replay_engine.py` (9 tests)
-
-### What was built
-
-- `EpisodeResult` — per-episode outcome with status, scores, oracle response reference
-- `ReplayResult` — aggregate with all episode results, composite score, failure rate, dataset hash
-- `DatasetHashMismatchError` — raised when dataset hash doesn't match commitment
-- `ReplayEngine` class:
-  - Dataset hash verification before first episode (computed via `canonical_json` + SHA-256)
-  - Sequential episode processing: invoke → score → record
-  - TIMEOUT/ERROR episodes scored as zero (affect failure rate)
-  - REFUSED episodes excluded from scoring (logged as excluded)
-  - Failure rate tracking: >20% caps at UNVERIFIED
-  - Progress callback invoked after each episode
-  - Returns structured `ReplayResult`
-
-### Acceptance Criteria
-
-- [x] Verifies dataset hash matches commitment before first episode
-- [x] Processes episodes sequentially
-- [x] For each episode: build request → invoke → record invocation → score → record score
-- [x] Progress callback called after each episode
-- [x] Failure rate tracked: >20% failures → cap at UNVERIFIED
-- [x] TIMEOUT/ERROR episodes scored as missing
-- [x] REFUSED episodes excluded from scoring, logged
-- [x] Returns `ReplayResult` with all episode scores + aggregate + failure rate
-- [x] Dataset hash mismatch → immediate failure
-
----
-
-## T2.4: Resolution State Machine
-
-**File:** `theatre/engine/resolution.py`
-**Tests:** `tests/theatre/test_resolution.py` (11 tests)
-
-### What was built
-
-- `ResolutionStep` — step definition with type, construct_id, escalation_path
-- `StepOutcome` — per-step result with status, output, error, timing
-- `ResolutionResult` — aggregate with final status, all outcomes, audit events
-- `ResolutionContext` — theatre context with version pins
-- `VersionPinError` — raised on missing construct version pin
-- `ResolutionStateMachine`:
-  - Executes steps in committed order
-  - `construct_invocation` — invokes construct via oracle contract with version pin validation
-  - `deterministic_computation` — executes without oracle (SUCCESS)
-  - `hitl_rubric` — produces PENDING_HITL status
-  - `aggregation` — combines previous step outputs (SUCCESS)
-  - Escalation paths on step failure (jumps to named step)
-  - Failure without escalation → terminates entire resolution
-  - Audit events generated per step
-
-### Acceptance Criteria
-
-- [x] Executes steps in committed order
-- [x] `construct_invocation` steps invoke construct via oracle contract
-- [x] `deterministic_computation` steps execute without oracle
-- [x] `hitl_rubric` steps produce `PENDING_HITL` status
-- [x] `aggregation` steps combine previous step outputs
-- [x] `escalation_path` followed on step failure
-- [x] Version pin validation: every `construct_id` has matching pin
-- [x] Returns `ResolutionResult` with outcomes + audit trail
-
----
-
-## T2.5: Evidence Bundle Builder
-
-**File:** `theatre/engine/evidence_bundle.py`
-**Tests:** `tests/theatre/test_evidence_bundle.py` (16 tests)
-
-### What was built
-
-- `EvidenceBundleBuilder` — creates auditable evidence directory structure:
-  - `evidence_bundle_{theatre_id}/` base directory
-  - Subdirectories: `ground_truth/`, `invocations/`, `scores/`
-  - `write_manifest()` — BundleManifest → manifest.json
-  - `write_template()` — template snapshot → template.json
-  - `write_commitment_receipt()` — CommitmentReceipt → commitment_receipt.json
-  - `write_ground_truth()` — dataset → JSONL file
-  - `write_invocation()` — per-episode request/response → JSON
-  - `write_episode_score()` — append to per_episode.jsonl
-  - `write_aggregate_scores()` — aggregate.json
-  - `write_certificate()` — certificate.json
-  - `append_audit_event()` — append to audit_trail.jsonl
-  - `compute_bundle_hash()` — SHA-256 over manifest.json bytes
-  - `validate_minimum_files()` — returns list of missing required files
-
-### Acceptance Criteria
-
-- [x] Creates directory structure per SDD §4.10
-- [x] `write_manifest()`, `write_template()`, `write_commitment_receipt()` produce valid JSON files
-- [x] `write_ground_truth()` writes JSONL
-- [x] `write_invocation()` writes per-episode JSON
-- [x] `write_episode_score()` appends to per_episode.jsonl
-- [x] `write_aggregate_scores()` writes aggregate.json
-- [x] `write_certificate()` writes certificate.json
-- [x] `append_audit_event()` appends to audit_trail.jsonl
-- [x] `compute_bundle_hash()` produces deterministic SHA-256 over manifest
-- [x] `validate_minimum_files()` returns missing required files (empty = valid)
-
----
-
-## T2.6: Calibration Certificate + Tier Assigner + Constraint Gate
+## T2.4: BaseModelProvider ABC + OllamaProvider
 
 **Files:**
-- `theatre/engine/certificate.py`
-- `theatre/engine/tier_assigner.py`
-- `theatre/engine/constraint_gate.py`
-
-**Tests:**
-- `tests/theatre/test_certificate.py` (10 tests)
-- `tests/theatre/test_tier_assigner.py` (22 tests)
-- `tests/theatre/test_constraint_gate.py` (6 tests)
+- `backend/agents/model_providers/__init__.py` (83 lines) -- BaseModelProvider ABC, ProviderConfig
+- `backend/agents/model_providers/ollama_provider.py` (108 lines)
+**Tests:** `backend/agents/tests/test_model_providers.py` -- TestBaseModelProvider (3), TestOllamaProvider (7)
 
 ### What was built
 
-**TheatreCalibrationCertificate** — Pydantic model with all fields from SDD §4.8:
-- Core: certificate_id, theatre_id, template_id, construct_id, criteria, scores, composite_score
-- Evidence: replay_count, evidence_bundle_hash, ground_truth_hash, construct_version, scorer_version
-- Versioning: methodology_version, dataset_hash, construct_chain_versions
-- Tier: verification_tier (UNVERIFIED/BACKTESTED/PROVEN)
-- Provenance: commitment_hash, theatre_committed_at, theatre_resolved_at, ground_truth_source, execution_path
-- Optional: precision, recall, brier_score, ece, expires_at
+- `ProviderConfig` -- stdlib `@dataclass` with api_key, base_url, model_name, timeout_s (30s), max_retries (2)
+- `BaseModelProvider` -- ABC with `generate()`, `health_check()`, `is_available()` abstract methods
+- `OllamaProvider` -- wraps Ollama local API at `http://localhost:11434` for Qwen 3.5 4B/9B
+  - `generate()` -- POST `/api/generate` with structured output via `format` parameter
+  - `health_check()` -- GET `/api/tags`, checks model name in loaded models list
+  - Graceful fallback: `is_available()` returns cached `_last_health`
 
-**TierAssigner** — deterministic tier assignment with boundary rules:
-- `assign()` — UNVERIFIED (<50 replays, >20% failure, missing pins/scores/hash, disputes), BACKTESTED (≥50 + full evidence), PROVEN (3+ months + telemetry + attestation)
-- `compute_expiry()` — 90 days BACKTESTED, 180 days PROVEN, None UNVERIFIED
-- `TierHistory` — model tracking consecutive months, telemetry, attestation
+---
 
-**ConstraintYieldingGate** — review preference resolution:
-- UNVERIFIED + skip → full (forced upgrade)
-- UNVERIFIED + full → full
-- BACKTESTED/PROVEN + any → passthrough
+## T2.5: MistralProvider
 
-### Acceptance Criteria
+**File:** `backend/agents/model_providers/mistral_provider.py` (108 lines)
+**Tests:** `backend/agents/tests/test_model_providers.py` -- TestMistralProvider (5)
 
-- [x] `TheatreCalibrationCertificate` Pydantic model with all fields from SDD §4.8
-- [x] `TierAssigner.assign()` returns correct tier for all boundary conditions
-- [x] `TierAssigner.compute_expiry()` returns correct expiry dates
-- [x] `ConstraintYieldingGate.resolve_review_preference()` correct for all combinations
+### What was built
+
+- `MistralProvider` -- wraps Mistral API at `https://api.mistral.ai/v1`, model `mistral-small-latest`
+  - `generate()` -- POST `/chat/completions` with Bearer auth, returns `{rationale, commentary}`
+  - `health_check()` -- GET `/models` with auth header, returns True on 200
+  - Graceful fallback: returns False immediately when API key not configured
+
+---
+
+## T2.6: AnthropicProvider
+
+**File:** `backend/agents/model_providers/anthropic_provider.py` (117 lines)
+**Tests:** `backend/agents/tests/test_model_providers.py` -- TestAnthropicProvider (5)
+
+### What was built
+
+- `AnthropicProvider` -- wraps Anthropic API at `https://api.anthropic.com/v1`, model `claude-sonnet-4-5-20241022`
+  - `generate()` -- POST `/messages` with `x-api-key` header, `anthropic-version: 2023-06-01`
+  - Attempts structured JSON parse from response content
+  - Falls back to `HOLD` with `reasoning_summary` on `json.JSONDecodeError`
+  - `health_check()` -- verifies API key is configured (no probe call to avoid token burn)
+
+---
+
+## T2.1: T2 Personality Engine
+
+**File:** `backend/agents/personality_engine.py` (162 lines)
+**Tests:** `backend/agents/tests/test_personality_engine.py` (14 tests)
+
+### What was built
+
+- `T2Output` -- frozen dataclass with `coloured_rationale`, `market_commentary`, `diplomatic_message`
+- `PERSONALITY_PROMPTS` -- dict with distinct prompts for all 6 archetypes (SHARK, SPY, DIPLOMAT, SABOTEUR, WHALE, DEGEN)
+- `PersonalityEngine` -- async `express()` method that:
+  - Checks provider health before calling
+  - Falls back to generic template when provider is None, health check fails, or generate() raises
+  - CRITICAL: never overrides T1's action (expression only, verified by test)
+  - T2Output contains only strings -- never fed back into decision pipeline
+
+---
+
+## T2.2: T3 Deep Reasoning Engine
+
+**File:** `backend/agents/deep_reasoning.py` (235 lines)
+**Tests:** `backend/agents/tests/test_deep_reasoning.py` (14 tests)
+
+### What was built
+
+- `T3Decision` -- frozen dataclass with action, outcome_index, shares, confidence, reasoning_summary, evidence_refs, pattern_name
+- `T3RateLimiter` -- configurable per-agent rate limiting with:
+  - Daily count with auto-reset on date change
+  - Per-tick limit (default 1) to prevent multiple T3 calls per tick
+  - `can_call(tick)` / `record_call()` interface
+- `DeepReasoningEngine` -- async `reason()` method that:
+  - Gets/creates per-agent rate limiter
+  - Checks rate limit -> provider health -> generates -> returns T3Decision
+  - Returns None on any failure (rate limit, no provider, health check failure, exception)
+  - `_build_prompt()` includes archetype, prices, position, T1 reasoning, evidence count
+
+---
+
+## T2.3: Novelty Threshold Router
+
+**File:** `backend/agents/decision_router.py` (178 lines)
+**Tests:** `backend/agents/tests/test_decision_router.py` (12 tests)
+
+### What was built
+
+- `RoutedDecision` -- dataclass with action, tier_used ("T1-RULES"/"T1-LOCAL-LLM"/"T3"), t2_output, escalated_to_t3, t3_rate_limited, evidence_refs
+- `DecisionRouter` -- orchestrates T0->T1->T2/T3 pipeline:
+  1. T1 decision as baseline
+  2. Escalation check: `t1.escalate_to_t3 OR confidence < novelty_threshold`
+  3. If escalation + T3 available: `deep_reasoning.reason()` -- replaces T1 on success
+  4. If T3 returns None: fall back to T1, set `t3_rate_limited=True`
+  5. T2 expression runs independently (non-fatal, exception-safe)
+  - Pure T1 mode works with None engines
+
+---
+
+## Sprint 1 Carryover Resolution
+
+| Finding | Severity | File | Resolution |
+|---------|----------|------|------------|
+| LOW-01 | LOW | `genome.py` | Removed unused `field_validator` import |
+| LOW-02 | LOW | `rules_engine.py` | Removed unused `field` import |
+| LOW-03 | LOW | `agent_instance.py` | Removed unused `field` import |
+
+All three carryover findings from sprint-25 audit resolved. Import lines verified clean:
+- `genome.py`: `from pydantic import BaseModel, Field`
+- `rules_engine.py`: `from dataclasses import dataclass`
+- `agent_instance.py`: `from dataclasses import dataclass`
 
 ---
 
 ## Test Results
 
 ```
-212 passed, 0 failed in 166.37s
+134 passed in 0.17s
 ```
 
 | Test File | Count | Coverage |
 |-----------|-------|----------|
-| test_oracle_contract.py | 15 | Models, mock adapter, invoke with retry/timeout/refused |
-| test_scoring.py | 11 | Score episode, composite weighted/equal, clamping, simple scorer |
-| test_replay_engine.py | 9 | Full lifecycle, hash verification, failure rate, callbacks |
-| test_resolution.py | 11 | Linear exec, construct invocation, escalation, HITL, audit |
-| test_evidence_bundle.py | 16 | All writers, hash, minimum file validation |
-| test_tier_assigner.py | 22 | All boundary conditions, expiry, TierHistory |
-| test_certificate.py | 10 | Model creation, serialisation, round-trip, all tiers |
-| test_constraint_gate.py | 6 | All tier + preference combinations |
-| *(Sprint 1 tests)* | 113 | No regressions |
+| test_model_providers.py | 20 | ABC enforcement, 3 providers (config, generate, health, fallback) |
+| test_personality_engine.py | 14 | T2Output, all 6 archetypes, non-interference, fallback paths |
+| test_deep_reasoning.py | 14 | T3Decision, rate limiter, per-agent isolation, fallback |
+| test_decision_router.py | 12 | Routing logic, T3 escalation, rate-limit fallback, T2 enable/disable |
+| *(Sprint 1 tests)* | 74 | No regressions |
 
----
-
-## Technical Decisions
-
-1. **`OracleInvocationMetadata.timeout_seconds: int`** — Integer seconds (not float) for Pydantic v2 strict validation. Backoff uses float for sub-second granularity.
-
-2. **MockOracleAdapter per-episode control** — `fail_episodes`, `timeout_episodes`, `refuse_episodes` sets allow targeted failure simulation per episode ID. Timeout simulation sleeps 100s (always exceeds any test timeout).
-
-3. **ReplayEngine dataset hash** — Computed via `canonical_json()` + SHA-256 over the entire ground truth list. Verifies against commitment before first episode.
-
-4. **ResolutionStateMachine escalation** — On step failure with `escalation_path`, marks step as ESCALATED and jumps to named step. If no escalation path, terminates with FAILED.
-
-5. **EvidenceBundleBuilder hash scope** — `compute_bundle_hash()` hashes only `manifest.json` bytes (not entire directory). The manifest contains the file inventory for downstream verification.
-
-6. **TierAssigner boundary precision** — Exactly 20% failure rate is still allowed (≤ 0.20). Exactly 50 replays is BACKTESTED threshold (≥ 50).
+All tests use mocked providers. No live API calls in the default test suite.
 
 ---
 
@@ -254,44 +160,73 @@
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `theatre/engine/oracle_contract.py` | 173 | Oracle invocation contract |
-| `theatre/engine/scoring.py` | ~100 | Scoring provider |
-| `theatre/engine/replay.py` | ~160 | Replay engine |
-| `theatre/engine/resolution.py` | ~180 | Resolution state machine |
-| `theatre/engine/evidence_bundle.py` | ~170 | Evidence bundle builder |
-| `theatre/engine/certificate.py` | ~60 | Calibration certificate model |
-| `theatre/engine/tier_assigner.py` | ~80 | Tier assignment logic |
-| `theatre/engine/constraint_gate.py` | ~25 | Constraint yielding gate |
-| `tests/theatre/test_oracle_contract.py` | 177 | Oracle contract tests |
-| `tests/theatre/test_scoring.py` | ~120 | Scoring tests |
-| `tests/theatre/test_replay_engine.py` | ~180 | Replay engine tests |
-| `tests/theatre/test_resolution.py` | 220 | Resolution SM tests |
-| `tests/theatre/test_evidence_bundle.py` | 178 | Evidence bundle tests |
-| `tests/theatre/test_tier_assigner.py` | 241 | Tier assigner tests |
-| `tests/theatre/test_certificate.py` | 99 | Certificate tests |
-| `tests/theatre/test_constraint_gate.py` | 32 | Constraint gate tests |
+| `backend/agents/model_providers/__init__.py` | 83 | BaseModelProvider ABC + ProviderConfig |
+| `backend/agents/model_providers/ollama_provider.py` | 108 | Ollama local API wrapper (T1) |
+| `backend/agents/model_providers/mistral_provider.py` | 108 | Mistral API wrapper (T2) |
+| `backend/agents/model_providers/anthropic_provider.py` | 117 | Anthropic API wrapper (T3) |
+| `backend/agents/personality_engine.py` | 162 | T2 PersonalityEngine |
+| `backend/agents/deep_reasoning.py` | 235 | T3 DeepReasoningEngine + T3RateLimiter |
+| `backend/agents/decision_router.py` | 178 | Novelty Threshold Router |
+| `backend/agents/tests/test_model_providers.py` | 372 | Model provider tests |
+| `backend/agents/tests/test_personality_engine.py` | 238 | T2 personality tests |
+| `backend/agents/tests/test_deep_reasoning.py` | 370 | T3 deep reasoning tests |
+| `backend/agents/tests/test_decision_router.py` | 385 | Decision router tests |
+| **Total** | **2,356** | |
 
 ## Files Modified
 
-None. All sprint-2 work is new files.
+| File | Change | Reason |
+|------|--------|--------|
+| `backend/agents/genome.py` | Removed unused `field_validator` import | Sprint-25 audit LOW-01 |
+| `backend/agents/rules_engine.py` | Removed unused `field` import | Sprint-25 audit LOW-02 |
+| `backend/agents/agent_instance.py` | Removed unused `field` import | Sprint-25 audit LOW-03 |
+
+---
+
+## Technical Decisions
+
+1. **Module-level httpx import** -- All three providers import httpx at module level (not lazily inside methods). This ensures `patch("module.httpx.AsyncClient")` works correctly in tests. The SDD suggested lazy imports but module-level is more Pythonic and testable.
+
+2. **Anthropic health check avoids probe call** -- `AnthropicProvider.health_check()` only verifies that an API key is configured. It does not make a probe call to avoid burning tokens. Full validation occurs on first `generate()` call.
+
+3. **T3RateLimiter uses UTC date string for daily reset** -- `datetime.now(timezone.utc).strftime("%Y-%m-%d")` for reliable daily reset regardless of timezone. Uses `datetime.now(timezone.utc)` (not deprecated `utcnow()`).
+
+4. **T2 non-interference enforced structurally** -- `T2Output` is a frozen dataclass containing only strings. It is impossible for T2 to override T1's action because the types don't compose. This is verified by test `test_non_interference_with_t1`.
+
+5. **Per-agent rate limiters created lazily** -- `DeepReasoningEngine._rate_limiters` dict is populated on first call per agent. This avoids requiring agent registration upfront and naturally supports dynamic agent pools.
+
+6. **RoutedDecision uses `@dataclass` (not frozen)** -- Unlike T1Decision and T3Decision which are frozen, RoutedDecision is mutable because it is assembled incrementally during routing. T2 output is attached after initial construction.
+
+---
+
+## Acceptance Criteria Checklist (PRD Section 9b)
+
+- [x] T2 produces personality-flavoured output for all 6 archetypes
+- [x] T2 never overrides T1's action (expression only, verified by test)
+- [x] T3 produces structured reasoning (reasoning_summary + evidence_refs + decision_trace) for escalated decisions
+- [x] Router correctly routes: high-confidence T1 -> use T1Decision; low-confidence -> escalate to T3
+- [x] Ollama provider connects to local Qwen 3.5 4B/9B with structured output
+- [x] Ollama fallback: T1 degrades to T1-RULES when Ollama unavailable
+- [x] Mistral provider generates archetype-specific personality output
+- [x] Mistral fallback: generic template when API unavailable
+- [x] Anthropic provider generates deep reasoning output
+- [x] T3 rate limiting enforced (max calls per agent per day)
+- [x] Anthropic fallback: router falls back to T1 when API unavailable or rate-limited
+- [x] Decision traces record correct `tier_used` ("T1-RULES", "T1-LOCAL-LLM", "T3")
+- [x] No modifications to `backend/market/`, `backend/engines/`, `backend/osint/`, `backend/services/`
+- [x] Scoped regression: all 134 tests pass
+- [x] 25+ new Sprint 2 tests pass (mocked providers) -- 60 new tests (2.4x minimum)
 
 ---
 
 ## Known Issues
 
-1. **`datetime.utcnow()` deprecation** — Used in `OracleInvocationResponse.responded_at` and `CommitmentProtocol.create_receipt()`. Python 3.12+ warns; should migrate to `datetime.now(UTC)`. Non-blocking.
-
-2. **Test suite duration (166s)** — Primarily from actual `asyncio.sleep()` waits in retry and timeout tests. Could be reduced with mock time but tests are integration-honest as-is.
+None. All acceptance criteria met. All tests pass. No regressions.
 
 ---
 
-## Sprint 2 Success Criteria Verification
+## Concerns / Deviations
 
-- [x] ReplayEngine completes full lifecycle with mock adapter
-- [x] Dataset hash mismatch correctly halts execution
-- [x] >20% failure rate caps certificate at UNVERIFIED
-- [x] Resolution state machine follows escalation paths
-- [x] Evidence bundle passes minimum-file validation
-- [x] Tier assignment correct at all boundary conditions
-- [x] Constraint yielding gate blocks UNVERIFIED + skip
-- [x] All unit tests passing (212/212)
+1. **SDD specified lazy httpx imports; implementation uses module-level** -- The SDD showed `import httpx` inside method bodies. Implementation uses module-level imports instead, which is standard Python practice and enables straightforward mock patching. No functional difference.
+
+2. **T2Output.diplomatic_message not used by router** -- The `diplomatic_message` field on T2Output exists for future Diplomat-archetype-specific messaging but is not populated by any current code path. It defaults to None.

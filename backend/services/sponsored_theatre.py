@@ -233,7 +233,7 @@ class SponsoredTheatreService:
 
         return {
             "theatre_id": theatre_id,
-            "status": "COMMITTED",
+            "status": "TRADING",
             "commitment_hash": record.theatre_commitment_hash,
             "lmsr_commitment_hash": market_state.market.commitment_hash if market_state else None,
             "lmsr_hash_verified": lmsr_hash_valid,
@@ -293,7 +293,7 @@ class SponsoredTheatreService:
             "oracle_config": {
                 "committed_sources": sorted(config.committed_sources),
                 "resolution_date": config.resolution_date.isoformat(),
-                "corroboration_minimum": 1,
+                "corroboration_minimum": config.corroboration_minimum,
             },
             "theatre_metadata": {
                 "template_id": "SPONSORED_THEATRE",

@@ -43,6 +43,13 @@ class CalibrationCertificate:
     schema_version: str
 
 
+class CertificateSigningRefused(Exception):
+    """Raised when the certificate pipeline refuses to sign a result.
+
+    Typically caused by local_mode=True (mock adapter data).
+    """
+
+
 class CertificatePipeline:
     """Generates and verifies CalibrationCertificates.
 
@@ -57,16 +64,34 @@ class CertificatePipeline:
         self,
         resolution_result: TheatreResolutionResult,
         settlement_report: SettlementReport,
+        local_mode: bool = False,
     ) -> CalibrationCertificate:
         """Generate a CalibrationCertificate from resolution + settlement.
 
-        1. Build criteria_breakdown from criterion_scores
-        2. Serialise source_manifest
-        3. Build corroboration_status
-        4. Build counter_signal_results (all 11 UNAVAILABLE / INTELLIGENCE_GAP)
-        5. Set verification_tier to "UNVERIFIED"
-        6. Assemble CalibrationCertificate
+        Args:
+            resolution_result: Theatre resolution output.
+            settlement_report: Market settlement output.
+            local_mode: If True, the run used a mock adapter. Certificate
+                signing is refused — mock data is not promotable.
+
+        Raises:
+            CertificateSigningRefused: When local_mode is True.
+
+        Steps:
+        1. Check local_mode guard
+        2. Build criteria_breakdown from criterion_scores
+        3. Serialise source_manifest
+        4. Build corroboration_status
+        5. Build counter_signal_results (all 11 UNAVAILABLE / INTELLIGENCE_GAP)
+        6. Set verification_tier to "UNVERIFIED"
+        7. Assemble CalibrationCertificate
         """
+        if local_mode:
+            raise CertificateSigningRefused(
+                "Certificate signing refused: local_mode=True. "
+                "Run used a mock adapter — mock data is not promotable to a "
+                "signed certificate. Use a live adapter for certificate runs."
+            )
         # 1. Criteria breakdown
         criteria_breakdown = []
         for cs in resolution_result.criterion_scores:
@@ -197,7 +222,7 @@ class CertificatePipeline:
         _check(13, cs_fields_ok, "counter_signal_results entries have required fields")
 
         # 14. verification_tier is known value
-        known_tiers = {"UNVERIFIED", "BACKTESTED", "VERIFIED"}
+        known_tiers = {"UNVERIFIED", "BACKTESTED", "PROVEN"}
         _check(14, certificate.verification_tier in known_tiers,
                f"verification_tier is known value: {certificate.verification_tier}")
 

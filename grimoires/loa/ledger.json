@@ -327,11 +327,43 @@
           "tasks": 10
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-013",
+      "label": "Agent Runtime — Four-Tier Hierarchical Intelligence",
+      "status": "active",
+      "created_at": "2026-03-03T19:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 25,
+          "label": "T0 Context Compiler + T1 Rules Engine",
+          "status": "completed",
+          "tasks": 7
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 26,
+          "label": "T2 Personality + T3 Deep Reasoning + Routing",
+          "status": "completed",
+          "tasks": 7
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 27,
+          "label": "First Autonomous Agent + ADK + Theatre Wiring",
+          "status": "completed",
+          "tasks": 7
+        }
+      ]
     }
   ],
-  "active_cycle": null,
+  "active_cycle": "cycle-013",
   "active_bugfix": null,
-  "global_sprint_counter": 24,
+  "global_sprint_counter": 27,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

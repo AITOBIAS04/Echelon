@@ -3,7 +3,7 @@
 > For Loa context ingestion. This file describes the full build sequence.
 > Each cycle has a companion `echelon_cycle_NNN.md` with detailed scope.
 > UK British English throughout.
-> **Last updated:** 2 March 2026
+> **Last updated:** 3 March 2026
 
 ---
 
@@ -93,86 +93,134 @@ The canonical architecture document is `Echelon_System_Bible_v13.md` (in Obsidia
 | 032 | Observer E2E Integration | — | Wired Community Oracle to Theatre, real calibration certificate | — |
 | 033 | Two-Rail Product Theatres | — | Deterministic scoring for Product Theatre templates | — |
 
-**Total tests:** 447+ pipeline + 70 MCP v0.8 + 69 MCP v1.0 = 580+ passing tests.
+**Total tests:** 513 passed (baseline regression, 3 March 2026).
+
+---
+
+## Completed Cycles (Recent)
+
+### Cycle-010a: LMSR Market Engine (Local Mode) ✓
+
+**Depends on:** Cycle-008/009 MCP surface (echelon_verify, echelon_hash available)
+**Sprints:** 2
+
+Pure LMSR cost function, market lifecycle state machine, trade execution, position tracking, resolution/settlement. Four quant template acceptance tests under LOCAL_MODE.
+
+### Cycle-010b: Engines + Heartbeat ✓
+
+**Depends on:** Cycle-010a (LMSR engine proven in local mode)
+
+Butterfly Engine (wing flaps, stability impact), Paradox Engine (logic gap scanning, spawn/extraction, RealitySignalProvider interface), Entropy Engine (temporal decay). Heartbeat scheduler (AGENT 5s → MARKET 10s → PARADOX 30s → ENTROPY 60s).
+
+### Cycle-011: WorldMonitor Integration ✓
+
+**Depends on:** Cycle-010b (engines for real-time processing)
+
+LiveOSINTRealityProvider wired to Paradox Engine. Three WM domain endpoints (CII, market snapshot, maritime anomaly). Evidence bundle collection with HTTP transcript receipts. Provisional corroboration (WM-only, 0.7 penalty). Counter-signal scaffolding (all UNAVAILABLE, INTELLIGENCE_GAP). Mock-only testing.
+
+### Cycle-012: Sponsored Theatre End-to-End ✓
+
+**Depends on:** Cycle-010a (LMSR), Cycle-010b (engines), Cycle-009 (echelon_status), Cycle-011 (WM pipeline)
+**Sprints:** 2 (sprints 23–24) | **Tests:** 83
+
+First externally-commissioned Theatre. Full sponsor workflow and end-to-end lifecycle in local mode: Theatre creation → commitment → trading (stub agents) → OSINT evidence → resolution → settlement → certificate delivery → RLMF export. Stub agents only — no autonomous decisions.
 
 ---
 
 ## Active Cycle
 
-### Cycle-010a: LMSR Market Engine (Local Mode)
+### Cycle-013: Agent Runtime (T0/T1/T2/T3 + ADK)
 
-**Depends on:** Cycle-008/009 MCP surface (echelon_verify, echelon_hash available)
-**Context file:** `grimoires/loa/context/echelon_cycle_010a.md`
-**Sprints:** 2
+**Depends on:** Cycle-012 (defines agent interface via stubs)
+**Context file:** `grimoires/loa/context/echelon_cycle_013.md`
+**Sprints:** 3
 
-Pure mathematical engine + state management. No chain, no engines, no concurrency.
+The core agent execution loop — four-tier hierarchical intelligence replacing the three-tier model from System Bible v13 §IX. T0 (context/genome, 0ms, free) → T1 (Qwen 3.5 4B–9B via Ollama, <100ms, local) → T2 (Mistral creative, 200–500ms, personality) → T3 (Sonnet/Opus, 1–5s, deep reasoning). Google ADK for agent framework, novelty threshold routing.
 
-- **Sprint 1:** LMSR core (cost/price/trade functions, log-sum-exp), MarketState, lifecycle state machine, commitment hash, oracle_config stub
-- **Sprint 2:** Trade execution (one-hot deltas, inventory constraint), positions (net_cashflow), resolution/settlement, four quant template acceptance tests under LOCAL_MODE
+- **Sprint 1:** AgentGenome model, T0 Context Compiler, T1 Rules Engine (parameterised per archetype), T1 decision logging, agent instance lifecycle, agent ↔ LMSR integration
+- **Sprint 2:** T2 Personality Engine (Mistral), T3 Deep Reasoning (Sonnet/Opus), novelty threshold router, Ollama/Mistral/Anthropic model providers with graceful fallback
+- **Sprint 3:** ADK Agent wrapper, first autonomous Shark agent (≥20 trades over 50 ticks, outperforms lower-skill archetype), multi-agent population (6 archetypes), Theatre integration, P&L aggregation, autonomous E2E test
+
+**What it unlocks:** autonomous market participants producing RLMF training data. The critical gap between infrastructure and a living system.
+
+**T1.5 exploration note:** Qwen 3.5 0.8B is worth testing during 013 as a potential layer between pure rules (T1-RULES) and full local inference (T1-LOCAL-LLM). Small enough to run on-device with near-zero latency, capable enough to handle simple classification ("is this signal anomalous?") that would otherwise need hand-written rules. If viable, agents gain more flexibility than rules at less cost than T2.
 
 ---
 
 ## Upcoming Cycles
 
-### Cycle-010b: Engines + Base Sepolia
+### Cycle-014: Bounded Inquiry Markets
 
-**Depends on:** Cycle-010a (LMSR engine proven in local mode)
+**Depends on:** Cycle-013 (agents) + Cycle-010a (LMSR) + Cycle-011 (evidence pipeline)
+**Sprints:** 2 (estimated)
 
-Wire Butterfly (wing flaps, stability impact), Paradox (logic gap scanning, spawn/extraction), Entropy (temporal decay). Heartbeat scheduler (AGENT 5s → MARKET 10s → PARADOX 30s → ENTROPY 60s). Base Sepolia deployment for commitment hashes and settlement proofs. VRF integration. Rerun quant templates in FULL mode (replace LOCAL_MODE stubs with real engines).
+The five inquiry classes (Investigation, Inspection, Audit, Survey, Scrutiny) as live markets with real agents. "Will this construct pass verification by [date]?" as a market with committed parameters, LMSR pricing, and agent participants. This is where RLMF generation starts — agents trading on verification outcomes produce the training data that's the commercial product.
 
-### Cycle-011: WorldMonitor Integration
+### Cycle-015: WorldMonitor Live Deployment + First Non-WM Collector
 
-**Depends on:** Cycle-010b (engines for real-time processing)
+**Depends on:** Cycle-011 (WM pipeline), Cycle-014 (bounded inquiries need real evidence)
+**Sprints:** 2 (estimated)
 
-Real-time OSINT dashboard endpoints feeding the Composed Oracle. CII endpoint, maritime anomaly detection, convergence signals. Enriches the Theatre evidence layer.
+Clone the WM fork, deploy locally, flip `@pytest.mark.live_wm` to enabled, verify mock-to-live transition. Then add one non-WM collector — Companies House API (free, no auth, UK jurisdiction, already in registry, settlement-eligible). Breaks the single-source corroboration limitation: WM + Companies House produces `corroboration_minimum_met: true` for UK corporate Theatres.
 
-### Cycle-012: Sponsored Theatre End-to-End
+### Cycle-016: Results Surface
 
-**Depends on:** Cycle-010a (LMSR), Cycle-009 (echelon_status)
+**Depends on:** Cycles 012–015
 
-First externally-commissioned Theatre. Theatre creation, sponsor onboarding, settlement. Requires LMSR market engine and MCP status surface.
+Full platform UI. By this point: live markets with agents, real OSINT evidence, bounded inquiries producing RLMF data, certificates generated continuously. The results surface shows: Theatres, markets, evidence, convergence alerts, Logic Gap status, certificates, agent P&L, audit trails.
 
-### Cycle-013: Results Surface
+**Design references:**
+- **kree8.studio** (Kree8 by Sprrrint) — premium SaaS/tech UI design agency. Use as primary visual language reference for the Results Surface. Dark, polished, modern aesthetic suited to data-dense professional tooling.
+- **Spatial Intelligence "God mode"** — globe view with geographic convergence zones, Logic Gap heat maps, and live market prices overlaid on geographic data. Google Photorealistic 3D Tiles as a potential rendering layer (paid API, usage-based pricing).
+- **Bounded Inquiry Console** (echelon-inquiry-console.pages.dev) — existing lightweight surface. Evaluate whether upgrading this with live market state from 010a/b should be an earlier deliverable (pre-016) to make the thesis visible sooner.
 
-**Depends on:** Cycles 010-012
+### Cycle-017: OSINT Registry Expansion
 
-Full platform UI — the whole Echelon cycle in one view. Paradox, bounded inquiries, certificates, audit, intelligence tools, market positions. By this point there is real data flowing through real markets with real verification.
+**Depends on:** Cycle-015 (live collectors proven)
+**Sprints:** 2 (estimated)
+
+Schema additions: `query_determinism` (settlement gate), `receipt_body_required` (POST/GraphQL receipt rule), `requires_legal_review` (paid source ToS constraint). Tier 2 source stubs: USA Spending, NIH RePORTER, UK Case Law, UK Parliament, AU Patents. Depth, not capability — makes existing Theatres more reliable but doesn't unlock new product surfaces.
+
+Detailed research notes: `echelon core arch/implement/osint_registry_expansion_research_notes.md`
 
 ---
 
-## Queued Work (Not Scheduled)
+## Dependency Graph
 
-### Registry Expansion Cycle
+```
+009 (MCP) ──────────────────────────────┐
+010a (LMSR) ─── 010b (Engines) ─── 011 (WM) ──── 012 (Sponsored Theatre)
+                                                        │
+                                                   013 (Agent Runtime)
+                                                        │
+                                                   014 (Bounded Inquiries)
+                                                        │
+                                        015 (WM Live + Non-WM Collector)
+                                                        │
+                                                   016 (Results Surface)
+                                                        │
+                                                   017 (Registry Expansion)
+```
 
-30+ new sources assessed across 7 domains. Three schema additions queued:
-- `query_determinism` (settlement gate)
-- `receipt_body_required` (POST/GraphQL receipt rule)
-- `requires_legal_review` (paid source ToS constraint)
-
-Detailed research notes in Obsidian: `Echelon Core Arch/Docs/implement/osint_registry_expansion_research_notes.md`
-
-### Agent Architecture Cycle
-
-Six archetypes per System Bible v13 §VIII. Hierarchical brain (Layer 1 heuristic → Layer 1.5 personality → Layer 2 narrative LLM). ERC-721 identity. Wallet integration. Decision loop against LMSR market. Depends on 010a/010b.
-
-### Paradox Engine + VRF Cycle
-
-Logic Gap calculation, circuit breakers, collusion detection, VRF perturbation injection, entropy pricing. Depends on LMSR + agents.
+**Key sequencing decision:** 013 (agents) and 014 (bounded inquiries) are separate cycles. Agents must be proven trading correctly in a controlled market before opening bounded inquiry markets. Combining them risks shipping both half-baked.
 
 ---
 
 ## Out of Scope (Post Core Cycles)
 
 - On-chain settlement contracts (Solidity, Base Mainnet)
+- On-chain commitment hash anchoring (Base Sepolia/Mainnet)
 - $ECHELON token deployment and burn mechanics
-- ERC-6551 token-bound agent wallets
-- Agent breeding and genealogy mechanics
+- ERC-721 agent identity NFTs and ERC-6551 token-bound wallets
+- Agent breeding, genealogy mechanics, evolutionary parameter adaptation
+- A2A inter-agent coordination (Diplomat coalitions, Spy intelligence sharing)
 - Social trading layer (copy trading, leaderboards, Butler integration)
 - Berachain PoL integration (eLP-TIMELINE receipt tokens)
-- Real OSINT provider contracts (Polygon.io, RavenPack, Dataminr, Spire Global)
+- Paid OSINT provider contracts (Polygon.io, RavenPack, Dataminr, Spire Global)
 - Hounfour runtime API integration (pending Soju confirmation of API surface)
 - Flash Forks (micro-event markets for sports/crypto domains)
 - finnNFT Soul certificate attachment (pending Soju confirmation of schema)
+- T1 fine-tuning on Echelon-specific data (trade patterns, CII interpretations)
 
 ---
 

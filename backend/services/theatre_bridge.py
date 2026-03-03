@@ -138,15 +138,17 @@ async def run_theatre_task(theatre_id: str) -> None:
         # Transition to ACTIVE
         await _transition_theatre_state(theatre_id, TheatreState.ACTIVE.value)
 
-        # Create mock adapter for background execution
-        # In production, this would be determined by adapter_type in template
+        # Create adapter for background execution
+        # local_mode=True when using mock adapter — certificates will not be signed
         adapter_type = ptc.get("adapter_type", "mock")
+        local_mode = adapter_type == "mock"
         if adapter_type == "mock":
             oracle_adapter = MockOracleAdapter()
         else:
             # For non-mock adapters, we'd instantiate the real adapter here
             # For now, fall back to mock
             oracle_adapter = MockOracleAdapter()
+            local_mode = True
 
         # Build scoring provider
         scoring_fn = SimpleScoringFunction()
@@ -203,74 +205,83 @@ async def run_theatre_task(theatre_id: str) -> None:
         now = datetime.utcnow()
         expiry = TierAssigner.compute_expiry(tier, now)
 
-        # Build certificate
-        scorer_version = version_pins.get("scorer_version", "v1")
-        methodology_version = version_pins.get("methodology_version", "1.0.0")
+        # Guard: refuse to build certificate from mock adapter data
+        cert_id = None
+        if local_mode:
+            logger.warning(
+                "Theatre %s used mock adapter (local_mode=True) — "
+                "certificate signing refused. Mock data is not promotable.",
+                theatre_id,
+            )
+        else:
+            # Build certificate
+            scorer_version = version_pins.get("scorer_version", "v1")
+            methodology_version = version_pins.get("methodology_version", "1.0.0")
 
-        cert_id = str(uuid.uuid4())
+            cert_id = str(uuid.uuid4())
 
-        db_cert = TheatreCertificate(
-            id=cert_id,
-            theatre_id=theatre_id,
-            template_id=template_id,
-            construct_id=construct_under_test,
-            criteria_json=criteria.model_dump(),
-            scores_json=replay_result.aggregate_scores,
-            composite_score=replay_result.composite_score,
-            replay_count=replay_result.replay_count,
-            evidence_bundle_hash=replay_result.dataset_hash,
-            ground_truth_hash=committed_dataset_hash,
-            construct_version=construct_version,
-            scorer_version=scorer_version,
-            methodology_version=methodology_version,
-            dataset_hash=replay_result.dataset_hash,
-            verification_tier=tier,
-            commitment_hash=commitment_hash or "",
-            issued_at=now,
-            expires_at=expiry,
-            theatre_committed_at=committed_at or now,
-            theatre_resolved_at=now,
-            ground_truth_source=ptc.get("ground_truth_source", "CUSTOM"),
-            execution_path=template_json.get("execution_path", "replay"),
-        )
+            db_cert = TheatreCertificate(
+                id=cert_id,
+                theatre_id=theatre_id,
+                template_id=template_id,
+                construct_id=construct_under_test,
+                criteria_json=criteria.model_dump(),
+                scores_json=replay_result.aggregate_scores,
+                composite_score=replay_result.composite_score,
+                replay_count=replay_result.replay_count,
+                evidence_bundle_hash=replay_result.dataset_hash,
+                ground_truth_hash=committed_dataset_hash,
+                construct_version=construct_version,
+                scorer_version=scorer_version,
+                methodology_version=methodology_version,
+                dataset_hash=replay_result.dataset_hash,
+                verification_tier=tier,
+                commitment_hash=commitment_hash or "",
+                issued_at=now,
+                expires_at=expiry,
+                theatre_committed_at=committed_at or now,
+                theatre_resolved_at=now,
+                ground_truth_source=ptc.get("ground_truth_source", "CUSTOM"),
+                execution_path=template_json.get("execution_path", "replay"),
+            )
 
-        # Persist certificate and episode scores
-        async with get_session() as session:
-            session.add(db_cert)
-            await session.flush()
+            # Persist certificate and episode scores
+            async with get_session() as session:
+                session.add(db_cert)
+                await session.flush()
 
-            # Persist episode scores
-            for ep in replay_result.episode_results:
-                db_score = TheatreEpisodeScore(
+                # Persist episode scores
+                for ep in replay_result.episode_results:
+                    db_score = TheatreEpisodeScore(
+                        id=str(uuid.uuid4()),
+                        theatre_id=theatre_id,
+                        certificate_id=cert_id,
+                        episode_id=ep.episode_id,
+                        invocation_status=ep.invocation_status,
+                        latency_ms=ep.latency_ms,
+                        scores_json=ep.scores or {},
+                        composite_score=ep.composite_score or 0.0,
+                        scored_at=now,
+                    )
+                    session.add(db_score)
+
+                # Add audit event
+                audit_event = TheatreAuditEvent(
                     id=str(uuid.uuid4()),
                     theatre_id=theatre_id,
-                    certificate_id=cert_id,
-                    episode_id=ep.episode_id,
-                    invocation_status=ep.invocation_status,
-                    latency_ms=ep.latency_ms,
-                    scores_json=ep.scores or {},
-                    composite_score=ep.composite_score or 0.0,
-                    scored_at=now,
+                    event_type="theatre_resolved",
+                    from_state=TheatreState.SETTLING.value,
+                    to_state=TheatreState.RESOLVED.value,
+                    detail_json={
+                        "certificate_id": cert_id,
+                        "composite_score": replay_result.composite_score,
+                        "verification_tier": tier,
+                        "replay_count": replay_result.replay_count,
+                    },
                 )
-                session.add(db_score)
+                session.add(audit_event)
 
-            # Add audit event
-            audit_event = TheatreAuditEvent(
-                id=str(uuid.uuid4()),
-                theatre_id=theatre_id,
-                event_type="theatre_resolved",
-                from_state=TheatreState.SETTLING.value,
-                to_state=TheatreState.RESOLVED.value,
-                detail_json={
-                    "certificate_id": cert_id,
-                    "composite_score": replay_result.composite_score,
-                    "verification_tier": tier,
-                    "replay_count": replay_result.replay_count,
-                },
-            )
-            session.add(audit_event)
-
-        # Transition to RESOLVED with certificate
+        # Transition to RESOLVED (with or without certificate)
         await _transition_theatre_state(
             theatre_id,
             TheatreState.RESOLVED.value,

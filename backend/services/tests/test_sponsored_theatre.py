@@ -394,7 +394,7 @@ class TestCommitmentProtocol:
         review = service.create(valid_config)
         result = service.commit(review.theatre_id)
 
-        assert result["status"] == "COMMITTED"
+        assert result["status"] == "TRADING"
         assert result["commitment_hash"] == review.commitment_hash
         assert result["tx_hash"].startswith("0xmock_commit_")
 

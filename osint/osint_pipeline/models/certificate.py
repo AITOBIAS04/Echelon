@@ -41,7 +41,7 @@ class CalibrationCertificate(BaseModel):
 
     # Verification result
     verification_tier: str = Field(
-        description="UNVERIFIED | BACKTESTED | LIVE_VERIFIED",
+        description="UNVERIFIED | BACKTESTED | PROVEN",
     )
     composite_score: float = Field(
         ge=0.0, le=1.0,

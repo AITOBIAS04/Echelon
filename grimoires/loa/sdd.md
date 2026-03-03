@@ -1,27 +1,27 @@
-# SDD: Sponsored Theatre End-to-End
+# SDD: Agent Runtime -- Four-Tier Hierarchical Intelligence
 
-**Cycle**: 012
+**Cycle**: 013
 **Version**: 1.0
 **Date**: 2026-03-03
 **PRD**: `grimoires/loa/prd.md` v1.0
-**Predecessor**: Cycle-011 SDD (archived)
+**Predecessor**: Cycle-012 SDD (archived)
 
 ---
 
 ## 1. Executive Summary
 
-Cycle-012 integrates every subsystem built across Cycles 008-011 into a single end-to-end market lifecycle: sponsor onboarding, LMSR market creation, commitment protocol, stub agent trading, OSINT evidence collection, Composed Oracle resolution, deterministic settlement, certificate generation, RLMF training data export, and sponsor delivery.
+Cycle-013 replaces the deterministic stub agents from Cycle-012 with a four-tier hierarchical intelligence system. Six autonomous agent archetypes trade in an LMSR market, producing decision traces rich enough to train future agents via RLMF export.
 
 **Key architectural decisions**:
-1. **New service layer, not new engine** -- all integration happens in `backend/services/` and `backend/schemas/`. Zero modifications to `backend/market/` (LMSR engine), `backend/engines/paradox.py` (Paradox Engine), or `backend/osint/` (evidence pipeline).
-2. **Pydantic v2 for sponsor-facing schemas** -- `SponsoredTheatreConfig` and `SponsorReviewPackage` use Pydantic v2 for validation and serialisation. Internal dataclasses remain stdlib `@dataclass`.
-3. **Bridge pattern for LMSR-Theatre coupling** -- `MarketTheatreBridge` wraps `MarketLifecycle`, `TradingEngine`, `PositionManager`, and `ResolutionEngine` behind a Theatre-aware facade. No LMSR code modified.
-4. **Stub agents as interface proof** -- six deterministic agent stubs define the trade-execution interface that Cycle-013's autonomous agents must satisfy. Strategies are pure functions of market state and evidence.
-5. **Source manifest as commitment artefact** -- OSINT source manifests are validated against the registry, included in the commitment hash, and carried through to the certificate.
-6. **Certificate pipeline is single-pass** -- `TheatreResolutionResult` + `SettlementReport` produce a v1.0.0 certificate in one synchronous computation. The certificate passes all 21 `echelon_verify` checks.
-7. **Mock-only OSINT** -- WorldMonitor is not deployed locally. All evidence collection uses JSON fixtures. Tests marked `@pytest.mark.live_wm` for future integration.
-8. **On-chain anchor is stubbed** -- `MockSepoliaClient` returns deterministic "local_mode" transaction hashes. No blockchain interaction.
-9. **MEDIUM-1 carryover fix** -- `p_reality=None` guard added to `ParadoxEngine.scan()` path. The only modification to `backend/engines/`.
+1. **New agent modules, not engine modifications** -- all new code lives in `backend/agents/` and one new file `backend/services/agent_theatre_bridge.py`. Zero modifications to `backend/market/`, `backend/engines/`, `backend/osint/`, or `backend/services/` (012 code).
+2. **Pydantic v2 for genome and trace schemas, stdlib dataclass for internal state** -- `AgentGenome` and `DecisionTrace` use Pydantic v2 for validation, serialisation, and RLMF compatibility. Internal ephemeral state (`T0Context`, `T1Decision`, `T3Decision`) uses stdlib `@dataclass` with `frozen=True` where appropriate.
+3. **AgentGenome is new, coexists with existing schemas.py** -- the existing `schemas.py` has `FinancialAgent` with breeding mechanics and a different archetype enum. `AgentGenome` is a parallel Pydantic v2 model in `genome.py` purpose-built for the T0/T1/T2/T3 pipeline. No modification to `schemas.py`.
+4. **Agent instance is new, complements existing instance_manager.py** -- the existing `InstanceManager` manages ACP-oriented job routing with `GenesisIdentity` objects. The new `AgentInstance` in `agent_instance.py` is Theatre-scoped with `spawn/tick/settle` semantics. No modification to `instance_manager.py`.
+5. **T1 Rules Engine replaces nothing, extends everything** -- the existing `brain.py` has `RuleBasedBrain` and `AgentBrain` for market-oriented decisions. The new `rules_engine.py` implements the full archetype behaviour matrix with parameterised decisions driven by genome parameters. The existing `brain.py` is untouched.
+6. **Provider interface as abstract base class** -- `BaseModelProvider` defines `generate()`, `health_check()`, and `is_available()`. Three implementations (Ollama, Mistral, Anthropic) with graceful fallback. All providers mocked in default tests.
+7. **ADK as thin adapter, tested last** -- the T0/T1/T2/T3 pipeline is ADK-independent. Sprint 1-2 tests use `FakeADKRunner`. Sprint 3 introduces `google.adk` imports behind `@pytest.mark.requires_adk`. If ADK proves inadequate, only the wrapper changes.
+8. **DecisionTrace feeds existing RLMF pipeline** -- `DecisionTrace` (Pydantic v2) serialises to dicts compatible with `AgentTrace.decision_traces` in `backend/services/rlmf_export.py`. No RLMF code modified.
+9. **Bridge pattern preserves 012 compatibility** -- `AgentTheatreBridge` wraps `StubAgentSpawner.execute_tick()` semantics with autonomous agent `tick()` calls. The same `MarketTheatreBridge`, `TradingEngine`, and `PositionManager` are reused.
 
 ---
 
@@ -30,163 +30,170 @@ Cycle-012 integrates every subsystem built across Cycles 008-011 into a single e
 ### 2.1 Component Topology
 
 ```
-                                    Sponsor
-                                      │
-                                      ▼
-                          ┌──────────────────────┐
-                          │  Sponsored Theatre    │
-                          │  API Routes           │
-                          │  (sponsored_theatre   │
-                          │   _routes.py)         │
-                          └──────────┬───────────┘
-                                     │
-                                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    SERVICE LAYER (NEW in 012)                    │
-│                                                                 │
-│  ┌─────────────────┐  ┌──────────────────┐  ┌───────────────┐  │
-│  │ SponsoredTheatre│  │ MarketTheatre    │  │ StubAgents    │  │
-│  │ Service         │  │ Bridge           │  │ Spawner       │  │
-│  │                 │  │                  │  │               │  │
-│  │ • create()      │  │ • create_market  │  │ • spawn()     │  │
-│  │ • review()      │  │   _for_theatre() │  │ • execute     │  │
-│  │ • commit()      │  │ • get_market     │  │   _tick()     │  │
-│  │                 │  │   _state()       │  │               │  │
-│  └────────┬────────┘  │ • transition     │  └───────┬───────┘  │
-│           │           │   _market()      │          │          │
-│           │           └────────┬─────────┘          │          │
-│           │                    │                    │          │
-│  ┌────────┴────────┐          │          ┌─────────┴────────┐ │
-│  │SourceManifest   │          │          │ TheatreEvidence  │ │
-│  │ Builder         │          │          │ Collector        │ │
-│  └────────┬────────┘          │          └─────────┬────────┘ │
-│           │                   │                    │          │
-│  ┌────────┴────────────────────────────────────────┴────────┐ │
-│  │              Theatre Resolution Engine                    │ │
-│  │  • collect_final_evidence()                               │ │
-│  │  • evaluate_oracle()  → winning_outcome_index             │ │
-│  │  • settle()                                               │ │
-│  └────────────────────────────┬──────────────────────────────┘ │
-│                               │                                │
-│  ┌────────────────────────────┼──────────────────────────────┐ │
-│  │              Post-Settlement Pipeline                      │ │
-│  │                            │                               │ │
-│  │  ┌──────────────┐  ┌──────┴───────┐  ┌────────────────┐  │ │
-│  │  │ Certificate  │  │ RLMF Export  │  │ Sponsor        │  │ │
-│  │  │ Pipeline     │  │ Generator    │  │ Delivery       │  │ │
-│  │  │              │  │              │  │ Package        │  │ │
-│  │  │ v1.0.0       │  │ v2.0.1       │  │                │  │ │
-│  │  │ schema       │  │ schema       │  │ cert + evidence│  │ │
-│  │  │ 21 checks    │  │              │  │ + RLMF + hash  │  │ │
-│  │  └──────────────┘  └──────────────┘  └────────────────┘  │ │
-│  └───────────────────────────────────────────────────────────┘ │
-│                                                                 │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-          ┌──────────────────┼──────────────────┐
-          │                  │                  │
-          ▼                  ▼                  ▼
-┌─────────────────┐ ┌───────────────┐ ┌─────────────────┐
-│ backend/market/  │ │backend/engines/│ │ backend/osint/  │
-│ (010a — frozen)  │ │(010b — frozen) │ │ (011 — frozen)  │
-│                  │ │                │ │                  │
-│ MarketLifecycle  │ │ ButterflyEngine│ │ CollectionRunner │
-│ LMSREngine       │ │ ParadoxEngine  │ │ CorroborationEng│
-│ TradingEngine    │ │ EntropyEngine  │ │ CounterSignalEval│
-│ PositionManager  │ │ Heartbeat      │ │ Scorer           │
-│ ResolutionEngine │ │ VRFProvider    │ │ RegistryLoader   │
-│ MarketCommitment │ │ LogicGapCalc   │ │ LiveOSINTReality │
-│                  │ │                │ │ Provider         │
-└─────────────────┘ └───────────────┘ └─────────────────┘
-          │                                     │
-          └─────────────────┬───────────────────┘
-                            │
-                            ▼
-                  ┌──────────────────┐
-                  │ backend/chain/   │
-                  │ MockSepoliaClient│
-                  │ (stubbed anchor) │
-                  └──────────────────┘
+                                                          Model Providers
+                                                    ┌─────────────────────────┐
+                                                    │  ┌───────────────────┐  │
+                                                    │  │ Ollama (T1)       │  │
+                                                    │  │ Qwen 3.5 4B/9B   │  │
+                                                    │  │ localhost:11434   │  │
+                                                    │  └───────────────────┘  │
+                                                    │  ┌───────────────────┐  │
+                                                    │  │ Mistral (T2)      │  │
+                                                    │  │ Creative variant  │  │
+                                                    │  │ api.mistral.ai    │  │
+                                                    │  └───────────────────┘  │
+                                                    │  ┌───────────────────┐  │
+                                                    │  │ Anthropic (T3)    │  │
+                                                    │  │ Sonnet/Opus       │  │
+                                                    │  │ api.anthropic.com │  │
+                                                    │  └───────────────────┘  │
+                                                    └────────────┬────────────┘
+                                                                 │
+┌────────────────────────────────────────────────────────────────┼──────────────────┐
+│                    AGENT RUNTIME (NEW in 013)                  │                  │
+│                                                                │                  │
+│  ┌──────────────┐  ┌──────────────────┐  ┌────────────────────┼───────────────┐  │
+│  │ AgentGenome  │  │ Context Compiler │  │     Decision Router │               │  │
+│  │ (genome.py)  │  │ (context_       │  │   (decision_router.py)              │  │
+│  │              │  │  compiler.py)    │  │                     │               │  │
+│  │ Pydantic v2  │  │                  │  │  T0 ──→ T1 ──→ T2? │               │  │
+│  │ 8 params     ├──┤ AgentGenome +    │  │         │           │               │  │
+│  │ per archetype│  │ TheatreConfig +  │  │         └── T3? ◄───┘               │  │
+│  │              │  │ MarketState      │  │                                     │  │
+│  └──────────────┘  │      │           │  └─────────────────────────────────────┘  │
+│                    │      ▼           │                                            │
+│                    │ T0Context        │  ┌─────────────────────────────────────┐  │
+│                    │ (frozen          │  │          Tier Engines               │  │
+│                    │  dataclass)      │  │                                     │  │
+│                    │ SHA-256 hash     │  │  ┌───────────────┐ ┌────────────┐  │  │
+│                    └──────────────────┘  │  │ T1 Rules      │ │ T2 Person- │  │  │
+│                                         │  │ Engine        │ │ ality      │  │  │
+│  ┌──────────────┐                       │  │ (rules_       │ │ Engine     │  │  │
+│  │ Agent        │                       │  │  engine.py)   │ │ (personal- │  │  │
+│  │ Instance     │                       │  │               │ │  ity_      │  │  │
+│  │ (agent_      │                       │  │ Per-archetype │ │  engine.py)│  │  │
+│  │  instance.py)│                       │  │ parameterised │ │            │  │  │
+│  │              │                       │  │ decision logic│ │ Expression │  │  │
+│  │ spawn()      │                       │  └───────────────┘ │ only       │  │  │
+│  │ tick()       │                       │  ┌───────────────┐ └────────────┘  │  │
+│  │ settle()     │                       │  │ T3 Deep       │                 │  │
+│  │              │                       │  │ Reasoning     │                 │  │
+│  └──────┬───────┘                       │  │ (deep_        │                 │  │
+│         │                               │  │  reasoning.py)│                 │  │
+│         │                               │  │               │                 │  │
+│         │                               │  │ Rate-limited  │                 │  │
+│         │                               │  │ Cost-bounded  │                 │  │
+│         │                               │  └───────────────┘                 │  │
+│         │                               └─────────────────────────────────────┘  │
+│         │                                                                        │
+│  ┌──────┴──────────────────────┐  ┌───────────────────────────────────────────┐  │
+│  │ DecisionTrace               │  │ ADK Layer (Sprint 3 only)                │  │
+│  │ (decision_trace.py)         │  │                                           │  │
+│  │                             │  │  ┌──────────────┐  ┌───────────────────┐  │  │
+│  │ Pydantic v2                 │  │  │ EchelonAgent │  │ SharkV1           │  │  │
+│  │ BEAUVOIR-compliant          │  │  │ (adk/        │  │ (adk/shark_v1.py) │  │  │
+│  │ RLMF-compatible             │  │  │  echelon_    │  │                   │  │  │
+│  │                             │  │  │  agent.py)   │  │ MEGALODON variant │  │  │
+│  └─────────────────────────────┘  │  └──────────────┘  └───────────────────┘  │  │
+│                                   │                                           │  │
+│                                   │  FakeADKRunner (Sprint 1-2 testing)       │  │
+│                                   └───────────────────────────────────────────┘  │
+│                                                                                  │
+└──────────────────────────────────┬───────────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                    BRIDGE LAYER                                                  │
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
+│  │ AgentTheatreBridge (backend/services/agent_theatre_bridge.py)               │ │
+│  │                                                                             │ │
+│  │ • spawn_agents(theatre_id, genome_configs) -> list[AgentInstance]           │ │
+│  │ • execute_tick(agents, market, trading_engine, pos_mgr, evidence, tick)     │ │
+│  │ • settle_agents(agents, settlement_report) -> list[AgentSettlementResult]  │ │
+│  │ • collect_decision_traces() -> list[DecisionTrace]                         │ │
+│  └─────────────────────────────────────────────────────────────────────────────┘ │
+│                                                                                  │
+└──────────────────────────────────┬───────────────────────────────────────────────┘
+                                   │
+          ┌────────────────────────┼────────────────────────┐
+          │                        │                        │
+          ▼                        ▼                        ▼
+┌─────────────────┐  ┌───────────────────┐  ┌─────────────────────┐
+│ backend/market/  │  │ backend/engines/  │  │ backend/services/   │
+│ (010a -- frozen) │  │ (010b -- frozen)  │  │ (012 -- frozen)     │
+│                  │  │                   │  │                     │
+│ LMSREngine       │  │ HeartbeatScheduler│  │ SponsoredTheatre    │
+│ TradingEngine    │  │ ButterflyEngine   │  │ MarketTheatreBridge │
+│ PositionManager  │  │ ParadoxEngine     │  │ StubAgentSpawner    │
+│ ResolutionEngine │  │ EntropyEngine     │  │ TheatreResolution   │
+│ MarketLifecycle  │  │                   │  │ CertificatePipeline │
+│ MarketCommitment │  │                   │  │ RLMFExportGenerator │
+└─────────────────┘  └───────────────────┘  └─────────────────────┘
 ```
 
-### 2.2 Data Flow — Full Lifecycle
+### 2.2 Data Flow -- Agent Decision Tick
 
 ```
-1. COMMISSION
-   Sponsor → SponsoredTheatreConfig → Theatre Creation Service
-                                       │
-                                       ├─→ Validate sources against registry
-                                       ├─→ Build source manifest
-                                       ├─→ Create MarketState via MarketLifecycle.create_market()
-                                       ├─→ Generate TheatreTemplate
-                                       └─→ Return SponsorReviewPackage
-
-2. COMMITMENT
-   Sponsor → commit() → MarketCommitment.compute_hash()
-                         │
-                         ├─→ LMSR params (b, fee_schedule, n_outcomes, outcome_labels)
-                         ├─→ Oracle config (committed_sources, resolution_date, corroboration_minimum)
-                         └─→ Theatre metadata (template_id, version pins)
-                         │
-                         └─→ Freeze parameters → MarketPhase.COMMITTED
-
-3. TRADING
-   MarketLifecycle.open_trading() → MarketPhase.TRADING
-                                     │
-                                     ├─→ StubAgents.execute_tick(market_state, evidence)
-                                     │    └─→ TradingEngine.execute_trade() per agent decision
-                                     │
-                                     └─→ TheatreEvidence.collect_heartbeat()
-                                          └─→ LiveOSINTRealityProvider (mock fixtures)
-                                               └─→ Evidence stored per collection timestamp
-
-4. RESOLUTION
-   resolution_date reached → TheatreResolutionEngine.resolve()
-                              │
-                              ├─→ Final evidence snapshot
-                              ├─→ Composed Oracle evaluation
-                              │    ├─→ CorroborationEngine.evaluate()
-                              │    ├─→ CounterSignalEvaluator.evaluate()
-                              │    └─→ Scorer.score() → OracleOutput
-                              │
-                              ├─→ winning_outcome_index from composite_score thresholds
-                              ├─→ MarketLifecycle.begin_resolution(winning_outcome)
-                              └─→ ResolutionEngine.settle() → SettlementReport
-
-5. SETTLEMENT → CERTIFICATE → DELIVERY
-   SettlementReport + TheatreResolutionResult
+1. TICK ENTRY
+   HeartbeatScheduler fires "agent" cadence (5s)
      │
-     ├─→ CertificatePipeline.generate()
-     │    └─→ v1.0.0 schema, 21 echelon_verify checks
+     └─→ AgentTheatreBridge.execute_tick(agents, market, engine, pos_mgr, evidence, tick)
+
+2. PER-AGENT DECISION
+   For each AgentInstance:
      │
-     ├─→ RLMFExport.generate()
-     │    └─→ v2.0.1 schema
+     ├─→ T0: ContextCompiler.compile(genome, market_state, position_state, theatre_config)
+     │        └─→ T0Context (frozen dataclass, SHA-256 hash)
      │
-     └─→ SponsorDelivery.assemble()
-          └─→ SponsorDeliveryPackage (cert, evidence, RLMF, hash)
+     ├─→ T1: RulesEngine.decide(t0_context)
+     │        └─→ T1Decision (action, confidence, reasoning_trace, pattern_name)
+     │
+     ├─→ Router: DecisionRouter.route(t0_context, t1_decision)
+     │        │
+     │        ├─→ confidence >= novelty_threshold?
+     │        │     YES: use T1Decision
+     │        │     └─→ optionally run T2 for expression
+     │        │
+     │        └─→ confidence < novelty_threshold?
+     │              YES: escalate to T3
+     │              ├─→ T3 available and under rate limit?
+     │              │     YES: DeepReasoning.reason(full_context) → T3Decision
+     │              │     NO:  fall back to T1Decision with low_confidence flag
+     │              └─→ T3Decision or T1Decision (fallback)
+     │
+     ├─→ DecisionTrace: record tick_id, agent_id, tier_used, action, confidence,
+     │                   pattern_name, options_considered, reasoning_summary,
+     │                   evidence_refs, t0_context_hash
+     │
+     └─→ TradeIntent: if action != HOLD:
+              │
+              ├─→ validate against position limits (T0 constraints)
+              └─→ TradingEngine.execute_trade(market, agent_id, outcome_index, shares)
+                   └─→ PositionManager.update_position(trade)
+
+3. TICK OUTPUT
+   └─→ list[DecisionTrace] accumulated for RLMF export
 ```
 
-### 2.3 Phase State Machine
-
-The Theatre lifecycle maps to `MarketPhase` with additional sponsor-level semantics:
+### 2.3 Tier Cost Profile
 
 ```
-         Sponsor Lifecycle         LMSR MarketPhase
-         ─────────────────         ────────────────
-         COMMISSION         ───→   CREATED
-              │
-         COMMITMENT         ───→   COMMITTED
-              │
-         TRADING            ───→   TRADING
-              │
-         RESOLUTION         ───→   RESOLVING
-              │
-         SETTLEMENT         ───→   SETTLED
-              │
-         DELIVERY           ───→   (post-SETTLED — certificate generated)
+     T0                    T1                    T2                  T3
+  ┌─────────┐        ┌──────────┐         ┌──────────┐       ┌──────────┐
+  │ Context │        │ Fast     │         │ Personal-│       │ Deep     │
+  │ Compile │        │ Reasoning│         │ ity      │       │ Reasoning│
+  │         │        │          │         │          │       │          │
+  │ Cost: 0 │        │ Cost: ~0 │         │ Cost: $  │       │ Cost: $$$│
+  │ Time: 0 │        │ Time:<1ms│         │ Time:200-│       │ Time:1-5s│
+  │         │        │ (rules)  │         │  500ms   │       │          │
+  │ Always  │        │ <100ms   │         │ Optional │       │ Rare     │
+  │ runs    │        │ (LLM)    │         │ express- │       │ escalated│
+  │         │        │ Always   │         │ ion only │       │ decisions│
+  │         │        │ runs     │         │          │       │          │
+  └─────────┘        └──────────┘         └──────────┘       └──────────┘
+    100%               100%                 ~10%                ~2-5%
 ```
-
-All transitions are forward-only. `MarketLifecycle` enforces the constraint. No new phases are introduced.
 
 ---
 
@@ -194,1502 +201,2268 @@ All transitions are forward-only. `MarketLifecycle` enforces the constraint. No 
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
-| Language | Python 3.9.6+ | Same target as 010a-011 |
-| Schemas (sponsor-facing) | Pydantic v2 | `SponsoredTheatreConfig`, `SponsorReviewPackage`, `SponsorDeliveryPackage` |
-| Schemas (internal) | stdlib `@dataclass` | `StubAgent`, `TradeIntent`, `SourceManifestEntry`, `TheatreResolutionResult`, etc. |
-| HTTP framework | FastAPI | Sponsor API routes |
-| Database ORM | SQLAlchemy | Theatre/TheatreCertificate records (existing models) |
-| Hashing | SHA-256 via `hashlib` | Commitment hash, settlement hash, bundle hash, certificate hash |
-| Canonical JSON | `theatre.engine.canonical_json` | RFC 8785 deterministic serialisation |
-| Testing | pytest | `@pytest.mark.live_wm` for future WM integration |
-| OSINT evidence | Mock JSON fixtures | From `backend/osint/tests/fixtures/` |
-| On-chain | `MockSepoliaClient` | Stubbed — deterministic "local_mode" tx hashes |
-
-**No new runtime dependencies.** All new code uses existing packages (FastAPI, Pydantic v2, SQLAlchemy, httpx for mock OSINT).
+| Language | Python 3.9.6+ | `from __future__ import annotations` in every new file |
+| Schemas (agent-facing) | Pydantic v2 | `AgentGenome`, `DecisionTrace` |
+| Schemas (internal state) | stdlib `@dataclass` | `T0Context`, `T1Decision`, `T3Decision`, `T2Output` |
+| T1 Local LLM | Ollama + Qwen 3.5 4B/9B | HTTP API, localhost:11434 |
+| T2 Personality | Mistral API | Creative variant |
+| T3 Deep Reasoning | Anthropic API | Sonnet 4.5 / Opus |
+| Agent Framework | Google ADK (Python) | Sprint 3 only, thin wrapper |
+| HTTP Client | `httpx` | Async for provider calls |
+| Test Framework | pytest | `@pytest.mark.requires_ollama`, etc. |
+| Market Engine | LMSR (010a, frozen) | `TradingEngine.execute_trade()` |
+| Heartbeat | HeartbeatScheduler (010b, frozen) | Agent cadence: 5s |
+| Evidence | OSINT pipeline (011, frozen) | Mock fixtures in tests |
+| Theatre | Services layer (012, frozen) | `MarketTheatreBridge` reused |
 
 ---
 
 ## 4. Component Design
 
-### 4.1 SponsoredTheatreConfig (Pydantic v2 Model)
+### 4.1 AgentGenome (`backend/agents/genome.py`)
 
-**File**: `backend/schemas/sponsored_theatre.py`
+**Purpose**: Pydantic v2 model capturing the complete T0 context specification for an agent archetype. Defines the 8 behavioural parameters, variant overrides, Theatre context, position constraints, and decision routing config.
+
+**Relationship to existing code**: The existing `schemas.py` has `FinancialArchetype` (WHALE, SHARK, DEGEN, VALUE, MOMENTUM, NOISE) and `FinancialAgent` with breeding mechanics. `AgentGenome` is a new model with the Echelon-specific archetype enum (SHARK, SPY, DIPLOMAT, SABOTEUR, WHALE, DEGEN) and the 8-parameter behaviour matrix. No modification to `schemas.py`. The existing `agent_skills_bridge.py` has a `@dataclass AgentGenome` with different fields (aggression, patience, loyalty, etc.) -- this is for the Skills System and is not modified. The new genome module uses a distinct class name `EchelonGenome` internally but is importable as `AgentGenome` for PRD alignment.
 
 ```python
-from datetime import datetime
-from decimal import Decimal
+# backend/agents/genome.py
+from __future__ import annotations
+
+from enum import Enum
+from typing import Optional
 from pydantic import BaseModel, Field, field_validator
-from backend.market.state import FeeSchedule
 
 
-class SponsoredTheatreConfig(BaseModel):
-    """Sponsor-provided configuration for a Sponsored Theatre.
+class EchelonArchetype(str, Enum):
+    """Six core agent archetypes from System Bible v13 Section VIII."""
+    SHARK = "SHARK"
+    SPY = "SPY"
+    DIPLOMAT = "DIPLOMAT"
+    SABOTEUR = "SABOTEUR"
+    WHALE = "WHALE"
+    DEGEN = "DEGEN"
 
-    Pydantic v2 model — validated on construction.
+
+class AgentGenome(BaseModel):
+    """Complete T0 context specification for an Echelon agent.
+
+    Pydantic v2 model. Frozen after construction for auditability.
     """
-    question: str = Field(..., min_length=10, max_length=500)
-    resolution_date: datetime
-    committed_sources: list[str] = Field(..., min_length=1)
-    outcome_labels: list[str] = Field(..., min_length=2)
-    liquidity_b: Decimal = Field(..., gt=0)
-    fee_schedule: FeeSchedule = Field(default_factory=FeeSchedule)
-    sponsor_id: str = Field(..., min_length=1)
-    sponsor_metadata: dict = Field(default_factory=dict)
+    model_config = {"frozen": True}
 
-    model_config = {"arbitrary_types_allowed": True}
+    # --- Identity ---
+    archetype: EchelonArchetype
+    variant: Optional[str] = None  # e.g., "MEGALODON"
+    genome_version: str = "1.0.0"
 
-    @field_validator("outcome_labels")
-    @classmethod
-    def outcome_labels_unique(cls, v: list[str]) -> list[str]:
-        if len(v) != len(set(v)):
-            raise ValueError("outcome_labels must be unique")
-        return v
+    # --- 8 Archetype Parameters ---
+    risk_appetite: float = Field(ge=0.0, le=1.0, description="rho")
+    evidence_sensitivity: float = Field(ge=0.0, le=1.0, description="epsilon")
+    time_preference: float = Field(ge=0.0, le=1.0, description="gamma")
+    exploration_rate: float = Field(ge=0.0, le=1.0, description="xi")
+    position_limit: float = Field(gt=0, description="L -- max position in shares")
+    sabotage_propensity: float = Field(ge=0.0, le=1.0, description="sigma")
+    shield_propensity: float = Field(ge=0.0, le=1.0, description="phi")
+    patience: int = Field(ge=1, description="pi -- ticks between evaluations")
+
+    # --- Variant Overrides ---
+    variant_overrides: dict[str, float] = Field(default_factory=dict)
+
+    # --- Theatre Context (injected at spawn) ---
+    committed_sources: list[str] = Field(default_factory=list)
+    outcome_labels: list[str] = Field(default_factory=list)
+    resolution_date: Optional[str] = None
+    liquidity_b: Optional[float] = None
+
+    # --- Position Constraints ---
+    max_position_pct: float = Field(default=0.10, ge=0.0, le=1.0)
+    max_drawdown_pct: float = Field(default=0.20, ge=0.0, le=1.0)
+    stop_loss_threshold: float = Field(default=0.15, ge=0.0, le=1.0)
+
+    # --- Decision Routing ---
+    novelty_threshold: float = Field(
+        default=0.6, ge=0.0, le=1.0,
+        description="Confidence below this triggers T3 escalation"
+    )
+
+
+def create_genome(
+    archetype: EchelonArchetype,
+    variant: Optional[str] = None,
+    **overrides: float,
+) -> AgentGenome:
+    """Factory: create a genome from the Behaviour Matrix with optional overrides."""
+    defaults = ARCHETYPE_DEFAULTS[archetype]
+    params = {**defaults}
+    if variant and variant in VARIANT_OVERRIDES:
+        params.update(VARIANT_OVERRIDES[variant])
+    params.update(overrides)
+    return AgentGenome(
+        archetype=archetype,
+        variant=variant,
+        **params,
+    )
+
+
+ARCHETYPE_DEFAULTS: dict[EchelonArchetype, dict] = {
+    EchelonArchetype.SHARK: {
+        "risk_appetite": 0.85, "evidence_sensitivity": 0.70,
+        "time_preference": 0.95, "exploration_rate": 0.15,
+        "position_limit": 10_000, "sabotage_propensity": 0.30,
+        "shield_propensity": 0.10, "patience": 30,
+    },
+    EchelonArchetype.SPY: {
+        "risk_appetite": 0.40, "evidence_sensitivity": 0.90,
+        "time_preference": 0.98, "exploration_rate": 0.40,
+        "position_limit": 2_500, "sabotage_propensity": 0.05,
+        "shield_propensity": 0.15, "patience": 120,
+    },
+    EchelonArchetype.DIPLOMAT: {
+        "risk_appetite": 0.30, "evidence_sensitivity": 0.50,
+        "time_preference": 0.99, "exploration_rate": 0.20,
+        "position_limit": 5_000, "sabotage_propensity": 0.02,
+        "shield_propensity": 0.85, "patience": 60,
+    },
+    EchelonArchetype.SABOTEUR: {
+        "risk_appetite": 0.95, "evidence_sensitivity": 0.30,
+        "time_preference": 0.90, "exploration_rate": 0.60,
+        "position_limit": 7_500, "sabotage_propensity": 0.95,
+        "shield_propensity": 0.05, "patience": 45,
+    },
+    EchelonArchetype.WHALE: {
+        "risk_appetite": 0.70, "evidence_sensitivity": 0.55,
+        "time_preference": 0.92, "exploration_rate": 0.10,
+        "position_limit": 25_000, "sabotage_propensity": 0.15,
+        "shield_propensity": 0.30, "patience": 90,
+    },
+    EchelonArchetype.DEGEN: {
+        "risk_appetite": 1.00, "evidence_sensitivity": 0.15,
+        "time_preference": 0.85, "exploration_rate": 0.95,
+        "position_limit": 1_000, "sabotage_propensity": 0.50,
+        "shield_propensity": 0.02, "patience": 10,
+    },
+}
+
+
+VARIANT_OVERRIDES: dict[str, dict] = {
+    "MEGALODON": {
+        "risk_appetite": 0.90,
+        "evidence_sensitivity": 0.80,
+        "position_limit": 15_000,
+        "novelty_threshold": 0.6,
+    },
+}
 ```
 
-**Field semantics**:
-- `question` — the Theatre question, e.g. "Will Acme Ltd file annual accounts by 30 Sep 2026?"
-- `resolution_date` — UTC datetime when the market resolves
-- `committed_sources` — OSINT registry source IDs for settlement (validated against registry)
-- `outcome_labels` — e.g. `["Filed on time", "Filed late", "Not filed"]`
-- `liquidity_b` — LMSR `b` parameter. Parameterises liquidity depth, bounds worst-case loss at `b * ln(n)`. NOT escrowed capital.
-- `fee_schedule` — `FeeSchedule(trade_fee_bps, resolution_fee_bps)` from `backend/market/state.py`
-- `sponsor_id` — sponsor identifier string
-- `sponsor_metadata` — freeform context (company name, jurisdiction, etc.)
+**Error handling**: Pydantic v2 validation raises `ValidationError` on construction. `frozen=True` prevents mutation after creation.
 
-### 4.2 SourceManifestEntry and SourceManifest
+**Test approach**: `test_genome.py` (part of `test_context_compiler.py`) -- verify all 6 default genomes validate, variant overrides apply correctly, frozen enforcement, JSON round-trip.
 
-**File**: `backend/osint/source_manifest.py`
+---
+
+### 4.2 T0 Context Compiler (`backend/agents/context_compiler.py`)
+
+**Purpose**: Compiles `AgentGenome` + Theatre config + current `MarketState` into a frozen `T0Context` dataclass. Zero inference cost. Deterministic: same inputs always produce same output. SHA-256 hash enables reproducibility verification.
 
 ```python
+# backend/agents/context_compiler.py
+from __future__ import annotations
+
+import hashlib
+import json
 from dataclasses import dataclass
 
-
-class SettlementStatus:
-    """Settlement eligibility status for a source in a Theatre's manifest."""
-    ELIGIBLE = "ELIGIBLE"
-    PROVISIONAL = "PROVISIONAL"
-    INELIGIBLE = "INELIGIBLE"
-
-
-@dataclass
-class SourceManifestEntry:
-    """Single entry in the OSINT source manifest for a Theatre."""
-    source_id: str
-    source_group: str
-    independence_upstream_id: str
-    jurisdiction: str | None
-    access_surface: str           # "http_transcript" | "witness_quorum" | "signed_receipt"
-    settlement_status: str        # SettlementStatus value
-    settlement_eligible: bool
-    display_name: str
-
-
-@dataclass
-class SourceManifest:
-    """Complete OSINT source manifest for a Theatre's committed sources."""
-    entries: list[SourceManifestEntry]
-    registry_version: str         # Pinned registry version, e.g. "0.3.2"
-    validated: bool               # True if all sources validated against registry
-    validation_errors: list[str]  # Empty if validated=True
-```
-
-The `SourceManifestBuilder` class builds a `SourceManifest` from a list of registry source IDs:
-
-```python
-class SourceManifestBuilder:
-    """Builds and validates OSINT source manifests for Theatre committed sources."""
-
-    def __init__(self, registry_loader: RegistryLoader) -> None:
-        self._registry = registry_loader
-
-    def build(self, source_ids: list[str]) -> SourceManifest:
-        """Build manifest from source IDs. Validates all against registry.
-
-        Sources with shared independence_upstream_id are flagged as PROVISIONAL.
-        Sources not in registry produce validation errors.
-        """
-        ...
-
-    def validate_sources(self, source_ids: list[str]) -> tuple[bool, list[str]]:
-        """Validate source IDs exist in registry. Returns (valid, errors)."""
-        ...
-```
-
-**Provisional source detection**: sources sharing `independence_upstream_id` (e.g., all WM endpoints share `worldmonitor`) are flagged with `settlement_status: PROVISIONAL`. The corroboration penalty (0.7) carries through to the certificate.
-
-### 4.3 SponsorReviewPackage
-
-**File**: `backend/schemas/sponsored_theatre.py`
-
-```python
-from pydantic import BaseModel
-
-
-class SponsorReviewPackage(BaseModel):
-    """Package returned to sponsor for review before commitment."""
-    theatre_id: str
-    template_json: dict                    # Full Theatre template
-    commitment_hash: str                   # SHA-256 commitment hash
-    worst_case_loss: float                 # b * ln(n)
-    source_manifest: dict                  # Serialised SourceManifest
-    fee_schedule_breakdown: dict           # trade_fee_bps, resolution_fee_bps
-    n_outcomes: int
-    outcome_labels: list[str]
-    liquidity_b: float
-    resolution_date: str                   # ISO 8601
-```
-
-### 4.4 Sponsored Theatre Service
-
-**File**: `backend/services/sponsored_theatre.py`
-
-Orchestrates Theatre creation from `SponsoredTheatreConfig`:
-
-```python
-class SponsoredTheatreService:
-    """Orchestrates the sponsor onboarding workflow."""
-
-    def __init__(
-        self,
-        registry_loader: RegistryLoader,
-        manifest_builder: SourceManifestBuilder,
-        chain_client: MockSepoliaClient,
-    ) -> None:
-        ...
-
-    def create(self, config: SponsoredTheatreConfig) -> SponsorReviewPackage:
-        """COMMISSION phase — validate, create LMSR, produce review package.
-
-        Steps:
-        1. Validate committed_sources against OSINT registry
-        2. Build source manifest (flag PROVISIONAL sources)
-        3. Create MarketState via MarketLifecycle.create_market()
-        4. Generate TheatreTemplate from config + market
-        5. Compute commitment hash via MarketCommitment.compute_hash()
-        6. Compute worst-case loss: b * ln(n)
-        7. Return SponsorReviewPackage
-        """
-        ...
-
-    def review(self, theatre_id: str) -> SponsorReviewPackage:
-        """Return the SponsorReviewPackage for an existing Theatre."""
-        ...
-
-    def commit(self, theatre_id: str) -> dict:
-        """COMMITMENT phase — freeze parameters, verify hash, transition phase.
-
-        Steps:
-        1. Retrieve Theatre and MarketState
-        2. Verify commitment hash matches recomputed hash
-        3. MarketLifecycle.commit(market) → COMMITTED
-        4. MarketLifecycle.open_trading(market) → TRADING
-        5. Stub on-chain anchor (MockSepoliaClient.publish_commitment)
-        6. Return confirmation with commitment_hash and on-chain tx_hash
-        """
-        ...
-```
-
-**Interaction with existing modules**:
-- Calls `MarketLifecycle.create_market()` (from `backend/market/lifecycle.py`) — no modification
-- Calls `MarketCommitment.compute_hash()` (from `backend/market/commitment.py`) — no modification
-- Calls `LMSREngine.worst_case_loss()` (from `backend/market/lmsr.py`) — no modification
-- Calls `SourceManifestBuilder.build()` (new, `backend/osint/source_manifest.py`)
-- Calls `MockSepoliaClient.publish_commitment()` (from `backend/chain/sepolia.py`) — no modification
-
-### 4.5 MarketTheatreBridge
-
-**File**: `backend/services/market_theatre_bridge.py`
-
-Connects the LMSR engine to the Theatre lifecycle without modifying any `backend/market/` code:
-
-```python
-from dataclasses import dataclass
-
-from backend.market.lifecycle import MarketLifecycle
+from backend.agents.genome import AgentGenome
 from backend.market.lmsr import LMSREngine
-from backend.market.positions import PositionManager
-from backend.market.resolution import ResolutionEngine, SettlementReport
-from backend.market.state import FeeSchedule, MarketPhase, MarketState
+from backend.market.positions import AgentPosition
+from backend.market.state import MarketState
+
+
+@dataclass(frozen=True)
+class T0Context:
+    """Frozen agent world-view. Deterministic, hashable, zero inference cost."""
+
+    # --- Archetype Parameters (from genome) ---
+    archetype: str
+    risk_appetite: float
+    evidence_sensitivity: float
+    time_preference: float
+    exploration_rate: float
+    position_limit: float
+    sabotage_propensity: float
+    shield_propensity: float
+    patience: int
+    novelty_threshold: float
+
+    # --- Market Context ---
+    prices: tuple[float, ...]
+    phase: str
+    outcome_labels: tuple[str, ...]
+    n_outcomes: int
+    evidence_coverage_pct: float  # 0.0-1.0
+
+    # --- Position State ---
+    current_shares: tuple[float, ...]
+    net_cashflow: float
+    available_balance: float
+
+    # --- Theatre Rules ---
+    committed_sources: tuple[str, ...]
+    resolution_date: str
+    liquidity_b: float
+
+    # --- Constraints ---
+    max_position_pct: float
+    max_drawdown_pct: float
+    stop_loss_threshold: float
+
+    # --- Hash ---
+    context_hash: str = ""
+
+
+class ContextCompiler:
+    """Compiles AgentGenome + MarketState + position into T0Context."""
+
+    @staticmethod
+    def compile(
+        genome: AgentGenome,
+        market: MarketState,
+        position: AgentPosition,
+        available_balance: float,
+        evidence_coverage_pct: float = 0.0,
+    ) -> T0Context:
+        """Pure function: genome + market + position -> T0Context.
+
+        Deterministic. Same inputs always produce the same T0Context.
+        """
+        prices = tuple(LMSREngine.prices(market.x, market.b))
+        shares = tuple(position.shares) if position.shares else tuple(
+            0.0 for _ in range(market.n_outcomes)
+        )
+
+        ctx = T0Context(
+            archetype=genome.archetype.value,
+            risk_appetite=genome.risk_appetite,
+            evidence_sensitivity=genome.evidence_sensitivity,
+            time_preference=genome.time_preference,
+            exploration_rate=genome.exploration_rate,
+            position_limit=genome.position_limit,
+            sabotage_propensity=genome.sabotage_propensity,
+            shield_propensity=genome.shield_propensity,
+            patience=genome.patience,
+            novelty_threshold=genome.novelty_threshold,
+            prices=prices,
+            phase=market.phase.value,
+            outcome_labels=tuple(market.outcome_labels),
+            n_outcomes=market.n_outcomes,
+            evidence_coverage_pct=evidence_coverage_pct,
+            current_shares=shares,
+            net_cashflow=position.net_cashflow,
+            available_balance=available_balance,
+            committed_sources=tuple(genome.committed_sources),
+            resolution_date=genome.resolution_date or "",
+            liquidity_b=market.b,
+            max_position_pct=genome.max_position_pct,
+            max_drawdown_pct=genome.max_drawdown_pct,
+            stop_loss_threshold=genome.stop_loss_threshold,
+        )
+
+        # Compute hash (replace empty sentinel)
+        ctx_hash = ContextCompiler.compute_hash(ctx)
+        # Use object.__setattr__ because frozen
+        object.__setattr__(ctx, "context_hash", ctx_hash)
+
+        return ctx
+
+    @staticmethod
+    def compute_hash(ctx: T0Context) -> str:
+        """SHA-256 hash of T0Context for reproducibility verification.
+
+        Excludes context_hash itself (circular). Excludes no fields --
+        every field contributes to the hash.
+        """
+        hashable = {
+            "archetype": ctx.archetype,
+            "risk_appetite": ctx.risk_appetite,
+            "evidence_sensitivity": ctx.evidence_sensitivity,
+            "time_preference": ctx.time_preference,
+            "exploration_rate": ctx.exploration_rate,
+            "position_limit": ctx.position_limit,
+            "sabotage_propensity": ctx.sabotage_propensity,
+            "shield_propensity": ctx.shield_propensity,
+            "patience": ctx.patience,
+            "novelty_threshold": ctx.novelty_threshold,
+            "prices": list(ctx.prices),
+            "phase": ctx.phase,
+            "outcome_labels": list(ctx.outcome_labels),
+            "n_outcomes": ctx.n_outcomes,
+            "evidence_coverage_pct": ctx.evidence_coverage_pct,
+            "current_shares": list(ctx.current_shares),
+            "net_cashflow": ctx.net_cashflow,
+            "available_balance": ctx.available_balance,
+            "committed_sources": list(ctx.committed_sources),
+            "resolution_date": ctx.resolution_date,
+            "liquidity_b": ctx.liquidity_b,
+            "max_position_pct": ctx.max_position_pct,
+            "max_drawdown_pct": ctx.max_drawdown_pct,
+            "stop_loss_threshold": ctx.stop_loss_threshold,
+        }
+        canonical = json.dumps(hashable, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+```
+
+**Error handling**: `LMSREngine.prices()` can fail if `market.x` is empty or `b == 0`. The compiler propagates these errors -- callers must ensure valid market state.
+
+**Test approach**: `test_context_compiler.py` -- deterministic output for fixed inputs, hash stability, all genome archetypes compile correctly, position state propagation.
+
+---
+
+### 4.3 T1 Rules Engine (`backend/agents/rules_engine.py`)
+
+**Purpose**: Parameterised decision engine driven by T0 context. Produces `T1Decision` with action, confidence, reasoning trace, and pattern name. Per-archetype decision logic is parameterised by genome parameters, not hard-coded.
+
+**Relationship to existing code**: The existing `brain.py` has a `RuleBasedBrain` with simple archetype-to-action mapping. The existing `shark_strategies.py` has `TulipStrategy` and `SharkBrain`. The new `rules_engine.py` implements the full 6-archetype behaviour matrix with parameterised thresholds. No existing files modified.
+
+```python
+# backend/agents/rules_engine.py
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Optional
+
+from backend.agents.context_compiler import T0Context
+
+
+class TradeAction(str, Enum):
+    """Possible agent actions."""
+    BUY = "BUY"
+    SELL = "SELL"
+    HOLD = "HOLD"
+    SHIELD = "SHIELD"
+    SABOTAGE = "SABOTAGE"
+
+
+@dataclass(frozen=True)
+class ActionOption:
+    """A considered alternative for options_considered in DecisionTrace."""
+    action: str
+    estimated_value: float
+    rejection_reason: str
+
+
+@dataclass(frozen=True)
+class T1Decision:
+    """Output of the T1 rules engine. Immutable after creation."""
+    action: TradeAction
+    outcome_index: Optional[int]  # which outcome to buy/sell, None for HOLD
+    shares: float
+    confidence: float  # 0.0-1.0
+    reasoning_trace: str
+    pattern_name: str
+    options_considered: tuple[ActionOption, ...] = ()
+    escalate_to_t3: bool = False
+
+
+class RulesEngine:
+    """Parameterised T1 decision engine.
+
+    All decision logic is driven by T0Context parameters.
+    No hard-coded archetype if-chains -- thresholds are genome-derived.
+    """
+
+    def decide(self, ctx: T0Context, tick: int, rng_seed: int) -> T1Decision:
+        """Produce a T1 decision from T0 context.
+
+        Args:
+            ctx: Frozen T0Context with all genome + market + position state.
+            tick: Current tick number.
+            rng_seed: Deterministic RNG seed for this decision.
+
+        Returns:
+            T1Decision with action, confidence, and reasoning trace.
+        """
+        import random
+        rng = random.Random(rng_seed)
+
+        # Dispatch to archetype-specific logic
+        dispatch = {
+            "SHARK": self._shark_decide,
+            "SPY": self._spy_decide,
+            "DIPLOMAT": self._diplomat_decide,
+            "SABOTEUR": self._saboteur_decide,
+            "WHALE": self._whale_decide,
+            "DEGEN": self._degen_decide,
+        }
+        decide_fn = dispatch.get(ctx.archetype, self._hold_default)
+        return decide_fn(ctx, tick, rng)
+
+    def _shark_decide(
+        self, ctx: T0Context, tick: int, rng: "random.Random"
+    ) -> T1Decision:
+        """Momentum exploitation: buy leading, take profit, stop-loss."""
+        # ... parameterised logic using ctx.risk_appetite, ctx.time_preference
+        # Returns T1Decision with pattern_name="momentum_exploitation"
+        ...
+
+    def _spy_decide(
+        self, ctx: T0Context, tick: int, rng: "random.Random"
+    ) -> T1Decision:
+        """Intel arbitrage: trade on evidence arrival."""
+        # ... parameterised logic using ctx.evidence_sensitivity
+        # Returns T1Decision with pattern_name="intel_arbitrage"
+        ...
+
+    def _diplomat_decide(
+        self, ctx: T0Context, tick: int, rng: "random.Random"
+    ) -> T1Decision:
+        """Stability maintenance: buy trailing outcome to reduce spread."""
+        # ... parameterised logic using ctx.shield_propensity
+        # Returns T1Decision with pattern_name="stability_maintenance"
+        ...
+
+    def _saboteur_decide(
+        self, ctx: T0Context, tick: int, rng: "random.Random"
+    ) -> T1Decision:
+        """Chaos creation: random contrary trades."""
+        # ... parameterised logic using ctx.sabotage_propensity
+        # Returns T1Decision with pattern_name="chaos_creation"
+        ...
+
+    def _whale_decide(
+        self, ctx: T0Context, tick: int, rng: "random.Random"
+    ) -> T1Decision:
+        """Conviction accumulation: large positions on strong evidence."""
+        # ... parameterised logic using ctx.position_limit, ctx.evidence_sensitivity
+        # Returns T1Decision with pattern_name="conviction_accumulation"
+        ...
+
+    def _degen_decide(
+        self, ctx: T0Context, tick: int, rng: "random.Random"
+    ) -> T1Decision:
+        """Random exploration: random outcome, random volume."""
+        # ... parameterised logic using ctx.exploration_rate
+        # Returns T1Decision with pattern_name="random_exploration"
+        ...
+
+    def _hold_default(
+        self, ctx: T0Context, tick: int, rng: "random.Random"
+    ) -> T1Decision:
+        """Default fallback: HOLD with low confidence."""
+        return T1Decision(
+            action=TradeAction.HOLD,
+            outcome_index=None,
+            shares=0.0,
+            confidence=0.3,
+            reasoning_trace="Unknown archetype, defaulting to HOLD",
+            pattern_name="default_hold",
+            escalate_to_t3=True,
+        )
+```
+
+**Decision logic detail (Shark example)**:
+
+```
+1. Compute leading_idx = argmax(prices)
+2. Compute price_delta = prices[leading_idx] - (1.0 / n_outcomes)
+3. BUY check: price_delta > risk_appetite * MOMENTUM_THRESHOLD
+   - shares = min(position_limit * 0.1, available_balance * risk_appetite)
+   - confidence = 0.5 + price_delta * 0.5
+4. TAKE PROFIT check: current_shares[leading_idx] > 0 AND
+   unrealised_pnl > time_preference * PROFIT_TARGET
+   - action = SELL
+5. STOP LOSS check: unrealised_pnl < -stop_loss_threshold * net_cashflow
+   - action = SELL (all shares in losing outcome)
+6. Default: HOLD
+7. If confidence < novelty_threshold: set escalate_to_t3 = True
+```
+
+Each archetype method follows this pattern: parameterised checks using genome values, options_considered populated with alternatives evaluated, confidence computed from market state proximity to thresholds.
+
+**Error handling**: Division by zero guarded (n_outcomes >= 2 enforced by market creation). Invalid archetype defaults to HOLD with T3 escalation.
+
+**Test approach**: `test_rules_engine.py` -- per-archetype decision correctness with known market states, confidence scoring near thresholds, escalation flagging, deterministic with fixed RNG seed.
+
+---
+
+### 4.4 DecisionTrace Schema (`backend/agents/decision_trace.py`)
+
+**Purpose**: Pydantic v2 model defining the stable structured log for every agent decision. BEAUVOIR-compliant. RLMF-compatible with `backend/services/rlmf_export.py`.
+
+```python
+# backend/agents/decision_trace.py
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Literal, Optional
+from pydantic import BaseModel, Field
+
+
+class DecisionTrace(BaseModel):
+    """Stable decision log schema. Every field is a stable key.
+
+    Conforms to BEAUVOIR agent-first citizenship requirements.
+    Compatible with RLMFExport.AgentTrace.decision_traces (list[dict]).
+    """
+    model_config = {"frozen": True}
+
+    # --- Identity ---
+    tick_id: str
+    agent_id: str
+    theatre_id: str
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+    # --- Tier ---
+    tier_used: Literal["T1-RULES", "T1-LOCAL-LLM", "T3"]
+
+    # --- Market Snapshot ---
+    market_state_snapshot: dict  # prices, phase, evidence_coverage_pct
+
+    # --- Evidence State ---
+    evidence_state: dict  # last_evidence_ts, new_evidence_flag, source_ids_cited
+
+    # --- Decision ---
+    t0_context_hash: str
+    action: str  # BUY(outcome, shares) / SELL / HOLD / SHIELD / SABOTAGE
+    confidence: float = Field(ge=0.0, le=1.0)
+    pattern_name: str  # Named pattern from archetype matrix
+    options_considered: list[dict]  # [{action, estimated_value, rejection_reason}]
+    reasoning_summary: str
+
+    # --- Escalation ---
+    escalated_to_t3: bool = False
+
+    # --- Evidence References ---
+    evidence_refs: list[str] = Field(default_factory=list)
+
+    def to_rlmf_dict(self) -> dict:
+        """Serialise to dict compatible with AgentTrace.decision_traces."""
+        return self.model_dump(mode="json")
+```
+
+**RLMF integration**: The `decision_traces` field in `AgentTrace` (from `rlmf_export.py`) is `list[dict[str, Any]]`. Each `DecisionTrace.to_rlmf_dict()` produces a dict that slots directly into this list. No modification to `rlmf_export.py` required.
+
+**Determinism note**: `timestamp` is excluded from reproducibility checks. Reproducibility is determined by `t0_context_hash` + `market_state_snapshot` + `evidence_state`.
+
+**Test approach**: `test_decision_trace.py` -- schema validation for all required fields, JSON round-trip, RLMF dict compatibility, each archetype produces valid traces.
+
+---
+
+### 4.5 Agent Instance (`backend/agents/agent_instance.py`)
+
+**Purpose**: Ephemeral agent instance bound to a Theatre. Lifecycle: `spawn` -> `tick` (repeated) -> `settle`. Multiple instances per Identity. P&L aggregation back to Identity.
+
+**Relationship to existing code**: The existing `instance_manager.py` has `AgentInstance` (Pydantic BaseModel) for ACP job routing with `InstanceStatus`, `JobRequest`, etc. The new agent instance is a separate class `TheatreAgentInstance` in `agent_instance.py` with Theatre-scoped lifecycle. No modification to `instance_manager.py`.
+
+```python
+# backend/agents/agent_instance.py
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Optional
+
+from backend.agents.context_compiler import ContextCompiler, T0Context
+from backend.agents.decision_trace import DecisionTrace
+from backend.agents.genome import AgentGenome
+from backend.agents.rules_engine import RulesEngine, T1Decision, TradeAction
+from backend.market.lmsr import LMSREngine
+from backend.market.positions import AgentPosition, PositionManager
+from backend.market.state import MarketState
 from backend.market.trading import Trade, TradingEngine
 
 
 @dataclass
-class TheatreMarketState:
-    """Complete LMSR state for a Theatre — wraps market + positions + trading."""
-    market: MarketState
-    position_manager: PositionManager
-    trading_engine: TradingEngine
-
-
-class MarketTheatreBridge:
-    """Bridges LMSR engine to Theatre lifecycle. One instance per application."""
-
-    def __init__(self) -> None:
-        self._theatres: dict[str, TheatreMarketState] = {}
-
-    def create_market_for_theatre(
-        self,
-        theatre_id: str,
-        market_id: str,
-        b: float,
-        n_outcomes: int,
-        outcome_labels: list[str],
-        fee_schedule: FeeSchedule | None = None,
-    ) -> TheatreMarketState:
-        """Create LMSR MarketState + PositionManager + TradingEngine for a Theatre.
-
-        Delegates to MarketLifecycle.create_market(). Stores in bridge registry.
-        """
-        market = MarketLifecycle.create_market(
-            market_id=market_id,
-            theatre_id=theatre_id,
-            b=b,
-            n_outcomes=n_outcomes,
-            outcome_labels=outcome_labels,
-            fee_schedule=fee_schedule,
-        )
-        pm = PositionManager(n_outcomes=n_outcomes, market_id=market_id)
-        te = TradingEngine(position_manager=pm)
-        state = TheatreMarketState(market=market, position_manager=pm, trading_engine=te)
-        self._theatres[theatre_id] = state
-        return state
-
-    def get_market_state(self, theatre_id: str) -> TheatreMarketState | None:
-        """Return current LMSR state for a Theatre."""
-        return self._theatres.get(theatre_id)
-
-    def transition_market(self, theatre_id: str, target_phase: MarketPhase) -> MarketState:
-        """Validate and execute phase transition.
-
-        Delegates to appropriate MarketLifecycle static method:
-        - CREATED → COMMITTED: MarketLifecycle.commit()
-        - COMMITTED → TRADING: MarketLifecycle.open_trading()
-        - TRADING → RESOLVING: MarketLifecycle.begin_resolution()
-        - RESOLVING → SETTLED: via ResolutionEngine.settle()
-        """
-        ...
-
-    def settle_market(
-        self, theatre_id: str, winning_outcome: int
-    ) -> SettlementReport:
-        """Execute resolution + settlement in one call.
-
-        1. MarketLifecycle.begin_resolution(market, winning_outcome)
-        2. ResolutionEngine.settle(market, position_manager)
-        3. Return SettlementReport
-        """
-        ...
-
-    def serialise_state(self, theatre_id: str) -> dict:
-        """Serialise LMSR MarketState to JSON-compatible dict for Theatre record."""
-        ...
-
-    @staticmethod
-    def deserialise_state(data: dict) -> MarketState:
-        """Reconstruct MarketState from JSON dict."""
-        ...
-```
-
-**Design rationale**: The bridge owns the `TheatreMarketState` triple (`MarketState` + `PositionManager` + `TradingEngine`) and mediates all access. This ensures:
-- No direct mutation of `backend/market/` internals from service code
-- Clean serialisation boundary for database persistence
-- Testable in isolation from Theatre infrastructure
-
-### 4.6 StubAgent System
-
-**File**: `backend/services/stub_agents.py`
-
-```python
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Callable, Optional
-
-from backend.market.state import MarketState
-from backend.market.trading import Trade
-
-
-class AgentArchetype(str, Enum):
-    """Six agent archetypes with named trading patterns."""
-    SHARK = "shark"           # Momentum exploitation
-    SPY = "spy"               # Intel arbitrage
-    DIPLOMAT = "diplomat"     # Stability maintenance
-    SABOTEUR = "saboteur"     # Chaos creation
-    WHALE = "whale"           # Market moving
-    DEGEN = "degen"           # Volatility harvesting
-
-
-@dataclass
 class TradeIntent:
-    """Agent's intended trade — validated before execution."""
+    """Agent's intended trade before execution."""
     outcome_index: int
     shares: float
-    trigger: str              # Human-readable trigger condition
-    confidence: float         # 0.0-1.0
+    trigger: str
+    confidence: float
 
 
 @dataclass
-class TradeDecisionTrace:
-    """Full trace of an agent's decision for RLMF export."""
+class AgentSettlementResult:
+    """Settlement result for a single agent instance."""
     agent_id: str
     archetype: str
-    tick: int
-    trigger_condition: str
-    market_prices_at_decision: list[float]
+    trades_executed: int
+    final_position: list[float]
+    realised_pnl: float
+    unrealised_pnl: float
+
+
+class TheatreAgentInstance:
+    """Ephemeral agent instance bound to a Theatre.
+
+    Lifecycle: spawn() -> tick() [repeated] -> settle()
+    """
+
+    def __init__(
+        self,
+        agent_id: str,
+        genome: AgentGenome,
+        theatre_id: str,
+        rules_engine: RulesEngine,
+    ) -> None:
+        self.agent_id = agent_id
+        self.genome = genome
+        self.theatre_id = theatre_id
+        self._rules_engine = rules_engine
+        self._decision_traces: list[DecisionTrace] = []
+        self._trade_count: int = 0
+        self._settled: bool = False
+
+    @classmethod
+    def spawn(
+        cls,
+        genome: AgentGenome,
+        theatre_id: str,
+        rules_engine: Optional[RulesEngine] = None,
+    ) -> TheatreAgentInstance:
+        """Factory: create an agent instance for a Theatre."""
+        agent_id = f"{theatre_id}_{genome.archetype.value.lower()}"
+        if genome.variant:
+            agent_id = f"{agent_id}_{genome.variant.lower()}"
+        return cls(
+            agent_id=agent_id,
+            genome=genome,
+            theatre_id=theatre_id,
+            rules_engine=rules_engine or RulesEngine(),
+        )
+
+    def tick(
+        self,
+        market: MarketState,
+        position_manager: PositionManager,
+        trading_engine: TradingEngine,
+        evidence: object,
+        tick: int,
+        seed: int = 42,
+    ) -> tuple[Optional[Trade], DecisionTrace]:
+        """Execute one decision tick.
+
+        Returns:
+            (executed_trade_or_None, decision_trace)
+        """
+        # 1. Get current position and balance
+        position = position_manager.get_position(self.agent_id)
+        balance = position_manager.get_balance(self.agent_id)
+
+        # 2. Compute evidence coverage
+        evidence_coverage = 0.0 if evidence is None else 0.5
+
+        # 3. T0: compile context
+        t0_ctx = ContextCompiler.compile(
+            genome=self.genome,
+            market=market,
+            position=position,
+            available_balance=balance,
+            evidence_coverage_pct=evidence_coverage,
+        )
+
+        # 4. T1: rules engine decision
+        rng_seed = seed + tick + hash(self.agent_id) % 10000
+        t1_decision = self._rules_engine.decide(t0_ctx, tick, rng_seed)
+
+        # 5. Build trade intent and execute
+        executed_trade: Optional[Trade] = None
+        action_str = t1_decision.action.value
+
+        if t1_decision.action in (TradeAction.BUY, TradeAction.SELL):
+            if t1_decision.outcome_index is not None and t1_decision.shares > 0:
+                shares = t1_decision.shares
+                if t1_decision.action == TradeAction.SELL:
+                    shares = -shares
+                try:
+                    executed_trade = trading_engine.execute_trade(
+                        market=market,
+                        agent_id=self.agent_id,
+                        outcome_index=t1_decision.outcome_index,
+                        shares=shares,
+                    )
+                    self._trade_count += 1
+                    action_str = (
+                        f"{t1_decision.action.value}"
+                        f"(outcome={t1_decision.outcome_index},"
+                        f" shares={abs(shares):.1f})"
+                    )
+                except Exception:
+                    # Trade failed -- record attempt, continue
+                    pass
+
+        # 6. Build decision trace
+        trace = DecisionTrace(
+            tick_id=f"tick_{tick:04d}",
+            agent_id=self.agent_id,
+            theatre_id=self.theatre_id,
+            tier_used="T1-RULES",
+            market_state_snapshot={
+                "prices": list(t0_ctx.prices),
+                "phase": t0_ctx.phase,
+                "evidence_coverage_pct": t0_ctx.evidence_coverage_pct,
+            },
+            evidence_state={
+                "new_evidence_flag": evidence is not None,
+                "source_ids_cited": [],
+            },
+            t0_context_hash=t0_ctx.context_hash,
+            action=action_str,
+            confidence=t1_decision.confidence,
+            pattern_name=t1_decision.pattern_name,
+            options_considered=[
+                {
+                    "action": opt.action,
+                    "estimated_value": opt.estimated_value,
+                    "rejection_reason": opt.rejection_reason,
+                }
+                for opt in t1_decision.options_considered
+            ],
+            reasoning_summary=t1_decision.reasoning_trace,
+            escalated_to_t3=t1_decision.escalate_to_t3,
+            evidence_refs=[],
+        )
+
+        self._decision_traces.append(trace)
+        return executed_trade, trace
+
+    def settle(
+        self, position_manager: PositionManager, resolved_outcome: int
+    ) -> AgentSettlementResult:
+        """Finalise this instance. Compute settlement P&L."""
+        self._settled = True
+        position = position_manager.get_position(self.agent_id)
+        payout = position_manager.compute_settlement_payout(
+            position, resolved_outcome
+        )
+
+        return AgentSettlementResult(
+            agent_id=self.agent_id,
+            archetype=self.genome.archetype.value,
+            trades_executed=self._trade_count,
+            final_position=list(position.shares),
+            realised_pnl=payout - position.net_cashflow,
+            unrealised_pnl=0.0,  # All positions settled
+        )
+
+    @property
+    def decision_traces(self) -> list[DecisionTrace]:
+        return list(self._decision_traces)
+
+    @property
+    def trade_count(self) -> int:
+        return self._trade_count
+```
+
+**Error handling**: `TradingEngine.execute_trade()` can raise `TradingHalted`, `InsufficientBalance`, `InsufficientShares`, `InvalidMarketParameters`. All are caught silently -- the agent's decision is logged regardless. Failed trades appear in the trace with the action string but `executed_trade` is `None`.
+
+**Test approach**: `test_agent_instance.py` -- spawn -> 10 ticks -> settle lifecycle, P&L correctness, multiple instances per identity, trade count accumulation, decision trace completeness.
+
+---
+
+### 4.6 T2 Personality Engine (`backend/agents/personality_engine.py`)
+
+**Purpose**: Expression layer. Adds archetype-specific voice to T1 decisions. Never overrides T1's action -- expression only. Runs only when the decision produces externally visible output.
+
+```python
+# backend/agents/personality_engine.py
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional
+
+from backend.agents.context_compiler import T0Context
+from backend.agents.rules_engine import T1Decision
+
+
+@dataclass(frozen=True)
+class T2Output:
+    """Personality-coloured expression of a T1 decision."""
+    coloured_rationale: str
+    market_commentary: str
+    diplomatic_message: Optional[str] = None
+
+
+PERSONALITY_PROMPTS: dict[str, str] = {
+    "SHARK": (
+        "You are a ruthless momentum trader. Confident, terse. "
+        "Express this trade decision in 1-2 sentences. No hedging."
+    ),
+    "SPY": (
+        "You are a cryptic intelligence operative. Observational, indirect. "
+        "Frame this decision as an intelligence assessment."
+    ),
+    "DIPLOMAT": (
+        "You are a measured consensus-builder. Express this trade as "
+        "a stabilisation action for the good of the market."
+    ),
+    "SABOTEUR": (
+        "You revel in chaos. Express this trade provocatively. "
+        "Hint at deeper motives without revealing them."
+    ),
+    "WHALE": (
+        "You are deliberate and conviction-driven. Express this "
+        "large position with gravitas. Few words, great weight."
+    ),
+    "DEGEN": (
+        "YOLO. Express this trade with maximum energy. "
+        "Use slang. Keep it under 2 sentences."
+    ),
+}
+
+
+class PersonalityEngine:
+    """T2 expression layer -- adds personality to decisions.
+
+    CRITICAL: T2 never overrides T1's action. It only colours the output.
+    """
+
+    def __init__(
+        self, provider: Optional[object] = None  # MistralProvider
+    ) -> None:
+        self._provider = provider
+
+    async def express(
+        self,
+        t0_context: T0Context,
+        t1_decision: T1Decision,
+    ) -> T2Output:
+        """Generate personality-flavoured expression.
+
+        If Mistral provider is unavailable, returns generic template.
+        """
+        if self._provider is None or not await self._is_provider_available():
+            return self._generic_fallback(t0_context, t1_decision)
+
+        prompt = PERSONALITY_PROMPTS.get(
+            t0_context.archetype,
+            "Express this trading decision clearly."
+        )
+        context_str = (
+            f"Action: {t1_decision.action.value}, "
+            f"Confidence: {t1_decision.confidence:.0%}, "
+            f"Reasoning: {t1_decision.reasoning_trace}"
+        )
+
+        try:
+            response = await self._provider.generate(
+                system_prompt=prompt,
+                user_prompt=context_str,
+            )
+            return T2Output(
+                coloured_rationale=response.get("rationale", context_str),
+                market_commentary=response.get("commentary", ""),
+            )
+        except Exception:
+            return self._generic_fallback(t0_context, t1_decision)
+
+    async def _is_provider_available(self) -> bool:
+        if self._provider is None:
+            return False
+        try:
+            return await self._provider.health_check()
+        except Exception:
+            return False
+
+    def _generic_fallback(
+        self, ctx: T0Context, decision: T1Decision
+    ) -> T2Output:
+        """Generic template when Mistral is unavailable."""
+        return T2Output(
+            coloured_rationale=(
+                f"[{ctx.archetype}] {decision.action.value}: "
+                f"{decision.reasoning_trace}"
+            ),
+            market_commentary="",
+        )
+```
+
+**Non-interference guarantee**: `T2Output` contains only strings. It is never fed back into the decision pipeline. The `express()` method takes a `T1Decision` and returns `T2Output` -- the action is already committed.
+
+**Error handling**: Any provider failure returns the generic fallback. The agent continues to trade normally.
+
+**Test approach**: `test_personality_engine.py` -- verify all 6 archetypes produce output, T2 never modifies T1 action (structural guarantee), fallback works when provider is None.
+
+---
+
+### 4.7 T3 Deep Reasoning Engine (`backend/agents/deep_reasoning.py`)
+
+**Purpose**: Complex multi-step reasoning for escalated decisions. Triggered only when T1 confidence < novelty_threshold, cross-theatre correlation detected, or novel market conditions.
+
+```python
+# backend/agents/deep_reasoning.py
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Optional
+
+from backend.agents.context_compiler import T0Context
+from backend.agents.rules_engine import T1Decision, TradeAction
+
+
+@dataclass(frozen=True)
+class T3Decision:
+    """Deep reasoning output. Replaces T1Decision when used."""
+    action: TradeAction
+    outcome_index: Optional[int]
+    shares: float
     confidence: float
-    intent: TradeIntent | None        # None = no-op decision
-    executed_trade: Trade | None      # None if intent was None or execution failed
-    pattern_name: str                 # Named pattern from archetype matrix
+    reasoning_summary: str
+    evidence_refs: list[str]
+    pattern_name: str
 
 
 @dataclass
-class StubAgent:
-    """Stub agent — identity + deterministic strategy.
+class T3RateLimiter:
+    """Rate limiter for T3 calls. Configurable per agent per day."""
+    max_calls_per_day: int = 10
+    max_calls_per_tick: int = 1
+    _daily_count: int = 0
+    _last_reset_date: Optional[str] = None
+    _tick_count: int = 0
+    _current_tick: int = -1
 
-    Strategy is a pure function: (market_state, evidence, tick) → Optional[TradeIntent]
+    def can_call(self, tick: int) -> bool:
+        """Check if a T3 call is allowed."""
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        if self._last_reset_date != today:
+            self._daily_count = 0
+            self._last_reset_date = today
+
+        if tick != self._current_tick:
+            self._tick_count = 0
+            self._current_tick = tick
+
+        return (
+            self._daily_count < self.max_calls_per_day
+            and self._tick_count < self.max_calls_per_tick
+        )
+
+    def record_call(self) -> None:
+        self._daily_count += 1
+        self._tick_count += 1
+
+
+class DeepReasoningEngine:
+    """T3 deep reasoning -- Sonnet/Opus via Anthropic API.
+
+    Rate-limited and cost-bounded. Falls back to T1Decision if
+    unavailable or rate-limited.
     """
-    agent_id: str
-    archetype: AgentArchetype
-    initial_balance: float
-    strategy: Callable[
-        [MarketState, list | None, int],
-        TradeIntent | None,
-    ]
+
+    def __init__(
+        self,
+        provider: Optional[object] = None,  # AnthropicProvider
+        max_calls_per_day: int = 10,
+    ) -> None:
+        self._provider = provider
+        self._rate_limiters: dict[str, T3RateLimiter] = {}
+        self._max_calls_per_day = max_calls_per_day
+
+    def _get_limiter(self, agent_id: str) -> T3RateLimiter:
+        if agent_id not in self._rate_limiters:
+            self._rate_limiters[agent_id] = T3RateLimiter(
+                max_calls_per_day=self._max_calls_per_day
+            )
+        return self._rate_limiters[agent_id]
+
+    async def reason(
+        self,
+        agent_id: str,
+        t0_context: T0Context,
+        t1_decision: T1Decision,
+        market_history: list[dict],
+        evidence_chain: list[dict],
+        tick: int,
+    ) -> Optional[T3Decision]:
+        """Deep reasoning for escalated decisions.
+
+        Returns T3Decision if provider is available and under rate limit.
+        Returns None if unavailable -- caller falls back to T1Decision.
+        """
+        limiter = self._get_limiter(agent_id)
+        if not limiter.can_call(tick):
+            return None
+
+        if self._provider is None:
+            return None
+
+        try:
+            available = await self._provider.health_check()
+            if not available:
+                return None
+        except Exception:
+            return None
+
+        try:
+            context_prompt = self._build_prompt(
+                t0_context, t1_decision, market_history, evidence_chain
+            )
+            response = await self._provider.generate(
+                system_prompt=(
+                    "You are a deep reasoning engine for an autonomous "
+                    "trading agent. Analyse the market context, evidence, "
+                    "and T1 preliminary decision. Provide a final decision "
+                    "with structured reasoning."
+                ),
+                user_prompt=context_prompt,
+            )
+
+            limiter.record_call()
+
+            return T3Decision(
+                action=TradeAction(response.get("action", "HOLD")),
+                outcome_index=response.get("outcome_index"),
+                shares=response.get("shares", 0.0),
+                confidence=response.get("confidence", 0.5),
+                reasoning_summary=response.get("reasoning_summary", ""),
+                evidence_refs=response.get("evidence_refs", []),
+                pattern_name=response.get("pattern_name", "deep_analysis"),
+            )
+        except Exception:
+            return None
+
+    def _build_prompt(
+        self,
+        ctx: T0Context,
+        t1: T1Decision,
+        history: list[dict],
+        evidence: list[dict],
+    ) -> str:
+        """Build structured prompt for T3 reasoning."""
+        return (
+            f"Archetype: {ctx.archetype}\n"
+            f"Market prices: {list(ctx.prices)}\n"
+            f"Outcomes: {list(ctx.outcome_labels)}\n"
+            f"Position: {list(ctx.current_shares)}\n"
+            f"Balance: {ctx.available_balance}\n"
+            f"T1 preliminary: {t1.action.value} "
+            f"(confidence={t1.confidence:.2f})\n"
+            f"T1 reasoning: {t1.reasoning_trace}\n"
+            f"Evidence chain: {len(evidence)} items\n"
+            f"Market history: {len(history)} ticks\n"
+        )
 ```
 
-**Strategy functions** (one per archetype):
+**Error handling**: Every external call is wrapped in try/except. Any failure returns `None`, signalling the caller (DecisionRouter) to fall back to T1Decision. Rate limit exceeded also returns `None`.
 
-| Archetype | Pattern Name | Strategy Logic |
-|-----------|-------------|----------------|
-| Shark | momentum_exploitation | Buy leading outcome if price < 0.7. Exploits momentum. |
-| Spy | intel_arbitrage | Trade when new evidence arrives. Evidence-triggered only. |
-| Diplomat | stability_maintenance | Buy trailing outcome if price spread > 0.4. Stabilises. |
-| Saboteur | chaos_creation | Random contrary trades at low volume (1-3 shares). |
-| Whale | market_moving | Single large position (50+ shares) on tick 0, hold. |
-| Degen | volatility_harvesting | Random outcome, random volume (1-10 shares), every tick. |
+**Test approach**: `test_deep_reasoning.py` -- mock provider, rate limiting enforcement, structured output parsing, fallback when provider unavailable, prompt construction.
+
+---
+
+### 4.8 Novelty Threshold Router (`backend/agents/decision_router.py`)
+
+**Purpose**: Routes decisions through the tier stack. Always T0 -> T1. Conditionally T2 (expression) and/or T3 (escalation) based on confidence and novelty threshold.
 
 ```python
-class StubAgentSpawner:
-    """Creates stub agent populations for a Theatre."""
+# backend/agents/decision_router.py
+from __future__ import annotations
 
-    DEFAULT_AGENT_COUNT = 6
-    DEFAULT_INITIAL_BALANCE = 1000.0
+from dataclasses import dataclass
+from typing import Optional
 
-    def spawn(
+from backend.agents.context_compiler import T0Context
+from backend.agents.deep_reasoning import DeepReasoningEngine, T3Decision
+from backend.agents.personality_engine import PersonalityEngine, T2Output
+from backend.agents.rules_engine import T1Decision, TradeAction
+
+
+@dataclass
+class RoutedDecision:
+    """Final routed decision with tier metadata."""
+    action: TradeAction
+    outcome_index: Optional[int]
+    shares: float
+    confidence: float
+    reasoning_summary: str
+    pattern_name: str
+    tier_used: str  # "T1-RULES", "T1-LOCAL-LLM", "T3"
+    t2_output: Optional[T2Output] = None
+    escalated_to_t3: bool = False
+    t3_rate_limited: bool = False
+    evidence_refs: list[str] = None
+
+    def __post_init__(self):
+        if self.evidence_refs is None:
+            self.evidence_refs = []
+
+
+class DecisionRouter:
+    """Routes decisions through the T0/T1/T2/T3 pipeline.
+
+    Always: T0 -> T1
+    Conditional: T2 (expression, non-blocking)
+    Conditional: T3 (escalation, replaces T1 if available)
+    """
+
+    def __init__(
         self,
-        theatre_id: str,
-        agent_count: int = DEFAULT_AGENT_COUNT,
-        initial_balance: float = DEFAULT_INITIAL_BALANCE,
-    ) -> list[StubAgent]:
-        """Spawn one agent per archetype with default strategies.
+        personality_engine: Optional[PersonalityEngine] = None,
+        deep_reasoning: Optional[DeepReasoningEngine] = None,
+        enable_t2: bool = True,
+    ) -> None:
+        self._personality = personality_engine
+        self._deep_reasoning = deep_reasoning
+        self._enable_t2 = enable_t2
 
-        Returns list of StubAgent with deterministic agent_ids:
-        "{theatre_id}_shark", "{theatre_id}_spy", etc.
+    async def route(
+        self,
+        t0_context: T0Context,
+        t1_decision: T1Decision,
+        agent_id: str,
+        tick: int,
+        market_history: Optional[list[dict]] = None,
+        evidence_chain: Optional[list[dict]] = None,
+    ) -> RoutedDecision:
+        """Route a T1 decision through the tier stack.
+
+        1. Always use T1 as baseline.
+        2. If confidence >= novelty_threshold: use T1, optionally T2.
+        3. If confidence < novelty_threshold: escalate to T3.
+        4. If T3 rate-limited or unavailable: fall back to T1.
         """
+        tier_used = "T1-RULES"
+        action = t1_decision.action
+        outcome_index = t1_decision.outcome_index
+        shares = t1_decision.shares
+        confidence = t1_decision.confidence
+        reasoning = t1_decision.reasoning_trace
+        pattern = t1_decision.pattern_name
+        escalated = False
+        rate_limited = False
+        evidence_refs: list[str] = []
+        t2_output: Optional[T2Output] = None
+
+        # Check escalation
+        needs_escalation = (
+            t1_decision.escalate_to_t3
+            or confidence < t0_context.novelty_threshold
+        )
+
+        if needs_escalation and self._deep_reasoning is not None:
+            t3_result = await self._deep_reasoning.reason(
+                agent_id=agent_id,
+                t0_context=t0_context,
+                t1_decision=t1_decision,
+                market_history=market_history or [],
+                evidence_chain=evidence_chain or [],
+                tick=tick,
+            )
+
+            if t3_result is not None:
+                # T3 succeeded -- use its decision
+                tier_used = "T3"
+                action = t3_result.action
+                outcome_index = t3_result.outcome_index
+                shares = t3_result.shares
+                confidence = t3_result.confidence
+                reasoning = t3_result.reasoning_summary
+                pattern = t3_result.pattern_name
+                evidence_refs = list(t3_result.evidence_refs)
+                escalated = True
+            else:
+                # T3 unavailable or rate-limited -- fall back to T1
+                rate_limited = True
+                # T1 decision used as-is, but flagged
+
+        # T2 expression (non-blocking, optional)
+        if self._enable_t2 and self._personality is not None:
+            try:
+                t2_output = await self._personality.express(
+                    t0_context=t0_context,
+                    t1_decision=t1_decision,
+                )
+            except Exception:
+                pass  # T2 failure is never fatal
+
+        return RoutedDecision(
+            action=action,
+            outcome_index=outcome_index,
+            shares=shares,
+            confidence=confidence,
+            reasoning_summary=reasoning,
+            pattern_name=pattern,
+            tier_used=tier_used,
+            t2_output=t2_output,
+            escalated_to_t3=escalated,
+            t3_rate_limited=rate_limited,
+            evidence_refs=evidence_refs,
+        )
+```
+
+**Error handling**: T3 failures return `None` and the router falls back gracefully. T2 failures are silently ignored. The router always produces a valid `RoutedDecision`.
+
+**Test approach**: `test_decision_router.py` -- high-confidence routes to T1 only, low-confidence triggers T3, rate-limited T3 falls back to T1, T2 runs when enabled, T2 failure is non-fatal.
+
+---
+
+### 4.9 Model Providers (`backend/agents/model_providers/`)
+
+**Purpose**: Three model provider implementations with a common interface, health check, and graceful fallback.
+
+#### 4.9.1 Base Provider Interface
+
+```python
+# backend/agents/model_providers/__init__.py
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Optional
+
+
+@dataclass
+class ProviderConfig:
+    """Configuration for a model provider."""
+    api_key: Optional[str] = None
+    base_url: str = ""
+    model_name: str = ""
+    timeout_s: float = 30.0
+    max_retries: int = 2
+
+
+class BaseModelProvider(ABC):
+    """Abstract base for all model providers."""
+
+    def __init__(self, config: ProviderConfig) -> None:
+        self._config = config
+
+    @abstractmethod
+    async def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: Optional[dict] = None,
+    ) -> dict:
+        """Generate a response. Returns parsed dict."""
         ...
 
-    @staticmethod
+    @abstractmethod
+    async def health_check(self) -> bool:
+        """Check if the provider is available and responsive."""
+        ...
+
+    @abstractmethod
+    def is_available(self) -> bool:
+        """Synchronous availability check (cached)."""
+        ...
+```
+
+#### 4.9.2 Ollama Provider (T1)
+
+```python
+# backend/agents/model_providers/ollama_provider.py
+from __future__ import annotations
+
+import json
+from typing import Optional
+
+from backend.agents.model_providers import BaseModelProvider, ProviderConfig
+
+
+class OllamaProvider(BaseModelProvider):
+    """Wraps Ollama's local API for Qwen 3.5 4B/9B.
+
+    Structured output via JSON schema enforcement.
+    Fallback: T1 degrades to pure rules engine.
+    """
+
+    DEFAULT_URL = "http://localhost:11434"
+    DEFAULT_MODEL = "qwen3.5:4b"
+
+    def __init__(self, config: Optional[ProviderConfig] = None) -> None:
+        super().__init__(config or ProviderConfig(
+            base_url=self.DEFAULT_URL,
+            model_name=self.DEFAULT_MODEL,
+        ))
+        self._last_health: bool = False
+
+    async def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: Optional[dict] = None,
+    ) -> dict:
+        """Call Ollama /api/generate with structured output."""
+        import httpx
+        payload = {
+            "model": self._config.model_name,
+            "prompt": user_prompt,
+            "system": system_prompt,
+            "stream": False,
+        }
+        if response_schema:
+            payload["format"] = response_schema
+
+        async with httpx.AsyncClient(
+            timeout=self._config.timeout_s
+        ) as client:
+            resp = await client.post(
+                f"{self._config.base_url}/api/generate",
+                json=payload,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            response_text = data.get("response", "{}")
+            return json.loads(response_text)
+
+    async def health_check(self) -> bool:
+        """Verify Ollama is running and model is loaded."""
+        import httpx
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    f"{self._config.base_url}/api/tags"
+                )
+                if resp.status_code != 200:
+                    self._last_health = False
+                    return False
+                models = resp.json().get("models", [])
+                model_names = [m.get("name", "") for m in models]
+                self._last_health = any(
+                    self._config.model_name in name
+                    for name in model_names
+                )
+                return self._last_health
+        except Exception:
+            self._last_health = False
+            return False
+
+    def is_available(self) -> bool:
+        return self._last_health
+```
+
+**Test marker**: `@pytest.mark.requires_ollama` for live tests. Default tests use mocked provider.
+
+#### 4.9.3 Mistral Provider (T2)
+
+```python
+# backend/agents/model_providers/mistral_provider.py
+from __future__ import annotations
+
+import json
+from typing import Optional
+
+from backend.agents.model_providers import BaseModelProvider, ProviderConfig
+
+
+class MistralProvider(BaseModelProvider):
+    """Wraps Mistral API for creative personality generation.
+
+    Fallback: generic template string (decision unaffected).
+    """
+
+    DEFAULT_URL = "https://api.mistral.ai/v1"
+    DEFAULT_MODEL = "mistral-small-latest"
+
+    def __init__(self, config: Optional[ProviderConfig] = None) -> None:
+        cfg = config or ProviderConfig(
+            base_url=self.DEFAULT_URL,
+            model_name=self.DEFAULT_MODEL,
+        )
+        super().__init__(cfg)
+        self._last_health: bool = False
+
+    async def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: Optional[dict] = None,
+    ) -> dict:
+        """Call Mistral /chat/completions."""
+        import httpx
+        headers = {
+            "Authorization": f"Bearer {self._config.api_key}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self._config.model_name,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            "max_tokens": 200,
+        }
+        async with httpx.AsyncClient(
+            timeout=self._config.timeout_s
+        ) as client:
+            resp = await client.post(
+                f"{self._config.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+            return {"rationale": content, "commentary": ""}
+
+    async def health_check(self) -> bool:
+        import httpx
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    f"{self._config.base_url}/models",
+                    headers={"Authorization": f"Bearer {self._config.api_key}"},
+                )
+                self._last_health = resp.status_code == 200
+                return self._last_health
+        except Exception:
+            self._last_health = False
+            return False
+
+    def is_available(self) -> bool:
+        return self._last_health
+```
+
+**Test marker**: `@pytest.mark.requires_mistral`. Default tests mock the provider.
+
+#### 4.9.4 Anthropic Provider (T3)
+
+```python
+# backend/agents/model_providers/anthropic_provider.py
+from __future__ import annotations
+
+import json
+from typing import Optional
+
+from backend.agents.model_providers import BaseModelProvider, ProviderConfig
+
+
+class AnthropicProvider(BaseModelProvider):
+    """Wraps Anthropic API for deep reasoning (Sonnet 4.5 / Opus).
+
+    Rate-limited. Structured output: reasoning_summary, evidence_refs,
+    decision_trace. Fallback: router falls back to T1.
+    """
+
+    DEFAULT_URL = "https://api.anthropic.com/v1"
+    DEFAULT_MODEL = "claude-sonnet-4-5-20241022"
+
+    def __init__(self, config: Optional[ProviderConfig] = None) -> None:
+        cfg = config or ProviderConfig(
+            base_url=self.DEFAULT_URL,
+            model_name=self.DEFAULT_MODEL,
+        )
+        super().__init__(cfg)
+        self._last_health: bool = False
+
+    async def generate(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: Optional[dict] = None,
+    ) -> dict:
+        """Call Anthropic /messages API."""
+        import httpx
+        headers = {
+            "x-api-key": self._config.api_key or "",
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self._config.model_name,
+            "max_tokens": 1024,
+            "system": system_prompt,
+            "messages": [
+                {"role": "user", "content": user_prompt},
+            ],
+        }
+        async with httpx.AsyncClient(
+            timeout=self._config.timeout_s
+        ) as client:
+            resp = await client.post(
+                f"{self._config.base_url}/messages",
+                headers=headers,
+                json=payload,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = data["content"][0]["text"]
+            # Attempt to parse structured JSON from response
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError:
+                return {
+                    "action": "HOLD",
+                    "confidence": 0.5,
+                    "reasoning_summary": content,
+                    "evidence_refs": [],
+                    "pattern_name": "deep_analysis",
+                }
+
+    async def health_check(self) -> bool:
+        """Light health check -- verify API key works."""
+        if not self._config.api_key:
+            self._last_health = False
+            return False
+        # For Anthropic, we trust the key is valid without a probe call
+        # to avoid burning tokens. Full validation on first generate().
+        self._last_health = True
+        return True
+
+    def is_available(self) -> bool:
+        return self._last_health
+```
+
+**Test marker**: `@pytest.mark.requires_anthropic`. Default tests mock the provider.
+
+---
+
+### 4.10 ADK Integration Layer (`backend/agents/adk/`)
+
+**Purpose**: Wraps the T0/T1/T2/T3 pipeline as a Google ADK agent. Sprint 3 only. No ADK imports in Sprint 1-2.
+
+#### 4.10.1 FakeADKRunner (Sprint 1-2 testing)
+
+```python
+# backend/agents/adk/__init__.py
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Optional, Callable
+
+
+@dataclass
+class FakeADKRunner:
+    """Synchronous test runner that bypasses the ADK event system.
+
+    Used in Sprint 1-2 tests. Executes the agent's decision loop
+    directly without ADK dependencies.
+    """
+    agent_instance: object  # TheatreAgentInstance
+    tick_count: int = 0
+    max_ticks: int = 50
+    decision_log: list = field(default_factory=list)
+
+    def run_tick(
+        self,
+        market,
+        position_manager,
+        trading_engine,
+        evidence=None,
+        seed: int = 42,
+    ):
+        """Execute a single tick synchronously."""
+        trade, trace = self.agent_instance.tick(
+            market=market,
+            position_manager=position_manager,
+            trading_engine=trading_engine,
+            evidence=evidence,
+            tick=self.tick_count,
+            seed=seed,
+        )
+        self.decision_log.append(trace)
+        self.tick_count += 1
+        return trade, trace
+
+    def run_all(
+        self,
+        market,
+        position_manager,
+        trading_engine,
+        evidence_schedule: Optional[dict] = None,
+        seed: int = 42,
+    ):
+        """Run all ticks synchronously.
+
+        evidence_schedule: {tick_number: evidence_object}
+        """
+        results = []
+        for tick in range(self.max_ticks):
+            evidence = None
+            if evidence_schedule and tick in evidence_schedule:
+                evidence = evidence_schedule[tick]
+            trade, trace = self.run_tick(
+                market, position_manager, trading_engine, evidence, seed
+            )
+            results.append((trade, trace))
+            self.tick_count = tick + 1
+        return results
+```
+
+#### 4.10.2 EchelonAgent (Sprint 3)
+
+```python
+# backend/agents/adk/echelon_agent.py
+from __future__ import annotations
+
+from typing import Optional
+
+# ADK import guarded -- Sprint 3 only
+try:
+    from google.adk import Agent, Tool
+    HAS_ADK = True
+except ImportError:
+    HAS_ADK = False
+
+
+class EchelonAgent:
+    """ADK Agent wrapper for the T0/T1/T2/T3 pipeline.
+
+    Wraps TheatreAgentInstance with ADK lifecycle:
+    initialise -> subscribe to heartbeat -> execute decision loop -> settle
+
+    Tool bindings:
+    - echelon_status: query market state
+    - echelon_verify: check certificate
+    - execute_trade: submit trade to LMSR
+    """
+
+    def __init__(
+        self,
+        agent_instance: object,  # TheatreAgentInstance
+        decision_router: Optional[object] = None,
+    ) -> None:
+        self._instance = agent_instance
+        self._router = decision_router
+        self._adk_agent: Optional[object] = None
+
+    def initialise(self) -> None:
+        """Create ADK agent with tool bindings."""
+        if not HAS_ADK:
+            raise RuntimeError("Google ADK not available")
+        # ADK initialisation will be implemented in Sprint 3
+        ...
+
+    async def on_heartbeat(self, tick: int, market, evidence=None) -> None:
+        """Handle heartbeat tick. Called by HeartbeatScheduler."""
+        ...
+
+    async def settle(self, settlement_report) -> None:
+        """Handle settlement. Clean up ADK resources."""
+        ...
+```
+
+#### 4.10.3 SharkV1 (Sprint 3)
+
+```python
+# backend/agents/adk/shark_v1.py
+from __future__ import annotations
+
+from backend.agents.genome import AgentGenome, EchelonArchetype, create_genome
+
+
+MEGALODON_GENOME = create_genome(
+    archetype=EchelonArchetype.SHARK,
+    variant="MEGALODON",
+)
+
+# SharkV1 is simply a TheatreAgentInstance spawned with the MEGALODON genome.
+# The ADK wrapper (EchelonAgent) provides the execution framework.
+# Acceptance criteria:
+# - >= 20 trades over 50 ticks
+# - Respects all risk limits
+# - Outperforms at least one lower-skill archetype
+```
+
+**Test approach**: `test_adk_agent.py` -- `FakeADKRunner` in Sprint 1-2, `@pytest.mark.requires_adk` for live ADK tests in Sprint 3.
+
+---
+
+### 4.11 Agent-Theatre Bridge (`backend/services/agent_theatre_bridge.py`)
+
+**Purpose**: Replaces 012's stub agents with autonomous agents in the Sponsored Theatre lifecycle. Compatible with 012's interface -- same inputs/outputs, different implementation.
+
+```python
+# backend/services/agent_theatre_bridge.py
+from __future__ import annotations
+
+from typing import Optional
+
+from backend.agents.agent_instance import (
+    AgentSettlementResult,
+    TheatreAgentInstance,
+)
+from backend.agents.decision_trace import DecisionTrace
+from backend.agents.genome import (
+    ARCHETYPE_DEFAULTS,
+    AgentGenome,
+    EchelonArchetype,
+    create_genome,
+)
+from backend.agents.rules_engine import RulesEngine
+from backend.market.positions import PositionManager
+from backend.market.resolution import SettlementReport
+from backend.market.state import MarketState
+from backend.market.trading import TradingEngine
+
+
+class AgentTheatreBridge:
+    """Bridge: autonomous agents <-> Theatre lifecycle.
+
+    Drop-in replacement for StubAgentSpawner.
+    Same execute_tick() semantics, richer output (DecisionTrace).
+    """
+
+    def __init__(self) -> None:
+        self._rules_engine = RulesEngine()
+        self._agents: list[TheatreAgentInstance] = []
+        self._all_traces: list[DecisionTrace] = []
+
+    def spawn_agents(
+        self,
+        theatre_id: str,
+        initial_balance: float = 1000.0,
+        position_manager: Optional[PositionManager] = None,
+        archetypes: Optional[list[EchelonArchetype]] = None,
+    ) -> list[TheatreAgentInstance]:
+        """Spawn one agent per archetype for a Theatre."""
+        if archetypes is None:
+            archetypes = list(EchelonArchetype)
+
+        agents = []
+        for arch in archetypes:
+            genome = create_genome(arch)
+            instance = TheatreAgentInstance.spawn(
+                genome=genome,
+                theatre_id=theatre_id,
+                rules_engine=self._rules_engine,
+            )
+            if position_manager is not None:
+                position_manager.set_balance(instance.agent_id, initial_balance)
+            agents.append(instance)
+
+        self._agents = agents
+        return agents
+
     def execute_tick(
-        agents: list[StubAgent],
-        market_state: MarketState,
+        self,
+        agents: list[TheatreAgentInstance],
+        market: MarketState,
         trading_engine: TradingEngine,
         position_manager: PositionManager,
-        evidence: list | None,
+        evidence: object,
         tick: int,
-    ) -> list[TradeDecisionTrace]:
-        """Execute one trading tick for all agents.
+        seed: int = 42,
+    ) -> list[DecisionTrace]:
+        """Execute one tick for all agents.
 
-        For each agent:
-        1. Call strategy(market_state, evidence, tick) → Optional[TradeIntent]
-        2. If intent is not None, call TradingEngine.execute_trade()
-        3. Record TradeDecisionTrace for RLMF export
-
-        Returns list of traces (one per agent, including no-op decisions).
+        Interface-compatible with StubAgentSpawner.execute_tick().
+        Returns DecisionTrace list instead of TradeDecisionTrace list.
         """
-        ...
-```
+        traces = []
+        for agent in agents:
+            _trade, trace = agent.tick(
+                market=market,
+                position_manager=position_manager,
+                trading_engine=trading_engine,
+                evidence=evidence,
+                tick=tick,
+                seed=seed,
+            )
+            traces.append(trace)
+        self._all_traces.extend(traces)
+        return traces
 
-**Critical constraint**: Stub agents call `TradingEngine.execute_trade()` directly. No agent runtime, no LLM, no autonomous decision-making. They are throwaway code replaced by Cycle-013.
-
-### 4.7 Theatre Evidence Collector
-
-**File**: `backend/services/theatre_evidence.py`
-
-```python
-from dataclasses import dataclass, field
-from datetime import datetime
-
-
-@dataclass
-class EvidenceSnapshot:
-    """Evidence collected at a single heartbeat tick."""
-    theatre_id: str
-    collection_timestamp: datetime
-    oracle_output: object              # OracleOutput from Scorer
-    evidence_bundles: list             # List of EvidenceBundle
-    collection_results: list           # List of CollectionResult
-    source_coverage_pct: float         # Successful / total sources
-
-
-class TheatreEvidenceCollector:
-    """Orchestrates OSINT evidence collection per heartbeat cadence.
-
-    Uses LiveOSINTRealityProvider from Cycle-011 with mock WM fixtures.
-    Evidence stored in-memory keyed by collection timestamp.
-    """
-
-    def __init__(
+    def settle_agents(
         self,
-        reality_provider: LiveOSINTRealityProvider,
-        committed_sources: list[str],
-    ) -> None:
-        self._provider = reality_provider
-        self._sources = committed_sources
-        self._snapshots: list[EvidenceSnapshot] = []
+        agents: list[TheatreAgentInstance],
+        position_manager: PositionManager,
+        resolved_outcome: int,
+    ) -> list[AgentSettlementResult]:
+        """Settle all agents after Theatre resolution."""
+        results = []
+        for agent in agents:
+            result = agent.settle(position_manager, resolved_outcome)
+            results.append(result)
+        return results
 
-    def collect_heartbeat(self, theatre_id: str) -> EvidenceSnapshot:
-        """Collect evidence for all committed sources. Called per heartbeat tick.
-
-        1. Call LiveOSINTRealityProvider.get_signal(theatre_id)
-        2. Extract OracleOutput from provider cache
-        3. Build EvidenceSnapshot with coverage metrics
-        4. Store in snapshot history
-        """
-        ...
-
-    def get_evidence_history(self) -> list[EvidenceSnapshot]:
-        """Return all collected evidence snapshots."""
-        return list(self._snapshots)
-
-    def get_latest_evidence(self) -> EvidenceSnapshot | None:
-        """Return most recent evidence snapshot, or None if no collection yet."""
-        return self._snapshots[-1] if self._snapshots else None
-
-    def compute_coverage_pct(self) -> float:
-        """Latest source coverage: successful / total sources."""
-        ...
+    def collect_decision_traces(self) -> list[DecisionTrace]:
+        """Collect all decision traces for RLMF export."""
+        return list(self._all_traces)
 ```
 
-### 4.8 Theatre Resolution Engine
+**012 compatibility**: `AgentTheatreBridge.execute_tick()` takes the same core arguments as `StubAgentSpawner.execute_tick()` (agents, market, trading_engine, position_manager, evidence, tick, seed). The return type differs (DecisionTrace vs TradeDecisionTrace) but both serialise to dicts for RLMF.
 
-**File**: `backend/services/theatre_resolution.py`
-
-```python
-from dataclasses import dataclass
-
-
-@dataclass
-class TheatreResolutionResult:
-    """Result of Theatre resolution — input to certificate pipeline."""
-    theatre_id: str
-    oracle_output_id: str              # "{theatre_id}_{epoch_ms}"
-    composite_score: float             # 0.0-1.0
-    winning_outcome_index: int         # Discrete index into outcome_labels
-    winning_outcome_label: str
-    evidence_bundle_hash: str          # SHA-256
-    evidence_snapshots: list           # All EvidenceSnapshot collected
-    corroboration_result: object       # CorroborationResult
-    counter_signal_results: list       # List of CounterSignalResult
-    criterion_scores: list             # List of CriterionScore
-    source_manifest: object            # SourceManifest
-
-
-class TheatreResolutionEngine:
-    """Resolves a Theatre when resolution_date arrives.
-
-    Orchestrates: final evidence → Composed Oracle → winning outcome → settlement.
-    """
-
-    def __init__(
-        self,
-        evidence_collector: TheatreEvidenceCollector,
-        scorer: Scorer,
-        corroboration_engine: CorroborationEngine,
-        counter_signal_evaluator: CounterSignalEvaluator,
-        source_manifest: SourceManifest,
-        oracle_config: dict,
-    ) -> None:
-        ...
-
-    def resolve(self, theatre_id: str) -> TheatreResolutionResult:
-        """Full resolution pipeline.
-
-        Steps:
-        1. Collect final evidence snapshot
-        2. Run CorroborationEngine.evaluate() on all collection results
-        3. Run CounterSignalEvaluator.evaluate() on collection results
-        4. Run Scorer.score() → OracleOutput
-        5. Determine winning_outcome_index from composite_score:
-           - For n-outcome markets, map composite_score to outcome thresholds
-           - Companies House Theatre (3 outcomes):
-             score >= 0.7 → outcome 0 ("Filed on time")
-             0.3 <= score < 0.7 → outcome 1 ("Filed late")
-             score < 0.3 → outcome 2 ("Not filed")
-        6. Build TheatreResolutionResult
-
-        Returns TheatreResolutionResult with oracle_output_id, composite_score,
-        winning_outcome_index, evidence_bundle_hash.
-        """
-        ...
-
-    def _determine_winning_outcome(
-        self,
-        composite_score: float,
-        n_outcomes: int,
-        outcome_labels: list[str],
-    ) -> int:
-        """Map composite_score to discrete winning_outcome_index.
-
-        For n-outcome markets, divide [0, 1] into n equal bands.
-        Highest band = outcome 0 (most positive), lowest = outcome n-1.
-        """
-        ...
-```
-
-**Oracle evaluation flow** (delegates to existing 011 modules):
-
-```
-TheatreResolutionEngine.resolve()
-    │
-    ├─→ TheatreEvidenceCollector.collect_heartbeat()
-    │    └─→ LiveOSINTRealityProvider.get_signal()
-    │         └─→ CollectionRunner.collect() → list[CollectionResult]
-    │
-    ├─→ CorroborationEngine.evaluate(results, oracle_config)
-    │    └─→ CorroborationResult (provisional: 0.7 penalty)
-    │
-    ├─→ CounterSignalEvaluator.evaluate(results, oracle_config)
-    │    └─→ list[CounterSignalResult] (all UNAVAILABLE / INTELLIGENCE_GAP)
-    │
-    └─→ Scorer.score(corroboration, counter_signals, results, config, theatre_id)
-         └─→ OracleOutput (composite_score, criterion_scores, bundle_hash)
-```
-
-### 4.9 Certificate Generation Pipeline
-
-**File**: `backend/services/certificate_pipeline.py`
-
-```python
-from dataclasses import dataclass, field
-from datetime import datetime
-
-
-@dataclass
-class CalibrationCertificate:
-    """v1.0.0 calibration certificate schema.
-
-    Replaces 010b's certificate_id with oracle_output_id.
-    Carries full evidence provenance chain.
-    """
-    oracle_output_id: str               # "{theatre_id}_{epoch_ms}"
-    theatre_id: str
-    composite_score: float              # 0.0-1.0
-    evidence_bundle_hash: str           # SHA-256 manifest pattern hash
-    criteria_breakdown: list[dict]      # Per-criterion pass/fail with evidence refs
-    osint_source_manifest: dict         # Serialised SourceManifest
-    corroboration_status: dict          # {minimum_met, penalty_factor, distinct_groups}
-    counter_signal_results: list[dict]  # Per-class outcome + detail
-    verification_tier: str              # "UNVERIFIED" for first local-mode Theatre
-    scored_at: str                      # ISO 8601
-    provider_version: str               # e.g. "012.1"
-    settlement_hash: str                # From SettlementReport
-    commitment_hash: str                # From MarketState
-    winning_outcome: int
-    winning_outcome_label: str
-    schema_version: str = "1.0.0"
-
-
-class CertificatePipeline:
-    """Produces calibration certificates from settlement results."""
-
-    SCHEMA_VERSION = "1.0.0"
-    PROVIDER_VERSION = "012.1"
-
-    def generate(
-        self,
-        resolution_result: TheatreResolutionResult,
-        settlement_report: SettlementReport,
-    ) -> CalibrationCertificate:
-        """Generate certificate from resolution + settlement.
-
-        Steps:
-        1. Build criteria_breakdown from resolution_result.criterion_scores
-        2. Serialise source_manifest
-        3. Build corroboration_status:
-           - minimum_met: False (provisional — WM-only)
-           - penalty_factor: 0.7
-           - distinct_source_groups: 1
-        4. Build counter_signal_results:
-           - All 11 classes: UNAVAILABLE, INTELLIGENCE_GAP
-        5. Set verification_tier: "UNVERIFIED"
-           (BACKTESTED requires 50+ replay runs, not available in 012)
-        6. Assemble CalibrationCertificate
-        """
-        ...
-
-    def verify(self, certificate: CalibrationCertificate) -> tuple[bool, list[str]]:
-        """Run certificate through echelon_verify — 21 checks.
-
-        Returns (all_passed, list_of_check_results).
-        """
-        ...
-```
-
-**Certificate v1.0.0 schema fields**:
-
-| Field | Type | Source |
-|-------|------|--------|
-| `oracle_output_id` | str | `"{theatre_id}_{epoch_ms}"` |
-| `composite_score` | float | `OracleOutput.composite_score` |
-| `evidence_bundle_hash` | str | Manifest pattern: `{bundle_id: content_hash}` -> canonical JSON -> SHA-256 |
-| `criteria_breakdown` | list[dict] | Per-criterion pass/fail with evidence references |
-| `osint_source_manifest` | dict | Serialised `SourceManifest` |
-| `corroboration_status` | dict | `{minimum_met: false, penalty_factor: 0.7, distinct_source_groups: 1}` |
-| `counter_signal_results` | list[dict] | 11 entries, all UNAVAILABLE/INTELLIGENCE_GAP |
-| `verification_tier` | str | `"UNVERIFIED"` |
-| `scored_at` | str | ISO 8601 UTC |
-| `provider_version` | str | `"012.1"` |
-| `settlement_hash` | str | From `SettlementReport.settlement_hash` |
-| `commitment_hash` | str | From `MarketState.commitment_hash` |
-
-**UNVERIFIED tier rationale**: BACKTESTED requires 50+ replay runs against historical data, which 012 does not produce. The first local-mode Theatre earns UNVERIFIED, which is honest.
-
-**21 `echelon_verify` checks** (must all pass):
-
-1. `oracle_output_id` present and non-empty
-2. `oracle_output_id` format: `{theatre_id}_{epoch_ms}`
-3. `composite_score` in range [0.0, 1.0]
-4. `evidence_bundle_hash` is valid SHA-256 hex (64 chars)
-5. `evidence_bundle_hash` recomputable from bundles
-6. `criteria_breakdown` non-empty
-7. Each criterion has `criterion`, `passed`, `score`, `detail` fields
-8. `osint_source_manifest` present and non-empty
-9. `osint_source_manifest` entries have required fields
-10. `corroboration_status` has `minimum_met`, `penalty_factor`, `distinct_source_groups`
-11. `corroboration_status.penalty_factor` in [0.0, 1.0]
-12. `counter_signal_results` has exactly 11 entries
-13. Each counter-signal result has `signal_class`, `outcome`, `detail`
-14. `verification_tier` is a known value (UNVERIFIED, BACKTESTED, VERIFIED)
-15. `scored_at` is valid ISO 8601
-16. `provider_version` present and non-empty
-17. `settlement_hash` is valid SHA-256 hex
-18. `commitment_hash` is valid SHA-256 hex
-19. `winning_outcome` is a valid index
-20. `schema_version` matches "1.0.0"
-21. Certificate JSON is deterministically re-serialisable (canonical JSON roundtrip)
-
-### 4.10 RLMF Export Generator
-
-**File**: `backend/services/rlmf_export.py`
-
-```python
-from dataclasses import dataclass, field
-from datetime import datetime
-
-
-@dataclass
-class MarketEpoch:
-    """Market state snapshot at a single epoch (tick)."""
-    tick: int
-    timestamp: str                      # ISO 8601
-    prices: list[float]                 # Current outcome prices
-    x_vector: list[float]              # LMSR x vector
-    total_trades: int
-    trade_count_this_tick: int
-
-
-@dataclass
-class AgentTrace:
-    """Complete trace for one agent across all ticks."""
-    agent_id: str
-    archetype: str
-    initial_balance: float
-    final_balance: float
-    total_trades: int
-    total_pnl: float
-    decision_traces: list[dict]         # TradeDecisionTrace serialised
-
-
-@dataclass
-class CalibrationMetrics:
-    """Calibration quality metrics computed at settlement."""
-    brier_score: float                  # Mean squared error of probability forecasts
-    expected_calibration_error: float   # ECE across probability bins
-    resolution: float                   # Brier decomposition: resolution component
-    reliability: float                  # Brier decomposition: reliability component
-
-
-@dataclass
-class RLMFExport:
-    """RLMF training data export — schema v2.0.1.
-
-    Captures the complete information needed to train
-    Reinforcement Learning from Market Feedback models.
-    """
-    schema_version: str = "2.0.1"
-    oracle_output_id: str = ""
-    theatre_id: str = ""
-    question: str = ""
-    outcome_labels: list[str] = field(default_factory=list)
-    winning_outcome: int = 0
-    winning_outcome_label: str = ""
-
-    # Probability distributions per epoch
-    epochs: list[MarketEpoch] = field(default_factory=list)
-
-    # Agent decision traces
-    agent_traces: list[AgentTrace] = field(default_factory=list)
-
-    # Calibration metrics
-    calibration: CalibrationMetrics | None = None
-
-    # Per-agent P&L
-    agent_pnl: dict[str, float] = field(default_factory=dict)
-
-    # Settlement metadata
-    composite_score: float = 0.0
-    evidence_bundle_hash: str = ""
-    settlement_hash: str = ""
-    exported_at: str = ""
-
-
-class RLMFExportGenerator:
-    """Generates RLMF training data from Theatre lifecycle artifacts."""
-
-    SCHEMA_VERSION = "2.0.1"
-
-    def generate(
-        self,
-        theatre_id: str,
-        question: str,
-        outcome_labels: list[str],
-        winning_outcome: int,
-        oracle_output_id: str,
-        epochs: list[MarketEpoch],
-        agent_traces: list[AgentTrace],
-        settlement_report: SettlementReport,
-        resolution_result: TheatreResolutionResult,
-    ) -> RLMFExport:
-        """Assemble RLMF export from all lifecycle artifacts.
-
-        Steps:
-        1. Compute Brier score from final probabilities vs outcome
-        2. Compute ECE from probability distribution history
-        3. Build per-agent P&L from settlement report
-        4. Assemble RLMFExport with schema_version 2.0.1
-        """
-        ...
-
-    @staticmethod
-    def compute_brier_score(
-        final_prices: list[float],
-        winning_outcome: int,
-    ) -> float:
-        """Brier score = (1/n) * sum((p_i - o_i)^2)
-
-        Where o_i = 1 if i == winning_outcome else 0.
-        Range [0, 2]. Lower is better.
-        """
-        ...
-
-    @staticmethod
-    def compute_ece(
-        epochs: list[MarketEpoch],
-        winning_outcome: int,
-        n_bins: int = 10,
-    ) -> float:
-        """Expected Calibration Error across probability bins.
-
-        Bins the winning outcome's price across all epochs into n_bins.
-        ECE = weighted average of |accuracy - confidence| per bin.
-        """
-        ...
-```
-
-### 4.11 Sponsor Delivery Package
-
-**File**: `backend/services/sponsor_delivery.py`
-
-```python
-from dataclasses import dataclass
-
-
-@dataclass
-class SponsorDeliveryPackage:
-    """Final deliverable for the sponsor after settlement."""
-    theatre_id: str
-    certificate: dict                   # CalibrationCertificate serialised
-    evidence_bundle: dict               # Complete artefact: template, ground truth,
-                                        # HTTP receipts, per-episode scores, gap reports
-    rlmf_export: dict                   # RLMFExport serialised
-    commitment_hash: str                # For future on-chain anchoring
-    echelon_status_url: str             # MCP tool endpoint URL
-
-
-class SponsorDeliveryAssembler:
-    """Assembles the sponsor delivery package from all post-settlement artifacts."""
-
-    def assemble(
-        self,
-        theatre_id: str,
-        certificate: CalibrationCertificate,
-        evidence_snapshots: list[EvidenceSnapshot],
-        rlmf_export: RLMFExport,
-        commitment_hash: str,
-        source_manifest: SourceManifest,
-    ) -> SponsorDeliveryPackage:
-        """Bundle all deliverables into SponsorDeliveryPackage.
-
-        Steps:
-        1. Serialise certificate to dict
-        2. Build evidence bundle artefact:
-           - Committed template JSON
-           - Ground truth (winning outcome + composite score)
-           - HTTP transcript receipts from evidence bundles
-           - Per-episode scores from evidence snapshots
-           - Gap reports (INTELLIGENCE_GAP counter-signals)
-        3. Serialise RLMF export to dict
-        4. Include commitment hash
-        5. Build echelon_status endpoint URL
-        """
-        ...
-```
-
-### 4.12 Sponsor API Routes
-
-**File**: `backend/api/sponsored_theatre_routes.py`
-
-Three endpoints on the FastAPI router:
-
-```python
-from fastapi import APIRouter, HTTPException
-
-router = APIRouter(prefix="/api/v1/sponsored-theatres", tags=["sponsored-theatres"])
-
-
-@router.post("/", status_code=201)
-async def create_sponsored_theatre(config: SponsoredTheatreConfig) -> dict:
-    """Create a sponsored Theatre in CREATED state.
-
-    Request body: SponsoredTheatreConfig (Pydantic v2 validated)
-    Response: {theatre_id, status: "CREATED", commitment_hash}
-    """
-    ...
-
-
-@router.get("/{theatre_id}/review")
-async def review_sponsored_theatre(theatre_id: str) -> SponsorReviewPackage:
-    """Return SponsorReviewPackage for sponsor approval.
-
-    Response: SponsorReviewPackage (template, hash, worst-case loss, manifest, fees)
-    """
-    ...
-
-
-@router.post("/{theatre_id}/commit")
-async def commit_sponsored_theatre(theatre_id: str) -> dict:
-    """Sponsor approves — freeze parameters, transition to COMMITTED.
-
-    Response: {theatre_id, status: "COMMITTED", commitment_hash, tx_hash}
-    """
-    ...
-```
-
-### 4.13 echelon_status Theatre Integration
-
-The existing `market_status_snapshot()` function in `backend/engines/status.py` is extended via a new wrapper in the service layer (not modifying `status.py`):
-
-```python
-@dataclass
-class TheatreStatusSnapshot:
-    """Extended status for echelon_status MCP tool with Theatre context."""
-    # From existing MarketStatusSnapshot
-    theatre_id: str
-    market_phase: str
-    current_prices: list[float]
-    total_trades: int
-    timeline_stability: float
-    logic_gap_status: str | None
-    logic_gap_value: float | None
-    heartbeat_ticks: dict[str, int]
-    commitment_hash: str
-    on_chain: bool
-
-    # Theatre-specific extensions (012)
-    evidence_coverage_pct: float | None         # During TRADING
-    sources_online: int | None                  # During TRADING
-    sources_total: int | None                   # During TRADING
-    certificate_state: str | None               # After SETTLEMENT: "VALID" | None
-    composite_score: float | None               # After SETTLEMENT
-    counter_signal_status: str | None           # After SETTLEMENT: "PASS" | "FAIL"
-    verification_tier: str | None               # After SETTLEMENT: "UNVERIFIED"
-
-    # Cache metadata
-    cached_at: str | None = None
-    ttl_seconds: int = 300
-```
+**Test approach**: `test_agent_theatre_bridge.py` -- spawn, execute ticks, settle, verify traces feed RLMF export.
 
 ---
 
 ## 5. Data Architecture
 
-### 5.1 New Pydantic Models (Sponsor-Facing)
+### 5.1 Pydantic v2 Models
 
-| Model | File | Key Fields |
-|-------|------|------------|
-| `SponsoredTheatreConfig` | `backend/schemas/sponsored_theatre.py` | question, resolution_date, committed_sources, outcome_labels, liquidity_b, fee_schedule, sponsor_id, sponsor_metadata |
-| `SponsorReviewPackage` | `backend/schemas/sponsored_theatre.py` | theatre_id, template_json, commitment_hash, worst_case_loss, source_manifest, fee_schedule_breakdown, n_outcomes, outcome_labels, liquidity_b, resolution_date |
-| `SponsorDeliveryPackage` | `backend/services/sponsor_delivery.py` | theatre_id, certificate, evidence_bundle, rlmf_export, commitment_hash, echelon_status_url |
+| Model | File | Purpose |
+|-------|------|---------|
+| `AgentGenome` | `genome.py` | Complete T0 specification, frozen |
+| `DecisionTrace` | `decision_trace.py` | Stable decision log, RLMF-compatible |
 
-### 5.2 New Dataclasses (Internal)
+### 5.2 stdlib Dataclasses
 
-| Dataclass | File | Key Fields |
-|-----------|------|------------|
-| `SourceManifestEntry` | `backend/osint/source_manifest.py` | source_id, source_group, independence_upstream_id, jurisdiction, access_surface, settlement_status, settlement_eligible, display_name |
-| `SourceManifest` | `backend/osint/source_manifest.py` | entries, registry_version, validated, validation_errors |
-| `TheatreMarketState` | `backend/services/market_theatre_bridge.py` | market: MarketState, position_manager: PositionManager, trading_engine: TradingEngine |
-| `TradeIntent` | `backend/services/stub_agents.py` | outcome_index, shares, trigger, confidence |
-| `TradeDecisionTrace` | `backend/services/stub_agents.py` | agent_id, archetype, tick, trigger_condition, market_prices_at_decision, confidence, intent, executed_trade, pattern_name |
-| `StubAgent` | `backend/services/stub_agents.py` | agent_id, archetype: AgentArchetype, initial_balance, strategy |
-| `EvidenceSnapshot` | `backend/services/theatre_evidence.py` | theatre_id, collection_timestamp, oracle_output, evidence_bundles, collection_results, source_coverage_pct |
-| `TheatreResolutionResult` | `backend/services/theatre_resolution.py` | theatre_id, oracle_output_id, composite_score, winning_outcome_index, winning_outcome_label, evidence_bundle_hash, evidence_snapshots, corroboration_result, counter_signal_results, criterion_scores, source_manifest |
-| `CalibrationCertificate` | `backend/services/certificate_pipeline.py` | oracle_output_id, theatre_id, composite_score, evidence_bundle_hash, criteria_breakdown, osint_source_manifest, corroboration_status, counter_signal_results, verification_tier, scored_at, provider_version, settlement_hash, commitment_hash, winning_outcome, winning_outcome_label, schema_version |
-| `MarketEpoch` | `backend/services/rlmf_export.py` | tick, timestamp, prices, x_vector, total_trades, trade_count_this_tick |
-| `AgentTrace` | `backend/services/rlmf_export.py` | agent_id, archetype, initial_balance, final_balance, total_trades, total_pnl, decision_traces |
-| `CalibrationMetrics` | `backend/services/rlmf_export.py` | brier_score, expected_calibration_error, resolution, reliability |
-| `RLMFExport` | `backend/services/rlmf_export.py` | schema_version, oracle_output_id, theatre_id, question, outcome_labels, winning_outcome, epochs, agent_traces, calibration, agent_pnl, composite_score, evidence_bundle_hash, settlement_hash, exported_at |
-| `TheatreStatusSnapshot` | `backend/services/theatre_status.py` | (extends MarketStatusSnapshot) evidence_coverage_pct, sources_online, sources_total, certificate_state, composite_score, counter_signal_status, verification_tier, cached_at, ttl_seconds |
+| Dataclass | File | Frozen | Purpose |
+|-----------|------|--------|---------|
+| `T0Context` | `context_compiler.py` | Yes | Agent world-view snapshot |
+| `T1Decision` | `rules_engine.py` | Yes | Rules engine output |
+| `ActionOption` | `rules_engine.py` | Yes | Considered alternative |
+| `T2Output` | `personality_engine.py` | Yes | Personality expression |
+| `T3Decision` | `deep_reasoning.py` | Yes | Deep reasoning output |
+| `T3RateLimiter` | `deep_reasoning.py` | No | Rate limit tracking |
+| `RoutedDecision` | `decision_router.py` | No | Final routed decision |
+| `TradeIntent` | `agent_instance.py` | No | Pre-execution intent |
+| `AgentSettlementResult` | `agent_instance.py` | No | Post-settlement result |
+| `ProviderConfig` | `model_providers/__init__.py` | No | Provider config |
+| `FakeADKRunner` | `adk/__init__.py` | No | Test runner |
 
-### 5.3 Enums
-
-| Enum | File | Values |
-|------|------|--------|
-| `AgentArchetype` | `backend/services/stub_agents.py` | SHARK, SPY, DIPLOMAT, SABOTEUR, WHALE, DEGEN |
-| `SettlementStatus` | `backend/osint/source_manifest.py` | ELIGIBLE, PROVISIONAL, INELIGIBLE |
-
-### 5.4 Existing Dataclasses Consumed (Not Modified)
-
-| Dataclass | Module | Used By |
-|-----------|--------|---------|
-| `MarketState` | `backend/market/state.py` | MarketTheatreBridge, StubAgentSpawner, TheatreResolutionEngine |
-| `MarketPhase` | `backend/market/state.py` | MarketTheatreBridge phase transitions |
-| `FeeSchedule` | `backend/market/state.py` | SponsoredTheatreConfig |
-| `Trade` | `backend/market/trading.py` | StubAgent execution, TradeDecisionTrace |
-| `AgentPosition` | `backend/market/positions.py` | Settlement, RLMF export |
-| `AgentSettlement` | `backend/market/resolution.py` | Certificate pipeline, RLMF export |
-| `SettlementReport` | `backend/market/resolution.py` | Certificate pipeline, RLMF export |
-| `OracleOutput` | `backend/osint/engine/scorer.py` | TheatreResolutionEngine, evidence collection |
-| `CorroborationResult` | `backend/osint/engine/corroboration.py` | Certificate pipeline |
-| `CounterSignalResult` | `backend/osint/engine/counter_signal.py` | Certificate pipeline |
-| `CriterionScore` | `backend/osint/engine/scorer.py` | Certificate pipeline |
-| `CollectionResult` | `backend/osint/models/evidence.py` | TheatreEvidenceCollector |
-| `RealitySignal` | `backend/engines/reality_signal.py` | TheatreEvidenceCollector |
-| `RegistrySource` | `backend/osint/models/registry.py` | SourceManifestBuilder |
-| `TxReceipt` | `backend/chain/sepolia.py` | SponsoredTheatreService (on-chain stub) |
-
-### 5.5 Commitment Hash Composition (Extended)
-
-The existing `MarketCommitment.compute_hash()` uses `ORACLE_CONFIG_STUB = {"type": "manual", "version": "v0"}`. For 012, the Theatre creation service computes a separate commitment hash that covers the full oracle config:
+### 5.3 Type Definitions
 
 ```python
-# Commitment composite object (012 extension)
-commitment_composite = {
-    "b": market.b,
-    "n_outcomes": market.n_outcomes,
-    "outcome_labels": market.outcome_labels,
-    "fee_schedule": {
-        "trade_fee_bps": fee_schedule.trade_fee_bps,
-        "resolution_fee_bps": fee_schedule.resolution_fee_bps,
-    },
-    "oracle_config": {
-        "committed_sources": sorted(committed_sources),
-        "resolution_date": resolution_date.isoformat(),
-        "corroboration_minimum": 2,
-    },
-    "theatre_metadata": {
-        "template_id": template_id,
-        "version_pins": {"market": "010a", "engines": "010b", "osint": "011"},
-    },
+# Enums
+EchelonArchetype: SHARK | SPY | DIPLOMAT | SABOTEUR | WHALE | DEGEN
+TradeAction: BUY | SELL | HOLD | SHIELD | SABOTAGE
+
+# Literal types
+TierUsed: Literal["T1-RULES", "T1-LOCAL-LLM", "T3"]
+
+# Pattern names (stable, BEAUVOIR-compliant)
+PATTERN_NAMES = {
+    "momentum_exploitation",     # Shark
+    "intel_arbitrage",           # Spy
+    "stability_maintenance",     # Diplomat
+    "chaos_creation",            # Saboteur
+    "conviction_accumulation",   # Whale
+    "random_exploration",        # Degen
+    "deep_analysis",             # T3 escalated
+    "default_hold",              # Fallback
 }
-# SHA-256(canonical_json(commitment_composite))
 ```
 
-The existing `MarketCommitment.compute_hash(market)` is still called for the LMSR-level hash (stored in `MarketState.commitment_hash`). The Theatre-level commitment hash extends this by including oracle config and theatre metadata. Both hashes are stored and both are verifiable.
-
----
-
-## 6. API Design
-
-### 6.1 Sponsor Endpoints (HTTP)
-
-| Method | Path | Request Body | Response | Phase |
-|--------|------|-------------|----------|-------|
-| POST | `/api/v1/sponsored-theatres` | `SponsoredTheatreConfig` | `{theatre_id, status, commitment_hash}` | COMMISSION |
-| GET | `/api/v1/sponsored-theatres/{id}/review` | - | `SponsorReviewPackage` | COMMISSION |
-| POST | `/api/v1/sponsored-theatres/{id}/commit` | - | `{theatre_id, status, commitment_hash, tx_hash}` | COMMITMENT |
-
-### 6.2 Internal Python APIs (In-Memory, Not HTTP)
-
-| Class | Method | Input | Output |
-|-------|--------|-------|--------|
-| `SponsoredTheatreService` | `create(config)` | SponsoredTheatreConfig | SponsorReviewPackage |
-| `SponsoredTheatreService` | `review(theatre_id)` | str | SponsorReviewPackage |
-| `SponsoredTheatreService` | `commit(theatre_id)` | str | dict |
-| `MarketTheatreBridge` | `create_market_for_theatre(...)` | theatre_id, b, n_outcomes, etc. | TheatreMarketState |
-| `MarketTheatreBridge` | `get_market_state(theatre_id)` | str | TheatreMarketState |
-| `MarketTheatreBridge` | `transition_market(theatre_id, phase)` | str, MarketPhase | MarketState |
-| `MarketTheatreBridge` | `settle_market(theatre_id, winning)` | str, int | SettlementReport |
-| `StubAgentSpawner` | `spawn(theatre_id, count, balance)` | str, int, float | list[StubAgent] |
-| `StubAgentSpawner` | `execute_tick(agents, market, ...)` | agents, state, tick | list[TradeDecisionTrace] |
-| `SourceManifestBuilder` | `build(source_ids)` | list[str] | SourceManifest |
-| `TheatreEvidenceCollector` | `collect_heartbeat(theatre_id)` | str | EvidenceSnapshot |
-| `TheatreResolutionEngine` | `resolve(theatre_id)` | str | TheatreResolutionResult |
-| `CertificatePipeline` | `generate(resolution, settlement)` | TheatreResolutionResult, SettlementReport | CalibrationCertificate |
-| `CertificatePipeline` | `verify(certificate)` | CalibrationCertificate | (bool, list[str]) |
-| `RLMFExportGenerator` | `generate(...)` | lifecycle artifacts | RLMFExport |
-| `SponsorDeliveryAssembler` | `assemble(...)` | post-settlement artifacts | SponsorDeliveryPackage |
-
----
-
-## 7. Integration Points
-
-### 7.1 Theatre Service -> LMSR Engine (backend/market/)
-
-| Service Method | LMSR Method Called | Module |
-|---------------|-------------------|---------|
-| `SponsoredTheatreService.create()` | `MarketLifecycle.create_market()` | `lifecycle.py` |
-| `SponsoredTheatreService.create()` | `MarketCommitment.compute_hash()` | `commitment.py` |
-| `SponsoredTheatreService.create()` | `LMSREngine.worst_case_loss()` | `lmsr.py` |
-| `SponsoredTheatreService.commit()` | `MarketLifecycle.commit()` | `lifecycle.py` |
-| `SponsoredTheatreService.commit()` | `MarketLifecycle.open_trading()` | `lifecycle.py` |
-| `SponsoredTheatreService.commit()` | `MarketCommitment.verify_hash()` | `commitment.py` |
-| `StubAgentSpawner.execute_tick()` | `TradingEngine.execute_trade()` | `trading.py` |
-| `MarketTheatreBridge.settle_market()` | `MarketLifecycle.begin_resolution()` | `lifecycle.py` |
-| `MarketTheatreBridge.settle_market()` | `ResolutionEngine.settle()` | `resolution.py` |
-
-**Zero modifications to `backend/market/`.**
-
-### 7.2 Theatre Service -> Engines (backend/engines/)
-
-| Service Method | Engine Method Called | Module |
-|---------------|---------------------|---------|
-| `TheatreEvidenceCollector.collect_heartbeat()` | `LiveOSINTRealityProvider.get_signal()` | `reality_signal.py` |
-| `TheatreStatusSnapshot` builder | `market_status_snapshot()` | `status.py` |
-
-**Sole modification**: `ParadoxEngine.scan()` path gains a `p_reality=None` guard (MEDIUM-1 fix).
-
-### 7.3 Theatre Service -> OSINT Pipeline (backend/osint/)
-
-| Service Method | OSINT Method Called | Module |
-|---------------|---------------------|---------|
-| `SourceManifestBuilder.build()` | `RegistryLoader.get_source()` | `models/registry.py` |
-| `TheatreEvidenceCollector` | `CollectionRunner.collect()` | `engine/collection_runner.py` |
-| `TheatreResolutionEngine.resolve()` | `CorroborationEngine.evaluate()` | `engine/corroboration.py` |
-| `TheatreResolutionEngine.resolve()` | `CounterSignalEvaluator.evaluate()` | `engine/counter_signal.py` |
-| `TheatreResolutionEngine.resolve()` | `Scorer.score()` | `engine/scorer.py` |
-| `CertificatePipeline.generate()` | `Scorer.compute_bundle_hash()` | `engine/scorer.py` |
-
-**Zero modifications to `backend/osint/`.**
-
-### 7.4 Theatre Service -> Chain (backend/chain/)
-
-| Service Method | Chain Method Called | Module |
-|---------------|-------------------|---------|
-| `SponsoredTheatreService.commit()` | `MockSepoliaClient.publish_commitment()` | `sepolia.py` |
-
-**Zero modifications to `backend/chain/`.**
-
-### 7.5 Integration Diagram — Module Dependencies
+### 5.4 Data Flow: DecisionTrace -> RLMF Pipeline
 
 ```
-backend/schemas/sponsored_theatre.py
-    │
-    └─→ backend/market/state.py (FeeSchedule import)
-
-backend/services/sponsored_theatre.py
-    │
-    ├─→ backend/schemas/sponsored_theatre.py (SponsoredTheatreConfig, SponsorReviewPackage)
-    ├─→ backend/market/lifecycle.py (MarketLifecycle)
-    ├─→ backend/market/commitment.py (MarketCommitment)
-    ├─→ backend/market/lmsr.py (LMSREngine.worst_case_loss)
-    ├─→ backend/osint/source_manifest.py (SourceManifestBuilder)
-    └─→ backend/chain/sepolia.py (MockSepoliaClient)
-
-backend/services/market_theatre_bridge.py
-    │
-    ├─→ backend/market/lifecycle.py (MarketLifecycle)
-    ├─→ backend/market/trading.py (TradingEngine)
-    ├─→ backend/market/positions.py (PositionManager)
-    ├─→ backend/market/resolution.py (ResolutionEngine)
-    └─→ backend/market/lmsr.py (LMSREngine)
-
-backend/services/stub_agents.py
-    │
-    ├─→ backend/market/state.py (MarketState)
-    ├─→ backend/market/trading.py (TradingEngine, Trade)
-    └─→ backend/market/positions.py (PositionManager)
-
-backend/services/theatre_evidence.py
-    │
-    └─→ backend/engines/reality_signal.py (LiveOSINTRealityProvider)
-
-backend/services/theatre_resolution.py
-    │
-    ├─→ backend/osint/engine/corroboration.py (CorroborationEngine)
-    ├─→ backend/osint/engine/counter_signal.py (CounterSignalEvaluator)
-    ├─→ backend/osint/engine/scorer.py (Scorer, OracleOutput)
-    └─→ backend/services/theatre_evidence.py (TheatreEvidenceCollector)
-
-backend/services/certificate_pipeline.py
-    │
-    ├─→ backend/services/theatre_resolution.py (TheatreResolutionResult)
-    ├─→ backend/market/resolution.py (SettlementReport)
-    └─→ backend/osint/engine/scorer.py (Scorer.compute_bundle_hash)
-
-backend/services/rlmf_export.py
-    │
-    ├─→ backend/market/resolution.py (SettlementReport)
-    └─→ backend/services/theatre_resolution.py (TheatreResolutionResult)
-
-backend/services/sponsor_delivery.py
-    │
-    ├─→ backend/services/certificate_pipeline.py (CalibrationCertificate)
-    ├─→ backend/services/rlmf_export.py (RLMFExport)
-    └─→ backend/services/theatre_evidence.py (EvidenceSnapshot)
+TheatreAgentInstance.tick()
+    └─→ DecisionTrace (Pydantic v2)
+         │
+         └─→ DecisionTrace.to_rlmf_dict()
+              │
+              └─→ dict[str, Any]
+                   │
+                   └─→ AgentTrace.decision_traces (list[dict])
+                        │  (in backend/services/rlmf_export.py)
+                        │
+                        └─→ RLMFExport.agent_traces[i]["decision_traces"]
+                             │
+                             └─→ JSON export (schema v2.0.1)
 ```
 
 ---
 
-## 8. Testing Architecture
+## 6. Integration Points
 
-### 8.1 Test Structure
+### 6.1 LMSR Market Engine (010a -- frozen)
 
-```
-backend/services/tests/
-├── test_sponsored_theatre.py          # Sprint 1: creation, validation, commitment
-├── test_market_theatre_bridge.py      # Sprint 1: LMSR bridge tests
-├── test_stub_agents.py                # Sprint 1: agent spawning, strategies, trading
-├── test_theatre_resolution.py         # Sprint 2: resolution engine tests
-├── test_certificate_pipeline.py       # Sprint 2: certificate generation, verification
-├── test_rlmf_export.py               # Sprint 2: RLMF schema conformance
-└── test_sponsored_theatre_e2e.py      # Sprint 2: end-to-end integration test
-```
+| Surface | Module | 013 Usage |
+|---------|--------|-----------|
+| `LMSREngine.prices(x, b)` | `lmsr.py` | T0 Context Compiler reads prices |
+| `LMSREngine.trade_cost(x, delta, b)` | `lmsr.py` | TradingEngine uses internally |
+| `TradingEngine.execute_trade()` | `trading.py` | Agent instances execute trades |
+| `PositionManager.get_position()` | `positions.py` | T0 Context Compiler reads position |
+| `PositionManager.get_balance()` | `positions.py` | T0 Context Compiler reads balance |
+| `PositionManager.set_balance()` | `positions.py` | AgentTheatreBridge sets initial balance |
+| `PositionManager.compute_settlement_payout()` | `positions.py` | Agent settle() computes P&L |
+| `ResolutionEngine.settle()` | `resolution.py` | Theatre resolution unchanged |
+| `MarketState` | `state.py` | T0 Context Compiler reads all fields |
 
-### 8.2 Sprint 1 Test Cases (20+ tests)
+**Constraint**: Zero modifications to any file in `backend/market/`.
 
-**`test_sponsored_theatre.py`**:
-1. Valid creation produces CREATED state and SponsorReviewPackage
-2. Invalid source IDs (non-existent) rejected with validation error
-3. Wrong jurisdiction source rejected
-4. Provisional sources (WM endpoints with shared upstream_id) accepted with PROVISIONAL flag
-5. Commitment freeze transitions to COMMITTED
-6. Parameter mutation after commit raises `ParameterMutationAfterCommit`
-7. Review package contains commitment_hash, worst_case_loss, source_manifest
-8. Worst-case loss correctly computed as `b * ln(n)`
-9. Source manifest entries validated against registry
-10. Duplicate outcome_labels rejected
+### 6.2 Engines (010b -- frozen)
 
-**`test_market_theatre_bridge.py`**:
-11. Market creation from Theatre config produces correct MarketState
-12. Phase transition CREATED -> COMMITTED works
-13. Phase transition COMMITTED -> TRADING works
-14. Invalid phase transition raises `InvalidPhaseTransition`
-15. State serialisation roundtrip preserves all fields
-16. Parameter mutation after commit rejected
+| Surface | Module | 013 Usage |
+|---------|--------|-----------|
+| `HeartbeatScheduler.register_handler()` | `heartbeat.py` | Agent tick wired to "agent" cadence |
+| `HeartbeatScheduler.start()` | `heartbeat.py` | Started for Theatre with agents |
 
-**`test_stub_agents.py`**:
-17. Spawn produces 6 agents with correct archetypes
-18. Shark strategy buys leading outcome when price < 0.7
-19. Spy strategy trades only when evidence provided
-20. Diplomat strategy buys trailing outcome when spread > 0.4
-21. Saboteur produces low-volume contrary trades
-22. Whale places single large position early
-23. Degen trades every tick
-24. Agent balance tracking works through multiple trades
-25. Agent P&L accumulates correctly
+**Constraint**: Zero modifications to any file in `backend/engines/`.
 
-### 8.3 Sprint 2 Test Cases (20+ tests)
+### 6.3 OSINT Pipeline (011 -- frozen)
 
-**`test_theatre_resolution.py`**:
-1. Resolution with clear winning outcome (composite_score > 0.7) selects outcome 0
-2. Resolution with mid-range score (0.3-0.7) selects outcome 1
-3. Resolution with low score (< 0.3) selects outcome 2
-4. Oracle evaluation includes provisional corroboration (0.7 penalty)
-5. Composite score computation with counter-signal scaffolding
+| Surface | Module | 013 Usage |
+|---------|--------|-----------|
+| Evidence fixtures | `backend/osint/` | Mock evidence injected at ticks 10, 20, 35 |
 
-**`test_certificate_pipeline.py`**:
-6. Certificate conforms to v1.0.0 schema
-7. `evidence_bundle_hash` matches manifest pattern recomputation
-8. Certificate passes all 21 `echelon_verify` checks
-9. `oracle_output_id` format is `"{theatre_id}_{epoch_ms}"`
-10. Counter-signal results report 11 UNAVAILABLE entries
+**Constraint**: Zero modifications. Evidence passed as opaque objects through `tick()`.
 
-**`test_rlmf_export.py`**:
-11. RLMF export conforms to schema v2.0.1
-12. Probability distributions captured per epoch
-13. Agent traces complete (one per agent)
-14. Brier score computed correctly
-15. Per-agent P&L matches settlement report
+### 6.4 Theatre Services (012 -- frozen)
 
-**`test_sponsored_theatre_e2e.py`** (marquee test):
-16. Create Companies House Theatre ("Will Acme Ltd file annual accounts by 30 Sep 2026?")
-17. Commit parameters, verify commitment hash
-18. Spawn 6 stub agents, run 10 trading ticks
-19. Inject mock evidence bundles (WM fixtures)
-20. Trigger resolution at simulated resolution_date
-21. Settle market, verify bounded-loss invariant: `total_payout <= total_trade_cashflow + b*ln(n)`
-22. Generate certificate, verify 21 echelon_verify checks pass
-23. Generate RLMF export, validate schema v2.0.1
-24. Assemble delivery package, verify 4 deliverables present
-25. Query echelon_status, verify VALID certificate state
+| Surface | Module | 013 Usage |
+|---------|--------|-----------|
+| `MarketTheatreBridge` | `market_theatre_bridge.py` | Reused by AgentTheatreBridge |
+| `RLMFExportGenerator.generate()` | `rlmf_export.py` | DecisionTrace feeds agent_traces |
+| `CertificatePipeline` | `certificate_pipeline.py` | Unchanged, 21 checks still pass |
+| `SponsoredTheatreService` | `sponsored_theatre.py` | Orchestration unchanged |
 
-### 8.4 Mock Strategy
+**Constraint**: Zero modifications to any file in `backend/services/`.
 
-| Layer | Mock Approach |
-|-------|--------------|
-| OSINT evidence | JSON fixtures from `backend/osint/tests/fixtures/`. `LiveOSINTRealityProvider` instantiated with mock `CollectionRunner` returning fixture data. |
-| On-chain anchoring | `MockSepoliaClient` (existing). Returns deterministic `"0xmock_commit_{theatre_id}"` hashes. |
-| Agent strategies | Deterministic pure functions. Fixed random seeds for Saboteur and Degen via `VRFProvider` local mode. |
-| Time | Resolution date simulated by direct injection (not wall-clock waiting). |
-| HTTP | No real HTTP calls. All WM endpoints mocked. Tests marked `@pytest.mark.live_wm` for future. |
+### 6.5 MCP Server (009)
 
-### 8.5 Regression Scope
-
-```bash
-python3 -m pytest backend/market/ backend/engines/ backend/scoring/ backend/osint/ -v
-```
-
-Pre-existing `theatre/` collection errors (29 import failures from Cycle-031-033) are excluded from 012's regression baseline. Everything in the four scoped directories must pass.
-
-### 8.6 Bounded-Loss Invariant Verification
-
-The E2E test must verify the LMSR bounded-loss invariant:
-
-```
-market_maker_pnl >= -b * ln(n)
-```
-
-Equivalently:
-
-```
-total_payout <= total_trade_cashflow + b * ln(n)
-```
-
-This is verified using `SettlementReport.market_maker_pnl` and `LMSREngine.worst_case_loss(b, n_outcomes)`.
+| Surface | Tool | 013 Usage |
+|---------|------|-----------|
+| `echelon_status` | Market state query | ADK tool binding (Sprint 3) |
+| `echelon_verify` | Certificate verification | ADK tool binding (Sprint 3) |
 
 ---
 
-## 9. Security
+## 7. Model Provider Architecture
 
-### 9.1 Commitment Integrity
+### 7.1 Provider Interface
 
-- Commitment hash computed via SHA-256 over canonical JSON (RFC 8785)
-- Hash covers: LMSR parameters, oracle config (sources, resolution date, corroboration minimum), Theatre metadata
-- Immutable after COMMITTED phase. Any parameter mutation raises `ParameterMutationAfterCommit`
-- Verified after freeze via `MarketCommitment.verify_hash()`
-- On-chain anchor is stubbed in 012 but the interface exists
-
-### 9.2 Evidence Provenance
-
-- Every evidence bundle carries an HTTP transcript receipt (from 011's collection pipeline)
-- Evidence bundle hash uses manifest pattern: `{bundle_id: raw_payload_hash}` sorted by bundle_id, SHA-256 of canonical JSON
-- Hash is recomputable — certificate verification recomputes and compares
-- Evidence chain: sponsor question -> committed sources -> collection receipts -> corroboration result -> composite score -> certificate
-
-### 9.3 Certificate Verification
-
-- 21 `echelon_verify` checks cover structural integrity, hash recomputability, field presence, and canonical JSON roundtrip
-- Certificate carries `verification_tier: "UNVERIFIED"` (honest -- no backtesting data)
-- Settlement hash links to on-chain record (stubbed in 012)
-
-### 9.4 No Secrets
-
-- No private keys in codebase
-- `MockSepoliaClient` uses deterministic mock values
-- No real HTTP calls in tests
-- `sponsor_metadata` is freeform but not persisted to chain
-- `VRFProvider` uses fixed seed (`"0xECHELON_VRF_010b"`) for local mode determinism
-
-### 9.5 Agent Isolation
-
-- Each Theatre has its own LMSR market, agent population, evidence store, and resolution result
-- No cross-Theatre state sharing
-- Stub agent strategies are pure functions -- no access to other agents' state
-- Agent balances tracked via `PositionManager.set_balance()` / `get_balance()`
-
----
-
-## 10. File Manifest
-
-### 10.1 Sprint 1 — Theatre Creation + Sponsor Onboarding + LMSR Wiring
-
-| File | Type | Description |
-|------|------|-------------|
-| `backend/schemas/sponsored_theatre.py` | NEW | SponsoredTheatreConfig, SponsorReviewPackage (Pydantic v2) |
-| `backend/services/sponsored_theatre.py` | NEW | Theatre creation service, sponsor onboarding workflow |
-| `backend/services/market_theatre_bridge.py` | NEW | LMSR <-> Theatre integration layer |
-| `backend/services/stub_agents.py` | NEW | StubAgent, StubAgentSpawner, 6 archetype strategies |
-| `backend/api/sponsored_theatre_routes.py` | NEW | FastAPI router: POST create, GET review, POST commit |
-| `backend/osint/source_manifest.py` | NEW | SourceManifestEntry, SourceManifest, SourceManifestBuilder |
-| `backend/services/tests/test_sponsored_theatre.py` | NEW | Theatre creation tests (10+ tests) |
-| `backend/services/tests/test_market_theatre_bridge.py` | NEW | LMSR bridge tests (6+ tests) |
-| `backend/services/tests/test_stub_agents.py` | NEW | Stub agent tests (9+ tests) |
-
-### 10.2 Sprint 2 — Resolution + Settlement + Certificate Delivery
-
-| File | Type | Description |
-|------|------|-------------|
-| `backend/services/theatre_evidence.py` | NEW | TheatreEvidenceCollector, EvidenceSnapshot |
-| `backend/services/theatre_resolution.py` | NEW | TheatreResolutionEngine, TheatreResolutionResult |
-| `backend/services/certificate_pipeline.py` | NEW | CertificatePipeline, CalibrationCertificate (v1.0.0) |
-| `backend/services/rlmf_export.py` | NEW | RLMFExportGenerator, RLMFExport (v2.0.1), CalibrationMetrics |
-| `backend/services/sponsor_delivery.py` | NEW | SponsorDeliveryAssembler, SponsorDeliveryPackage |
-| `backend/services/theatre_status.py` | NEW | TheatreStatusSnapshot, echelon_status integration wrapper |
-| `backend/engines/paradox.py` | MODIFIED | MEDIUM-1 fix: p_reality=None guard in scan() path |
-| `backend/services/tests/test_theatre_resolution.py` | NEW | Resolution engine tests (5+ tests) |
-| `backend/services/tests/test_certificate_pipeline.py` | NEW | Certificate pipeline tests (5+ tests) |
-| `backend/services/tests/test_rlmf_export.py` | NEW | RLMF export tests (5+ tests) |
-| `backend/services/tests/test_sponsored_theatre_e2e.py` | NEW | End-to-end integration test (10+ assertions) |
-
-### 10.3 Modification Summary
-
-| Module Path | Sprint | Change |
-|-------------|--------|--------|
-| `backend/market/` | - | ZERO modifications |
-| `backend/engines/paradox.py` | Sprint 2 | MEDIUM-1: `if signal.p_reality is None: return None` guard in `scan()` |
-| `backend/engines/` (other) | - | ZERO modifications |
-| `backend/osint/` (pipeline) | - | ZERO modifications |
-| `backend/chain/` | - | ZERO modifications |
-
----
-
-## 11. Technical Risks
-
-### 11.1 Integration Complexity
-
-**Risk**: The service layer must correctly wire together 4 subsystems (market, engines, osint, chain) that were built in isolation across 4 prior cycles.
-
-**Mitigation**: Bridge pattern isolates each subsystem behind a clean interface. The E2E test is the acceptance gate -- it exercises the full integration path. Each bridge method delegates to existing tested functions.
-
-### 11.2 Certificate Schema Compliance
-
-**Risk**: The v1.0.0 certificate schema and 21 verifier checks are defined in Cycle-008/009 and may have evolved.
-
-**Mitigation**: The certificate pipeline generates the certificate, then immediately runs it through `echelon_verify`. If any check fails, the generation code is wrong -- not the verifier. The 21 checks are enumerated in this SDD (Section 4.9) and tested explicitly.
-
-### 11.3 RLMF Schema Drift
-
-**Risk**: RLMF schema v2.0.1 may not match the actual data shapes produced by stub agents.
-
-**Mitigation**: RLMF export tests validate schema conformance at the field level. The schema is defined in this SDD (Section 4.10) and the export generator enforces it.
-
-### 11.4 Commitment Hash Compatibility
-
-**Risk**: The existing `MarketCommitment.compute_hash()` uses `ORACLE_CONFIG_STUB` which will differ from the Theatre-level commitment hash.
-
-**Mitigation**: Two hashes are stored: the LMSR-level hash (from `MarketCommitment.compute_hash(market)`) and the Theatre-level hash (which includes oracle config and theatre metadata). Both are independently verifiable. The LMSR-level hash is stored in `MarketState.commitment_hash` as before. The Theatre-level hash is stored separately in the Theatre record.
-
-### 11.5 p_reality=None Crash Path (MEDIUM-1)
-
-**Risk**: `LiveOSINTRealityProvider` returns `p_reality=None` when evidence is stale. `LogicGapCalculator.compute()` then calls `abs(p_market - None)` which raises `TypeError`.
-
-**Mitigation**: Guard in `ParadoxEngine.scan()`:
-```python
-signal = self._reality_provider.get_signal(theatre_id)
-if signal.p_reality is None:
-    return None
+```
+                    BaseModelProvider (ABC)
+                    ├── generate(system, user, schema?) -> dict
+                    ├── health_check() -> bool (async)
+                    └── is_available() -> bool (sync, cached)
+                         │
+             ┌───────────┼───────────────┐
+             │           │               │
+     OllamaProvider  MistralProvider  AnthropicProvider
+     (T1 local)      (T2 creative)   (T3 deep)
+     Qwen 3.5        Mistral API     Sonnet/Opus
+     localhost:11434  api.mistral.ai  api.anthropic.com
 ```
 
-This is the minimal fix. `LogicGapCalculator.compute()` is not modified. The guard short-circuits before the None value reaches the calculator.
+### 7.2 Health Check Protocol
 
-### 11.6 Provisional Corroboration Impact
+Each provider implements `health_check()` as an async method:
 
-**Risk**: All WM endpoints share `independence_upstream_id: worldmonitor`. Corroboration minimum is never met. This affects composite_score via the 0.7 penalty factor.
+| Provider | Health Check Method | Latency |
+|----------|-------------------|---------|
+| Ollama | `GET /api/tags` -- verify model loaded | <50ms |
+| Mistral | `GET /models` -- verify API key valid | <500ms |
+| Anthropic | Key presence check (no probe call) | <1ms |
 
-**Mitigation**: This is intentional and documented. The certificate honestly reports `corroboration_status.minimum_met: false` and `penalty_factor: 0.7`. The UNVERIFIED tier reflects this limitation. Future cycles (013+) add non-WM sources for genuine corroboration.
+### 7.3 Fallback Chain
 
-### 11.7 Stub Agent Determinism
+```
+T3 (Anthropic) unavailable or rate-limited?
+    └─→ Router falls back to T1Decision with low-confidence flag
 
-**Risk**: Non-deterministic strategies (Saboteur, Degen) may produce flaky tests.
+T2 (Mistral) unavailable?
+    └─→ PersonalityEngine returns generic template string
+    └─→ Decision unaffected -- T2 is expression only
 
-**Mitigation**: Saboteur and Degen use `VRFProvider` in local mode with fixed seed for random number generation. Given identical market state and evidence inputs, strategies produce identical outputs. The E2E test uses fixed mock evidence injections at predetermined ticks.
+T1-LOCAL-LLM (Ollama) unavailable?
+    └─→ T1 degrades to T1-RULES (pure parameterised logic)
+    └─→ Agent fully functional, loses NLP capability
 
----
-
-## 12. MEDIUM-1 Fix Detail
-
-**Module**: `backend/engines/paradox.py`
-**Method**: `ParadoxEngine.scan()`
-**Line**: After `signal = self._reality_provider.get_signal(theatre_id)` (currently line 100)
-
-**Current code** (vulnerable):
-```python
-signal = self._reality_provider.get_signal(theatre_id)
-reading = self._logic_gap_calc.compute(theatre_id, signal.p_reality)
+All providers down?
+    └─→ Agent operates on T0 + T1-RULES only
+    └─→ Functional but less capable
 ```
 
-**Fixed code**:
-```python
-signal = self._reality_provider.get_signal(theatre_id)
-if signal.p_reality is None:
-    return None
-reading = self._logic_gap_calc.compute(theatre_id, signal.p_reality)
-```
+### 7.4 Mock Strategy for Testing
 
-**Why this location**: The guard is placed in `ParadoxEngine.scan()` rather than in `LogicGapCalculator.compute()` because:
-1. `scan()` is the entry point that receives the signal
-2. A None p_reality means "no usable reality signal" -- the correct action is to skip the scan entirely
-3. `LogicGapCalculator.compute()` has a valid type contract (`p_reality: float`) -- it should not need to handle None
-4. This is the minimal change with the smallest blast radius
-
----
-
-## 13. Companies House Theatre — Reference Fixture
-
-The E2E test uses this specific Theatre configuration:
+All Sprint 1-2 tests use mocked providers:
 
 ```python
-SponsoredTheatreConfig(
-    question="Will Acme Ltd file annual accounts by 30 Sep 2026?",
-    resolution_date=datetime(2026, 9, 30, 23, 59, 59, tzinfo=timezone.utc),
-    committed_sources=[
-        "wm_cii_endpoint",
-        "wm_market_snapshot",
-        "wm_maritime_anomaly",
-    ],
-    outcome_labels=["Filed on time", "Filed late", "Not filed"],
-    liquidity_b=Decimal("100"),
-    fee_schedule=FeeSchedule(trade_fee_bps=50, resolution_fee_bps=100),
-    sponsor_id="sponsor_acme_001",
-    sponsor_metadata={
-        "company_name": "Acme Ltd",
-        "company_number": "12345678",
-        "jurisdiction": "GB",
-    },
+class MockProvider(BaseModelProvider):
+    """Mock provider for testing. Returns deterministic responses."""
+
+    def __init__(self, responses: list[dict]) -> None:
+        super().__init__(ProviderConfig())
+        self._responses = responses
+        self._call_count = 0
+
+    async def generate(self, system_prompt, user_prompt, schema=None):
+        idx = self._call_count % len(self._responses)
+        self._call_count += 1
+        return self._responses[idx]
+
+    async def health_check(self):
+        return True
+
+    def is_available(self):
+        return True
+```
+
+---
+
+## 8. ADK Integration Layer
+
+### 8.1 Adapter Pattern
+
+The T0/T1/T2/T3 pipeline is ADK-independent. The ADK wrapper is a thin adapter:
+
+```
+┌──────────────────────────────────────────────────┐
+│                ADK Wrapper Layer                  │
+│  (Sprint 3 only -- no imports in Sprint 1-2)    │
+│                                                  │
+│  EchelonAgent                                    │
+│    ├── initialise()  → ADK Agent setup           │
+│    ├── on_heartbeat()→ calls TheatreAgentInstance │
+│    └── settle()      → cleanup ADK resources     │
+│                                                  │
+│  Tool Bindings:                                  │
+│    ├── echelon_status → MCP echelon_status       │
+│    ├── echelon_verify → MCP echelon_verify       │
+│    └── execute_trade  → TradingEngine            │
+└──────────────────────────────────────────────────┘
+                       │
+                       │ delegates to
+                       ▼
+┌──────────────────────────────────────────────────┐
+│           T0/T1/T2/T3 Pipeline                   │
+│  (testable without ADK)                          │
+│                                                  │
+│  TheatreAgentInstance.tick()                      │
+│    ├── ContextCompiler.compile()      (T0)       │
+│    ├── RulesEngine.decide()           (T1)       │
+│    ├── DecisionRouter.route()         (T1→T3?)   │
+│    └── PersonalityEngine.express()    (T2?)      │
+└──────────────────────────────────────────────────┘
+```
+
+### 8.2 FakeADKRunner
+
+`FakeADKRunner` executes the pipeline synchronously for Sprint 1-2 tests:
+
+- `run_tick()`: one tick, returns (Trade, DecisionTrace)
+- `run_all()`: all ticks with optional evidence schedule
+- No ADK dependency, no async event system
+- Test assertions check trade counts, decision traces, P&L
+
+### 8.3 Sprint 3 ADK Integration
+
+Sprint 3 introduces:
+- `google.adk` imports (guarded by `try/except`)
+- `@pytest.mark.requires_adk` for live ADK tests
+- Tool bindings for `echelon_status`, `echelon_verify`, `execute_trade`
+- Heartbeat subscription via `HeartbeatScheduler.register_handler()`
+
+If ADK proves inadequate, only `backend/agents/adk/echelon_agent.py` changes. The T0/T1/T2/T3 pipeline and all Sprint 1-2 tests are unaffected.
+
+---
+
+## 9. Testing Architecture
+
+### 9.1 Test File Map
+
+| Test File | Sprint | Tests | Focus |
+|-----------|--------|-------|-------|
+| `test_context_compiler.py` | 1 | 8+ | T0 compilation, determinism, hashing |
+| `test_rules_engine.py` | 1 | 10+ | Per-archetype T1 decisions, confidence, escalation |
+| `test_agent_instance.py` | 1 | 6+ | Lifecycle, P&L, multi-instance |
+| `test_decision_trace.py` | 1 | 6+ | Schema validation, RLMF compat |
+| `test_personality_engine.py` | 2 | 6+ | T2 per-archetype, non-interference |
+| `test_deep_reasoning.py` | 2 | 6+ | T3 output, rate limiting, fallback |
+| `test_decision_router.py` | 2 | 8+ | Routing logic, escalation, fallback |
+| `test_model_providers.py` | 2 | 6+ | Health check, fallback, mocks |
+| `test_adk_agent.py` | 3 | 6+ | ADK lifecycle, tool bindings |
+| `test_agent_theatre_bridge.py` | 3 | 6+ | Spawn, tick, settle, RLMF |
+| `test_multi_agent.py` | 3 | 6+ | 6-archetype population, behaviour |
+| `test_autonomous_e2e.py` | 3 | 5+ | Full Theatre lifecycle, 50 ticks |
+
+**Total**: 75+ tests across 3 sprints (target: 25+ per sprint).
+
+### 9.2 Test Markers
+
+```python
+# conftest.py additions
+import pytest
+
+requires_ollama = pytest.mark.skipif(
+    not _ollama_available(), reason="Ollama not running"
+)
+requires_mistral = pytest.mark.skipif(
+    not os.getenv("MISTRAL_API_KEY"), reason="Mistral API key not set"
+)
+requires_anthropic = pytest.mark.skipif(
+    not os.getenv("ANTHROPIC_API_KEY"), reason="Anthropic API key not set"
+)
+requires_adk = pytest.mark.skipif(
+    not _adk_available(), reason="Google ADK not installed"
 )
 ```
 
-**Market parameters**:
-- `n_outcomes`: 3
-- `b`: 100.0
-- Worst-case loss: `100 * ln(3)` = 109.86
-- Initial prices: [0.333, 0.333, 0.333] (uniform)
-- Agents: 6 (one per archetype), 1000.0 initial balance each
-- Trading ticks: 10
-- Evidence injections: mock WM fixtures at ticks 3, 6, 9
+### 9.3 Determinism Strategy
+
+- **RNG**: Seeded `random.Random` instance per agent per tick. Seed = `base_seed + tick + hash(agent_id) % 10000`.
+- **Evidence**: Fixed JSON fixtures injected at ticks 10, 20, 35. Same every run.
+- **Balances**: All agents start with identical initial balance (1000.0).
+- **Timestamp**: `DecisionTrace.timestamp` excluded from reproducibility checks. Determinism verified via `T0Context.context_hash`.
+
+### 9.4 Scoped Regression
+
+```
+python3 -m pytest backend/market/ backend/engines/ backend/scoring/ backend/osint/ backend/services/ -v
+```
+
+All existing tests must pass. Zero modifications to these directories. Pre-existing `theatre/` collection errors excluded.
 
 ---
 
-## 14. Dependency Chain
+## 10. Security Architecture
+
+### 10.1 API Key Management
+
+| Provider | Key Source | Risk |
+|----------|-----------|------|
+| Ollama | None (local) | N/A |
+| Mistral | `MISTRAL_API_KEY` env var | Medium: leaked key enables API calls |
+| Anthropic | `ANTHROPIC_API_KEY` env var | High: leaked key enables expensive API calls |
+
+**Mitigation**:
+- Keys never logged, never in decision traces, never in RLMF exports.
+- Keys read from environment only, never hardcoded.
+- Provider configs use `Optional[str]` for keys -- missing key = provider unavailable.
+
+### 10.2 Rate Limiting
+
+| Limit | Default | Configurable |
+|-------|---------|-------------|
+| T3 calls per agent per tick | 1 | Yes (`T3RateLimiter.max_calls_per_tick`) |
+| T3 calls per agent per day | 10 | Yes (`T3RateLimiter.max_calls_per_day`) |
+| T2 calls | No limit | N/A (cheap, expression only) |
+| T1-LLM calls | No limit | N/A (local, free) |
+
+### 10.3 Cost Bounding
+
+Estimated daily cost for 6 agents (from PRD, directional):
+
+| Archetype | T1 | T2 | T3 | Est. Daily |
+|-----------|----|----|----|----|
+| Shark | ~1,700 | ~200 | ~5 | ~$0.15 |
+| Spy | ~500 | ~50 | ~20 | ~$0.60 |
+| Diplomat | ~300 | ~100 | ~10 | ~$0.30 |
+| Saboteur | ~800 | ~150 | ~3 | ~$0.10 |
+| Whale | ~100 | ~20 | ~30 | ~$0.90 |
+| Degen | ~2,000 | ~500 | ~1 | ~$0.05 |
+
+**Total**: ~$2.10/day. T3 rate limiting is the primary cost control.
+
+### 10.4 Position Limits
+
+Position limits are enforced at two levels:
+1. **T0 Context**: `position_limit`, `max_position_pct`, `max_drawdown_pct`, `stop_loss_threshold` are compiled into T0Context.
+2. **T1 Rules Engine**: Checks position constraints before producing BUY/SELL decisions.
+3. **TradingEngine**: `InsufficientBalance` and `InsufficientShares` exceptions prevent over-trading.
+
+---
+
+## 11. Technical Risks and Mitigation
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| Ollama not available on CI | Medium | T1 falls back to T1-RULES. All tests pass without Ollama. `@pytest.mark.requires_ollama` for live tests. |
+| ADK Python SDK insufficient | Medium | ADK is a thin wrapper. T0/T1/T2/T3 pipeline is ADK-independent. Sprint 1-2 tests use FakeADKRunner. |
+| Shark P&L comparison non-deterministic | Medium | Flakiness fallback: swap to calibration metric (Brier/log score) instead of P&L comparison. |
+| T3 cost overrun | Low | T3RateLimiter enforces per-agent per-day limits. Default 10 calls/day/agent. |
+| Pydantic v2 / stdlib dataclass mismatch | Low | Clear convention: Pydantic v2 for schemas (genome, trace), stdlib for internal state (T0Context, T1Decision). |
+| Existing agent code namespace collision | Low | New genome uses `EchelonArchetype` (not `FinancialArchetype`). New instance uses `TheatreAgentInstance` (not `AgentInstance`). No import conflicts. |
+| `from __future__ import annotations` missing | Low | Required in every new file. Pre-commit check or linter rule. |
+| Evidence injection timing affects determinism | Low | Fixed evidence schedule (ticks 10, 20, 35) with JSON fixtures. Identical every run. |
+
+---
+
+## 12. Future Considerations
+
+### 12.1 Immediate Post-013
+
+| Item | Cycle | Notes |
+|------|-------|-------|
+| Bounded Inquiry Markets | 014 | Agents participate in investigation/scrutiny markets |
+| WM Live Deployment | 015 | Mock-to-live transition for evidence |
+| A2A Inter-agent Coordination | Post-015 | Diplomat coalitions, Spy intelligence sharing |
+| Agent Breeding/Genealogy | Post-015 | Evolutionary parameter adaptation |
+| T1 Fine-tuning | Post-015 | Qwen 3.5 fine-tuned on Echelon trade patterns |
+
+### 12.2 T1.5 Exploration Note
+
+Qwen 3.5 0.8B is worth testing as a layer between T1-RULES and T1-LOCAL-LLM. Small enough for near-zero latency, capable enough for simple classification ("is this signal anomalous?"). If viable, agents gain more flexibility than rules at less cost than T2. Not scoped for 013.
+
+### 12.3 Multi-Theatre Agent Deployment
+
+Architecture supports multiple instances per Identity across Theatres. Not acceptance-tested in 013 (single Theatre target). P&L aggregation across Theatres is designed but the E2E test uses one Theatre only.
+
+### 12.4 On-chain Identity
+
+ERC-721 agent NFTs and ERC-6551 token-bound wallets are deferred. Agent identity is an in-memory agent_id string in 013. The `instance_manager.py` pattern (GenesisIdentity -> AgentInstance) provides the conceptual framework for future on-chain migration.
+
+---
+
+## Appendix A: File Structure (New Files)
 
 ```
-Cycle-004 (pipeline hardening)
-  → Cycles 005-006 (registry expansion + live OSINT surfaces)
-    → Cycle-007 (unified Two-Rail pipeline, 447+ tests)
-      → Cycle-008 (MCP verifier + construct calibration)
-        → Cycle-009 (MCP surface, HTTP transport, certificate store)
-          → Cycle-010a (LMSR cost function, market lifecycle, trade execution)
-            → Cycle-010b (Butterfly, Paradox, Entropy engines, heartbeat, VRF)
-              → Cycle-011 (WorldMonitor Integration — live evidence + convergence)
-                → Cycle-012 (Sponsored Theatre E2E)  ← THIS CYCLE
-                  → Cycle-013 (Agent Runtime — T0/T1/T2/T3 + ADK)
+backend/
+├── agents/
+│   ├── genome.py                     # AgentGenome model (NEW)
+│   ├── context_compiler.py           # T0 Context Compiler (NEW)
+│   ├── decision_trace.py             # DecisionTrace schema (NEW)
+│   ├── rules_engine.py               # T1 Rules Engine (NEW)
+│   ├── personality_engine.py         # T2 Personality Engine (NEW)
+│   ├── deep_reasoning.py             # T3 Deep Reasoning Engine (NEW)
+│   ├── decision_router.py            # Novelty Threshold Router (NEW)
+│   ├── agent_instance.py             # Agent Instance lifecycle (NEW)
+│   ├── model_providers/
+│   │   ├── __init__.py               # BaseModelProvider ABC (NEW)
+│   │   ├── ollama_provider.py        # Qwen 3.5 via Ollama (NEW)
+│   │   ├── mistral_provider.py       # Mistral creative (NEW)
+│   │   └── anthropic_provider.py     # Sonnet/Opus (NEW)
+│   ├── adk/
+│   │   ├── __init__.py               # FakeADKRunner (NEW)
+│   │   ├── echelon_agent.py          # ADK Agent wrapper (NEW, Sprint 3)
+│   │   └── shark_v1.py               # First autonomous Shark (NEW, Sprint 3)
+│   └── tests/
+│       ├── test_context_compiler.py   # (NEW)
+│       ├── test_rules_engine.py       # (NEW)
+│       ├── test_agent_instance.py     # (NEW)
+│       ├── test_decision_trace.py     # (NEW)
+│       ├── test_personality_engine.py # (NEW)
+│       ├── test_deep_reasoning.py     # (NEW)
+│       ├── test_decision_router.py    # (NEW)
+│       ├── test_model_providers.py    # (NEW)
+│       ├── test_adk_agent.py          # (NEW, Sprint 3)
+│       ├── test_agent_theatre_bridge.py # (NEW, Sprint 3)
+│       ├── test_multi_agent.py        # (NEW, Sprint 3)
+│       └── test_autonomous_e2e.py     # (NEW, Sprint 3)
+├── services/
+│   └── agent_theatre_bridge.py       # Agent <-> Theatre integration (NEW)
 ```
+
+## Appendix B: Existing Files NOT Modified
+
+```
+backend/agents/schemas.py              # FinancialAgent, breeding -- UNTOUCHED
+backend/agents/autonomous_agent.py     # GeopoliticalAgent, ACP -- UNTOUCHED
+backend/agents/brain.py                # Multi-provider brain -- UNTOUCHED
+backend/agents/agent_skills_bridge.py  # Skills system bridge -- UNTOUCHED
+backend/agents/instance_manager.py     # ACP instance routing -- UNTOUCHED
+backend/agents/shark_strategies.py     # Tulip strategy -- UNTOUCHED
+backend/agents/genealogy_manager.py    # Breeding/evolution -- UNTOUCHED
+backend/market/*.py                    # LMSR engine -- FROZEN
+backend/engines/*.py                   # Butterfly/Paradox/Entropy -- FROZEN
+backend/osint/*.py                     # OSINT pipeline -- FROZEN
+backend/services/*.py (existing)       # 012 services -- FROZEN
+```
+
+## Appendix C: Acceptance Criteria Traceability
+
+| PRD AC | SDD Component | Sprint |
+|--------|---------------|--------|
+| AgentGenome captures 8 params + variant + context | Section 4.1 `AgentGenome` | 1 |
+| Factory functions for 6 archetypes | Section 4.1 `create_genome()` + `ARCHETYPE_DEFAULTS` | 1 |
+| T0 deterministic, SHA-256 hash | Section 4.2 `ContextCompiler.compile()` | 1 |
+| T1 valid decisions for all 6 archetypes | Section 4.3 `RulesEngine.decide()` | 1 |
+| Per-archetype parameterised logic | Section 4.3 `_shark_decide()` etc. | 1 |
+| Confidence scoring, T3 escalation flagging | Section 4.3 `T1Decision.escalate_to_t3` | 1 |
+| DecisionTrace all required fields | Section 4.4 `DecisionTrace` model | 1 |
+| Agent lifecycle: spawn -> tick -> settle | Section 4.5 `TheatreAgentInstance` | 1 |
+| Agent <-> LMSR integration | Section 4.5 `tick()` calls `execute_trade()` | 1 |
+| Decision traces conform to RLMF | Section 4.4 `to_rlmf_dict()` + Section 5.4 | 1 |
+| T2 personality per archetype | Section 4.6 `PersonalityEngine` | 2 |
+| T2 non-interference | Section 4.6 structural guarantee | 2 |
+| T3 structured reasoning | Section 4.7 `DeepReasoningEngine` | 2 |
+| Router: high-conf -> T1, low-conf -> T3 | Section 4.8 `DecisionRouter.route()` | 2 |
+| Ollama provider + fallback | Section 4.9.2 `OllamaProvider` | 2 |
+| Mistral provider + fallback | Section 4.9.3 `MistralProvider` | 2 |
+| Anthropic provider + rate limiting | Section 4.9.4 `AnthropicProvider` | 2 |
+| ADK agent wrapper + tool bindings | Section 4.10.2 `EchelonAgent` | 3 |
+| Shark MEGALODON >= 20 trades | Section 4.10.3 `SharkV1` | 3 |
+| Agent <-> Theatre bridge | Section 4.11 `AgentTheatreBridge` | 3 |
+| Multi-agent 6 archetypes | Section 4.11 `spawn_agents()` | 3 |
+| P&L aggregation | Section 4.5 `settle()` | 3 |
+| E2E: 50 ticks, certificate, RLMF | Section 4.11 + test_autonomous_e2e.py | 3 |
+| Zero modifications to frozen modules | Section 6, Appendix B | All |
+| Scoped regression: 0 failures | Section 9.4 | All |

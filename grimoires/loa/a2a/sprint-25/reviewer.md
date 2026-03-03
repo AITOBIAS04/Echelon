@@ -1,224 +1,183 @@
-# Sprint 25 — Core Engine Foundation: Implementation Report
+# Sprint 25 (Cycle-013 Sprint 1) -- Implementation Report
 
-> Cycle: cycle-031 (Theatre Template Engine)
-> Sprint: sprint-25 (global) / sprint-1 (local)
-> Status: **COMPLETE**
-
----
-
-## Summary
-
-All 7 tasks implemented with 113 unit tests passing. The theatre engine foundation is fully operational: state machine enforces irreversible 6-state lifecycle, canonical JSON produces RFC 8785-compliant deterministic output, commitment protocol provides tamper-evident SHA-256 hashing, criteria model validates weight constraints, template validator enforces JSON Schema + 7 runtime rules, and 5 database tables extend the existing SQLAlchemy schema.
+**Sprint**: 1 (local) / 25 (global)
+**Cycle**: 013 -- Agent Runtime: Four-Tier Hierarchical Intelligence
+**Goal**: T0 Context Compiler + T1 Rules Engine
+**Date**: 2026-03-03
+**Engineer**: Claude Code (Implementation Engineer)
 
 ---
 
-## Task Completion
+## Implementation Summary
 
-### T1.1: Theatre State Machine
-**File:** `theatre/engine/state_machine.py`
-**Tests:** `tests/theatre/test_state_machine.py` — **43 tests passing**
-**Status:** COMPLETE
+Sprint 1 builds the foundation for the agent runtime: how agents receive their identity (T0) and make fast decisions (T1). By the end of this sprint, an agent can read market state, apply archetype-specific rules, produce a trade decision without any LLM call, and execute it against the LMSR engine. Every decision produces a BEAUVOIR-compliant DecisionTrace.
 
-- `TheatreState` enum with 6 values: DRAFT, COMMITTED, ACTIVE, SETTLING, RESOLVED, ARCHIVED
-- `VALID_TRANSITIONS` dict mapping each state to valid successors
-- `TheatreStateMachine` class with `transition()` and `can_transition()` methods
-- `InvalidTransitionError` with descriptive error messages including theatre_id and state names
-- Tests cover: all 5 valid transitions, full lifecycle, 30 parametrized invalid pairs (backward, skip-ahead, self-transitions), ARCHIVED terminal state, error message content
-
-**Acceptance Criteria:**
-- [x] `TheatreState` enum with 6 values
-- [x] `VALID_TRANSITIONS` mapping each state to its valid successors
-- [x] `TheatreStateMachine.transition()` advances state or raises `InvalidTransitionError`
-- [x] `TheatreStateMachine.can_transition()` returns bool
-- [x] All 5 valid transitions succeed
-- [x] All invalid transitions raise `InvalidTransitionError` (test every invalid pair)
-- [x] `ARCHIVED` has no valid successors
+All 7 tasks completed. 74 new tests passing. Zero modifications to frozen modules.
 
 ---
 
-### T1.2: Canonical JSON Utility
-**File:** `theatre/engine/canonical_json.py`
-**Tests:** `tests/theatre/test_canonical_json.py` — **35 tests passing**
-**Status:** COMPLETE
+## Files Created/Modified
 
-- `canonical_json()` function using `json.dumps` with `sort_keys=True, separators=(",",":")`
-- `_normalise_value()` recursive normalisation handling bool-before-int subclass ordering
-- `_normalise_float()` strips trailing zeroes (1.0→1), rejects NaN/Infinity
-- Tests cover: sorted keys (flat, nested, deep nesting), no whitespace, null inclusion, array order preservation, empty containers, booleans, Unicode, tuple→array coercion, float normalisation edge cases, 8 round-trip determinism cases, unsupported type rejection, bool/int distinction
+### New Files (10)
 
-**Acceptance Criteria:**
-- [x] Keys sorted lexicographically at every nesting level
-- [x] No whitespace between tokens
-- [x] Float normalisation: 1.0 → 1, 0.10 → 0.1, no trailing zeroes
-- [x] `NaN` and `Infinity` raise `ValueError`
-- [x] `null` values included (not omitted)
-- [x] Arrays preserve insertion order
-- [x] Round-trip determinism: `canonical_json(x) == canonical_json(json.loads(canonical_json(x)))`
-- [x] UTF-8 encoding, minimal escaping
+| File | Lines | Purpose |
+|------|-------|---------|
+| `backend/agents/genome.py` | 213 | AgentGenome Pydantic v2 model, EchelonArchetype enum, ARCHETYPE_DEFAULTS, VARIANT_OVERRIDES, 7 factory functions |
+| `backend/agents/context_compiler.py` | 171 | T0Context frozen dataclass, ContextCompiler.compile(), compute_hash() with SHA-256 |
+| `backend/agents/rules_engine.py` | 668 | TradeAction enum, ActionOption/T1Decision dataclasses, RulesEngine with 6 archetype methods + default fallback |
+| `backend/agents/decision_trace.py` | 65 | DecisionTrace Pydantic v2 model, to_rlmf_dict() for RLMF compatibility |
+| `backend/agents/agent_instance.py` | 249 | TheatreAgentInstance with spawn/tick/settle, TradeIntent, AgentSettlementResult |
+| `backend/agents/tests/__init__.py` | 0 | Package marker |
+| `backend/agents/tests/test_context_compiler.py` | 285 | 19 tests: genome construction, T0 compilation, determinism, hashing |
+| `backend/agents/tests/test_rules_engine.py` | 273 | 19 tests: per-archetype decisions, confidence, escalation, determinism |
+| `backend/agents/tests/test_decision_trace.py` | 176 | 15 tests: schema validation, RLMF compat, round-trip, tier enforcement |
+| `backend/agents/tests/test_agent_instance.py` | 302 | 21 tests: lifecycle, P&L, multi-instance, LMSR integration |
 
----
+**Total**: 2,402 lines across 10 files (1,366 source, 1,036 test)
 
-### T1.3: Commitment Protocol
-**File:** `theatre/engine/commitment.py`
-**Tests:** `tests/theatre/test_commitment.py` — **12 tests passing**
-**Status:** COMPLETE
+### Modified Files
 
-- `CommitmentProtocol` class with static methods: `compute_hash()`, `verify_hash()`, `create_receipt()`
-- SHA-256 over canonical JSON of composite `{dataset_hashes, template, version_pins}`
-- `CommitmentReceipt` Pydantic model with theatre_id, commitment_hash, committed_at, template_snapshot, version_pins, dataset_hashes
-- Tests cover: 64-char hex output, determinism, sensitivity (template/pins/hashes changes → different hash), key order irrelevance, verify valid/tampered/wrong hash, receipt creation, receipt hash consistency, receipt JSON serialisation
-
-**Acceptance Criteria:**
-- [x] `compute_hash()` produces SHA-256 hex string (64 chars)
-- [x] Composite object has exactly three keys: `dataset_hashes`, `template`, `version_pins`
-- [x] Same inputs always produce same hash (deterministic)
-- [x] Different inputs produce different hashes
-- [x] `verify_hash()` returns True for matching, False for mismatched
-- [x] `CommitmentReceipt` Pydantic model with all fields from SDD §4.2
+None. Zero modifications to any existing file.
 
 ---
 
-### T1.4: Structured Criteria Model
-**File:** `theatre/engine/models.py`
-**Tests:** `tests/theatre/test_criteria.py` — **10 tests passing**
-**Status:** COMPLETE
+## Task Completion Report
 
-- `TheatreCriteria(BaseModel)` with `criteria_ids`, `criteria_human`, `weights`
-- `model_validator` checking: weight keys ⊆ criteria_ids, weight sum = 1.0 within 1e-6 tolerance
-- Additional models: `GroundTruthEpisode`, `AuditEvent`, `BundleManifest`
-- Tests cover: valid criteria with weights, empty weights, default weights, extra key rejection, weight sum rejection, tolerance (3-way split), single criterion, empty criteria_ids rejection, three criteria, partial weights rejection
+### Task 1: AgentGenome Model
+- **File**: `backend/agents/genome.py`
+- **Status**: COMPLETE
+- EchelonArchetype enum with 6 archetypes (SHARK, SPY, DIPLOMAT, SABOTEUR, WHALE, DEGEN)
+- AgentGenome Pydantic v2 model with `frozen=True`, 8 archetype parameters, variant support, Theatre context, position constraints, decision routing
+- ARCHETYPE_DEFAULTS from Behaviour Matrix (PRD Section 4.1)
+- VARIANT_OVERRIDES with MEGALODON
+- 7 factory functions: `create_genome()`, `create_shark_genome()`, `create_spy_genome()`, `create_diplomat_genome()`, `create_saboteur_genome()`, `create_whale_genome()`, `create_degen_genome()`, `create_megalodon_genome()`
 
-**Acceptance Criteria:**
-- [x] `criteria_ids: list[str]` — non-empty, unique
-- [x] `criteria_human: str` — freeform rubric
-- [x] `weights: dict[str, float]` — keys must be subset of `criteria_ids`, values must sum to 1.0 (within 1e-6 tolerance)
-- [x] Validation raises on extra weight keys
-- [x] Validation raises on weight sum ≠ 1.0
-- [x] Empty weights dict is valid (equal weight fallback computed at scoring time)
+### Task 2: T0 Context Compiler
+- **File**: `backend/agents/context_compiler.py`
+- **Status**: COMPLETE
+- T0Context frozen dataclass with 25 fields (archetype params, market context, position state, theatre rules, constraints, hash)
+- ContextCompiler.compile() -- pure static method, deterministic
+- ContextCompiler.compute_hash() -- SHA-256 via Echelon Canonical JSON v0 (sorted keys, no whitespace)
+- Uses LMSREngine.prices() for price computation from market x vector
+- Hash set via object.__setattr__ on frozen dataclass
 
----
+### Task 3: T1 Rules Engine
+- **File**: `backend/agents/rules_engine.py`
+- **Status**: COMPLETE
+- TradeAction enum: BUY, SELL, HOLD, SHIELD, SABOTAGE
+- ActionOption frozen dataclass for options_considered
+- T1Decision frozen dataclass with action, outcome_index, shares, confidence, reasoning_trace, pattern_name, options_considered, escalate_to_t3
+- RulesEngine.decide() with deterministic RNG, archetype dispatch via dict
+- 6 archetype methods, all parameterised by genome values:
+  - `_shark_decide`: momentum_exploitation (buy leading, take profit, stop loss)
+  - `_spy_decide`: intel_arbitrage (trade on evidence arrival)
+  - `_diplomat_decide`: stability_maintenance (buy trailing on high spread, SHIELD when stable)
+  - `_saboteur_decide`: chaos_creation (contrary trades, sometimes SABOTAGE action)
+  - `_whale_decide`: conviction_accumulation (large positions on conviction signal)
+  - `_degen_decide`: random_exploration (random outcome, random volume)
+- Default fallback: HOLD with T3 escalation for unknown archetypes
+- Escalation flagging when confidence < novelty_threshold
 
-### T1.5: Template Validator
-**File:** `theatre/engine/template_validator.py`
-**Tests:** `tests/theatre/test_template_validator.py` — **13 tests passing**
-**Status:** COMPLETE
+### Task 4: DecisionTrace Schema
+- **File**: `backend/agents/decision_trace.py`
+- **Status**: COMPLETE
+- Pydantic v2 model with frozen=True
+- All BEAUVOIR-required fields: tick_id, agent_id, theatre_id, timestamp, tier_used (Literal), market_state_snapshot, evidence_state, t0_context_hash, action, confidence, pattern_name, options_considered, reasoning_summary, escalated_to_t3, evidence_refs
+- to_rlmf_dict() via model_dump(mode="json") for RLMF compatibility
+- timestamp defaults to UTC now
 
-- `TemplateValidator` class with `validate()` returning `list[str]` errors
-- Phase 1: JSON Schema validation against `docs/schemas/echelon_theatre_schema_v2.json`
-- Phase 2: Runtime rules 1–5, 7 (weight keys ⊆ criteria_ids, weight sum, construct pin linkage, chain pins, HITL step linkage, dataset hash presence)
-- Phase 3: Certificate-run rule 6 (mock adapter rejection)
-- Tests cover: valid Product and Market templates pass, missing required field, invalid execution_path, invalid template_family, each runtime rule violation caught individually, mock adapter allowed for non-certificate runs
+### Task 5: Agent Instance Lifecycle
+- **File**: `backend/agents/agent_instance.py`
+- **Status**: COMPLETE
+- TheatreAgentInstance class with spawn/tick/settle lifecycle
+- spawn() classmethod: creates instance with ID {theatre_id}_{archetype}[_{variant}]
+- tick(): T0 compile -> T1 decide -> execute trade -> record trace
+- settle(): compute P&L via PositionManager.compute_settlement_payout()
+- Properties: decision_traces, trade_count, is_settled
+- TradeIntent and AgentSettlementResult dataclasses
 
-**Acceptance Criteria:**
-- [x] Loads schema from `docs/schemas/echelon_theatre_schema_v2.json`
-- [x] Validates template structure against JSON Schema
-- [x] Runtime rule 1: `criteria.weights` keys ⊆ `criteria.criteria_ids`
-- [x] Runtime rule 2: `criteria.weights` values sum to 1.0
-- [x] Runtime rule 3: Every `construct_id` in `resolution_programme` has `version_pins.constructs` entry
-- [x] Runtime rule 4: Every construct in `construct_chain` has version pin
-- [x] Runtime rule 5: Every `hitl_steps[].step_id` matches a resolution step
-- [x] Runtime rule 6: `adapter_type: "mock"` rejected when `is_certificate_run=True`
-- [x] Runtime rule 7: `dataset_hashes[replay_dataset_id]` must be present
-- [x] Returns list of error strings (empty = valid)
+### Task 6: Agent-LMSR Integration
+- **File**: `backend/agents/agent_instance.py` (integrated into Task 5)
+- **Status**: COMPLETE
+- tick() calls TradingEngine.execute_trade() for BUY/SELL actions
+- Shares capped by genome.position_limit
+- SELL shares negated for TradingEngine
+- Trade failures caught silently -- trace still recorded
+- Position updates visible in subsequent ticks via PositionManager
+- Balance tracks correctly across tick lifecycle
+- Zero modifications to backend/market/ files
 
----
-
-### T1.6: Database Tables
-**File:** `backend/database/models.py` (appended)
-**Status:** COMPLETE (tables defined, Alembic migration deferred)
-
-5 new tables added following existing `Mapped[]` pattern:
-- `TheatreTemplate` — id, template_family, execution_path, display_name, description, schema_version, template_json, timestamps
-- `Theatre` — id, user_id, template_id, state, construct_id, commitment_hash, committed_at, version_pins, dataset_hashes, progress, total_episodes, failure_count, error, resolved_at, certificate_id, timestamps
-- `TheatreCertificate` — id, theatre_id, template_id, construct_id, criteria_json, scores_json, composite_score, calibration fields, evidence fields, reproducibility fields, trust fields, timestamps, integration fields
-- `TheatreEpisodeScore` — id, theatre_id, certificate_id, episode_id, invocation_status, latency_ms, scores_json, composite_score, timestamps
-- `TheatreAuditEvent` — id, theatre_id, event_type, from_state, to_state, detail_json, timestamp
-
-All with proper ForeignKeys, Indexes, and `back_populates` relationships. Reuses existing `_generate_uuid` for primary key defaults.
-
-**Acceptance Criteria:**
-- [x] All 5 tables follow existing `Mapped[]` pattern
-- [x] `_generate_uuid` reused for primary key defaults
-- [x] Foreign keys configured correctly
-- [x] Indexes match SDD §5.1
-- [x] Relationships with `back_populates` configured
-- [ ] Alembic migration creates all tables — **Deferred**: Migration generation requires database connection. Tables are defined correctly and ready for migration.
-- [x] No modification to existing tables
-
----
-
-### T1.7: Package Scaffolding
-**Files:** `theatre/__init__.py`, `theatre/engine/__init__.py`, `theatre/fixtures/__init__.py`
-**Status:** COMPLETE
-
-**Acceptance Criteria:**
-- [x] `theatre/__init__.py` exists
-- [x] `theatre/engine/__init__.py` exists
-- [x] `theatre/fixtures/__init__.py` exists
-- [x] All modules from T1.1–T1.5 importable from the package
+### Task 7: Sprint 1 Test Suite
+- **Status**: COMPLETE
+- 74 tests across 4 files (target: 25+)
+- Distribution: 19 context compiler + genome, 19 rules engine, 15 decision trace, 21 agent instance
+- All tests deterministic (fixed seeds, in-memory state)
+- Key coverage: all 6 archetypes, variant overrides, frozen enforcement, JSON round-trips, RLMF compatibility, lifecycle spawn->tick->settle, P&L correctness, multi-instance, failed trade handling, position state propagation, balance decrement, hash stability
 
 ---
 
-## Test Summary
+## Test Results
 
-| Module | Test File | Tests | Status |
-|--------|-----------|-------|--------|
-| State Machine | `tests/theatre/test_state_machine.py` | 43 | PASS |
-| Canonical JSON | `tests/theatre/test_canonical_json.py` | 35 | PASS |
-| Commitment | `tests/theatre/test_commitment.py` | 12 | PASS |
-| Criteria Model | `tests/theatre/test_criteria.py` | 10 | PASS |
-| Template Validator | `tests/theatre/test_template_validator.py` | 13 | PASS |
-| **Total** | | **113** | **ALL PASS** |
+### Sprint 1 Tests
+```
+74 passed in 0.13s
+```
 
-Run command: `backend/.venv/bin/python -m pytest tests/theatre/ -v`
+Test file breakdown:
+- `test_context_compiler.py`: 19 passed (7 genome + 8 context compiler + 4 parametrised)
+- `test_rules_engine.py`: 19 passed (8 archetype-specific + 6 parametrised + 5 cross-cutting)
+- `test_decision_trace.py`: 15 passed (7 schema + 6 pattern parametrised + 2 edge cases)
+- `test_agent_instance.py`: 21 passed (11 lifecycle + 6 parametrised archetype + 4 integration)
 
----
+### Scoped Regression
+```
+242 passed in 0.30s
+```
 
-## Technical Decisions
-
-1. **Import resolution**: `pyproject.toml` with `[tool.pytest.ini_options] pythonpath = ["."]` ensures `theatre` package is importable. Removed `tests/theatre/__init__.py` to prevent package shadowing.
-
-2. **Bool/int ordering in canonical JSON**: Python `bool` subclasses `int`, so `_normalise_value()` checks `isinstance(v, bool)` before `isinstance(v, int)` to preserve type fidelity.
-
-3. **Template validator two-phase design**: Schema validation runs first (structural), runtime rules second (semantic). Early return on schema errors avoids confusing downstream rule failures on malformed data.
-
-4. **DB tables — Alembic deferred**: Table definitions follow existing `Mapped[]` pattern exactly. Alembic migration deferred because it requires a database connection (`alembic revision --autogenerate`). Table code is ready; migration is a one-command step when database is available.
-
-5. **datetime.utcnow() deprecation**: 3 warnings from `commitment.py` using `datetime.utcnow()`. Kept for consistency with existing `verification_bridge.py` pattern — not refactored to avoid scope creep.
+All tests in `backend/market/` (97) and `backend/engines/` (145) pass without modification.
 
 ---
 
-## Files Created
+## Acceptance Criteria Checklist (PRD Section 9a)
 
-| File | Purpose |
-|------|---------|
-| `theatre/__init__.py` | Package root |
-| `theatre/engine/__init__.py` | Engine subpackage |
-| `theatre/engine/state_machine.py` | State machine (T1.1) |
-| `theatre/engine/canonical_json.py` | Canonical JSON (T1.2) |
-| `theatre/engine/commitment.py` | Commitment protocol (T1.3) |
-| `theatre/engine/models.py` | Criteria + domain models (T1.4) |
-| `theatre/engine/template_validator.py` | Template validator (T1.5) |
-| `theatre/fixtures/__init__.py` | Fixtures subpackage |
-| `tests/conftest.py` | Root test config |
-| `tests/theatre/conftest.py` | Theatre test config |
-| `tests/theatre/test_state_machine.py` | State machine tests |
-| `tests/theatre/test_canonical_json.py` | Canonical JSON tests |
-| `tests/theatre/test_commitment.py` | Commitment tests |
-| `tests/theatre/test_criteria.py` | Criteria tests |
-| `tests/theatre/test_template_validator.py` | Template validator tests |
-| `pyproject.toml` | pytest configuration |
-
-## Files Modified
-
-| File | Change |
-|------|--------|
-| `backend/database/models.py` | Appended 5 new table classes (T1.6) |
+- [x] AgentGenome captures all 8 archetype parameters + variant modifiers + Theatre context + position constraints + decision routing config + genome version
+- [x] Factory functions produce correct default genomes for all 6 archetypes from the Behaviour Matrix
+- [x] T0 Context Compiler produces deterministic T0Context from genome + TheatreTemplate + MarketState
+- [x] T0Context hash (SHA-256) enables reproducibility verification
+- [x] T1 Rules Engine produces valid T1Decision for all 6 archetypes
+- [x] Per-archetype decision logic is parameterised by genome parameters (not hard-coded)
+- [x] Confidence scoring: decisions near thresholds flag for T3 escalation
+- [x] DecisionTrace schema validates all required fields (tick_id, agent_id, tier_used, pattern_name, options_considered, reasoning_summary, evidence_refs)
+- [x] Every archetype decision path produces a valid DecisionTrace with pattern_name and options_considered populated
+- [x] Agent instance lifecycle completes: spawn -> 10 ticks -> settle with correct P&L
+- [x] Agent-LMSR integration: TradeIntent validated against position limits, executed via TradingEngine.execute_trade()
+- [x] Decision traces conform to RLMF schema v2.0.1
+- [x] No modifications to `backend/market/`, `backend/engines/`, `backend/osint/`, `backend/services/`
+- [x] Scoped regression: all tests pass (242/242)
+- [x] 25+ new Sprint 1 tests pass (74/74)
 
 ---
 
-## Known Issues
+## Concerns and Notes
 
-1. **Alembic migration not generated** — Requires database connection. Table definitions are complete and correct.
-2. **`datetime.utcnow()` deprecation** — 3 warnings in `commitment.py`. Matches existing codebase pattern.
-3. **No runtime rule 8** — SDD §8.2 lists 8 rules; rule 8 (holdout_split range) is enforced by JSON Schema `minimum`/`maximum` constraints, not by a runtime rule.
+1. **Python 3.9.6 compliance**: All new files include `from __future__ import annotations`. Type hints use `List`, `Dict`, `Tuple`, `Optional` from `typing` for 3.9 compat. Verified: `dict[str, float]` style avoided in runtime annotations within Pydantic models (Pydantic v2 handles this internally).
+
+2. **Rules Engine decision logic**: The Shark take-profit and stop-loss paths use simplified P&L estimation (price delta * position as proxy). The SDD specifies this as the Sprint 1 approach -- Sprint 2's T1-LOCAL-LLM will provide more sophisticated analysis.
+
+3. **Saboteur dual action**: The Saboteur can produce either BUY (contrary trade) or SABOTAGE action depending on propensity and RNG. The SABOTAGE action is recorded but treated as a BUY by the trading engine (the distinction is for DecisionTrace pattern labelling and future RLMF analysis).
+
+4. **Evidence coverage**: Evidence coverage is binary (0.0 or 0.5) in Sprint 1. The full coverage computation (percentage of committed sources with evidence) will be implemented in the Agent-Theatre Bridge (Sprint 3).
+
+5. **No frozen module modifications**: Verified zero changes to `backend/market/`, `backend/engines/`, `backend/osint/`, `backend/services/`, and all frozen agent files (`schemas.py`, `brain.py`, `instance_manager.py`, `agent_skills_bridge.py`, `autonomous_agent.py`, `shark_strategies.py`, `genealogy_manager.py`).
+
+---
+
+## Architecture Decisions
+
+1. **Separate AgentGenome from existing schemas.py**: As specified in the SDD, the new `AgentGenome` in `genome.py` is a parallel Pydantic v2 model purpose-built for the T0/T1/T2/T3 pipeline. No modification to the existing `schemas.py` which has `FinancialAgent` with breeding mechanics and a different archetype enum.
+
+2. **Separate TheatreAgentInstance from existing instance_manager.py**: The new `TheatreAgentInstance` is Theatre-scoped with spawn/tick/settle semantics. The existing `InstanceManager` manages ACP-oriented job routing -- untouched.
+
+3. **stdlib dataclass for internal state, Pydantic v2 for schemas**: T0Context and T1Decision use stdlib `@dataclass(frozen=True)` for performance and simplicity (internal state, not serialised). AgentGenome and DecisionTrace use Pydantic v2 for validation, serialisation, and RLMF compatibility.
+
+4. **Deterministic RNG**: RulesEngine.decide() accepts an rng_seed parameter. Combined with tick number and agent_id hash to produce unique but reproducible decisions. Critical for RLMF training data validity.

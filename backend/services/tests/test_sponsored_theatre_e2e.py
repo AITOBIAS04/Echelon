@@ -271,7 +271,7 @@ class TestSponsoredTheatreE2E:
         # === PHASE 2: Commit parameters ===
         commit_result = service.commit(theatre_id)
 
-        assert commit_result["status"] == "COMMITTED"
+        assert commit_result["status"] == "TRADING"
         assert commit_result["lmsr_hash_verified"] is True
 
         commitment_hash = commit_result["commitment_hash"]

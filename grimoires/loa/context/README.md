@@ -10,14 +10,9 @@ This directory is for user-provided context that feeds into the PRD discovery pr
 - Stakeholder feedback or user research
 - Any documents that inform what you want to build
 
-## Important: Files Are Not Tracked
+## Important: Files Are Tracked
 
-**All files in this directory (except this README) are gitignored.**
-
-This is intentional because:
-1. Context files are user-specific and project-specific
-2. They may contain sensitive business information
-3. Loa is a template - your context shouldn't pollute the framework
+**Context files in this directory are tracked in git.** This is intentional for Echelon — cycle context files, the platform roadmap, and core specs are part of the project's documented build history. Sensitive business information should not be placed here.
 
 ## How It Works
 
