@@ -99,6 +99,13 @@ class ParadoxEngine:
         # Get reality signal
         signal = self._reality_provider.get_signal(theatre_id)
 
+        # MEDIUM-1 fix (Cycle-012 Sprint 2): guard against p_reality=None
+        # LiveOSINTRealityProvider returns None when evidence is stale.
+        # Without this guard, LogicGapCalculator.compute() would raise
+        # TypeError on abs(p_market - None).
+        if signal.p_reality is None:
+            return None
+
         # Compute Logic Gap
         reading = self._logic_gap_calc.compute(theatre_id, signal.p_reality)
 

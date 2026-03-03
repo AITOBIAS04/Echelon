@@ -29,3 +29,10 @@
 |--------|-----------|--------|----------|----------|---------|
 | Sprint 1 | sprint-21 | COMPLETED | [reviewer.md](sprint-21/reviewer.md) | [engineer-feedback.md](sprint-21/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-21/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-22 | COMPLETED | [reviewer.md](sprint-22/reviewer.md) | [engineer-feedback.md](sprint-22/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-22/auditor-sprint-feedback.md) |
+
+## Cycle-012: Sponsored Theatre End-to-End
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 1 | sprint-23 | COMPLETED | [reviewer.md](sprint-23/reviewer.md) | [engineer-feedback.md](sprint-23/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-23/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-24 | COMPLETED | [reviewer.md](sprint-24/reviewer.md) | [engineer-feedback.md](sprint-24/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-24/auditor-sprint-feedback.md) |
