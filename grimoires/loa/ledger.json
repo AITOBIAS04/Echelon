@@ -331,7 +331,9 @@
     {
       "cycle_id": "cycle-013",
       "label": "Agent Runtime — Four-Tier Hierarchical Intelligence",
-      "status": "active",
+      "status": "archived",
+      "archived": "2026-03-03T23:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-03-agent-runtime-four-tier-intelligence",
       "created_at": "2026-03-03T19:00:00Z",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
@@ -359,11 +361,29 @@
           "tasks": 7
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-013-remediation",
+      "label": "MCP Auth & Transport Hardening + Baseline Drift Remediation",
+      "status": "active",
+      "created_at": "2026-03-03T23:30:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 28,
+          "label": "Gate C+D Remediation",
+          "status": "in_progress",
+          "tasks": 7
+        }
+      ]
     }
   ],
-  "active_cycle": "cycle-013",
+  "active_cycle": "cycle-013-remediation",
   "active_bugfix": null,
-  "global_sprint_counter": 27,
+  "global_sprint_counter": 28,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

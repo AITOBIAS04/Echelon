@@ -8,6 +8,7 @@ Cycle-013, Sprint 1 -- Tasks 5 + 6.
 """
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
@@ -18,6 +19,8 @@ from backend.agents.rules_engine import RulesEngine, T1Decision, TradeAction
 from backend.market.positions import AgentPosition, PositionManager
 from backend.market.state import MarketState
 from backend.market.trading import Trade, TradingEngine
+
+ACTIVE_TIERS = ["T1-RULES"]  # Multi-tier routing deferred to agent architecture cycle.
 
 
 @dataclass
@@ -93,6 +96,71 @@ class TheatreAgentInstance:
             rules_engine=rules_engine or RulesEngine(),
         )
 
+    @staticmethod
+    def _stable_agent_seed_component(agent_id: str) -> int:
+        """Stable seed component derived from agent_id.
+
+        Python's built-in hash() is process-randomised, so we use SHA-256 to
+        keep cross-process runs reproducible.
+        """
+        digest = hashlib.sha256(agent_id.encode("utf-8")).hexdigest()
+        return int(digest, 16) % 10000
+
+    @staticmethod
+    def _compute_evidence_coverage(
+        evidence: object,
+        total_slots_hint: int,
+    ) -> float:
+        """Compute evidence coverage in [0.0, 1.0].
+
+        Order:
+        1. Explicit `source_coverage_pct` if present.
+        2. Fraction from available/required evidence slots.
+        3. Fraction from evidence_bundles / committed sources hint.
+        4. Heuristic fallback: min(len(evidence) / 10, 1.0).
+        """
+        if evidence is None:
+            return 0.0
+
+        def _clamp(value: float) -> float:
+            return max(0.0, min(1.0, value))
+
+        if isinstance(evidence, dict):
+            explicit = evidence.get("source_coverage_pct")
+            if isinstance(explicit, (int, float)):
+                return _clamp(float(explicit))
+
+            available = evidence.get("available_evidence")
+            required = evidence.get("required_evidence_slots")
+            if hasattr(available, "__len__") and hasattr(required, "__len__"):
+                required_len = len(required)  # type: ignore[arg-type]
+                if required_len > 0:
+                    return _clamp(len(available) / required_len)  # type: ignore[arg-type]
+
+            bundles = evidence.get("evidence_bundles")
+            if hasattr(bundles, "__len__") and total_slots_hint > 0:
+                return _clamp(len(bundles) / total_slots_hint)  # type: ignore[arg-type]
+
+        explicit_attr = getattr(evidence, "source_coverage_pct", None)
+        if isinstance(explicit_attr, (int, float)):
+            return _clamp(float(explicit_attr))
+
+        available_attr = getattr(evidence, "available_evidence", None)
+        required_attr = getattr(evidence, "required_evidence_slots", None)
+        if hasattr(available_attr, "__len__") and hasattr(required_attr, "__len__"):
+            required_len = len(required_attr)
+            if required_len > 0:
+                return _clamp(len(available_attr) / required_len)
+
+        bundles_attr = getattr(evidence, "evidence_bundles", None)
+        if hasattr(bundles_attr, "__len__") and total_slots_hint > 0:
+            return _clamp(len(bundles_attr) / total_slots_hint)
+
+        try:
+            return _clamp(len(evidence) / 10.0)  # type: ignore[arg-type]
+        except TypeError:
+            return 0.5
+
     def tick(
         self,
         market: MarketState,
@@ -127,8 +195,11 @@ class TheatreAgentInstance:
         position = position_manager.get_position(self.agent_id)
         balance = position_manager.get_balance(self.agent_id)
 
-        # 2. Compute evidence coverage (0.0 if None, 0.5 if present)
-        evidence_coverage = 0.0 if evidence is None else 0.5
+        # 2. Compute evidence coverage fraction from evidence payload
+        evidence_coverage = self._compute_evidence_coverage(
+            evidence=evidence,
+            total_slots_hint=len(self.genome.committed_sources),
+        )
 
         # 3. T0: compile context
         t0_ctx = ContextCompiler.compile(
@@ -140,7 +211,7 @@ class TheatreAgentInstance:
         )
 
         # 4. T1: rules engine decision
-        rng_seed = seed + tick + hash(self.agent_id) % 10000
+        rng_seed = seed + tick + self._stable_agent_seed_component(self.agent_id)
         t1_decision = self._rules_engine.decide(t0_ctx, tick, rng_seed)
 
         # 5. Build trade intent and execute
@@ -176,7 +247,7 @@ class TheatreAgentInstance:
             tick_id=f"tick_{tick:04d}",
             agent_id=self.agent_id,
             theatre_id=self.theatre_id,
-            tier_used="T1-RULES",
+            tier_used=ACTIVE_TIERS[0],
             market_state_snapshot={
                 "prices": list(t0_ctx.prices),
                 "phase": t0_ctx.phase,

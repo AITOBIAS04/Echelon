@@ -242,6 +242,11 @@ async def run_theatre(
             detail="Market theatres use /settle, not /run",
         )
 
+    # Determine adapter type from template config
+    ptc = template.template_json.get("product_theatre_config", {}) if template else {}
+    adapter_type = ptc.get("adapter_type", "mock")
+    local_mode = adapter_type == "mock"
+
     # Transition to ACTIVE is handled by bridge
     await db.commit()
 
@@ -249,11 +254,18 @@ async def run_theatre(
     asyncio.create_task(run_theatre_task(theatre_id))
     logger.info("Started theatre run %s", theatre_id)
 
-    return {
+    response = {
         "theatre_id": theatre.id,
         "status": "accepted",
         "message": "Theatre execution started",
+        "adapter_type": adapter_type,
+        "local_mode": local_mode,
     }
+    if local_mode:
+        response["local_mode_note"] = (
+            "Mock adapter in use. Certificates will not be signed."
+        )
+    return response
 
 
 @router.get("/{theatre_id}", response_model=TheatreResponse)

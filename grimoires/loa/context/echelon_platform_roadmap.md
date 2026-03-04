@@ -93,7 +93,7 @@ The canonical architecture document is `Echelon_System_Bible_v13.md` (in Obsidia
 | 032 | Observer E2E Integration | — | Wired Community Oracle to Theatre, real calibration certificate | — |
 | 033 | Two-Rail Product Theatres | — | Deterministic scoring for Product Theatre templates | — |
 
-**Total tests:** 513 passed (baseline regression, 3 March 2026).
+**Test baseline (post 013):** 741 passed (full suite, post Gate A+B). Scoped regression: 710 passed, 13 pre-existing failures (environment-specific, unchanged). MCP suite: 102 passed (33 new from Gate C). 4 March 2026.
 
 ---
 
@@ -125,36 +125,33 @@ LiveOSINTRealityProvider wired to Paradox Engine. Three WM domain endpoints (CII
 
 First externally-commissioned Theatre. Full sponsor workflow and end-to-end lifecycle in local mode: Theatre creation → commitment → trading (stub agents) → OSINT evidence → resolution → settlement → certificate delivery → RLMF export. Stub agents only — no autonomous decisions.
 
+### Cycle-013: Agent Runtime (T0/T1/T2/T3 + ADK) ✓
+
+**Depends on:** Cycle-012 (defines agent interface via stubs)
+**Sprints:** 3 | **Tests:** 741
+
+Four-tier hierarchical intelligence: T0 (context/genome) → T1-RULES (parameterised per archetype) → T2 (Mistral creative personality) → T3 (Sonnet/Opus deep reasoning). Google ADK agent framework, novelty threshold routing, 6 autonomous archetypes trading in local-mode LMSR. Shark agent outperforms lower-skill archetypes. Full Codex remediation: deterministic SHA-256 seeding (E1), fractional evidence coverage (E4), `ACTIVE_TIERS` scope annotation (E2), MCP auth/transport hardening (C1+C2), baseline drift cleanup (D1–D3).
+
 ---
 
 ## Active Cycle
 
-### Cycle-013: Agent Runtime (T0/T1/T2/T3 + ADK)
+### Cycle-014: Bounded Inquiry Markets
 
-**Depends on:** Cycle-012 (defines agent interface via stubs)
-**Context file:** `grimoires/loa/context/echelon_cycle_013.md`
-**Sprints:** 3
+**Depends on:** Cycle-013 (agents) + Cycle-010a (LMSR) + Cycle-011 (evidence pipeline)
+**Context file:** `grimoires/loa/context/echelon_cycle_014.md`
+**Sprints:** 2
 
-The core agent execution loop — four-tier hierarchical intelligence replacing the three-tier model from System Bible v13 §IX. T0 (context/genome, 0ms, free) → T1 (Qwen 3.5 4B–9B via Ollama, <100ms, local) → T2 (Mistral creative, 200–500ms, personality) → T3 (Sonnet/Opus, 1–5s, deep reasoning). Google ADK for agent framework, novelty threshold routing.
+Canonical inquiry-class taxonomy (Counterfactual, Investigative, Inspection, Survey, Scrutiny) threaded through every layer: schema, database, API, runtime, templates, certificates. Inquiry class stops being a System Bible definition and becomes a first-class runtime concept — influencing resolution triggers, evidence accumulation rules, and agent behaviour weighting. One template per inquiry class, one E2E test per class.
 
-- **Sprint 1:** AgentGenome model, T0 Context Compiler, T1 Rules Engine (parameterised per archetype), T1 decision logging, agent instance lifecycle, agent ↔ LMSR integration
-- **Sprint 2:** T2 Personality Engine (Mistral), T3 Deep Reasoning (Sonnet/Opus), novelty threshold router, Ollama/Mistral/Anthropic model providers with graceful fallback
-- **Sprint 3:** ADK Agent wrapper, first autonomous Shark agent (≥20 trades over 50 ticks, outperforms lower-skill archetype), multi-agent population (6 archetypes), Theatre integration, P&L aggregation, autonomous E2E test
+- **Sprint 1:** Canonical `InquiryClass` enum + alias map, schema alignment across theatre/database/API/certificate/agent T0 context, migration for existing theatres, stale enum cleanup
+- **Sprint 2:** Inquiry-class-aware resolution triggers, evidence accumulation rules per class, agent behaviour adaptation (§X.4 domain adaptation matrix), template library expansion (4 new templates), 5 E2E tests (one per class), backward compatibility validation
 
-**What it unlocks:** autonomous market participants producing RLMF training data. The critical gap between infrastructure and a living system.
-
-**T1.5 exploration note:** Qwen 3.5 0.8B is worth testing during 013 as a potential layer between pure rules (T1-RULES) and full local inference (T1-LOCAL-LLM). Small enough to run on-device with near-zero latency, capable enough to handle simple classification ("is this signal anomalous?") that would otherwise need hand-written rules. If viable, agents gain more flexibility than rules at less cost than T2.
+**What it unlocks:** inquiry-class-aware markets producing diverse RLMF training data across five market types. Foundation for 015 (real evidence into typed markets) and 016 (results surface grouped by inquiry class).
 
 ---
 
 ## Upcoming Cycles
-
-### Cycle-014: Bounded Inquiry Markets
-
-**Depends on:** Cycle-013 (agents) + Cycle-010a (LMSR) + Cycle-011 (evidence pipeline)
-**Sprints:** 2 (estimated)
-
-The five inquiry classes (Investigation, Inspection, Audit, Survey, Scrutiny) as live markets with real agents. "Will this construct pass verification by [date]?" as a market with committed parameters, LMSR pricing, and agent participants. This is where RLMF generation starts — agents trading on verification outcomes produce the training data that's the commercial product.
 
 ### Cycle-015: WorldMonitor Live Deployment + First Non-WM Collector
 

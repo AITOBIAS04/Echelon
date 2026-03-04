@@ -1,128 +1,104 @@
-# Implementation Report: Sprint 1 — Integration Bridges + Template
+# Implementation Report — Sprint 28 (Gate C+D Remediation)
 
-> **Sprint**: sprint-1 (global: sprint-28)
-> **Cycle**: cycle-032 — Observer End-to-End Integration
-> **Status**: Complete
+**Cycle**: 013-remediation
+**Sprint**: 1 (Global: 28)
+**Date**: 2026-03-03
 
 ---
 
 ## Summary
 
-Implemented all five sprint-1 tasks: Ground Truth Adapter, Observer Oracle Adapter, Observer Scoring Function, Observer Theatre Template, and Package Init with public exports. All components implement the Cycle-031 Theatre engine protocols directly.
+All 7 tasks completed. Two new files created, 8 files modified, 3 metadata files updated. 33 new tests added, all passing. No regressions.
 
-**Key Design Decision**: Discovered during implementation that the echelon-verify package (Cycle-027) has only the ScoringProvider ABC and prompt templates implemented — no models, config, pipeline, oracle adapters, or ingestion. Adapted strategy to build integration components directly against Cycle-031's Theatre engine protocols (`OracleAdapter`, `ScoringFunction`) rather than bridging two complete systems. The scoring prompt templates from Cycle-027 are reused as-is.
+## Changes by Gate
 
----
+### Gate C — MCP Auth & Transport Hardening
 
-## Tasks Completed
+#### C1 — Auth Layer
 
-### T1.1: Ground Truth Adapter
-**File**: `theatre/integration/ground_truth_adapter.py`
+**New file: `mcp/auth.py`**
+- Bearer token validation via `authenticate()` — parses `Authorization: Bearer <token>` header
+- Scope enforcement via `authorize()` — checks token scopes against tool's required scopes
+- Rate limiting via `check_rate_limit()` — per-token sliding window (60 RPM default)
+- Config loaded from `MCP_AUTH_TOKENS` environment variable (JSON)
+- Dev mode: auth disabled when env var absent (all existing tests pass without config)
+- `reset_auth_config()` for test isolation
 
-- `convert_record_to_episode(record, follow_up_question) -> GroundTruthEpisode`
-- `convert_records_to_episodes(records, follow_up_questions) -> list[GroundTruthEpisode]`
-- `GroundTruthAdapter` class with stateful follow-up question storage
-- `episode_id` = `record.id`, `expected_output` = None
-- `input_data` includes: title, description, diff_content, files_changed, follow_up_question
-- `labels` includes: author, url, repo, github_labels
-- `metadata` includes: timestamp (ISO string)
-- Handles empty fields gracefully
+**Modified: `mcp/server.py`**
+- Added `"scopes"` key to each tool in `TOOLS` registry
+- Scopes: `verify`, `inspect`, `hash`, `schema_check`, `replay`, `status`, `calibrate`
 
-### T1.2: Observer Oracle Adapter
-**File**: `theatre/integration/observer_oracle.py`
+**New file: `mcp/tests/test_auth.py`** (23 tests)
+- `TestAuthenticate`: valid token, admin token, missing header, empty header, invalid token, malformed header, no bearer prefix, dev mode passthrough, dev mode any header
+- `TestAuthorize`: correct scope, multiple scopes, missing scope (with scope name in error), admin calibrate scope, dev mode allows all
+- `TestRateLimit`: under limit, over limit, independent per-token, dev mode no limit, window expiry
+- `TestLoadConfig`: no env returns None, valid env parsed, invalid JSON returns None, config cached
 
-- `ObserverOracleAdapter` class implementing `OracleAdapter` protocol (`async def invoke(self, input_data: dict) -> dict`)
-- Two-step invocation: (1) PR summarisation → summary + key_claims, (2) follow-up Q&A
-- Calls Anthropic API via `anthropic.AsyncAnthropic`
-- JSON response parsing with code-block extraction fallback
-- Input truncation at 80KB to prevent OOM
-- Propagates exceptions (no swallowing — ReplayEngine handles retries)
+#### C2 — Plain JSON HTTP Endpoints
 
-### T1.3: Observer Scoring Function
-**File**: `theatre/integration/observer_scorer.py`
+**Modified: `mcp/http.py`**
+- Added `POST /api/v1/tools/{tool_name}` route matching via regex
+- Plain JSON request body -> tool handler -> plain JSON response (no JSON-RPC wrapping)
+- Auth enforced: authenticate -> authorize -> rate_limit -> handler
+- `POST /mcp` JSON-RPC endpoint preserved unchanged
+- `/health` and `/sse` unchanged
 
-- `ObserverScoringFunction` class implementing `ScoringFunction` protocol (`async def score(self, criteria_id, ground_truth, oracle_output) -> float`)
-- Supports all 3 criteria: precision, recall, reply_accuracy
-- Loads prompt templates from `verification/src/echelon_verify/scoring/prompts/v1/`
-- Edge cases: empty claims → vacuous precision (1.0), empty summary → 0.0 recall, missing Q/A → 0.0 reply_accuracy
-- Graceful failure: API errors return 0.0 with warning log
-- `generate_follow_up_question()` helper for runner (sprint-2)
+**Modified: `mcp/tests/test_http.py`** (10 new tests, 8 existing unchanged)
+- `TestPlainJsonEndpoints`: hash tool, status tool, unknown tool 404, schema_check, empty body, JSON-RPC still works alongside
+- `TestAuthEnforcement`: valid token passes, missing token 401, wrong scope 403 (with scope name), invalid token 401
 
-### T1.4: Observer Theatre Template
-**File**: `theatre/integration/observer_template.json`
+### Gate D — Baseline Drift
 
-- `schema_version`: `"2.0.1"`
-- `theatre_id`: `"product_observer_v1"`
-- `template_family`: `"PRODUCT"`
-- `execution_path`: `"replay"`
-- `criteria.criteria_ids`: `["precision", "recall", "reply_accuracy"]`
-- `criteria.weights`: precision=0.4, recall=0.4, reply_accuracy=0.2
-- `product_theatre_config.adapter_type`: `"local"`
-- `product_theatre_config.ground_truth_source`: `"GITHUB_API"`
-- `product_theatre_config.construct_under_test`: `"community_oracle_v1"`
-- Passes `TemplateValidator` (JSON Schema + all 8 runtime rules)
+#### D1 — Theatre Run Mock Fallback Honesty
 
-### T1.5: Package Init + Imports
-**File**: `theatre/integration/__init__.py`
+**Modified: `backend/api/theatre_routes.py`**
+- `run_theatre()` response now includes `adapter_type`, `local_mode` fields
+- When mock adapter: `"local_mode": true, "local_mode_note": "Mock adapter in use. Certificates will not be signed."`
+- Reads adapter_type from template's `product_theatre_config`
+- No flow changes
 
-- Exports: `GroundTruthAdapter`, `GroundTruthRecord`, `OracleOutput`, `ObserverOracleAdapter`, `ObserverScoringFunction`, `convert_record_to_episode`, `convert_records_to_episodes`, `load_observer_template`
-- `load_observer_template()` loads and returns the template JSON
+#### D2 — Registry Scope Documentation
 
-**Supporting File**: `theatre/integration/models.py`
-- `GroundTruthRecord` — Pydantic model for PR ground truth data
-- `OracleOutput` — Pydantic model for oracle invocation results
+**Modified: `backend/osint/sources.json`**
+- Description updated to document WM-only scope with references to Cycle-005 and Cycle-017
 
----
+**Modified: `backend/osint/tests/test_registry_loader.py`**
+- Module docstring updated with scope explanation
+
+#### D3 — Planning Metadata Consistency
+
+**Modified: `grimoires/loa/context/echelon_platform_roadmap.md`**
+- Test count updated from "513 passed" to "710 passed"
+
+**Modified: `grimoires/loa/ledger.json`**
+- Cycle-013: archived, Cycle-013-remediation: active, global counter: 28
+
+**Modified: `grimoires/loa/context/README.md`**
+- Now lists all 9 actual context files with purpose descriptions
 
 ## Test Results
 
-**43 new tests, all passing.**
+| Suite | Passed | Failed | New |
+|-------|--------|--------|-----|
+| mcp/tests/test_auth.py | 23 | 0 | 23 |
+| mcp/tests/test_http.py | 18 | 0 | 10 |
+| mcp/ total | 102 | 0 | 33 |
+| Scoped regression | 710 | 13 (pre-existing) | 33 |
 
-| Test Class | Tests | Status |
-|------------|-------|--------|
-| TestConvertRecordToEpisode | 6 | ✓ |
-| TestConvertRecordsToEpisodes | 3 | ✓ |
-| TestGroundTruthAdapter | 2 | ✓ |
-| TestObserverOracleAdapter | 4 | ✓ |
-| TestObserverScoringFunction | 9 | ✓ |
-| TestObserverTemplate | 8 | ✓ |
-| TestPackageImports | 6 | ✓ |
-| TestIntegrationModels | 5 | ✓ |
+All 13 failures are pre-existing OSINT wiring tests (Cycle-011) -- not introduced by this sprint.
 
-**Full suite**: 296 passed, 0 failed (166.39s) — no regressions.
+## Files Changed
 
----
-
-## Files Created/Modified
-
-| File | Action | Lines |
-|------|--------|-------|
-| `theatre/integration/__init__.py` | Modified | 32 |
-| `theatre/integration/models.py` | Created | 43 |
-| `theatre/integration/ground_truth_adapter.py` | Created | 80 |
-| `theatre/integration/observer_oracle.py` | Created | 192 |
-| `theatre/integration/observer_scorer.py` | Created | 227 |
-| `theatre/integration/observer_template.json` | Created | 89 |
-| `tests/theatre/test_observer_integration.py` | Created | 370 |
-
----
-
-## Architecture Notes
-
-- All adapters use Anthropic's `AsyncAnthropic` client (lazily imported)
-- Oracle adapter: two sequential API calls per episode (summarise + follow-up)
-- Scorer: one API call per criterion per episode (3 calls per episode)
-- Template uses placeholder hashes (`0000000...`) — replaced at runtime by CommitmentProtocol
-- Scoring prompts are loaded from disk at scorer init time, not per-call
-
----
-
-## Sprint 1 Success Criteria
-
-- [x] All 3 bridge adapters implemented with correct interface compliance
-- [x] Observer Theatre template passes TemplateValidator
-- [x] GroundTruthRecord → GroundTruthEpisode mapping preserves all fields
-- [x] Oracle adapter correctly delegates to Anthropic API
-- [x] Scoring function correctly uses Cycle-027 prompts
-- [x] All unit tests passing (43/43)
-- [x] Full suite regression-free (296/296)
+| File | Type |
+|------|------|
+| `mcp/auth.py` | NEW |
+| `mcp/tests/test_auth.py` | NEW |
+| `mcp/server.py` | MODIFIED (scopes) |
+| `mcp/http.py` | MODIFIED (plain JSON routes + auth) |
+| `mcp/tests/test_http.py` | MODIFIED (new test classes) |
+| `backend/api/theatre_routes.py` | MODIFIED (response fields) |
+| `backend/osint/sources.json` | MODIFIED (description) |
+| `backend/osint/tests/test_registry_loader.py` | MODIFIED (docstring) |
+| `grimoires/loa/context/echelon_platform_roadmap.md` | MODIFIED (test count) |
+| `grimoires/loa/ledger.json` | MODIFIED (cycle status) |
+| `grimoires/loa/context/README.md` | MODIFIED (file listing) |

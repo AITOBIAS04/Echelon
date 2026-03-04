@@ -30,30 +30,37 @@ TOOLS = {
     "echelon_verify": {
         "definition": verify.TOOL_DEFINITION,
         "handler": verify.handle,
+        "scopes": ["verify"],
     },
     "echelon_inspect": {
         "definition": inspect.TOOL_DEFINITION,
         "handler": inspect.handle,
+        "scopes": ["inspect"],
     },
     "echelon_hash": {
         "definition": hash.TOOL_DEFINITION,
         "handler": hash.handle,
+        "scopes": ["hash"],
     },
     "echelon_schema_check": {
         "definition": schema_check.TOOL_DEFINITION,
         "handler": schema_check.handle,
+        "scopes": ["schema_check"],
     },
     "echelon_replay": {
         "definition": replay.TOOL_DEFINITION,
         "handler": replay.handle,
+        "scopes": ["replay"],
     },
     "echelon_status": {
         "definition": status.TOOL_DEFINITION,
         "handler": status.handle,
+        "scopes": ["status"],
     },
     "echelon_calibrate": {
         "definition": calibrate.TOOL_DEFINITION,
         "handler": calibrate.handle,
+        "scopes": ["calibrate"],
     },
 }
 

@@ -65,6 +65,16 @@ def _make_engine(market: MarketState, initial_balance: float = 1000.0):
 class TestTheatreAgentInstance:
     """Tests for agent instance lifecycle."""
 
+    def test_stable_seed_component_known_value(self) -> None:
+        """Seed component is deterministic for a known agent_id."""
+        genome = create_shark_genome()
+        instance = TheatreAgentInstance.spawn(genome, "theatre_test")
+        assert instance.agent_id == "theatre_test_shark"
+        assert (
+            TheatreAgentInstance._stable_agent_seed_component(instance.agent_id)
+            == 8705
+        )
+
     def test_spawn_creates_instance(self) -> None:
         """spawn() creates an instance with correct agent_id."""
         genome = create_shark_genome()
@@ -257,6 +267,40 @@ class TestTheatreAgentInstance:
             remaining = pm.get_balance(instance.agent_id)
             assert remaining < initial_balance
             assert remaining == initial_balance - trade.cost
+
+    def test_evidence_coverage_fraction_from_slot_counts(self) -> None:
+        """Coverage uses available/required slots instead of binary 0.5."""
+        genome = create_spy_genome()
+        market = _make_market()
+        pm, te = _make_engine(market)
+        instance = TheatreAgentInstance.spawn(genome, "theatre_cov")
+        pm.set_balance(instance.agent_id, 1000.0)
+
+        evidence = {
+            "available_evidence": ["a", "b", "c"],
+            "required_evidence_slots": ["s1", "s2", "s3", "s4", "s5", "s6"],
+        }
+        _trade, trace = instance.tick(market, pm, te, evidence, 0, seed=42)
+
+        assert trace.market_state_snapshot["evidence_coverage_pct"] == pytest.approx(0.5)
+
+    def test_evidence_coverage_fraction_partial_slot_fill(self) -> None:
+        """Coverage reflects partial fill ratio (e.g. 1/6 ~= 0.167)."""
+        genome = create_spy_genome()
+        market = _make_market()
+        pm, te = _make_engine(market)
+        instance = TheatreAgentInstance.spawn(genome, "theatre_cov_partial")
+        pm.set_balance(instance.agent_id, 1000.0)
+
+        evidence = {
+            "available_evidence": ["a"],
+            "required_evidence_slots": ["s1", "s2", "s3", "s4", "s5", "s6"],
+        }
+        _trade, trace = instance.tick(market, pm, te, evidence, 0, seed=42)
+
+        assert trace.market_state_snapshot["evidence_coverage_pct"] == pytest.approx(
+            1.0 / 6.0
+        )
 
     def test_rlmf_dict_from_lifecycle(self) -> None:
         """Decision traces from lifecycle produce valid RLMF dicts."""

@@ -1,33 +1,29 @@
 {
-  "simstim_id": "simstim-20260219-c028",
+  "simstim_id": "simstim-20260303-gate-cd",
   "schema_version": 1,
   "state": "RUNNING",
-  "phase": "implementation",
+  "phase": "complete",
   "timestamps": {
-    "started": "2026-02-19T16:00:00Z",
-    "last_activity": "2026-02-19T16:00:00Z"
+    "started": "2026-03-03T00:00:00Z",
+    "last_activity": "2026-03-03T00:10:00Z"
   },
   "phases": {
     "preflight": "completed",
-    "discovery": "skipped",
+    "discovery": "completed",
     "flatline_prd": "skipped",
-    "architecture": "skipped",
+    "architecture": "completed",
     "flatline_sdd": "skipped",
-    "planning": "skipped",
+    "planning": "completed",
     "flatline_sprint": "skipped",
     "flatline_beads": "skipped",
-    "implementation": "in_progress",
-    "complete": "pending"
+    "implementation": "completed",
+    "complete": "in_progress"
   },
   "artifacts": {
-    "prd": {
-      "path": "grimoires/loa/prd.md"
-    },
-    "sdd": {
-      "path": "grimoires/loa/sdd.md"
-    },
-    "sprint": {
-      "path": "grimoires/loa/sprint.md"
-    }
-  }
+    "prd": {"path": "grimoires/loa/prd.md"},
+    "sdd": {"path": "grimoires/loa/sdd.md"},
+    "sprint": {"path": "grimoires/loa/sprint.md"},
+    "reviewer": {"path": "grimoires/loa/a2a/sprint-28/reviewer.md"}
+  },
+  "context": "Gate C (C1+C2) MCP Auth & Transport + Gate D (D1+D2+D3) Baseline Drift remediation from codex_baseline_remediation_013.md"
 }

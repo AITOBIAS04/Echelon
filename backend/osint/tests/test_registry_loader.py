@@ -3,6 +3,12 @@
 Tests verify that RegistryLoader correctly loads the OSINT source registry,
 queries by source_id/source_group/wm_domain, validates enum membership,
 and verifies WorldMonitor source alignment.
+
+Scope: Runtime registry is intentionally pinned to 3 WorldMonitor sources
+(worldmonitor_cii, worldmonitor_finance, worldmonitor_maritime) as defined
+in Cycle-011. The full 160+ source registry from Cycle-005 (v1.0.0) is
+available in the Intelligence DB but is not loaded at runtime. Broader
+runtime registry loading is deferred to Cycle-017 registry expansion.
 """
 from __future__ import annotations
 

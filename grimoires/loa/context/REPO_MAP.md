@@ -85,7 +85,7 @@ prediction-market-monorepo/
 │   │   ├── saboteur/                 Sabotage skills
 │   │   └── spy/                      Intelligence skills
 │   │
-│   ├── market/                       LMSR Market Engine (Cycle-010a — planned)
+│   ├── market/                       LMSR Market Engine (Cycle-010a ✓)
 │   │   ├── lmsr.py                   Pure LMSR cost function
 │   │   ├── state.py                  MarketState dataclass + MarketPhase enum
 │   │   ├── lifecycle.py              State machine transitions
@@ -278,10 +278,11 @@ prediction-market-monorepo/
 │   ├── __init__.py
 │   ├── __main__.py                   Entry point
 │   ├── server.py                     MCP server (echelon_verify, echelon_hash, echelon_status, echelon_calibrate)
-│   ├── http.py                       HTTP transport (POST /mcp, GET /health, GET /sse)
+│   ├── auth.py                       Bearer validation, per-tool scopes, sliding window rate limit (Cycle-013 Gate C1)
+│   ├── http.py                       HTTP transport (POST /api/v1/tools/{name} plain JSON = canonical public surface; POST /mcp JSON-RPC = internal/legacy; GET /health, GET /sse)
 │   ├── models/                       MCP data models
 │   ├── tools/                        MCP tool implementations
-│   └── tests/                        MCP test suite (69 tests)
+│   └── tests/                        MCP test suite (102 tests — includes auth, transport, and tool tests)
 │
 ├── tools/                            Standalone utilities
 │   ├── echelon_verify.py             Verifier CLI (v0.1) — zero dependencies

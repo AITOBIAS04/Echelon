@@ -42,6 +42,8 @@ class EchelonAgent:
         decision_router: Optional[DecisionRouter] = None,
     ) -> None:
         self._instance = agent_instance
+        # DecisionRouter is used in tests; runtime tick() remains T1-RULES only
+        # until the dedicated multi-tier agent architecture cycle.
         self._router = decision_router
         self._adk_agent: Optional[object] = None
         self._tools: Dict[str, object] = {}
