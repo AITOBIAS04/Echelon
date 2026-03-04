@@ -3,7 +3,7 @@
 > For Loa context ingestion. This file describes the full build sequence.
 > Each cycle has a companion `echelon_cycle_NNN.md` with detailed scope.
 > UK British English throughout.
-> **Last updated:** 3 March 2026
+> **Last updated:** 4 March 2026
 
 ---
 
@@ -93,7 +93,7 @@ The canonical architecture document is `Echelon_System_Bible_v13.md` (in Obsidia
 | 032 | Observer E2E Integration | — | Wired Community Oracle to Theatre, real calibration certificate | — |
 | 033 | Two-Rail Product Theatres | — | Deterministic scoring for Product Theatre templates | — |
 
-**Test baseline (post 013):** 741 passed (full suite, post Gate A+B). Scoped regression: 710 passed, 13 pre-existing failures (environment-specific, unchanged). MCP suite: 102 passed (33 new from Gate C). 4 March 2026.
+**Test baseline (post 014b):** 932 passed (full suite), 4 skipped, 13 pre-existing collection errors (same node IDs, environment-specific). MCP suite: 102 passed (33 new from 013 Gate C). 4 March 2026.
 
 ---
 
@@ -132,31 +132,29 @@ First externally-commissioned Theatre. Full sponsor workflow and end-to-end life
 
 Four-tier hierarchical intelligence: T0 (context/genome) → T1-RULES (parameterised per archetype) → T2 (Mistral creative personality) → T3 (Sonnet/Opus deep reasoning). Google ADK agent framework, novelty threshold routing, 6 autonomous archetypes trading in local-mode LMSR. Shark agent outperforms lower-skill archetypes. Full Codex remediation: deterministic SHA-256 seeding (E1), fractional evidence coverage (E4), `ACTIVE_TIERS` scope annotation (E2), MCP auth/transport hardening (C1+C2), baseline drift cleanup (D1–D3).
 
+### Cycle-014: Bounded Inquiry Markets ✓
+
+**Depends on:** Cycle-013 (agents) + Cycle-010a (LMSR) + Cycle-011 (evidence pipeline)
+**Sprints:** 2 | **Tests:** 922 (181 new from 014 sprints + remediation)
+
+Canonical inquiry-class taxonomy (Counterfactual, Investigative, Inspection, Survey, Scrutiny) threaded through every layer: schema, database, API, runtime, templates, certificates. Inquiry class stops being a System Bible definition and becomes a first-class runtime concept — influencing resolution triggers, evidence accumulation rules, and agent behaviour weighting. One template per inquiry class, one E2E test per class. Full Codex remediation: production wiring for agent spawn (F1), settlement enforcement with `check_resolution_ready()` (F2), certificate metadata (F3), Alembic migration (F4), API null rejection (F5).
+
+### Cycle-014b: Genome Runtime Integration ✓
+
+**Depends on:** Cycle-013 (agent runtime) + Cycle-014 (inquiry taxonomy)
+**Sprints:** 1 | **Tests:** 932 (10 new from genome loader + validator CI)
+
+Bridge the T0 genome YAML spec to the production agent runtime. Extended `AgentGenome` with structured sub-models (TierProfile, DecisionPolicy, ParadoxBehaviour, InquiryClassAffinity, SuccessMetrics). YAML loader (`genome_loader.py`) with `load_genome()`, `load_genome_pack()`, `compute_commitment_hash()`. Wired into `spawn_agents()` with deterministic variant selection and factory fallback. PyYAML dependency added. No global state mutation. Validator CI integration via pytest wrapper.
+
 ---
 
 ## Active Cycle
 
-### Cycle-014: Bounded Inquiry Markets
-
-**Depends on:** Cycle-013 (agents) + Cycle-010a (LMSR) + Cycle-011 (evidence pipeline)
-**Context file:** `grimoires/loa/context/echelon_cycle_014.md`
-**Sprints:** 2
-
-Canonical inquiry-class taxonomy (Counterfactual, Investigative, Inspection, Survey, Scrutiny) threaded through every layer: schema, database, API, runtime, templates, certificates. Inquiry class stops being a System Bible definition and becomes a first-class runtime concept — influencing resolution triggers, evidence accumulation rules, and agent behaviour weighting. One template per inquiry class, one E2E test per class.
-
-- **Sprint 1:** Canonical `InquiryClass` enum + alias map, schema alignment across theatre/database/API/certificate/agent T0 context, migration for existing theatres, stale enum cleanup
-- **Sprint 2:** Inquiry-class-aware resolution triggers, evidence accumulation rules per class, agent behaviour adaptation (§X.4 domain adaptation matrix), template library expansion (4 new templates), 5 E2E tests (one per class), backward compatibility validation
-
-**What it unlocks:** inquiry-class-aware markets producing diverse RLMF training data across five market types. Foundation for 015 (real evidence into typed markets) and 016 (results surface grouped by inquiry class).
-
----
-
-## Upcoming Cycles
-
 ### Cycle-015: WorldMonitor Live Deployment + First Non-WM Collector
 
 **Depends on:** Cycle-011 (WM pipeline), Cycle-014 (bounded inquiries need real evidence)
-**Sprints:** 2 (estimated)
+**Context file:** `grimoires/loa/context/echelon_cycle_015.md`
+**Sprints:** 2
 
 Clone the WM fork, deploy locally, flip `@pytest.mark.live_wm` to enabled, verify mock-to-live transition. Then add one non-WM collector — Companies House API (free, no auth, UK jurisdiction, already in registry, settlement-eligible). Breaks the single-source corroboration limitation: WM + Companies House produces `corroboration_minimum_met: true` for UK corporate Theatres.
 
@@ -178,7 +176,12 @@ Full platform UI. By this point: live markets with agents, real OSINT evidence, 
 
 Schema additions: `query_determinism` (settlement gate), `receipt_body_required` (POST/GraphQL receipt rule), `requires_legal_review` (paid source ToS constraint). Tier 2 source stubs: USA Spending, NIH RePORTER, UK Case Law, UK Parliament, AU Patents. Depth, not capability — makes existing Theatres more reliable but doesn't unlock new product surfaces.
 
-Detailed research notes: `echelon core arch/implement/osint_registry_expansion_research_notes.md`
+**Reference material (Obsidian `echelon core arch/implement/`):**
+- `osint_registry_expansion_research_notes.md` — Source assessments, schema additions, dependency analysis, build priority tiers
+- `Echelon_Intelligence_Database_Expansion_v1_0.md` — Full v1.0.0 collector manifest (160+ sources, 30 source groups, 7 consumption surfaces, Tier A/B/C classification, SitDeck parity)
+- `Echelon_OSINT_Registry_Rate_Limits_v1.md` — Operational rate limit reference for all 77 registry sources (v0.6.0)
+- `registry_v060_expansion.json` — JSON payload for 9 sources added in v0.6.0 (UK judicial/legislative + sovereign financial)
+- `Echelon_Valyu_OSINT_Reverse_Engineering_v1.docx` — Valyu.ai source reverse-engineering, registry gap analysis, phased expansion path
 
 ---
 
@@ -235,4 +238,4 @@ Detailed research notes: `echelon core arch/implement/osint_registry_expansion_r
 2. Before starting a new cycle, place the cycle-specific file (e.g., `echelon_cycle_010a.md`) in `grimoires/loa/context/`
 3. Remove the previous cycle's context file to keep Loa focused
 4. The roadmap file stays — it gives Loa the big picture without overwhelming it with detail
-5. Run `/plan` and Loa will read both files to generate the PRD
+5. Run `/plan-and-analyze` and Loa will read both files to generate the PRD

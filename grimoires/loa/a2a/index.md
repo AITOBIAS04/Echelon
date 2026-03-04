@@ -44,3 +44,17 @@
 | Sprint 1 | sprint-25 | COMPLETED | [reviewer.md](sprint-25/reviewer.md) | [engineer-feedback.md](sprint-25/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-25/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-26 | COMPLETED | [reviewer.md](sprint-26/reviewer.md) | [engineer-feedback.md](sprint-26/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-26/auditor-sprint-feedback.md) |
 | Sprint 3 | sprint-27 | COMPLETED | [reviewer.md](sprint-27/reviewer.md) | [engineer-feedback.md](sprint-27/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-27/auditor-sprint-feedback.md) |
+
+## Cycle-014: Bounded Inquiry Markets
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 1 | sprint-29 | COMPLETED | [reviewer.md](sprint-29/reviewer.md) | [engineer-feedback.md](sprint-29/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-29/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-30 | COMPLETED | [reviewer.md](sprint-30/reviewer.md) | [engineer-feedback.md](sprint-30/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-30/auditor-sprint-feedback.md) |
+
+## Cycle-015: WorldMonitor Live Deployment + First Non-WM Collector
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 1 | sprint-31 | COMPLETED | — | [engineer-feedback.md](sprint-31/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-31/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-32 | COMPLETED | — | [engineer-feedback.md](sprint-32/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-32/auditor-sprint-feedback.md) |

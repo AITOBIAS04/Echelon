@@ -365,8 +365,9 @@
     {
       "cycle_id": "cycle-013-remediation",
       "label": "MCP Auth & Transport Hardening + Baseline Drift Remediation",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-03T23:30:00Z",
+      "archived": "2026-03-04T00:00:00Z",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -375,15 +376,70 @@
           "local_id": "sprint-1",
           "global_id": 28,
           "label": "Gate C+D Remediation",
-          "status": "in_progress",
+          "status": "completed",
+          "tasks": 7
+        }
+      ]
+    },
+    {
+      "cycle_id": "cycle-014",
+      "label": "Bounded Inquiry Markets — Canonical Taxonomy + Market Wiring",
+      "status": "archived",
+      "created_at": "2026-03-04T00:00:00Z",
+      "archived": "2026-03-04T12:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-04-bounded-inquiry-markets",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 29,
+          "label": "Canonical Taxonomy + Schema Alignment",
+          "status": "completed",
+          "tasks": 8
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 30,
+          "label": "Inquiry-Aware Runtime + Templates + E2E",
+          "status": "completed",
+          "tasks": 8
+        }
+      ]
+    }
+    ,
+    {
+      "cycle_id": "cycle-015",
+      "label": "WorldMonitor Live Deployment + First Non-WM Collector",
+      "status": "archived",
+      "created_at": "2026-03-04T12:00:00Z",
+      "archived": "2026-03-04T18:30:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-04-worldmonitor-live-deployment-first-non-wm-collector",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 31,
+          "label": "WorldMonitor Live Tests",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 32,
+          "label": "Companies House Collector Integration",
+          "status": "completed",
           "tasks": 7
         }
       ]
     }
   ],
-  "active_cycle": "cycle-013-remediation",
+  "active_cycle": null,
   "active_bugfix": null,
-  "global_sprint_counter": 28,
+  "global_sprint_counter": 32,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

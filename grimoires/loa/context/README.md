@@ -7,7 +7,7 @@ This directory contains user-provided context that feeds into the PRD discovery 
 | File | Purpose |
 |------|---------|
 | `echelon_platform_roadmap.md` | Full build sequence, cycle dependency graph, project vision |
-| `echelon_cycle_014.md` | Active cycle context: Bounded Inquiry Markets |
+| `echelon_cycle_015.md` | Active cycle context: WM Live Deployment + Companies House |
 | `Echelon_System_Bible_v13.md` | Canonical architecture document (LMSR, Theatres, Agents, etc.) |
 | `Echelon_System_Bible_v13_Addendum.md` | Addendum to System Bible v13 |
 | `Echelon_Theatre_Template_Library_Live_v2.md` | Theatre template definitions and library |
