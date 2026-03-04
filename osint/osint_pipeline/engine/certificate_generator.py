@@ -32,6 +32,7 @@ class CertificateGenerator:
         inquiry_class: str = "INSPECTION",
         execution_path: str = "replay",
         pipeline_version: str = "0.6.0",
+        resolution_trigger_reason: str = "",
     ) -> CalibrationCertificate:
         """Assemble certificate from oracle output and evidence hashes.
 
@@ -41,9 +42,10 @@ class CertificateGenerator:
             commitment_hash: SHA-256 of canonical theatre template JSON.
             target_entity: Entity under verification (company_number, etc.).
             theatre_id: Theatre template identifier.
-            inquiry_class: INSPECTION, INVESTIGATION, or AUDIT.
+            inquiry_class: COUNTERFACTUAL, INVESTIGATIVE, INSPECTION, SURVEY, or SCRUTINY.
             execution_path: replay or market.
             pipeline_version: Software version string.
+            resolution_trigger_reason: Why resolution was triggered.
 
         Returns:
             Fully populated CalibrationCertificate.
@@ -69,6 +71,7 @@ class CertificateGenerator:
             theatre_id=theatre_id,
             inquiry_class=inquiry_class,
             execution_path=execution_path,
+            resolution_trigger_reason=resolution_trigger_reason,
             verification_tier="UNVERIFIED",
             composite_score=oracle_output.composite_score,
             all_criteria_passed=oracle_output.all_criteria_passed,

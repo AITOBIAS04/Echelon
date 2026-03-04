@@ -108,18 +108,66 @@ class MarketTheatreBridge:
             )
 
     def settle_market(
-        self, theatre_id: str, winning_outcome: int
+        self,
+        theatre_id: str,
+        winning_outcome: int,
+        inquiry_class: str = "COUNTERFACTUAL",
+        evidence_state: dict | None = None,
+        theatre_config: dict | None = None,
+        force: bool = False,
     ) -> SettlementReport:
-        """Begin resolution and settle a Theatre's market.
+        """Check resolution readiness, begin resolution, and settle.
 
-        Combines begin_resolution() + ResolutionEngine.settle() in one call.
+        Calls check_resolution_ready() to determine the trigger reason.
+        Refuses settlement if not ready unless force=True.
+
+        Args:
+            theatre_id: Theatre whose market to settle.
+            winning_outcome: Index of the winning outcome.
+            inquiry_class: Inquiry class from the theatre record.
+            evidence_state: Evidence snapshot for check_resolution_ready().
+                If None, defaults to time_window_expired=True (manual settle).
+            theatre_config: Theatre configuration for resolution thresholds.
+                If None, uses empty dict (defaults apply).
+            force: If True, bypass readiness check (logged as warning).
         """
         state = self._theatres.get(theatre_id)
         if state is None:
             raise ValueError(f"No market found for theatre '{theatre_id}'")
 
+        if evidence_state is None:
+            evidence_state = {"time_window_expired": True}
+        if theatre_config is None:
+            theatre_config = {}
+
+        ready, trigger = ResolutionEngine.check_resolution_ready(
+            inquiry_class=inquiry_class,
+            evidence_state=evidence_state,
+            theatre_config=theatre_config,
+        )
+
+        if not ready and not force:
+            raise ValueError(
+                f"Settlement refused: resolution not ready for "
+                f"inquiry_class={inquiry_class}. Trigger={trigger}. "
+                f"Pass force=True to override."
+            )
+
+        if not ready and force:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Theatre %s settled with force=True despite not ready "
+                "(inquiry_class=%s, trigger=%s)",
+                theatre_id, inquiry_class, trigger,
+            )
+
         MarketLifecycle.begin_resolution(state.market, winning_outcome)
-        return ResolutionEngine.settle(state.market, state.position_manager)
+        return ResolutionEngine.settle(
+            state.market,
+            state.position_manager,
+            inquiry_class=inquiry_class,
+            resolution_trigger_reason=str(trigger),
+        )
 
     def serialise_state(self, theatre_id: str) -> dict:
         """Serialise a Theatre's market state to a JSON-compatible dict.

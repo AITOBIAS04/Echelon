@@ -1,0 +1,38 @@
+{
+  "template_id": "survey_asset_valuation_v1",
+  "template_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "inquiry_class": "SURVEY",
+  "execution_path": "market",
+  "description": "Survey inquiry — aggregate market opinion on asset valuation",
+  "template_family": "asset_valuation",
+  "outcomes": [
+    {
+      "index": 0,
+      "label": "UNDERVALUED",
+      "description": "Market consensus: asset is undervalued"
+    },
+    {
+      "index": 1,
+      "label": "FAIR",
+      "description": "Market consensus: asset is fairly valued"
+    },
+    {
+      "index": 2,
+      "label": "OVERVALUED",
+      "description": "Market consensus: asset is overvalued"
+    }
+  ],
+  "oracle_config": {
+    "sources": [],
+    "corroboration_minimum": 0,
+    "corroboration_window_seconds": 0,
+    "counter_signal_classes": []
+  },
+  "resolution_rules": {
+    "participation_threshold": 10,
+    "time_window_hours": 48,
+    "primary_trigger": "participation_threshold"
+  },
+  "committed_sources": []
+}

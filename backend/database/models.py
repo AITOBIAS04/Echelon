@@ -493,6 +493,9 @@ class TheatreTemplate(Base):
     display_name: Mapped[str] = mapped_column(String(100))
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     schema_version: Mapped[str] = mapped_column(String(20))
+    inquiry_class: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, server_default="COUNTERFACTUAL"
+    )
     template_json: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(
@@ -505,6 +508,7 @@ class TheatreTemplate(Base):
     __table_args__ = (
         Index("ix_theatre_templates_family", "template_family"),
         Index("ix_theatre_templates_execution_path", "execution_path"),
+        Index("ix_theatre_templates_inquiry_class", "inquiry_class"),
     )
 
 
@@ -518,6 +522,9 @@ class Theatre(Base):
     )
     state: Mapped[str] = mapped_column(String(20), default="DRAFT")
     construct_id: Mapped[str] = mapped_column(String(255), index=True)
+    inquiry_class: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, server_default="COUNTERFACTUAL"
+    )
 
     # Commitment fields (populated on COMMITTED transition)
     commitment_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
@@ -559,6 +566,7 @@ class Theatre(Base):
         Index("ix_theatres_state", "state"),
         Index("ix_theatres_construct", "construct_id"),
         Index("ix_theatres_user_created", "user_id", "created_at"),
+        Index("ix_theatres_inquiry_class", "inquiry_class"),
     )
 
 
@@ -569,6 +577,9 @@ class TheatreCertificate(Base):
     theatre_id: Mapped[str] = mapped_column(String(50), index=True)
     template_id: Mapped[str] = mapped_column(String(100), index=True)
     construct_id: Mapped[str] = mapped_column(String(255), index=True)
+    inquiry_class: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, server_default="COUNTERFACTUAL"
+    )
 
     # Criteria & scores
     criteria_json: Mapped[dict] = mapped_column(JSON)

@@ -1,0 +1,78 @@
+schema_version: "1.0.0"
+
+# ============================================================
+# SHARK — MEGALODON (Genesis Variant A)
+# Aggressive momentum trading with high-confidence entries.
+# ============================================================
+
+identity:
+  name: "MEGALODON"
+  archetype: SHARK
+  variant: MEGALODON
+  agent_id: "shark_megalodon_v1.0.0"
+  version: "1.0.0"
+  lineage: GENESIS
+  description: "High-conviction momentum trader. Enters fast on strong signals, scales aggressively, exits on reversal."
+
+economic_parameters:
+  risk_appetite: 0.90          # Higher than core (0.85); favours larger bets
+  evidence_sensitivity: 0.80   # Higher than core (0.70); reacts faster to OSINT
+  time_preference: 0.95        # Near-term focus; wants returns this market
+  exploration_rate: 0.15       # Low; exploits known momentum patterns
+  position_limit: 15000        # Higher than core (10000); MEGALODON trades big
+  sabotage_propensity: 0.30    # Occasional strategic disruption to create entries
+  shield_propensity: 0.10      # Rarely defends; prefers to exit
+  patience: 30                 # Seconds before first action; fast entry
+
+tier_profile:
+  active_tiers: [T1, T2]
+  default_tier: T1
+  escalation_rules:
+    - condition: "logic_gap > 0.20"
+      escalate_to: T2
+      cooldown_seconds: 60
+    - condition: "position_pnl < -0.15"
+      escalate_to: T2
+      cooldown_seconds: 30
+  cost_profile: "Fast and cheap. T1 heuristics for routine trades, T2 (Qwen 3.5) for stressed markets."
+  max_inference_budget_per_market: 0.12
+
+decision_policy:
+  method: SOFTMAX_Q_VALUE
+  temperature: 0.3             # Low temperature; high-confidence selections
+  bias_vector:
+    buy: 0.35
+    sell: 0.20
+    hold: 0.10
+    observe: 0.05
+    sabotage: 0.20
+    shield: 0.10
+  strategy_rules:
+    - "Evaluate expected value across all outcomes."
+    - "Apply risk adjustment (rho=0.90): favour highest-confidence outcome."
+    - "If entropy > 0.5, reduce position by 30%."
+    - "If momentum aligns with evidence direction, scale position to limit."
+    - "On reversal signal (price delta > -0.08 in 15min), exit immediately."
+    - "Never hold through Paradox spawn if extraction cost < 0.20 of position."
+
+paradox_behaviour:
+  logic_gap_threshold: 0.20
+  response_action: EXTRACT
+  extraction_cost_ceiling: 0.25
+  coalition_willingness: 0.15
+  circuit_breaker_behaviour: REDUCE
+
+inquiry_class_affinity:
+  counterfactual: 0.85
+  investigative: 0.40
+  inspection: 0.75
+  survey: 0.85
+  scrutiny: 0.30
+
+success_metrics:
+  brier_score_target: 0.18
+  ece_bound: 0.06
+  pnl_expectation: PROFITABLE
+  consistency_threshold: 0.80
+  position_size_variance_max: 0.20
+  fork_choice_consistency_min: 0.82

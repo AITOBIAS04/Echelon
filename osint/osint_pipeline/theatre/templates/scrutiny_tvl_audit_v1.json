@@ -1,0 +1,46 @@
+{
+  "template_id": "scrutiny_tvl_audit_v1",
+  "template_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "inquiry_class": "SCRUTINY",
+  "execution_path": "market",
+  "description": "Scrutiny inquiry — adversarial audit of a DeFi protocol TVL claim",
+  "template_family": "defi_audit",
+  "outcomes": [
+    {
+      "index": 0,
+      "label": "VERIFIED",
+      "description": "TVL claim verified by adversarial evidence"
+    },
+    {
+      "index": 1,
+      "label": "FALSIFIED",
+      "description": "TVL claim falsified — evidence contradicts stated value"
+    }
+  ],
+  "oracle_config": {
+    "sources": [
+      {
+        "source_id": "wm_market_data",
+        "role": "primary_evidence",
+        "required": true,
+        "queries": ["tvl_snapshot"]
+      },
+      {
+        "source_id": "wm_news_api",
+        "role": "adversarial_corroboration",
+        "required": true,
+        "queries": ["defi_audit_news"]
+      }
+    ],
+    "corroboration_minimum": 2,
+    "corroboration_window_seconds": 3600,
+    "counter_signal_classes": ["tvl_manipulation", "smart_contract_exploit"]
+  },
+  "resolution_rules": {
+    "evidence_threshold": 0.9,
+    "time_window_hours": 24,
+    "primary_trigger": "claim_verdict"
+  },
+  "committed_sources": ["wm_market_data", "wm_news_api"]
+}

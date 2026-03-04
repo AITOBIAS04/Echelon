@@ -5,6 +5,8 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from backend.schemas.inquiry import resolve_inquiry_class
+
 
 # ============================================
 # REQUEST SCHEMAS
@@ -17,8 +19,21 @@ class TheatreCreate(BaseModel):
     template_id: str = Field(..., min_length=1, max_length=100)
     construct_id: str = Field(..., min_length=1, max_length=255)
     template_json: dict = Field(..., description="Full template JSON for validation")
+    inquiry_class: str = Field(
+        "COUNTERFACTUAL",
+        description="Inquiry class (COUNTERFACTUAL|INVESTIGATIVE|INSPECTION|SURVEY|SCRUTINY). "
+        "Extracted from template_json if not provided. Cannot be null.",
+    )
     version_pins: dict = Field(default_factory=dict)
     dataset_hashes: dict = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_null_inquiry_class(cls, values: dict) -> dict:
+        """Reject explicit null for inquiry_class (returns 422)."""
+        if isinstance(values, dict) and "inquiry_class" in values and values["inquiry_class"] is None:
+            raise ValueError("inquiry_class cannot be null")
+        return values
 
     @model_validator(mode="after")
     def validate_template_json(self) -> "TheatreCreate":
@@ -26,6 +41,14 @@ class TheatreCreate(BaseModel):
             raise ValueError("template_json must contain 'theatre_id'")
         if "execution_path" not in self.template_json:
             raise ValueError("template_json must contain 'execution_path'")
+        # If inquiry_class is the default, check template_json for override
+        if self.inquiry_class == "COUNTERFACTUAL":
+            raw = self.template_json.get("inquiry_class")
+            if raw is not None:
+                self.inquiry_class = str(resolve_inquiry_class(raw))
+        else:
+            # Explicit value — validate it
+            self.inquiry_class = str(resolve_inquiry_class(self.inquiry_class))
         return self
 
 
@@ -64,8 +87,15 @@ class TemplateResponse(BaseModel):
     display_name: str
     description: Optional[str]
     schema_version: str
+    inquiry_class: Optional[str] = None
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def coalesce_inquiry_class(self) -> "TemplateResponse":
+        if self.inquiry_class is None:
+            self.inquiry_class = "COUNTERFACTUAL"
+        return self
 
 
 class TemplateListResponse(BaseModel):
@@ -96,6 +126,7 @@ class TheatreResponse(BaseModel):
     template_id: str
     state: str
     construct_id: str
+    inquiry_class: Optional[str] = None
     commitment_hash: Optional[str]
     committed_at: Optional[datetime]
     progress: int
@@ -107,6 +138,12 @@ class TheatreResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def coalesce_inquiry_class(self) -> "TheatreResponse":
+        if self.inquiry_class is None:
+            self.inquiry_class = "COUNTERFACTUAL"
+        return self
 
 
 class TheatreListResponse(BaseModel):
@@ -125,6 +162,7 @@ class TheatreCertificateResponse(BaseModel):
     theatre_id: str
     template_id: str
     construct_id: str
+    inquiry_class: Optional[str] = None
     criteria_json: dict
     scores_json: dict
     composite_score: float
@@ -149,6 +187,12 @@ class TheatreCertificateResponse(BaseModel):
     ground_truth_source: str
     execution_path: str
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def coalesce_inquiry_class(self) -> "TheatreCertificateResponse":
+        if self.inquiry_class is None:
+            self.inquiry_class = "COUNTERFACTUAL"
+        return self
 
 
 class TheatreCertificateSummaryResponse(BaseModel):

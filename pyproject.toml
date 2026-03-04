@@ -4,6 +4,7 @@ requires-python = ">=3.9"
 dependencies = [
     "pydantic>=2.0",
     "httpx>=0.24",
+    "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]

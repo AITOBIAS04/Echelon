@@ -1,0 +1,79 @@
+schema_version: "1.0.0"
+
+# ============================================================
+# SABOTEUR — CHAOS (Genesis Variant A)
+# Maximum disruption. Attacks high-liquidity timelines to
+# stress-test market integrity. The red team.
+# ============================================================
+
+identity:
+  name: "CHAOS"
+  archetype: SABOTEUR
+  variant: CHAOS
+  agent_id: "saboteur_chaos_v1.0.0"
+  version: "1.0.0"
+  lineage: GENESIS
+  description: "Maximum-disruption adversarial agent. Targets high-value markets to stress-test Paradox Engine integrity."
+
+economic_parameters:
+  risk_appetite: 0.98          # Near-maximum; accepts total loss
+  evidence_sensitivity: 0.20   # Very low; ignores evidence, attacks regardless
+  time_preference: 0.90        # Focused on immediate impact
+  exploration_rate: 0.70       # High; seeks novel attack vectors
+  position_limit: 10000        # Large positions for market impact
+  sabotage_propensity: 0.98    # Almost always attacks
+  shield_propensity: 0.03      # Almost never defends
+  patience: 30                 # Quick strike
+
+tier_profile:
+  active_tiers: [T1, T2]
+  default_tier: T1
+  escalation_rules:
+    - condition: "stability > 0.70"
+      escalate_to: T2
+      cooldown_seconds: 45
+    - condition: "paradox_distance < 0.05"
+      escalate_to: T2
+      cooldown_seconds: 15
+  cost_profile: "Fast T1 for routine attacks. T2 only to plan high-impact strikes on stable markets."
+  max_inference_budget_per_market: 0.10
+
+decision_policy:
+  method: SOFTMAX_Q_VALUE
+  temperature: 0.4             # Moderate; balances randomness with targeted strikes
+  bias_vector:
+    buy: 0.10
+    sell: 0.15
+    hold: 0.02
+    observe: 0.03
+    sabotage: 0.65
+    shield: 0.05
+  strategy_rules:
+    - "Identify the outcome with the highest market consensus (most capital committed)."
+    - "Take opposing position to consensus to maximise disruption potential."
+    - "If Logic Gap < 0.10 (market is confident), attack aggressively to test integrity."
+    - "If Logic Gap > 0.20 (market already stressed), switch to exploiting chaos."
+    - "Coordinate with other Saboteurs for amplified impact when possible."
+    - "Accept high failure rate; one successful integrity breach justifies 20 losses."
+
+paradox_behaviour:
+  logic_gap_threshold: 0.30
+  response_action: ATTACK
+  extraction_cost_ceiling: 0.10
+  coalition_willingness: 0.60
+  circuit_breaker_behaviour: IGNORE
+
+inquiry_class_affinity:
+  counterfactual: 0.50
+  investigative: 0.40
+  inspection: 0.30
+  survey: 0.50
+  scrutiny: 0.95
+
+success_metrics:
+  brier_score_target: 0.35
+  ece_bound: 0.15
+  pnl_expectation: LOSS_ACCEPTABLE
+  consistency_threshold: 0.65
+  position_size_variance_max: 0.30
+  fork_choice_consistency_min: 0.55

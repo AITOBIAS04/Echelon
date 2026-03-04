@@ -1,0 +1,46 @@
+{
+  "template_id": "counterfactual_geopolitical_v1",
+  "template_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "inquiry_class": "COUNTERFACTUAL",
+  "execution_path": "market",
+  "description": "Counterfactual geopolitical scenario — will event X occur by date Y?",
+  "template_family": "geopolitical",
+  "outcomes": [
+    {
+      "index": 0,
+      "label": "YES",
+      "description": "Event occurs by resolution date"
+    },
+    {
+      "index": 1,
+      "label": "NO",
+      "description": "Event does not occur by resolution date"
+    }
+  ],
+  "oracle_config": {
+    "sources": [
+      {
+        "source_id": "wm_news_api",
+        "role": "primary_evidence",
+        "required": true,
+        "queries": ["geopolitical_event"]
+      },
+      {
+        "source_id": "wm_market_data",
+        "role": "secondary_corroboration",
+        "required": false,
+        "queries": ["market_sentiment"]
+      }
+    ],
+    "corroboration_minimum": 1,
+    "corroboration_window_seconds": 7200,
+    "counter_signal_classes": ["geopolitical_reversal"]
+  },
+  "resolution_rules": {
+    "evidence_threshold": 0.8,
+    "time_window_hours": 168,
+    "primary_trigger": "simulation_terminal"
+  },
+  "committed_sources": ["wm_news_api", "wm_market_data"]
+}

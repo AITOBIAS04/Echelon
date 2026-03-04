@@ -10,6 +10,8 @@ Cycle-013, Sprint 3 -- Task 3.
 """
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
 from typing import Dict, List, Optional
 
 from backend.agents.agent_instance import (
@@ -22,6 +24,7 @@ from backend.agents.genome import (
     EchelonArchetype,
     create_genome,
 )
+from backend.agents.genome_loader import load_genome_pack
 from backend.agents.rules_engine import RulesEngine
 from backend.market.positions import PositionManager
 from backend.market.state import MarketState
@@ -46,6 +49,8 @@ class AgentTheatreBridge:
         initial_balance: float = 1000.0,
         position_manager: Optional[PositionManager] = None,
         archetypes: Optional[List[EchelonArchetype]] = None,
+        inquiry_class: str = "COUNTERFACTUAL",
+        genome_dir: Optional[Path] = None,
     ) -> List[TheatreAgentInstance]:
         """Spawn one agent per archetype for a Theatre.
 
@@ -54,6 +59,10 @@ class AgentTheatreBridge:
             initial_balance: Starting cash for each agent.
             position_manager: If provided, sets initial balance for each agent.
             archetypes: List of archetypes to spawn. Default: all 6.
+            inquiry_class: Inquiry class from the theatre record.
+            genome_dir: Optional path to directory of YAML genome files.
+                If provided and contains .yaml files, genomes are loaded
+                from YAML instead of the in-code factory.
 
         Returns:
             List of spawned TheatreAgentInstance objects.
@@ -61,13 +70,41 @@ class AgentTheatreBridge:
         if archetypes is None:
             archetypes = list(EchelonArchetype)
 
+        # Load YAML genome pack if available
+        yaml_genomes: Dict[str, AgentGenome] = {}
+        if genome_dir is not None and genome_dir.is_dir():
+            yaml_files = list(genome_dir.glob("*.yaml"))
+            if yaml_files:
+                yaml_genomes = load_genome_pack(genome_dir)
+
+        # Index YAML genomes by archetype for lookup
+        genomes_by_archetype: Dict[EchelonArchetype, List[AgentGenome]] = {}
+        for genome in yaml_genomes.values():
+            genomes_by_archetype.setdefault(genome.archetype, []).append(genome)
+
         agents = []
         for arch in archetypes:
-            genome = create_genome(arch)
+            candidates = genomes_by_archetype.get(arch)
+            if candidates:
+                if len(candidates) == 1:
+                    genome = candidates[0]
+                else:
+                    # Deterministic selection: sort by agent_id for canonical order
+                    ordered = sorted(candidates, key=lambda g: g.agent_id or "")
+                    digest = hashlib.sha256(
+                        f"{theatre_id}:{arch.value}".encode()
+                    ).digest()
+                    idx = int.from_bytes(digest[:4], "big") % len(ordered)
+                    genome = ordered[idx]
+            else:
+                # Fallback to factory
+                genome = create_genome(arch)
+
             instance = TheatreAgentInstance.spawn(
                 genome=genome,
                 theatre_id=theatre_id,
                 rules_engine=self._rules_engine,
+                inquiry_class=inquiry_class,
             )
             if position_manager is not None:
                 position_manager.set_balance(instance.agent_id, initial_balance)

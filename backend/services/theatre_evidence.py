@@ -6,6 +6,7 @@ bundles per heartbeat cadence, stores evidence in-memory keyed by
 collection timestamp.
 
 Cycle-012, Sprint 2 -- Task 1.
+Cycle-014, Sprint 2 -- Task 5: Wired to InquiryEvidenceRules for validation.
 """
 from __future__ import annotations
 
@@ -91,6 +92,41 @@ class TheatreEvidenceCollector:
         if not self._snapshots:
             return None
         return self._snapshots[-1]
+
+    def validate_for_inquiry(
+        self,
+        inquiry_class: str,
+        theatre_config: dict,
+        snapshot: Optional["EvidenceSnapshot"] = None,
+    ) -> Any:
+        """Validate evidence against inquiry-class-specific rules.
+
+        Delegates to InquiryEvidenceRules.validate_evidence().
+
+        Args:
+            inquiry_class: Inquiry class for this theatre.
+            theatre_config: Theatre configuration dict.
+            snapshot: Specific snapshot to validate, or latest if None.
+
+        Returns:
+            EvidenceValidation result.
+        """
+        from backend.services.evidence_service import InquiryEvidenceRules
+
+        if snapshot is None:
+            snapshot = self.get_latest_evidence()
+        if snapshot is None:
+            # No evidence collected yet -- create empty snapshot dict
+            snapshot_dict = {
+                "source_coverage_pct": 0.0,
+                "evidence_bundles": [],
+            }
+        else:
+            snapshot_dict = snapshot
+
+        return InquiryEvidenceRules.validate_evidence(
+            inquiry_class, snapshot_dict, theatre_config
+        )
 
     def compute_coverage_pct(self, oracle_output: OracleOutput | None = None) -> float:
         """Compute source coverage percentage.

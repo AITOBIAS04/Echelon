@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from osint_pipeline.models.oracle_output import CriterionScore
 
@@ -36,8 +36,14 @@ class CalibrationCertificate(BaseModel):
         description="Certificate schema version",
     )
     theatre_id: str = Field(description="Theatre template ID")
-    inquiry_class: str = Field(description="INSPECTION | INVESTIGATION | AUDIT")
+    inquiry_class: str = Field(
+        description="COUNTERFACTUAL | INVESTIGATIVE | INSPECTION | SURVEY | SCRUTINY",
+    )
     execution_path: str = Field(description="replay | market")
+    resolution_trigger_reason: str = Field(
+        default="",
+        description="Why resolution was triggered (e.g. evidence_threshold_met, time_window_closed)",
+    )
 
     # Verification result
     verification_tier: str = Field(
@@ -85,9 +91,57 @@ class CalibrationCertificate(BaseModel):
         description="Pipeline software version",
     )
 
+    @field_validator("inquiry_class")
+    @classmethod
+    def validate_inquiry_class(cls, v: str) -> str:
+        valid = {"COUNTERFACTUAL", "INVESTIGATIVE", "INSPECTION", "SURVEY", "SCRUTINY"}
+        upper = v.upper().strip()
+        if upper not in valid:
+            raise ValueError(
+                f"Invalid inquiry_class '{v}'. Must be one of: {sorted(valid)}"
+            )
+        return upper
+
     @field_validator("evidence_bundle_hash", "commitment_hash")
     @classmethod
     def validate_hash_format(cls, v: str) -> str:
         if len(v) != 64 or not all(c in "0123456789abcdef" for c in v):
             raise ValueError(f"Hash must be 64-char lowercase hex, got: {v[:20]}...")
         return v
+
+    @model_validator(mode="after")
+    def validate_resolution_trigger(self) -> "CalibrationCertificate":
+        """Validate resolution trigger matches expected types for inquiry class.
+
+        Maps each inquiry class to its expected primary trigger types.
+        time_window_closed is universally acceptable as a fallback.
+        Empty trigger reason is allowed (backward compat).
+        """
+        if not self.resolution_trigger_reason:
+            return self  # empty is allowed (backward compat)
+
+        expected_triggers = {
+            "COUNTERFACTUAL": {
+                "simulation_terminal", "evidence_threshold_met", "time_window_closed",
+            },
+            "INVESTIGATIVE": {
+                "evidence_threshold_met", "time_window_closed",
+            },
+            "INSPECTION": {
+                "criteria_complete", "time_window_closed",
+            },
+            "SURVEY": {
+                "participation_threshold", "time_window_closed",
+            },
+            "SCRUTINY": {
+                "claim_verdict", "time_window_closed",
+            },
+        }
+        valid = expected_triggers.get(self.inquiry_class, set())
+        if valid and self.resolution_trigger_reason not in valid:
+            raise ValueError(
+                f"Resolution trigger '{self.resolution_trigger_reason}' "
+                f"not valid for inquiry class '{self.inquiry_class}'. "
+                f"Expected one of: {sorted(valid)}"
+            )
+        return self

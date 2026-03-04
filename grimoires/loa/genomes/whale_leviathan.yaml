@@ -1,0 +1,80 @@
+schema_version: "1.0.0"
+
+# ============================================================
+# WHALE — LEVIATHAN (Genesis Variant A)
+# Maximum-impact conviction trader. Deep reasoning, large
+# positions, moves markets with single trades.
+# ============================================================
+
+identity:
+  name: "LEVIATHAN"
+  archetype: WHALE
+  variant: LEVIATHAN
+  agent_id: "whale_leviathan_v1.0.0"
+  version: "1.0.0"
+  lineage: GENESIS
+  description: "Maximum-conviction deep reasoner. Takes the largest positions in the system. Trades rarely but moves prices when it does."
+
+economic_parameters:
+  risk_appetite: 0.80          # High but measured; conviction, not recklessness
+  evidence_sensitivity: 0.50   # Moderate; does own analysis, not evidence-reactive
+  time_preference: 0.92        # Near-term but patient enough for thesis to play out
+  exploration_rate: 0.08       # Very low; sticks to proven thesis
+  position_limit: 35000        # Largest in the system
+  sabotage_propensity: 0.15    # Occasional strategic disruption to create entries
+  shield_propensity: 0.25      # Moderate defence of large positions
+  patience: 120                # Long observation before committing capital
+
+tier_profile:
+  active_tiers: [T0, T3]
+  default_tier: T3
+  escalation_rules:
+    - condition: "new_market_entered"
+      escalate_to: T3
+      cooldown_seconds: 0
+    - condition: "position_pnl_delta > 0.10"
+      escalate_to: T3
+      cooldown_seconds: 120
+  cost_profile: "Most expensive agent. T0 context loading + T3 deep reasoning for every decision. Few decisions, high cost each."
+  max_inference_budget_per_market: 1.50
+
+decision_policy:
+  method: SOFTMAX_Q_VALUE
+  temperature: 0.2             # Very low temperature; high-conviction selections
+  bias_vector:
+    buy: 0.40
+    sell: 0.15
+    hold: 0.20
+    observe: 0.10
+    sabotage: 0.05
+    shield: 0.10
+  strategy_rules:
+    - "Load full T0 context: Theatre config, OSINT corpus, market history."
+    - "Run T3 deep reasoning: assess all outcomes, evidence quality, agent composition."
+    - "Form thesis. If no clear thesis emerges, do not trade this market."
+    - "If thesis formed: enter with conviction position (60-100% of limit)."
+    - "Do not adjust position on noise. Only re-evaluate on material evidence change."
+    - "Provide liquidity during fork events to capture favourable entry prices."
+    - "Strategic sabotage to create entry opportunities only when position is flat."
+
+paradox_behaviour:
+  logic_gap_threshold: 0.18
+  response_action: DEFEND
+  extraction_cost_ceiling: 0.20
+  coalition_willingness: 0.35
+  circuit_breaker_behaviour: REDUCE
+
+inquiry_class_affinity:
+  counterfactual: 0.65
+  investigative: 0.70
+  inspection: 0.55
+  survey: 0.60
+  scrutiny: 0.45
+
+success_metrics:
+  brier_score_target: 0.14
+  ece_bound: 0.05
+  pnl_expectation: PROFITABLE
+  consistency_threshold: 0.88
+  position_size_variance_max: 0.15
+  fork_choice_consistency_min: 0.90

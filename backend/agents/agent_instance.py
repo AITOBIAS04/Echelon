@@ -58,10 +58,12 @@ class TheatreAgentInstance:
         genome: AgentGenome,
         theatre_id: str,
         rules_engine: RulesEngine,
+        inquiry_class: str = "COUNTERFACTUAL",
     ) -> None:
         self.agent_id = agent_id
         self.genome = genome
         self.theatre_id = theatre_id
+        self.inquiry_class = inquiry_class
         self._rules_engine = rules_engine
         self._decision_traces: List[DecisionTrace] = []
         self._trade_count: int = 0
@@ -73,6 +75,7 @@ class TheatreAgentInstance:
         genome: AgentGenome,
         theatre_id: str,
         rules_engine: Optional[RulesEngine] = None,
+        inquiry_class: str = "COUNTERFACTUAL",
     ) -> TheatreAgentInstance:
         """Factory: create an agent instance for a Theatre.
 
@@ -82,6 +85,7 @@ class TheatreAgentInstance:
             genome: Agent genome with archetype parameters.
             theatre_id: Theatre this instance is bound to.
             rules_engine: Optional custom rules engine (default creates new).
+            inquiry_class: Inquiry class from the theatre record.
 
         Returns:
             New TheatreAgentInstance ready for tick().
@@ -94,6 +98,7 @@ class TheatreAgentInstance:
             genome=genome,
             theatre_id=theatre_id,
             rules_engine=rules_engine or RulesEngine(),
+            inquiry_class=inquiry_class,
         )
 
     @staticmethod
@@ -208,6 +213,7 @@ class TheatreAgentInstance:
             position=position,
             available_balance=balance,
             evidence_coverage_pct=evidence_coverage,
+            inquiry_class=self.inquiry_class,
         )
 
         # 4. T1: rules engine decision

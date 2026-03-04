@@ -25,6 +25,66 @@ class EchelonArchetype(str, Enum):
     DEGEN = "DEGEN"
 
 
+class TierProfile(BaseModel):
+    """Tier routing configuration for multi-tier inference."""
+
+    model_config = {"frozen": True}
+
+    active_tiers: List[str] = Field(default_factory=list)
+    default_tier: str = "T1"
+    escalation_rules: List[Dict] = Field(default_factory=list)
+    cost_profile: str = ""
+    max_inference_budget_per_market: float = Field(default=0.10, ge=0.0)
+
+
+class DecisionPolicy(BaseModel):
+    """Decision routing policy: method, temperature, bias, strategy."""
+
+    model_config = {"frozen": True}
+
+    method: str = "SOFTMAX_Q_VALUE"
+    temperature: float = Field(default=0.5, ge=0.0)
+    bias_vector: Dict[str, float] = Field(default_factory=dict)
+    strategy_rules: List[str] = Field(default_factory=list)
+
+
+class ParadoxBehaviour(BaseModel):
+    """Paradox Engine response configuration."""
+
+    model_config = {"frozen": True}
+
+    logic_gap_threshold: float = Field(default=0.20, ge=0.0, le=1.0)
+    response_action: str = "EXTRACT"
+    extraction_cost_ceiling: float = Field(default=0.25, ge=0.0)
+    coalition_willingness: float = Field(default=0.15, ge=0.0, le=1.0)
+    circuit_breaker_behaviour: str = "REDUCE"
+
+
+class InquiryClassAffinity(BaseModel):
+    """Affinity scores for each inquiry class (0-1)."""
+
+    model_config = {"frozen": True}
+
+    counterfactual: float = Field(default=0.5, ge=0.0, le=1.0)
+    investigative: float = Field(default=0.5, ge=0.0, le=1.0)
+    inspection: float = Field(default=0.5, ge=0.0, le=1.0)
+    survey: float = Field(default=0.5, ge=0.0, le=1.0)
+    scrutiny: float = Field(default=0.5, ge=0.0, le=1.0)
+
+
+class SuccessMetrics(BaseModel):
+    """Target performance metrics for this genome."""
+
+    model_config = {"frozen": True}
+
+    brier_score_target: float = Field(default=0.20, ge=0.0)
+    ece_bound: float = Field(default=0.10, ge=0.0)
+    pnl_expectation: str = "PROFITABLE"
+    consistency_threshold: float = Field(default=0.80, ge=0.0, le=1.0)
+    position_size_variance_max: float = Field(default=0.20, ge=0.0)
+    fork_choice_consistency_min: float = Field(default=0.80, ge=0.0, le=1.0)
+
+
 class AgentGenome(BaseModel):
     """Complete T0 context specification for an Echelon agent.
 
@@ -39,6 +99,10 @@ class AgentGenome(BaseModel):
     archetype: EchelonArchetype
     variant: Optional[str] = None  # e.g., "MEGALODON"
     genome_version: str = "1.0.0"
+    name: Optional[str] = None
+    agent_id: Optional[str] = None
+    lineage: str = "GENESIS"
+    description: Optional[str] = None
 
     # --- 8 Archetype Parameters ---
     risk_appetite: float = Field(ge=0.0, le=1.0, description="rho")
@@ -63,6 +127,13 @@ class AgentGenome(BaseModel):
     max_position_pct: float = Field(default=0.10, ge=0.0, le=1.0)
     max_drawdown_pct: float = Field(default=0.20, ge=0.0, le=1.0)
     stop_loss_threshold: float = Field(default=0.15, ge=0.0, le=1.0)
+
+    # --- Extended Genome Sections (YAML-driven) ---
+    tier_profile: Optional[TierProfile] = None
+    decision_policy: Optional[DecisionPolicy] = None
+    paradox_behaviour: Optional[ParadoxBehaviour] = None
+    inquiry_class_affinity: Optional[InquiryClassAffinity] = None
+    success_metrics: Optional[SuccessMetrics] = None
 
     # --- Decision Routing ---
     novelty_threshold: float = Field(

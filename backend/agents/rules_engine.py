@@ -5,6 +5,7 @@ reasoning trace, pattern name, and options considered. All logic is
 parameterised by genome values -- no hard-coded archetype if-chains.
 
 Cycle-013, Sprint 1 -- Task 3.
+Cycle-014, Sprint 2 -- Task 3: Inquiry-class-aware behaviour adaptation.
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from enum import Enum
 from typing import Optional, Tuple
 
 from backend.agents.context_compiler import T0Context
+from backend.agents.inquiry_behaviour import InquiryBehaviourAdapter
 
 
 class TradeAction(str, Enum):
@@ -70,6 +72,9 @@ class RulesEngine:
     def decide(self, ctx: T0Context, tick: int, rng_seed: int) -> T1Decision:
         """Produce a T1 decision from T0 context.
 
+        Reads ctx.inquiry_class, gets InquiryProfile, applies modifiers
+        before dispatching to archetype-specific logic.
+
         Args:
             ctx: Frozen T0Context with all genome + market + position state.
             tick: Current tick number.
@@ -79,6 +84,41 @@ class RulesEngine:
             T1Decision with action, confidence, and reasoning trace.
         """
         rng = random.Random(rng_seed)
+
+        # Get inquiry-class-specific behaviour profile
+        profile = InquiryBehaviourAdapter.get_profile(
+            ctx.archetype, ctx.inquiry_class
+        )
+
+        # Apply inquiry modifiers to context by creating a modified copy
+        # (T0Context is frozen, so we use object.__setattr__ workaround)
+        modified_ctx = T0Context(
+            archetype=ctx.archetype,
+            risk_appetite=ctx.risk_appetite * profile.momentum_weight_modifier,
+            evidence_sensitivity=ctx.evidence_sensitivity * profile.evidence_weight_modifier,
+            time_preference=ctx.time_preference,
+            exploration_rate=ctx.exploration_rate,
+            position_limit=ctx.position_limit,
+            sabotage_propensity=ctx.sabotage_propensity,
+            shield_propensity=ctx.shield_propensity,
+            patience=ctx.patience,
+            novelty_threshold=ctx.novelty_threshold,
+            prices=ctx.prices,
+            phase=ctx.phase,
+            outcome_labels=ctx.outcome_labels,
+            n_outcomes=ctx.n_outcomes,
+            evidence_coverage_pct=ctx.evidence_coverage_pct,
+            current_shares=ctx.current_shares,
+            net_cashflow=ctx.net_cashflow,
+            available_balance=ctx.available_balance,
+            committed_sources=ctx.committed_sources,
+            resolution_date=ctx.resolution_date,
+            liquidity_b=ctx.liquidity_b,
+            max_position_pct=ctx.max_position_pct,
+            max_drawdown_pct=ctx.max_drawdown_pct,
+            stop_loss_threshold=ctx.stop_loss_threshold,
+            inquiry_class=ctx.inquiry_class,
+        )
 
         # Dispatch to archetype-specific logic
         dispatch = {
@@ -90,7 +130,30 @@ class RulesEngine:
             "DEGEN": self._degen_decide,
         }
         decide_fn = dispatch.get(ctx.archetype, self._hold_default)
-        decision = decide_fn(ctx, tick, rng)
+        decision = decide_fn(modified_ctx, tick, rng)
+
+        # Apply pattern_name override from inquiry profile
+        pattern_name = (
+            profile.pattern_name_override
+            if profile.pattern_name_override
+            else decision.pattern_name
+        )
+
+        # Append inquiry adaptation to reasoning trace
+        reasoning = decision.reasoning_trace
+        if profile.action_description and "Default behaviour" not in profile.action_description:
+            reasoning = f"[{profile.action_description}] {reasoning}"
+
+        decision = T1Decision(
+            action=decision.action,
+            outcome_index=decision.outcome_index,
+            shares=decision.shares,
+            confidence=decision.confidence,
+            reasoning_trace=reasoning,
+            pattern_name=pattern_name,
+            options_considered=decision.options_considered,
+            escalate_to_t3=decision.escalate_to_t3,
+        )
 
         # Flag for T3 escalation if confidence is below novelty threshold
         if decision.confidence < ctx.novelty_threshold:

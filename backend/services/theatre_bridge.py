@@ -116,6 +116,7 @@ async def run_theatre_task(theatre_id: str) -> None:
             dataset_hashes = theatre.dataset_hashes or {}
             commitment_hash = theatre.commitment_hash
             committed_at = theatre.committed_at
+            inquiry_class = theatre.inquiry_class or "COUNTERFACTUAL"
 
         # Parse criteria from template
         criteria_data = template_json.get("criteria", {})
@@ -225,6 +226,7 @@ async def run_theatre_task(theatre_id: str) -> None:
                 theatre_id=theatre_id,
                 template_id=template_id,
                 construct_id=construct_under_test,
+                inquiry_class=inquiry_class,
                 criteria_json=criteria.model_dump(),
                 scores_json=replay_result.aggregate_scores,
                 composite_score=replay_result.composite_score,

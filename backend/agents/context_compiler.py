@@ -61,6 +61,9 @@ class T0Context:
     max_drawdown_pct: float
     stop_loss_threshold: float
 
+    # --- Inquiry Class (Cycle-014) ---
+    inquiry_class: str = "COUNTERFACTUAL"
+
     # --- Hash (set post-construction) ---
     context_hash: str = ""
 
@@ -78,6 +81,7 @@ class ContextCompiler:
         position: AgentPosition,
         available_balance: float,
         evidence_coverage_pct: float = 0.0,
+        inquiry_class: str = "COUNTERFACTUAL",
     ) -> T0Context:
         """Pure function: genome + market + position -> T0Context.
 
@@ -125,6 +129,7 @@ class ContextCompiler:
             max_position_pct=genome.max_position_pct,
             max_drawdown_pct=genome.max_drawdown_pct,
             stop_loss_threshold=genome.stop_loss_threshold,
+            inquiry_class=inquiry_class,
         )
 
         # Compute hash (replace empty sentinel via object.__setattr__ on frozen)
@@ -166,6 +171,7 @@ class ContextCompiler:
             "max_position_pct": ctx.max_position_pct,
             "max_drawdown_pct": ctx.max_drawdown_pct,
             "stop_loss_threshold": ctx.stop_loss_threshold,
+            "inquiry_class": ctx.inquiry_class,
         }
         canonical = json.dumps(hashable, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

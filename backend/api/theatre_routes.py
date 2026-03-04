@@ -105,6 +105,7 @@ async def create_theatre(
             display_name=body.template_json.get("display_name", body.template_id),
             description=body.template_json.get("description"),
             schema_version=body.template_json.get("schema_version", "2.0.1"),
+            inquiry_class=body.inquiry_class,
             template_json=body.template_json,
         )
         db.add(template)
@@ -118,6 +119,7 @@ async def create_theatre(
         template_id=body.template_id,
         state="DRAFT",
         construct_id=body.construct_id,
+        inquiry_class=body.inquiry_class,
     )
     db.add(theatre)
 
@@ -141,6 +143,7 @@ async def create_theatre(
         "id": theatre.id,
         "state": theatre.state,
         "template_id": theatre.template_id,
+        "inquiry_class": theatre.inquiry_class or "COUNTERFACTUAL",
         "created_at": theatre.created_at,
     }
 
@@ -310,7 +313,14 @@ async def settle_theatre(
     user: TokenData = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Manual settlement for Market theatres."""
+    """Manual settlement for Market theatres.
+
+    Normal path: calls ResolutionEngine.check_resolution_ready() to determine
+    readiness and trigger reason, then transitions state.
+    force=True: bypasses readiness check (admin/testing only, logged as warning).
+    """
+    from backend.market.resolution import ResolutionEngine
+
     theatre = await _get_user_theatre(db, theatre_id, user.user_id)
 
     # Check execution path
@@ -327,6 +337,42 @@ async def settle_theatre(
             detail=f"Cannot settle theatre in state {theatre.state}",
         )
 
+    inquiry_class = theatre.inquiry_class or "COUNTERFACTUAL"
+    force = body.settlement_data.get("force", False)
+
+    # Route through ResolutionEngine unless force=True
+    if force:
+        logger.warning(
+            "Theatre %s settled with force=True, bypassing ResolutionEngine",
+            theatre_id,
+        )
+        resolution_trigger_reason = body.settlement_data.get(
+            "resolution_trigger_reason", "time_window_closed"
+        )
+    else:
+        # Build evidence state from settlement_data (caller provides evidence snapshot)
+        evidence_state = body.settlement_data.get(
+            "evidence_state", {"time_window_expired": True}
+        )
+        theatre_config = {}
+        if template:
+            theatre_config = template.template_json.get(
+                "product_theatre_config", {}
+            )
+
+        ready, trigger = ResolutionEngine.check_resolution_ready(
+            inquiry_class=inquiry_class,
+            evidence_state=evidence_state,
+            theatre_config=theatre_config,
+        )
+        if not ready:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Theatre not ready for resolution (trigger={trigger.value}). "
+                f"Use force=True to override.",
+            )
+        resolution_trigger_reason = str(trigger)
+
     now = datetime.utcnow()
     previous_state = theatre.state
     theatre.state = "RESOLVED"
@@ -339,14 +385,24 @@ async def settle_theatre(
         event_type="theatre_settled",
         from_state=previous_state,
         to_state="RESOLVED",
-        detail_json=body.settlement_data,
+        detail_json={
+            **body.settlement_data,
+            "inquiry_class": inquiry_class,
+            "resolution_trigger_reason": resolution_trigger_reason,
+        },
     )
     db.add(audit)
 
     await db.commit()
     await db.refresh(theatre)
 
-    return {"theatre_id": theatre.id, "state": theatre.state, "resolved_at": now}
+    return {
+        "theatre_id": theatre.id,
+        "state": theatre.state,
+        "inquiry_class": inquiry_class,
+        "resolution_trigger_reason": resolution_trigger_reason,
+        "resolved_at": now,
+    }
 
 
 @router.get("/{theatre_id}/certificate", response_model=TheatreCertificateResponse)

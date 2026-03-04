@@ -1,0 +1,52 @@
+{
+  "template_id": "investigative_corporate_v1",
+  "template_version": "1.0.0",
+  "schema_version": "1.0.0",
+  "inquiry_class": "INVESTIGATIVE",
+  "execution_path": "market",
+  "description": "Investigative inquiry — confirm or deny a corporate claim via OSINT discovery",
+  "template_family": "corporate",
+  "outcomes": [
+    {
+      "index": 0,
+      "label": "CONFIRMED",
+      "description": "Claim confirmed by corroborated evidence"
+    },
+    {
+      "index": 1,
+      "label": "UNCONFIRMED",
+      "description": "Claim not confirmed — insufficient or contradictory evidence"
+    }
+  ],
+  "oracle_config": {
+    "sources": [
+      {
+        "source_id": "companies_house_api",
+        "role": "primary_evidence",
+        "required": true,
+        "queries": ["profile", "filing-history"]
+      },
+      {
+        "source_id": "wm_news_api",
+        "role": "secondary_corroboration",
+        "required": true,
+        "queries": ["corporate_news"]
+      },
+      {
+        "source_id": "london_gazette_api",
+        "role": "tertiary_corroboration",
+        "required": false,
+        "queries": ["insolvency_search"]
+      }
+    ],
+    "corroboration_minimum": 2,
+    "corroboration_window_seconds": 3600,
+    "counter_signal_classes": ["corporate_fraud", "corporate_event"]
+  },
+  "resolution_rules": {
+    "evidence_threshold": 0.8,
+    "time_window_hours": 72,
+    "primary_trigger": "evidence_threshold_met"
+  },
+  "committed_sources": ["companies_house_api", "wm_news_api", "london_gazette_api"]
+}

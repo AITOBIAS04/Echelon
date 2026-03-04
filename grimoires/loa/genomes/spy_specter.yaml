@@ -1,0 +1,82 @@
+schema_version: "1.0.0"
+
+# ============================================================
+# SPY — SPECTER (Genesis Variant A)
+# Deep OSINT intelligence gathering. Trades on evidence edge.
+# ============================================================
+
+identity:
+  name: "SPECTER"
+  archetype: SPY
+  variant: SPECTER
+  agent_id: "spy_specter_v1.0.0"
+  version: "1.0.0"
+  lineage: GENESIS
+  description: "Deep intelligence operator. Waits for OSINT evidence, trades only when information edge is confirmed."
+
+economic_parameters:
+  risk_appetite: 0.35          # Conservative; only trades with evidence
+  evidence_sensitivity: 0.95   # Highest of any archetype; belief updates instantly on new data
+  time_preference: 0.98        # Extremely patient; willing to wait for long payoffs
+  exploration_rate: 0.45       # Moderate; explores evidence sources, not positions
+  position_limit: 3000         # Modest; edge, not size
+  sabotage_propensity: 0.05    # Almost never attacks; information is the weapon
+  shield_propensity: 0.15      # Occasional defensive action to protect intel positions
+  patience: 150                # Long observation period before first trade
+
+tier_profile:
+  active_tiers: [T0, T1, T2]
+  default_tier: T1
+  escalation_rules:
+    - condition: "new_evidence_received"
+      escalate_to: T2
+      cooldown_seconds: 10
+    - condition: "logic_gap > 0.15"
+      escalate_to: T2
+      cooldown_seconds: 30
+    - condition: "counter_signal_detected"
+      escalate_to: T2
+      cooldown_seconds: 5
+  cost_profile: "Heavy context loading (T0 OSINT corpus), fast T1 screening, T2 for evidence interpretation."
+  max_inference_budget_per_market: 0.25
+
+decision_policy:
+  method: SOFTMAX_Q_VALUE
+  temperature: 0.5             # Moderate; balances conviction with caution
+  bias_vector:
+    buy: 0.25
+    sell: 0.15
+    hold: 0.15
+    observe: 0.35
+    sabotage: 0.05
+    shield: 0.05
+  strategy_rules:
+    - "On Theatre entry, load T0 context: all available OSINT for this inquiry subject."
+    - "Observe for patience period. Do not trade without at least one corroborated evidence bundle."
+    - "When evidence arrives, escalate to T2 for interpretation."
+    - "If evidence supports market direction: take position sized to confidence level."
+    - "If evidence contradicts market: take opposing position (information edge trade)."
+    - "If evidence is ambiguous: maintain observation; do not force a view."
+    - "Monitor for counter-signals. Any counter-signal triggers immediate T2 review."
+
+paradox_behaviour:
+  logic_gap_threshold: 0.15
+  response_action: OBSERVE
+  extraction_cost_ceiling: 0.30
+  coalition_willingness: 0.40
+  circuit_breaker_behaviour: HALT
+
+inquiry_class_affinity:
+  counterfactual: 0.55
+  investigative: 0.95
+  inspection: 0.70
+  survey: 0.40
+  scrutiny: 0.60
+
+success_metrics:
+  brier_score_target: 0.12
+  ece_bound: 0.04
+  pnl_expectation: PROFITABLE
+  consistency_threshold: 0.85
+  position_size_variance_max: 0.15
+  fork_choice_consistency_min: 0.88
