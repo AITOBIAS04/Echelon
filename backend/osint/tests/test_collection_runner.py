@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -231,3 +231,112 @@ class TestCollectionRunnerBuildPlan:
         assert set(plan.sources) == {"worldmonitor_cii", "worldmonitor_finance", "worldmonitor_maritime"}
         assert plan.geo is None
         assert plan.timeout_s == 30.0
+
+    def test_build_plan_source_params(self, three_collectors: dict) -> None:
+        """build_plan extracts source_params from oracle_config."""
+        runner = CollectionRunner(three_collectors)
+        oracle_config = {
+            "source_params": {
+                "companies_house_api": {"company_number": "00000006"},
+            },
+        }
+        plan = runner.build_plan(oracle_config, "theatre_test")
+
+        assert plan.source_params == {"companies_house_api": {"company_number": "00000006"}}
+
+    def test_build_plan_source_params_default_empty(self, three_collectors: dict) -> None:
+        """build_plan defaults source_params to empty dict."""
+        runner = CollectionRunner(three_collectors)
+        plan = runner.build_plan({}, "theatre_test")
+
+        assert plan.source_params == {}
+
+
+class TestCollectionRunnerSourceParams:
+    """Per-source parameter merging into collector requests."""
+
+    @pytest.mark.asyncio
+    async def test_source_params_merged_into_request(self) -> None:
+        """Source-specific params are merged into the request dict for that collector."""
+        # Create a mock collector that captures the request it receives
+        mock_collector = MagicMock()
+        mock_collector.source_id.return_value = "companies_house_api"
+        captured_request = {}
+
+        async def _capture_fetch(request, theatre_id):
+            captured_request.update(request)
+            return _make_success_result("companies_house_api")
+
+        mock_collector.fetch = _capture_fetch
+
+        runner = CollectionRunner({"companies_house_api": mock_collector})
+        now = datetime.now(timezone.utc)
+        plan = CollectionPlan(
+            theatre_id="theatre_test",
+            sources=["companies_house_api"],
+            evaluation_window=(now, now),
+            timeout_s=5.0,
+            source_params={"companies_house_api": {"company_number": "00000006"}},
+        )
+
+        await runner.collect(plan)
+
+        assert captured_request["company_number"] == "00000006"
+        assert captured_request["theatre_id"] == "theatre_test"
+
+    @pytest.mark.asyncio
+    async def test_source_params_empty_backward_compat(self) -> None:
+        """Plan without source_params still works (backward compat)."""
+        mock_collector = MagicMock()
+        mock_collector.source_id.return_value = "worldmonitor_cii"
+        mock_collector.fetch = AsyncMock(
+            return_value=_make_success_result("worldmonitor_cii")
+        )
+
+        runner = CollectionRunner({"worldmonitor_cii": mock_collector})
+        now = datetime.now(timezone.utc)
+        plan = CollectionPlan(
+            theatre_id="theatre_test",
+            sources=["worldmonitor_cii"],
+            evaluation_window=(now, now),
+            timeout_s=5.0,
+        )
+
+        results = await runner.collect(plan)
+
+        assert len(results) == 1
+        assert results[0].success is True
+
+    @pytest.mark.asyncio
+    async def test_source_params_only_applied_to_matching_collector(self) -> None:
+        """source_params for one collector don't leak to another."""
+        captured_requests: dict[str, dict] = {}
+
+        def _make_mock(sid):
+            m = MagicMock()
+            m.source_id.return_value = sid
+
+            async def _fetch(request, theatre_id):
+                captured_requests[sid] = dict(request)
+                return _make_success_result(sid)
+
+            m.fetch = _fetch
+            return m
+
+        cii = _make_mock("worldmonitor_cii")
+        ch = _make_mock("companies_house_api")
+
+        runner = CollectionRunner({"worldmonitor_cii": cii, "companies_house_api": ch})
+        now = datetime.now(timezone.utc)
+        plan = CollectionPlan(
+            theatre_id="theatre_test",
+            sources=["worldmonitor_cii", "companies_house_api"],
+            evaluation_window=(now, now),
+            timeout_s=5.0,
+            source_params={"companies_house_api": {"company_number": "12345678"}},
+        )
+
+        await runner.collect(plan)
+
+        assert "company_number" not in captured_requests["worldmonitor_cii"]
+        assert captured_requests["companies_house_api"]["company_number"] == "12345678"

@@ -15,6 +15,7 @@ from backend.osint.canonical import (
     compute_receipt_hash,
 )
 from backend.osint.collectors.base import BaseCollector, HashInvariantViolation
+from backend.osint.collectors.companies_house import CompaniesHouseCollector
 from backend.osint.collectors.worldmonitor import (
     WorldMonitorCollector,
     WorldMonitorConfig,
@@ -40,6 +41,7 @@ __all__ = [
     # Collectors
     "BaseCollector",
     "HashInvariantViolation",
+    "CompaniesHouseCollector",
     "WorldMonitorCollector",
     "WorldMonitorConfig",
     # Engine — Collection

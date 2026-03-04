@@ -33,9 +33,9 @@ def pytest_configure(config):
 def pytest_collection_modifyitems(config, items):
     """Skip live tests unless opt-in flag or env var is set."""
     skip_wm = not (config.getoption("--live-wm", default=False)
-                   or os.environ.get("ECHELON_LIVE_WM"))
+                   or os.environ.get("ECHELON_LIVE_WM", "").lower() in ("1", "true", "yes"))
     skip_ch = not (config.getoption("--live-ch", default=False)
-                   or os.environ.get("ECHELON_LIVE_CH"))
+                   or os.environ.get("ECHELON_LIVE_CH", "").lower() in ("1", "true", "yes"))
     for item in items:
         if "live_wm" in item.keywords and skip_wm:
             item.add_marker(pytest.mark.skip(
