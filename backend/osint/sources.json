@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Echelon OSINT Source Registry — WorldMonitor Subset",
-  "description": "Runtime registry intentionally scoped to 3 WorldMonitor sources only (Cycle-011). Full 160+ source registry (Cycle-005 v1.0.0) available in Intelligence DB. Broader runtime loading deferred to Cycle-017 registry expansion.",
-  "version": "0.3.2-wm",
-  "generated_at": "2026-03-03T00:00:00Z",
+  "title": "Echelon OSINT Source Registry — WorldMonitor + Companies House",
+  "description": "Runtime registry: 3 WorldMonitor sources + 1 Companies House source (Cycle-015). Full 160+ source registry (Cycle-005 v1.0.0) available in Intelligence DB. Broader runtime loading deferred to Cycle-017.",
+  "version": "0.4.0-wm-ch",
+  "generated_at": "2026-03-04T00:00:00Z",
   "sources": [
     {
       "source_id": "worldmonitor_cii",
@@ -71,6 +71,31 @@
       "cost_model": "free",
       "rate_limit_notes": "Self-hosted fork. AIS chokepoint monitoring.",
       "gap_policy_default": true,
+      "evidence_capture": {
+        "request_params": true,
+        "response_headers": true,
+        "payload_hash": true,
+        "timestamp_precision": "second"
+      },
+      "theatre_families": ["OSINT_COMPOSED_ORACLE"],
+      "collector_status": "active"
+    },
+    {
+      "source_id": "companies_house_api",
+      "source_name": "Companies House (UK)",
+      "source_group": "official_gov",
+      "priority_bucket": "scoring_grade",
+      "resolution_role": "primary_evidence",
+      "independence_upstream_id": "uk_companies_house_backend",
+      "receipt_mode_minimum": "http_transcript",
+      "world_monitor_domain": null,
+      "settlement_eligible": true,
+      "jurisdiction": "GB",
+      "replayability": "strong",
+      "legal_risk": "low",
+      "cost_model": "free",
+      "rate_limit_notes": "Free API key. Rate limit: 600 requests per 5 minutes.",
+      "gap_policy_default": false,
       "evidence_capture": {
         "request_params": true,
         "response_headers": true,

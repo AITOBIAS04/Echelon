@@ -37,13 +37,14 @@ def loader(sources_json_path: str) -> RegistryLoader:
 class TestRegistryLoading:
     """Registry JSON loading and parsing."""
 
-    def test_loads_all_three_sources(self, loader: RegistryLoader) -> None:
-        """Loads exactly 3 WorldMonitor sources."""
+    def test_loads_all_sources(self, loader: RegistryLoader) -> None:
+        """Loads all 4 sources (3 WM + 1 CH)."""
         sources = loader.sources
-        assert len(sources) == 3
+        assert len(sources) == 4
         assert "worldmonitor_cii" in sources
         assert "worldmonitor_finance" in sources
         assert "worldmonitor_maritime" in sources
+        assert "companies_house_api" in sources
 
     def test_source_fields_populated(self, loader: RegistryLoader) -> None:
         """All RegistrySource fields are populated correctly."""
@@ -98,9 +99,10 @@ class TestRegistryQueries:
         assert intel[0].source_id == "worldmonitor_cii"
 
     def test_get_settlement_eligible(self, loader: RegistryLoader) -> None:
-        """No WM sources are settlement-eligible."""
+        """Companies House is the only settlement-eligible source."""
         eligible = loader.get_settlement_eligible()
-        assert len(eligible) == 0
+        assert len(eligible) == 1
+        assert eligible[0].source_id == "companies_house_api"
 
 
 class TestRegistryValidation:

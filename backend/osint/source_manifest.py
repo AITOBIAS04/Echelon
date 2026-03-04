@@ -151,11 +151,11 @@ class SourceManifestBuilder:
         return SettlementStatus.INELIGIBLE
 
     def _get_registry_version(self) -> str:
-        """Extract registry version from loaded sources metadata.
-
-        Falls back to 'unknown' if not available.
-        """
-        # RegistryLoader doesn't expose version directly,
-        # so we read it from the raw sources dict if available.
-        # For now, use a marker that can be enriched later.
-        return "0.3.2-wm"
+        """Extract registry version from loaded sources metadata."""
+        import json
+        try:
+            with open(self._registry._path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data.get("version", "unknown")
+        except Exception:
+            return "unknown"

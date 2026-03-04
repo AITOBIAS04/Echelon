@@ -1,0 +1,39 @@
+{
+  "company_number": "00000006",
+  "company_name": "MARINE AND GENERAL MUTUAL LIFE ASSURANCE SOCIETY",
+  "company_status": "active",
+  "type": "private-unlimited-nsc",
+  "date_of_creation": "1862-10-25",
+  "jurisdiction": "england-wales",
+  "registered_office_address": {
+    "address_line_1": "Cms Cameron Mckenna Llp Cannon Place",
+    "address_line_2": "78 Cannon Street",
+    "locality": "London",
+    "postal_code": "EC4N 6AF",
+    "country": "England"
+  },
+  "sic_codes": [
+    "65110"
+  ],
+  "has_insolvency_history": false,
+  "has_charges": true,
+  "has_been_liquidated": false,
+  "accounts": {
+    "next_due": "2026-10-31",
+    "last_accounts": {
+      "type": "full",
+      "made_up_to": "2025-12-31"
+    }
+  },
+  "confirmation_statement": {
+    "next_due": "2026-11-10"
+  },
+  "links": {
+    "self": "/company/00000006",
+    "filing_history": "/company/00000006/filing-history",
+    "officers": "/company/00000006/officers",
+    "charges": "/company/00000006/charges"
+  },
+  "etag": "mock-etag-for-testing-abc123",
+  "can_file": false
+}

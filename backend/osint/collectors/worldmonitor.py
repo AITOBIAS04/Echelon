@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -39,13 +40,22 @@ from backend.osint.models.evidence import (
 
 @dataclass
 class WorldMonitorConfig:
-    """Configuration for WorldMonitor HTTP client."""
+    """Configuration for WorldMonitor HTTP client.
 
-    base_url: str = "http://localhost:8080"
+    Base URL priority: constructor param > ECHELON_WM_BASE_URL env var > default.
+    """
+
+    base_url: str = ""
     timeout_s: float = 30.0
     version: str = "v0.1.0"
     retry_count: int = 2
     retry_delay_s: float = 1.0
+
+    def __post_init__(self):
+        if not self.base_url:
+            self.base_url = os.environ.get(
+                "ECHELON_WM_BASE_URL", "http://localhost:8080"
+            )
 
 
 # Domain -> endpoint mapping

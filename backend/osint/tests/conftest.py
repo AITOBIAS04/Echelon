@@ -2,6 +2,7 @@
 
 Provides fixture loaders, mock WorldMonitor configs, and test
 collector factories. All fixtures use mock data — no real HTTP calls.
+Live tests gated behind --live-wm / --live-ch flags.
 """
 from __future__ import annotations
 
@@ -13,6 +14,35 @@ import pytest
 
 from backend.osint.collectors.worldmonitor import WorldMonitorCollector, WorldMonitorConfig
 from backend.osint.models.evidence import WMDomain
+
+
+def pytest_addoption(parser):
+    """Add live test opt-in flags."""
+    parser.addoption("--live-wm", action="store_true", default=False,
+                     help="Run live WorldMonitor tests")
+    parser.addoption("--live-ch", action="store_true", default=False,
+                     help="Run live Companies House tests")
+
+
+def pytest_configure(config):
+    """Register custom markers for live tests."""
+    config.addinivalue_line("markers", "live_wm: requires live WorldMonitor instance")
+    config.addinivalue_line("markers", "live_ch: requires live Companies House API key")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip live tests unless opt-in flag or env var is set."""
+    skip_wm = not (config.getoption("--live-wm", default=False)
+                   or os.environ.get("ECHELON_LIVE_WM"))
+    skip_ch = not (config.getoption("--live-ch", default=False)
+                   or os.environ.get("ECHELON_LIVE_CH"))
+    for item in items:
+        if "live_wm" in item.keywords and skip_wm:
+            item.add_marker(pytest.mark.skip(
+                reason="Need --live-wm flag or ECHELON_LIVE_WM=1"))
+        if "live_ch" in item.keywords and skip_ch:
+            item.add_marker(pytest.mark.skip(
+                reason="Need --live-ch flag or ECHELON_LIVE_CH=1"))
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
