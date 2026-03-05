@@ -1,15 +1,37 @@
 // ============================================
-// ENUMS
+// ENUMS — Aligned with backend/schemas/butterfly_schemas.py
 // ============================================
 
-export type AgentArchetype = 'SHARK' | 'SPY' | 'DIPLOMAT' | 'SABOTEUR' | 'WHALE' | 'DEGEN';
-export type WingFlapType = 'TRADE' | 'SHIELD' | 'SABOTAGE' | 'RIPPLE' | 'PARADOX' | 'FOUNDER_YIELD';
-export type StabilityDirection = 'ANCHOR' | 'DESTABILISE';
+import type { AgentArchetype } from './agents';
+
+export type WingFlapType =
+  // Original 010b types
+  | 'TRADE'
+  | 'SHIELD'
+  | 'SABOTAGE'
+  | 'RIPPLE'
+  | 'PARADOX'
+  | 'FOUNDER_YIELD'
+  | 'ENTROPY'
+  // 016 Coherence Lock additions
+  | 'MIRROR_SYNC'
+  | 'MIRROR_TRADE'
+  | 'EVIDENCE'
+  | 'CLAIM'
+  | 'COUNTER_SIGNAL'
+  | 'CORROBORATION'
+  | 'DETONATION'
+  | 'FORK_SPAWN'
+  | 'STOP_CONDITION'
+  | 'CERTIFICATE';
+
+export type StabilityDirection = 'STABILISE' | 'DESTABILISE' | 'NEUTRAL';
+
 export type ParadoxStatus = 'ACTIVE' | 'EXTRACTING' | 'DETONATED' | 'RESOLVED';
 export type SeverityClass = 'CLASS_1_CRITICAL' | 'CLASS_2_SEVERE' | 'CLASS_3_MODERATE' | 'CLASS_4_MINOR';
 
 // ============================================
-// WING FLAP
+// WING FLAP — backend/schemas/butterfly_schemas.py
 // ============================================
 
 export interface WingFlap {
@@ -40,33 +62,58 @@ export interface WingFlapFeedResponse {
 }
 
 // ============================================
-// TIMELINE
+// TIMELINE — backend/schemas/butterfly_schemas.py TimelineHealth
 // ============================================
 
 export interface Timeline {
   id: string;
   name: string;
+
+  // Core metrics (API: 0-100 percentage)
   stability: number;
   surface_tension: number;
   price_yes: number;
   price_no: number;
+
+  // OSINT alignment
   osint_alignment: number;
   logic_gap: number;
+
+  // Gravity
   gravity_score: number;
   gravity_factors: Record<string, number>;
+
+  // Liquidity
   total_volume_usd: number;
   liquidity_depth_usd: number;
+
+  // Agents
   active_agent_count: number;
   dominant_agent_id: string | null;
   dominant_agent_name: string | null;
+
+  // Founder
   founder_id: string | null;
   founder_name: string | null;
   founder_yield_rate: number;
+
+  // Decay
   decay_rate_per_hour: number;
+  decay_multiplier: number;
   hours_until_reaper: number | null;
+
+  // Paradox
   has_active_paradox: boolean;
   paradox_id: string | null;
   paradox_detonation_time: string | null;
+
+  // Anchor / Fork (016 Coherence Lock)
+  is_anchor: boolean;
+  anchor_timeline_id: string | null;
+  fork_divergence: number;
+  last_sync_at: string | null;
+
+  // Connections
   connected_timeline_ids: string[];
   parent_timeline_id: string | null;
 }
@@ -77,7 +124,7 @@ export interface TimelineHealthResponse {
 }
 
 // ============================================
-// PARADOX
+// PARADOX — backend/schemas/paradox_schemas.py
 // ============================================
 
 export interface Paradox {
@@ -125,19 +172,83 @@ export interface AuthResponse {
 }
 
 // ============================================
-// WATCHLIST
+// RE-EXPORTS
 // ============================================
 
+// Watchlist
 export type {
-  WatchlistTimeline,
+  WatchlistItem,
+  WatchlistItemType,
+  WatchlistAddRequest,
+  WatchlistResponse,
   WatchlistFilter,
   WatchlistState,
+  WatchlistTimeline,
 } from './watchlist';
 
-// ============================================
-// TIMELINE DETAIL
-// ============================================
+// Portfolio
+export type {
+  UserPosition,
+  UserPositionsResponse,
+  PortfolioSummary,
+  PrivateFork,
+  PrivateForksResponse,
+  ChartTimeframe,
+  PositionTab,
+  EquityDataPoint,
+} from './portfolio';
 
+// Agents
+export type {
+  AgentArchetype,
+  Agent,
+  AgentListResponse,
+  SanityLevel,
+  AgentView,
+} from './agents';
+export { getSanityLevel } from './agents';
+
+// Investigation
+export type {
+  ProvenanceClass,
+  ClaimType,
+  ClaimStatus,
+  StopCondition,
+  RoutingDecision,
+  EvidenceItem,
+  RedactionEvent,
+  EvidenceEnvelopeManifest,
+  CorroborationCheck,
+  ClaimNode,
+  ClaimGraphSummary,
+  CounterSignal,
+  DriftEvent,
+  EntityProfile,
+  InvestigationCertificate,
+  CounterSignalDetail,
+  CounterSignalFeedResponse,
+  DriftFeedResponse,
+  InvestigationSummary,
+  InvestigationListResponse,
+  InvestigationDetail,
+} from './investigation';
+
+// Theatre
+export type {
+  TheatreState,
+  InquiryClass,
+  TheatreResponse,
+  TheatreListResponse,
+  TemplateResponse,
+  TemplateListResponse,
+  CommitmentReceiptResponse,
+  TheatreCertificateResponse,
+  TheatreCertificateSummaryResponse,
+  CertificateListResponse,
+  TheatreCreateRequest,
+} from './theatre';
+
+// Timeline Detail
 export type {
   TimelineDetail,
   TimelineHealthSnapshot,
@@ -146,16 +257,12 @@ export type {
   SabotageEvent,
   EvidenceEntry,
   ExtractionAttempt,
-  UserPosition,
+  UserPosition as TimelineUserPosition,
 } from './timeline-detail';
 
-// Export TimelineParadoxStatus to avoid conflict with ParadoxStatus type union
 export type { ParadoxStatus as TimelineParadoxStatus } from './timeline-detail';
 
-// ============================================
-// BREACH
-// ============================================
-
+// Breach
 export type {
   BreachSeverity,
   BreachCategory,
@@ -168,10 +275,27 @@ export type {
   BreachStats,
 } from './breach';
 
-// ============================================
-// EXPORTS
-// ============================================
+// Marketplace
+export type {
+  MarketCategory,
+  RibbonEvent,
+  SortOption,
+  MarketFilterState,
+  PaginationState,
+  MarketStats,
+  CompareSlot,
+  BetFormData,
+  // Legacy types (used by mock hooks, removed in tasks 1.3-1.5)
+  Market,
+  Intercept,
+  Breach as MarketplaceBreach,
+  Alert,
+  CreateAlertForm,
+  UserPosition as MarketplaceUserPosition,
+  RLMFTrainingData,
+} from './marketplace';
 
+// Exports
 export type {
   ExportDatasetKind,
   ExportScope,
@@ -181,10 +305,7 @@ export type {
   DatasetPreview,
 } from './exports';
 
-// ============================================
-// REPLAY
-// ============================================
-
+// Replay
 export type {
   DisclosureEventType,
   DisclosureEvent,
@@ -194,10 +315,7 @@ export type {
   ReplayPointer,
 } from './replay';
 
-// ============================================
-// GRAPH
-// ============================================
-
+// Graph
 export type {
   GraphNodeType,
   GraphEdgeRelation,
@@ -206,10 +324,7 @@ export type {
   EntityGraph,
 } from './graph';
 
-// ============================================
-// PRESETS
-// ============================================
-
+// Presets
 export type {
   WatchlistSortKey,
   WatchlistSortDir,
@@ -218,10 +333,7 @@ export type {
   WatchlistSavedView,
 } from './presets';
 
-// ============================================
-// RISK
-// ============================================
-
+// Risk
 export type {
   PositionExposure,
   TimelineRiskState,
@@ -229,10 +341,7 @@ export type {
   PortfolioRiskSummary,
 } from './risk';
 
-// ============================================
-// LAUNCHPAD
-// ============================================
-
+// Launchpad
 export type {
   LaunchPhase,
   LaunchCategory,
@@ -240,10 +349,7 @@ export type {
   LaunchpadFeed,
 } from './launchpad';
 
-// ============================================
-// OPS BOARD
-// ============================================
-
+// Ops Board
 export type {
   OpsLaneId,
   OpsCardType,
@@ -253,10 +359,7 @@ export type {
   OpsBoardData,
 } from './opsBoard';
 
-// ============================================
-// LIVE TAPE
-// ============================================
-
+// Live Tape
 export type {
   TapeEventType,
   EventImpact,

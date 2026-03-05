@@ -2,7 +2,6 @@
  * CertificatesListView — Public certificate browser with sort, filter, pagination.
  */
 
-import { useState } from 'react';
 import { Award, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, X } from 'lucide-react';
 import type { CertificateSummary, CertFilters } from '../../types/verification';
 

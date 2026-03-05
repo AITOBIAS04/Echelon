@@ -31,7 +31,14 @@ class AgentRepository:
             select(Agent).where(Agent.is_alive == True)
         )
         return list(result.scalars().all())
-    
+
+    async def get_all_dead(self) -> List[Agent]:
+        """Get all dead agents."""
+        result = await self.session.execute(
+            select(Agent).where(Agent.is_alive == False)
+        )
+        return list(result.scalars().all())
+
     async def get_by_owner(self, owner_id: str) -> List[Agent]:
         """Get agents by owner."""
         result = await self.session.execute(

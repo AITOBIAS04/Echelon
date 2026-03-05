@@ -17,6 +17,7 @@ import uuid
 
 from backend.database.models import Timeline, WingFlap, WingFlapType, FlapDirection
 from backend.worker.tasks._system_entity import ensure_system_entities
+from backend.worker.tasks._ws_broadcast import broadcast_flap
 
 logger = logging.getLogger('echelon.entropy')
 
@@ -108,6 +109,7 @@ class EntropyTask:
                     timestamp=flap_timestamp,
                 )
                 session.add(entropy_flap)
+                await broadcast_flap(entropy_flap)
 
         avg_decay = total_decay / decayed_count if decayed_count > 0 else 0
 

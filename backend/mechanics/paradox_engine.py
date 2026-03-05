@@ -398,13 +398,52 @@ class ParadoxEngine:
     
     def _broadcast_breach_alert(self, paradox: Paradox):
         """Broadcast new breach to all connected clients."""
-        pass
-    
+        try:
+            import asyncio
+            from backend.websockets.realtime_manager import manager
+
+            loop = asyncio.get_running_loop()
+            loop.create_task(manager.broadcast_paradox_spawn({
+                "id": paradox.id,
+                "timeline_id": paradox.timeline_id,
+                "severity_class": paradox.severity_class.value if hasattr(paradox.severity_class, "value") else str(paradox.severity_class),
+                "logic_gap": paradox.logic_gap,
+                "detonation_time": paradox.detonation_time.isoformat() if paradox.detonation_time else None,
+            }))
+        except RuntimeError:
+            pass  # No running event loop
+
     def _broadcast_paradox_moved(self, paradox: Paradox, old_timeline_id: str):
         """Broadcast paradox movement."""
-        pass
-    
+        try:
+            import asyncio
+            from backend.websockets.realtime_manager import manager
+
+            loop = asyncio.get_running_loop()
+            loop.create_task(manager.broadcast_paradox_moved(
+                {
+                    "id": paradox.id,
+                    "timeline_id": paradox.timeline_id,
+                    "severity_class": paradox.severity_class.value if hasattr(paradox.severity_class, "value") else str(paradox.severity_class),
+                },
+                old_timeline_id,
+            ))
+        except RuntimeError:
+            pass  # No running event loop
+
     def _broadcast_detonation(self, event: DetonationEvent):
         """Broadcast detonation event."""
-        pass
+        try:
+            import asyncio
+            from backend.websockets.realtime_manager import manager
+
+            loop = asyncio.get_running_loop()
+            loop.create_task(manager.broadcast_detonation({
+                "paradox_id": event.paradox_id,
+                "timeline_id": event.timeline_id,
+                "shards_burned": event.shards_burned,
+                "total_value_burned_usd": event.total_value_burned_usd,
+            }))
+        except RuntimeError:
+            pass  # No running event loop
 

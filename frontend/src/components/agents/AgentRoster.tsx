@@ -274,7 +274,7 @@ const sanityPercent = (sanity / maxSanity) * 100;
                     <div className="flex items-center justify-between text-xs text-terminal-muted mb-3 mt-2 relative z-10">
                       <span className="flex items-center gap-1">
                         <Activity className="w-3 h-3" />
-                        {agent.actions_count || 0} actions
+                        {agent.actions || 0} actions
                       </span>
                       <span className="flex items-center gap-1">
                         <TrendingUp className="w-3 h-3" />

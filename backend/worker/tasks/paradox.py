@@ -19,6 +19,11 @@ from backend.database.models import (
     ParadoxStatus, SeverityClass, WingFlapType, FlapDirection
 )
 from backend.worker.tasks._system_entity import ensure_system_entities
+from backend.worker.tasks._ws_broadcast import (
+    broadcast_flap,
+    broadcast_paradox_spawn,
+    broadcast_detonation_event,
+)
 
 logger = logging.getLogger('echelon.paradox')
 
@@ -206,7 +211,17 @@ class ParadoxTask:
             timestamp=now_naive,
         )
         session.add(flap)
-    
+
+        # Broadcast paradox spawn + its wing flap via WebSocket
+        await broadcast_paradox_spawn(
+            paradox_id=paradox_id,
+            timeline_id=timeline.id,
+            severity=severity.value,
+            logic_gap=timeline.logic_gap,
+            detonation_time=detonation_time,
+        )
+        await broadcast_flap(flap)
+
     async def _check_detonations(self, session: AsyncSession) -> int:
         """Check for paradoxes that have detonated."""
         now = datetime.now(timezone.utc)
@@ -281,3 +296,10 @@ class ParadoxTask:
                 timestamp=flap_timestamp,
             )
             session.add(flap)
+
+            # Broadcast detonation event + its wing flap via WebSocket
+            await broadcast_detonation_event(
+                paradox_id=paradox.id,
+                timeline_id=paradox.timeline_id,
+            )
+            await broadcast_flap(flap)

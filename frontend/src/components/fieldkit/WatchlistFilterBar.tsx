@@ -17,6 +17,9 @@ export interface WatchlistFilterBarProps {
  */
 const FILTER_CONFIG: Record<WatchlistFilter, { label: string }> = {
   'all': { label: 'All' },
+  'timelines': { label: 'Timelines' },
+  'agents': { label: 'Agents' },
+  'at-risk': { label: 'At Risk' },
   'brittle': { label: 'Brittle' },
   'paradox-watch': { label: 'Paradox Watch' },
   'high-entropy': { label: 'High Entropy' },

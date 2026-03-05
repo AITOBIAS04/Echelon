@@ -81,9 +81,9 @@ function WingFlapItem({ flap }: { flap: WingFlap }) {
       <div className="flex items-center gap-3 text-xs">
         <span className={clsx(
           'font-mono',
-          flap.direction === 'ANCHOR' ? 'text-echelon-green' : 'text-echelon-red'
+          flap.direction === 'STABILISE' ? 'text-echelon-green' : 'text-echelon-red'
         )}>
-          {flap.direction === 'ANCHOR' ? '+' : ''}{flap.stability_delta.toFixed(2)}%
+          {flap.direction === 'STABILISE' ? '+' : ''}{flap.stability_delta.toFixed(2)}%
         </span>
         <span className="text-terminal-text-muted">
           ${flap.volume_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}

@@ -16,6 +16,11 @@ import { VRFPage } from './pages/VRFPage';
 import { RLMFPage } from './pages/RLMFPage';
 import { BreachConsolePage } from './pages/BreachConsolePage';
 import { ExportConsolePage } from './pages/ExportConsolePage';
+import { InvestigationPage } from './pages/InvestigationPage';
+import { HomePage } from './pages/HomePage';
+import { SignalFeedPage } from './pages/SignalFeedPage';
+import { CreateInvestigationPage } from './pages/CreateInvestigationPage';
+import { ConvergencePage } from './pages/ConvergencePage';
 
 const VerifyPage = lazy(() =>
   import('./pages/VerifyPage').then((m) => ({ default: m.VerifyPage }))
@@ -27,10 +32,18 @@ export const router = createBrowserRouter([
     element: <AppLayout />,
     errorElement: <RouteErrorBoundary />,
     children: [
-      // Default route → Marketplace
+      // Default route → Dashboard
       {
         index: true,
-        element: <Navigate to="/marketplace" replace />,
+        element: <Navigate to="/home" replace />,
+      },
+      {
+        path: 'home',
+        element: (
+          <ErrorBoundary>
+            <HomePage />
+          </ErrorBoundary>
+        ),
       },
       {
         path: 'marketplace',
@@ -69,6 +82,38 @@ export const router = createBrowserRouter([
         element: (
           <ErrorBoundary>
             <VRFPage />
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'investigation',
+        element: (
+          <ErrorBoundary>
+            <InvestigationPage />
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'investigation/signals',
+        element: (
+          <ErrorBoundary>
+            <SignalFeedPage />
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'investigation/create',
+        element: (
+          <ErrorBoundary>
+            <CreateInvestigationPage />
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'convergence',
+        element: (
+          <ErrorBoundary>
+            <ConvergencePage />
           </ErrorBoundary>
         ),
       },

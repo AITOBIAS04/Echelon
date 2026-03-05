@@ -357,6 +357,36 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+# Include Investigation router
+try:
+    from backend.api.investigation_routes import router as investigation_router
+    app.include_router(investigation_router)
+    print("✅ Investigation router included")
+except Exception as e:
+    print(f"❌ Failed to include Investigation router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Convergence router (OSINT heatmap)
+try:
+    from backend.api.convergence_routes import router as convergence_router
+    app.include_router(convergence_router)
+    print("✅ Convergence router included")
+except Exception as e:
+    print(f"❌ Failed to include Convergence router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include WebSocket router (real-time updates)
+try:
+    from backend.websockets import ws_router
+    app.include_router(ws_router)
+    print("✅ WebSocket router included")
+except Exception as e:
+    print(f"❌ Failed to include WebSocket router: {e}")
+    import traceback
+    traceback.print_exc()
+
 # Initialize Butterfly and Paradox Engines (for USE_MOCKS mode)
 USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
 GAME_LOOP_ENABLED = os.getenv("ENABLE_GAME_LOOP", "true").lower() == "true"

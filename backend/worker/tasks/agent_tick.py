@@ -23,6 +23,7 @@ from backend.database.models import (
     Agent, Timeline, WingFlap,
     AgentArchetype, WingFlapType, FlapDirection
 )
+from backend.worker.tasks._ws_broadcast import broadcast_flap
 
 logger = logging.getLogger('echelon.agents')
 
@@ -156,6 +157,7 @@ class AgentTickTask:
             timestamp=flap_timestamp,
         )
         session.add(flap)
+        await broadcast_flap(flap)
 
         # Update agent stats
         current_trades = agent.trades_count or 0
@@ -177,7 +179,7 @@ class AgentTickTask:
         )
 
         return True
-    
+
     async def _spy_strategy(
         self,
         session: AsyncSession,
@@ -219,7 +221,8 @@ class AgentTickTask:
             timestamp=flap_timestamp,
         )
         session.add(flap)
-        
+        await broadcast_flap(flap)
+
         # Update timeline
         await session.execute(
             update(Timeline)
@@ -228,9 +231,9 @@ class AgentTickTask:
                 stability=new_stability,
             )
         )
-        
+
         return True
-    
+
     async def _diplomat_strategy(
         self,
         session: AsyncSession,
@@ -277,7 +280,8 @@ class AgentTickTask:
             timestamp=flap_timestamp,
         )
         session.add(flap)
-        
+        await broadcast_flap(flap)
+
         # Update timeline
         await session.execute(
             update(Timeline)
@@ -286,9 +290,9 @@ class AgentTickTask:
                 stability=new_stability,
             )
         )
-        
+
         return True
-    
+
     async def _saboteur_strategy(
         self,
         session: AsyncSession,
@@ -331,7 +335,8 @@ class AgentTickTask:
             timestamp=flap_timestamp,
         )
         session.add(flap)
-        
+        await broadcast_flap(flap)
+
         # Update timeline
         await session.execute(
             update(Timeline)
@@ -340,7 +345,7 @@ class AgentTickTask:
                 stability=new_stability,
             )
         )
-        
+
         # Cost sanity
         new_sanity = max(0, agent.sanity - 5)
         await session.execute(
@@ -402,7 +407,8 @@ class AgentTickTask:
             timestamp=flap_timestamp,
         )
         session.add(flap)
-        
+        await broadcast_flap(flap)
+
         # Update timeline (whale moves market)
         current_volume = target.total_volume_usd or 0.0
         await session.execute(
@@ -413,7 +419,7 @@ class AgentTickTask:
                 total_volume_usd=current_volume + size,
             )
         )
-        
+
         logger.info(f"🐋 WHALE ALERT: {agent.name} moved ${size:,.0f} on {target.id}")
         
         return True

@@ -374,8 +374,24 @@ class ButterflyEngine:
     
     def _broadcast_flap(self, flap: WingFlap):
         """Broadcast flap via WebSocket to connected clients."""
-        # Implementation in websockets/realtime_manager.py
-        pass
+        try:
+            import asyncio
+            from backend.websockets.realtime_manager import manager
+
+            loop = asyncio.get_running_loop()
+            loop.create_task(manager.broadcast_wing_flap({
+                "id": flap.id,
+                "timeline_id": flap.timeline_id,
+                "agent_id": flap.agent_id,
+                "flap_type": flap.flap_type.value if hasattr(flap.flap_type, "value") else str(flap.flap_type),
+                "action": flap.action,
+                "stability_delta": flap.stability_delta,
+                "volume_usd": flap.volume_usd,
+                "timeline_stability": flap.timeline_stability,
+                "timeline_price": flap.timeline_price,
+            }))
+        except RuntimeError:
+            pass  # No running event loop
     
     # =========================================
     # API METHODS (Query Interface)

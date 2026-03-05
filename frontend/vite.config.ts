@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -11,6 +12,11 @@ export default defineConfig({
     '__BUILD_HASH__': JSON.stringify(
       Math.random().toString(36).slice(2, 8)
     ),
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
   },
   build: {
     sourcemap: true,

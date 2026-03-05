@@ -4,7 +4,6 @@
 
 import { useState } from 'react';
 import { ShieldCheck, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { clsx } from 'clsx';
 import type { VerificationRun, VerificationRunStatus } from '../../types/verification';
 import { ACTIVE_STATUSES } from '../../types/verification';
 
