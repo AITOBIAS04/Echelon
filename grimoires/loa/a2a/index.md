@@ -58,3 +58,11 @@
 |--------|-----------|--------|----------|----------|---------|
 | Sprint 1 | sprint-31 | COMPLETED | — | [engineer-feedback.md](sprint-31/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-31/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-32 | COMPLETED | — | [engineer-feedback.md](sprint-32/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-32/auditor-sprint-feedback.md) |
+
+## Cycle-014c: Investigation Toolset Implementation
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 1 | sprint-33 | COMPLETED | [reviewer.md](sprint-33/reviewer.md) | [engineer-feedback.md](sprint-33/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-33/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-34 | COMPLETED | [reviewer.md](sprint-34/reviewer.md) | [engineer-feedback.md](sprint-34/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-34/auditor-sprint-feedback.md) |
+| Sprint 3 | sprint-35 | COMPLETED | [reviewer.md](sprint-35/reviewer.md) | [engineer-feedback.md](sprint-35/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-35/auditor-sprint-feedback.md) |

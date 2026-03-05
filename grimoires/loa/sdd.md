@@ -1,379 +1,417 @@
-# SDD — Cycle-015: WorldMonitor Live Deployment + First Non-WM Collector
+# SDD — Cycle-016: Results Surface
 
-**Cycle:** cycle-015
-**Date:** 4 March 2026
+**Cycle:** cycle-016
+**Date:** 5 March 2026
 **PRD:** grimoires/loa/prd.md
+**Design input:** `echelon_cycle_016.md`, `Echelon_Butterfly_Entropy_Coherence_Review_v1.md` (v1.2.1)
 
 ---
 
 ## 1. Architecture Overview
 
-Cycle-015 makes two changes to the OSINT pipeline:
+Cycle-016 spans two layers: (0) a backend engine coherence lock that unifies stability scale and flap contracts across all runtime paths, and (1–5) a full production frontend that replaces the mock presentation layer with real API-wired views.
+
+### 1.1 Sprint-0: Engine Coherence Lock (COMPLETE)
+
+Sprint-0 resolved the three-implementation problem identified in the coherence review. The codebase had three overlapping Butterfly/Entropy implementations (`engines/`, `mechanics/`, `worker/tasks/`) that diverged in scale, constants, and flap coverage. Sprint-0 unified them:
 
 ```
-Sprint 1 — Live path verification:
-
-  WorldMonitorCollector (existing)
-    → env var base URL config (ECHELON_WM_BASE_URL)
-    → live pytest marker (@pytest.mark.live_wm)
-    → parity tests (mock vs live structural equality)
-
-Sprint 2 — Second collector + corroboration unlock:
-
-  CompaniesHouseCollector (NEW, implements BaseCollector)
-    → sources.json v0.4.0-wm-ch (4 sources)
-    → CorroborationEngine (NO code changes — just data)
-    → corroboration_minimum_met: true (WM + CH = 2 upstream groups)
-    → scoring factor lifts 0.7 → 1.0
+┌─────────────────────────┐
+│  engines/ (spec layer)  │ ← 0–1 scale, full enum, FlapDirection
+│  ButterflyEngine        │    compute_fork_divergence(), LogicGapReading
+│  EntropyEngine          │    Pattern A: decay_multiplier only
+└─────────┬───────────────┘
+          │ contract parity
+┌─────────▼───────────────┐
+│  worker/tasks/ (runtime) │ ← 0–1 scale, FlapDirection.value, SYSTEM entity
+│  agent_tick.py           │    5 strategies: uniform(0.01,0.03) not (1.0,3.0)
+│  entropy.py              │    timeline.decay_multiplier, anchor skip
+│  paradox.py              │    decay_multiplier write only, DETONATION type
+│  market_sync.py          │    MIRROR_TRADE, is_anchor=True, MAX_ACTIVE_MARKETS=10
+│  genesis.py              │    FORK_SPAWN type, 0–1 templates, SYSTEM agent
+│  kalshi_sync.py          │    0–1 clamp, FlapDirection enum
+└─────────┬───────────────┘
+          │ _as_percent() at API boundary
+┌─────────▼───────────────┐
+│  mechanics/ (API layer)  │ ← 0–100 for frontend consumption
+│  butterfly_engine.py     │    _as_percent() static method on serialisation
+└─────────────────────────┘
 ```
 
-No new services, no new engines, no schema changes. The existing three-stage pipeline (collection → corroboration → scoring) processes the new collector transparently. The corroboration improvement is entirely data-driven — adding a source with a distinct `independence_upstream_id` is sufficient.
+**Key data contracts:**
+
+- **Stability:** `0.0–1.0` in DB and all runtime code. `_as_percent()` × 100 at API serialisation boundary.
+- **Direction:** `FlapDirection.STABILISE.value | DESTABILISE.value | NEUTRAL.value` — no bare string literals.
+- **Decay:** Paradox writes `decay_multiplier` on Timeline. Entropy reads `base_rate × decay_multiplier` once. No hardcoded `2.0`.
+- **Anchor model:** `is_anchor=True` for Polymarket timelines. `anchor_timeline_id` FK for forks. Anchors don't decay (entropy filter: `Timeline.is_anchor == False`).
+- **WingFlapType:** 17 values total (7 original + 10 new 016 types). All synced between `engines/butterfly.py`, `database/models.py`, and `schemas/butterfly_schemas.py`.
+
+### 1.2 Sprints 1–5: Frontend Architecture
+
+Frontend stack: React 19 + Vite 7 + Tailwind + TanStack Query (React Query v5).
+
+```
+frontend/src/
+├── api/              ← API clients (replace mock generators)
+├── components/
+│   ├── investigation/ ← NEW: 20+ components for investigation views
+│   ├── convergence/   ← NEW: convergence map
+│   ├── agents/        ← Enhanced: performance analytics
+│   ├── layout/        ← Modified: navigation redesign
+│   └── ...            ← Existing components (updated for real data)
+├── hooks/            ← TanStack Query hooks (replace mock stores)
+├── pages/            ← Page components (wired to real APIs)
+├── types/            ← TypeScript types (aligned to Pydantic schemas)
+└── router.tsx        ← Updated routes
+```
+
+Data flow for API wiring pattern:
+
+```
+Backend (Pydantic schema)
+  → FastAPI endpoint (JSON response)
+    → frontend/src/api/ (fetch client)
+      → frontend/src/hooks/ (TanStack Query hook with cache key)
+        → frontend/src/pages/ (page component)
+          → frontend/src/components/ (rendered UI)
+```
+
+WebSocket integration (Sprint 5):
+
+```
+Backend WS event (wing_flap | price_update | paradox_spawn | investigation_event)
+  → frontend/src/hooks/useWebSocket.ts
+    → identify query keys
+      → queryClient.invalidateQueries()
+        → auto-refetch via TanStack Query
+```
 
 ---
 
-## 2. Sprint 1 — WM Live Path
+## 2. Sprint-0 — Engine Coherence Lock (COMPLETE)
 
-### 2.1 Env Var Configuration
+### 2.1 Models Layer
 
-**File:** `backend/osint/collectors/worldmonitor.py`
-
-Add `ECHELON_WM_BASE_URL` env var fallback to `WorldMonitorConfig`:
+**Modified:** `backend/database/models.py`
 
 ```python
-@dataclass
-class WorldMonitorConfig:
-    base_url: str = ""  # Set in __post_init__
-    timeout_s: float = 30.0
-    version: str = "v0.1.0"
-    retry_count: int = 2
-    retry_delay_s: float = 1.0
+class FlapDirection(str, enum.Enum):
+    STABILISE = "STABILISE"
+    DESTABILISE = "DESTABILISE"
+    NEUTRAL = "NEUTRAL"
 
-    def __post_init__(self):
-        if not self.base_url:
-            self.base_url = os.environ.get(
-                "ECHELON_WM_BASE_URL", "http://localhost:8080"
-            )
+class WingFlapType(str, enum.Enum):
+    # 7 original + 10 new
+    TRADE = "TRADE"
+    SHIELD = "SHIELD"
+    SABOTAGE = "SABOTAGE"
+    RIPPLE = "RIPPLE"
+    PARADOX = "PARADOX"
+    FOUNDER_YIELD = "FOUNDER_YIELD"
+    ENTROPY = "ENTROPY"
+    MIRROR_SYNC = "MIRROR_SYNC"
+    MIRROR_TRADE = "MIRROR_TRADE"
+    EVIDENCE = "EVIDENCE"
+    CLAIM = "CLAIM"
+    COUNTER_SIGNAL = "COUNTER_SIGNAL"
+    CORROBORATION = "CORROBORATION"
+    DETONATION = "DETONATION"
+    FORK_SPAWN = "FORK_SPAWN"
+    STOP_CONDITION = "STOP_CONDITION"
+    CERTIFICATE = "CERTIFICATE"
 ```
 
-Priority: constructor param > env var > default. Existing tests pass `base_url` explicitly via `wm_config` fixture, so this change is transparent.
-
-### 2.2 Pytest Marker Registration
-
-**File:** `backend/osint/tests/conftest.py`
-
-Add marker registration and collection-time skip logic:
+Timeline anchor/fork fields:
 
 ```python
-def pytest_addoption(parser):
-    parser.addoption("--live-wm", action="store_true", default=False,
-                     help="Run live WorldMonitor tests")
-    parser.addoption("--live-ch", action="store_true", default=False,
-                     help="Run live Companies House tests")
-
-def pytest_configure(config):
-    config.addinivalue_line("markers", "live_wm: requires live WorldMonitor instance")
-    config.addinivalue_line("markers", "live_ch: requires live Companies House API key")
-
-def pytest_collection_modifyitems(config, items):
-    skip_wm = not (config.getoption("--live-wm") or os.environ.get("ECHELON_LIVE_WM"))
-    skip_ch = not (config.getoption("--live-ch") or os.environ.get("ECHELON_LIVE_CH"))
-    for item in items:
-        if "live_wm" in item.keywords and skip_wm:
-            item.add_marker(pytest.mark.skip(reason="Need --live-wm or ECHELON_LIVE_WM=1"))
-        if "live_ch" in item.keywords and skip_ch:
-            item.add_marker(pytest.mark.skip(reason="Need --live-ch or ECHELON_LIVE_CH=1"))
+# Timeline model additions
+is_anchor: Mapped[bool] = mapped_column(Boolean, default=False)
+anchor_timeline_id: Mapped[Optional[str]] = mapped_column(
+    String(50), ForeignKey("timelines.id"), nullable=True)
+fork_divergence: Mapped[float] = mapped_column(Float, default=0.0)
+last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 ```
 
-### 2.3 Live WM Tests
+### 2.2 Migration
 
-**New file:** `backend/osint/tests/test_worldmonitor_live.py`
+**New:** `backend/alembic/versions/c016_engine_coherence.py`
 
-All tests decorated `@pytest.mark.live_wm`. Use `WorldMonitorCollector` with default config (reads `ECHELON_WM_BASE_URL`).
+Dialect-safe migration:
+1. Extends WingFlapType enum (PostgreSQL: `ALTER TYPE ... ADD VALUE`, SQLite: no-op)
+2. Adds anchor/fork columns to timelines
+3. Normalises stability/surface_tension/osint_alignment: `SET col = col / 100.0 WHERE col > 1.0`
+4. Migrates direction data: `UPDATE wing_flaps SET direction = 'STABILISE' WHERE direction = 'ANCHOR'`
 
-| Test | What It Verifies |
-|------|-----------------|
-| `test_live_health_check` | `GET /health` → HEALTHY or DEGRADED (UNAVAILABLE = fail) |
-| `test_live_cii_collection` | POST `/api/v1/intelligence/cii` → valid `EvidenceBundle` |
-| `test_live_market_collection` | POST `/api/v1/market/snapshot` → valid `EvidenceBundle` |
-| `test_live_maritime_collection` | POST `/api/v1/maritime/anomaly` → valid `EvidenceBundle` |
-| `test_live_hash_invariants` | `receipt.content_hash == SHA-256(raw_payload)` on live response |
-| `test_live_receipt_structure` | `HTTPTranscriptReceipt` fields populated from real HTTP exchange |
+### 2.3 Pattern A Decay Fix
 
-Each test asserts:
-- `result.success is True`
-- `result.bundle is not None`
-- `result.bundle.receipt is not None`
-- `isinstance(result.bundle, EvidenceBundle)`
+**Before (buggy):**
+```
+paradox.py: timeline.decay_rate_per_hour = base * (severity + 1)  ← MUTATES rate
+             timeline.decay_multiplier = severity + 1
+entropy.py: effective = timeline.decay_rate_per_hour * 2.0         ← hardcoded 2×
+Result: base × (sev+1) × 2.0 = double-application
+```
 
-### 2.4 Mock-to-Live Parity Tests
+**After (fixed):**
+```
+paradox.py: timeline.decay_multiplier = severity + 1               ← ONLY writes multiplier
+entropy.py: effective = base_rate × timeline.decay_multiplier      ← reads multiplier, applies once
+Result: base × (sev+1) = correct single-application
+```
 
-**New file:** `backend/osint/tests/test_mock_live_parity.py`
+### 2.4 Shared SYSTEM Entity
 
-All tests decorated `@pytest.mark.live_wm`. Run the same domain through both paths and assert structural equality:
+**New:** `backend/worker/tasks/_system_entity.py`
 
 ```python
-@pytest.mark.live_wm
-async def test_cii_mock_live_parity(cii_response_bytes, wm_config):
-    """Live and mock produce structurally identical EvidenceBundle."""
-    # Mock path: patch _do_http_post to return fixture bytes
-    mock_result = await mock_collector.fetch(request, theatre_id)
-
-    # Live path: real HTTP
-    live_collector = WorldMonitorCollector(WMDomain.INTELLIGENCE)
-    live_result = await live_collector.fetch(request, theatre_id)
-
-    # Structural parity (not value equality — data differs)
-    assert type(mock_result.bundle) == type(live_result.bundle)
-    assert set(vars(mock_result.bundle)) == set(vars(live_result.bundle))
-    assert type(mock_result.bundle.receipt) == type(live_result.bundle.receipt)
-    assert set(vars(mock_result.bundle.receipt)) == set(vars(live_result.bundle.receipt))
-    assert type(mock_result.bundle.normalised_event) == type(live_result.bundle.normalised_event)
+async def ensure_system_entities(session: AsyncSession) -> tuple[User, Agent]:
+    """Returns (system_user, system_agent), creating if absent."""
 ```
 
-Three tests: one per WM domain (CII, Market, Maritime).
+Eliminates ~30 lines of identical boilerplate in entropy.py, paradox.py, market_sync.py. Note: `kalshi_sync.py` still duplicates this boilerplate (cleanup deferred).
+
+### 2.5 Scale Conversion Reference
+
+| Context | Old | New |
+|---------|-----|-----|
+| `_shark_strategy` delta | `size / 10000` (~0.1–0.15) | `size / 1_000_000` (~0.001–0.002) |
+| `_spy_strategy` delta | `uniform(1.0, 3.0)` | `uniform(0.01, 0.03)` |
+| `_diplomat_strategy` delta | `uniform(3.0, 8.0)` | `uniform(0.03, 0.08)` |
+| `_saboteur_strategy` delta | `-uniform(5.0, 12.0)` | `-uniform(0.05, 0.12)` |
+| `_whale_strategy` threshold | `osint_alignment > 50` | `> 0.5` |
+| `_whale_strategy` delta | `size / 5000` (~2–10) | `size / 1_000_000` (~0.01–0.05) |
+| Genesis base_stability | `45.0–82.0` | `0.45–0.82` |
+| Genesis surface_tension | `uniform(40, 70)` | `uniform(0.40, 0.70)` |
+| Genesis osint_alignment | `price_yes * 100` | `price_yes` (already 0–1) |
+| Genesis gravity_score | `uniform(50, 80)` | `uniform(0.50, 0.80)` |
+| Genesis decay_rate | `1.0` | `0.01` |
+| Genesis flap_type | `"GENESIS"` (invalid) | `WingFlapType.FORK_SPAWN` |
+| Genesis Timeline.status | `"ACTIVE"` (no such column) | `is_active=True` |
+| Kalshi stability cap | `min(5.0)` | `min(0.05)` |
+| Kalshi clamp | `max(0, min(100, ...))` | `max(0.0, min(1.0, ...))` |
+| Market sync delta cap | `5.0` | `0.05` |
 
 ---
 
-## 3. Sprint 2 — Companies House Collector
+## 3. Sprint 1 — Mock Purge + Real API Wiring
 
-### 3.1 New Module: `backend/osint/collectors/companies_house.py`
+### 3.1 TypeScript Type Alignment
 
-Implements `BaseCollector` ABC. Uses stdlib HTTP (same pattern as WM). Profile endpoint only (`/company/{company_number}`).
+**Files:** `frontend/src/types/*.ts`
 
-```python
-class CompaniesHouseCollector(BaseCollector):
-    """UK Companies House API collector — profile lookup only.
+Rewrite all type files to match backend Pydantic schemas. Key alignments:
+- `types/portfolio.ts` → `UserPosition`, `PortfolioSummary` from `backend/schemas/user_schemas.py`
+- `types/agents.ts` → `Agent` from `backend/database/models.py`
+- `types/marketplace.ts` → Timeline schema from `backend/schemas/butterfly_schemas.py`
+- `types/breach.ts` → `Paradox` from `backend/schemas/paradox_schemas.py`
+- New: `types/investigation.ts` — all investigation toolset response types
+- New: `types/theatre.ts` — `TheatreResponse`, `TheatreCertificateResponse`
 
-    Auth: HTTP Basic (API key as username, blank password).
-    API key from ECHELON_COMPANIES_HOUSE_API_KEY env var.
-    """
+### 3.2 Portfolio Wiring
 
-    BASE_URL = "https://api.company-information.service.gov.uk"
+Replace `usePortfolio.ts` mock with TanStack Query calling:
+- `GET /api/v1/user/positions` — individual positions
+- `GET /api/v1/user/portfolio/summary` — aggregate P&L
 
-    def __init__(self, api_key: str | None = None) -> None:
-        self._api_key = api_key or os.environ.get("ECHELON_COMPANIES_HOUSE_API_KEY", "")
+Field mapping: `unrealizedPnL` → `unrealised_pnl_usd` (camelCase→snake_case in response transform)
 
-    def source_id(self) -> str:
-        return "companies_house_api"
+### 3.3 Marketplace Wiring
 
-    async def _fetch(self, request: dict, theatre_id: str) -> CollectionResult:
-        """GET /company/{company_number} with Basic auth."""
-        ...
+**The relationship:** Polymarket = base reality. Echelon mirrors markets as `TL_PM_*` timelines, then forks.
 
-    async def health_check(self) -> HealthStatus:
-        """GET /company/00000006 (test company) as health probe."""
-        ...
-```
+Backend tasks:
+- Verify `MarketSyncTask.tick()` runs on 10s cadence
+- Add `GET /api/v1/timelines/trending` — returns timelines sorted by volume
 
-**Key differences from legacy `osint_pipeline/` collector:**
+Frontend: Replace mock market generator with TanStack Query fetching timelines with `TL_PM_*` prefix.
 
-| Aspect | Legacy (`osint_pipeline/`) | New (`backend/osint/`) |
-|--------|---------------------------|------------------------|
-| Base class | `osint_pipeline.collectors.base.BaseCollector` | `backend.osint.collectors.base.BaseCollector` |
-| Interface | `build_request()` + `extract()` | `_fetch()` (template method) |
-| Auth failure | Raises `ValueError` | Returns `CollectionResult(success=False)` |
-| HTTP lib | Not shown (httpx implied) | stdlib `urllib.request` |
-| Receipt | Not produced | `HTTPTranscriptReceipt` with hash invariants |
-| Endpoint scope | 7 endpoints | Profile only (single endpoint) |
-| `independence_upstream_id` | `gb_companies_house_register` | `uk_companies_house_backend` |
+### 3.4 Agents Wiring
 
-**Auth handling:**
-- API key from `ECHELON_COMPANIES_HOUSE_API_KEY` env var
-- HTTP Basic auth: `Authorization: Basic base64(api_key:)`
-- If env var not set: `CollectionResult(success=False, error="No API key configured")` — does NOT raise
+Remove `USE_MOCKS=true` default in `backend/api/agents_routes.py`. Frontend hook fetches from `GET /api/v1/agents/`. Display: archetype, P&L, win rate, sanity, is_alive. Accept that genealogy/lineage is out of scope.
 
-**Hash invariants:**
-- `content_hash = SHA-256(raw_response_bytes)` — enforced by `BaseCollector.fetch()`
-- `receipt_hash = compute_receipt_hash("GET", url, "", headers_str, content_hash)` — enforced by `BaseCollector.fetch()`
+### 3.5 Paradox/Breach + Watchlist Wiring
 
-**Response parsing:**
-- Parse JSON response
-- Build `EvidenceBundle` with `NormalisedEvent` containing company status data
-- Confidence: 1.0 (official government source)
-- `source_group: "official_gov"`
-- `resolution_role: "primary_evidence"`
-
-### 3.2 Registry Update
-
-**File:** `backend/osint/sources.json`
-
-Bump version to `0.4.0-wm-ch`. Add Companies House entry:
-
-```json
-{
-  "source_id": "companies_house_api",
-  "source_name": "Companies House (UK)",
-  "source_group": "official_gov",
-  "priority_bucket": "scoring_grade",
-  "resolution_role": "primary_evidence",
-  "independence_upstream_id": "uk_companies_house_backend",
-  "receipt_mode_minimum": "http_transcript",
-  "world_monitor_domain": null,
-  "settlement_eligible": true,
-  "jurisdiction": "GB",
-  "replayability": "strong",
-  "legal_risk": "low",
-  "cost_model": "free",
-  "rate_limit_notes": "Free API key. Rate limit: 600 requests per 5 minutes.",
-  "gap_policy_default": false,
-  "evidence_capture": {
-    "request_params": true,
-    "response_headers": true,
-    "payload_hash": true,
-    "timestamp_precision": "second"
-  },
-  "theatre_families": ["OSINT_COMPOSED_ORACLE"],
-  "collector_status": "active"
-}
-```
-
-**Critical field:** `independence_upstream_id: "uk_companies_house_backend"` — distinct from WM's `"worldmonitor"`. This is the field that breaks the single-source corroboration trap.
-
-### 3.3 Source Manifest Update
-
-**File:** `backend/osint/source_manifest.py`
-
-Update `_get_registry_version()` to read version from the loaded registry data rather than returning a hardcoded string. The existing `build()` method already handles the new source correctly — it will:
-- Find CH in registry by `source_id`
-- Assign `settlement_status: ELIGIBLE` (unique upstream ID + `settlement_eligible: true`)
-- Include in manifest entries
-
-### 3.4 Corroboration Engine — NO Code Changes
-
-The existing `CorroborationEngine.evaluate()` already:
-1. Groups bundles by `independence_upstream_id` (from registry lookup)
-2. Deduplicates within each group (retains highest confidence)
-3. Counts distinct groups against `corroboration_minimum` (default: 2)
-
-With WM (`upstream: "worldmonitor"`) + CH (`upstream: "uk_companies_house_backend"`):
-- 2 distinct upstream groups >= `corroboration_minimum` (2)
-- `corroboration_met: true`
-- Scoring factor: 1.0 (not 0.7)
-
-No code changes. The improvement is purely data-driven.
-
-### 3.5 Mock Fixture
-
-**New file:** `backend/osint/tests/fixtures/ch_company_profile.json`
-
-Mock response from Companies House API for company number `00000006` (test company):
-
-```json
-{
-  "company_number": "00000006",
-  "company_name": "MARINE AND GENERAL MUTUAL LIFE ASSURANCE SOCIETY",
-  "company_status": "active",
-  "type": "private-unlimited-nsc",
-  "date_of_creation": "1862-10-25",
-  "registered_office_address": {
-    "address_line_1": "Cms Cameron Mckenna Llp Cannon Place",
-    "address_line_2": "78 Cannon Street",
-    "locality": "London",
-    "postal_code": "EC4N 6AF"
-  },
-  "sic_codes": ["65110"],
-  "has_insolvency_history": false,
-  "has_charges": true
-}
-```
-
-### 3.6 Test Files
-
-**`backend/osint/tests/test_companies_house.py`** — Mock + live tests:
-
-| Test | Marker | Asserts |
-|------|--------|---------|
-| `test_ch_collection_success` | — | Mock response → valid `EvidenceBundle`, `source_id == "companies_house_api"` |
-| `test_ch_hash_invariants` | — | `content_hash == SHA-256(raw_payload)` on mock response |
-| `test_ch_receipt_structure` | — | `HTTPTranscriptReceipt` fields populated (method=GET, url, content_hash) |
-| `test_ch_no_api_key` | — | No env var → `CollectionResult(success=False)`, no raise |
-| `test_ch_404_company` | — | Unknown company number → `success=False` |
-| `test_live_ch_company_profile` | `live_ch` | Real API → valid `EvidenceBundle` |
-| `test_live_ch_hash_invariants` | `live_ch` | Hash invariants on real response |
-
-**`backend/osint/tests/test_corroboration_with_ch.py`** — Corroboration multi-source:
-
-| Test | Asserts |
-|------|---------|
-| `test_wm_only_still_provisional` | 3 WM results → 1 upstream group → `corroboration_met: false` |
-| `test_wm_plus_ch_meets_minimum` | 1 WM + 1 CH → 2 upstream groups → `corroboration_met: true` |
-| `test_ch_only_insufficient` | 1 CH result alone → 1 group → `corroboration_met: false` |
-| `test_corroboration_factor_lifts` | WM + CH → scoring composite uses 1.0 factor |
-
-**`backend/osint/tests/test_e2e_corroboration.py`** — Full pipeline E2E:
-
-| Test | Asserts |
-|------|---------|
-| `test_e2e_wm_ch_pipeline` | `CollectionRunner` → `CorroborationEngine` → `Scorer` with both WM and CH mocks. `corroboration_met: true`, factor 1.0, `p_reality` not penalised |
+Replace `useDemoBreaches()` with TanStack Query calling `/api/v1/paradoxes/active`. Replace watchlist mock with `/api/v1/user/watchlist`.
 
 ---
 
-## 4. File Change Matrix
+## 4. Sprint 2 — Investigation Dashboard + Certificate Explorer
 
-| File | Action | Sprint |
-|------|--------|--------|
-| `backend/osint/collectors/worldmonitor.py` | MODIFY — env var base URL | 1 |
-| `backend/osint/tests/conftest.py` | MODIFY — add markers + skip logic | 1 |
-| `backend/osint/tests/test_worldmonitor_live.py` | NEW — 6 live WM tests | 1 |
-| `backend/osint/tests/test_mock_live_parity.py` | NEW — 3 parity tests | 1 |
-| `backend/osint/collectors/companies_house.py` | NEW — CH collector | 2 |
-| `backend/osint/sources.json` | MODIFY — add CH, bump v0.4.0-wm-ch | 2 |
-| `backend/osint/source_manifest.py` | MODIFY — dynamic registry version | 2 |
-| `backend/osint/tests/fixtures/ch_company_profile.json` | NEW — mock fixture | 2 |
-| `backend/osint/tests/test_companies_house.py` | NEW — 5 mock + 2 live tests | 2 |
-| `backend/osint/tests/test_corroboration_with_ch.py` | NEW — 4 corroboration tests | 2 |
-| `backend/osint/tests/test_e2e_corroboration.py` | NEW — 1 E2E test | 2 |
+### 4.1 Investigation API Routes
 
----
+**New:** `backend/api/investigation_routes.py`
 
-## 5. Data Flow — Corroboration Unlock
-
-### Before (Cycle-011):
 ```
-WM CII    ─┐ upstream: "worldmonitor"
-WM Market ─┤ upstream: "worldmonitor"  ──→ 1 group < 2 ──→ corroboration_met: false ──→ factor: 0.7
-WM Maritime┘ upstream: "worldmonitor"
+GET  /api/v1/investigations/                       — list active investigations
+GET  /api/v1/investigations/{id}                   — investigation detail
+GET  /api/v1/investigations/{id}/evidence          — evidence envelope manifest
+GET  /api/v1/investigations/{id}/claims            — claim graph + status summary
+GET  /api/v1/investigations/{id}/counter-signals   — counter-signal feed
+GET  /api/v1/investigations/{id}/drift             — drift events
+GET  /api/v1/investigations/{id}/certificate       — investigation certificate
+GET  /api/v1/investigations/{id}/scanner           — latest DeltaBrief
+POST /api/v1/investigations/                       — create investigation
+POST /api/v1/investigations/{id}/evidence          — submit evidence item
+POST /api/v1/investigations/{id}/claims            — register claim
 ```
 
-### After (Cycle-015):
+**New:** `backend/schemas/investigation.py` — Pydantic request/response models
+
+All endpoints delegate to existing `backend/investigation/` service layer from cycle-014c. Routes are thin wrappers.
+
+### 4.2 Investigation Dashboard Component Tree
+
 ```
-WM CII    ─┐ upstream: "worldmonitor"
-WM Market ─┤ upstream: "worldmonitor"
-WM Maritime┘ upstream: "worldmonitor"     ──→ 2 groups >= 2 ──→ corroboration_met: true ──→ factor: 1.0
-CH Profile ── upstream: "uk_companies_house_backend"
+InvestigationPage.tsx
+├── InvestigationHeader (routing hint badge, inquiry question, dates)
+├── TabNavigation (Overview | Evidence | Claims | Signals | Drift)
+├── EvidenceEnvelopePanel.tsx
+│   ├── EnvelopeHashDisplay
+│   ├── ProvenanceSummaryBar
+│   └── EvidenceItemCard.tsx × N
+│       └── ProvenanceBadge.tsx
+├── ClaimGraphPanel.tsx
+│   ├── MerkleRootDisplay
+│   ├── ClaimStatusSummary
+│   └── ClaimNodeCard.tsx × N
+│       ├── ClaimStatusBadge.tsx
+│       └── EvidenceRefLinks
+├── CounterSignalPanel.tsx
+├── DeltaBriefPanel.tsx
+├── DriftEventsPanel.tsx
+├── EntityProfilePanel.tsx
+└── InvestigationCertificateView.tsx
+    ├── CertificateFieldGroup.tsx × 8
+    └── RoutingHintBadge.tsx
+```
+
+### 4.3 Design Tokens (Investigation)
+
+```css
+/* Provenance class badges */
+--provenance-public-primary: #4ADE80;    /* emerald */
+--provenance-public-secondary: #3B82F6;  /* blue */
+--provenance-private-leak: #F59E0B;      /* amber */
+--provenance-analyst-derived: #8B5CF6;   /* purple */
+--provenance-third-party: #6B7280;       /* grey */
+
+/* Claim status badges */
+--claim-supported: #4ADE80;
+--claim-partially: #FACC15;
+--claim-unconfirmed: #6B7280;
+--claim-contradicted: #FB7185;
+
+/* Routing/anchoring */
+--routing-allowed: #4ADE80;
+--routing-review: #F59E0B;
+--anchor-unanchored: #6B7280;
+--anchor-anchored: #4ADE80;
 ```
 
 ---
 
-## 6. Security Considerations
+## 5. Sprint 3 — OpsBoard + Analytics + RLMF
 
-- **API key storage:** `ECHELON_COMPANIES_HOUSE_API_KEY` env var only. Never committed to repo. Tests without key gracefully return `success=False`.
-- **Auth header:** HTTP Basic over HTTPS only. Companies House API enforces HTTPS. `urllib.request` follows default SSL verification.
-- **No credential caching:** API key read from env var on each collector instantiation. No in-memory persistence beyond the collector lifetime.
+### 5.1 OpsBoard Aggregation
+
+The OpsBoard is rebuilt as a pure aggregation dashboard — no new backend endpoints. Consumes:
+
+| Widget | Source Endpoint |
+|--------|----------------|
+| Active Theatres count | `GET /api/v1/theatres` filtered by state |
+| Active Paradoxes count | `GET /api/v1/paradoxes/active` |
+| Active Investigations count | `GET /api/v1/investigations/` |
+| Agent count | `GET /api/v1/agents/` |
+| Recent Wing Flaps | `GET /api/v1/butterfly/wing-flaps/recent` |
+| Timeline Health | `GET /api/v1/butterfly/timelines/health` |
+
+Layout: 4 summary cards + activity feed + quick-access panels.
+
+### 5.2 Analytics from Real Data
+
+Analytics v1 renders what exists:
+- Theatre history → resolved theatres with scores from `/api/v1/theatres` + `/api/v1/certificates`
+- Agent leaderboard → from `/api/v1/agents/` sorted by P&L
+- OSINT timeline → from `/api/v1/osint/signals`
+- "Coming Soon" placeholders for features needing new endpoints (heatmap, correlation matrix, depth chart)
+
+### 5.3 RLMF Export Viewer
+
+Redesign from demo to viewer: RLMF export status per Theatre, export manifest (format, record count, schema version), sample records, download link.
 
 ---
 
-## 7. Risks & Mitigations
+## 6. Sprint 4 — Investigation Lifecycle + Navigation
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| WM local instance unstable | Live tests flaky | Tests gated behind opt-in marker; CI runs mock-only by default |
-| CH API rate limit (600/5min) | Live tests blocked | Test uses single company lookup; rate limit unlikely with test volume |
-| CH API response schema changes | Mock/live drift | Parity tests will catch structural mismatches |
-| `source_manifest.py` hardcoded version | Stale after registry bump | Sprint 2 Task 6 fixes — read version from loaded registry |
+### 6.1 Investigation Creation Wizard
+
+5-step wizard: inquiry question → template selection → domain filters (9 categories) → stop condition config → review & commit.
+
+Stop condition types: OUTCOME_RESOLUTION, EVIDENCE_THRESHOLD, SPONSOR_DEFINED.
+
+Immutability warning on commit step — once committed, stop conditions cannot be changed.
+
+### 6.2 Navigation Structure
+
+```
+Dashboard (was OpsBoard/Home)
+Marketplace
+Investigations
+  └─ Active Investigations
+  └─ Signal Feed
+  └─ Create Investigation
+Theatres (list + detail)
+Analytics (was Blackbox)
+Agents
+Portfolio
+Certificates
+  └─ Calibration Certificates
+  └─ Investigation Certificates
+RLMF Exports
+```
+
+Remove: `/vrf` from main nav (move to info page), `/agents/export` (fold into RLMF).
 
 ---
 
-## 8. Regression Target
+## 7. Sprint 5 — Convergence Map + WebSocket + Polish
 
-**Baseline:** 932 passed, 4 skipped, 13 pre-existing collection errors
-**Gate:** >=932 passed. Zero new failures.
+### 7.1 Convergence Map
 
-Live tests: skipped by default (not counted in gate). When enabled:
-- Sprint 1: +6 live WM + 3 parity = +9 (skipped without `--live-wm`)
-- Sprint 2: +2 live CH = +2 (skipped without `--live-ch`)
+2D grid: 1° × 1° cells. Colour gradient: grey (no activity) → amber (moderate convergence) → red (high convergence). Click for detail: event types, sources, matched theatres.
 
-Mock tests (always run):
-- Sprint 2: +5 CH mock + 4 corroboration + 1 E2E = +10
+Data source: `ConvergenceDetector` service from existing backend.
 
-**Post-015 expected:** >=942 passed (932 baseline + 10 new mock tests), 4 + 11 skipped (4 pre-existing + 9 live_wm + 2 live_ch)
+### 7.2 WebSocket Cache Invalidation
+
+Pattern:
+```typescript
+// useWebSocket.ts
+ws.onmessage = (event) => {
+  const { type, payload } = JSON.parse(event.data);
+  switch (type) {
+    case 'wing_flap':
+      queryClient.invalidateQueries({ queryKey: ['timelines', 'health'] });
+      break;
+    case 'price_update':
+      queryClient.invalidateQueries({ queryKey: ['timelines', payload.id] });
+      break;
+    case 'paradox_spawn':
+      queryClient.invalidateQueries({ queryKey: ['paradoxes'] });
+      break;
+    case 'investigation_event':
+      queryClient.invalidateQueries({ queryKey: ['investigations', payload.id] });
+      break;
+  }
+};
+```
+
+### 7.3 Polish Checklist
+
+- Responsive breakpoints (stack on narrow viewports)
+- Loading skeletons (Tailwind animation tokens)
+- Empty states for all panels
+- Error states with retry buttons
+- Consistent `terminal-*` token usage
+- Keyboard navigation for tab panels
+- Zero remaining mock data imports (final grep audit)

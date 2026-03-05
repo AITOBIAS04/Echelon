@@ -16,8 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database.models import (
     Timeline, Paradox, WingFlap,
-    ParadoxStatus, SeverityClass, WingFlapType
+    ParadoxStatus, SeverityClass, WingFlapType, FlapDirection
 )
+from backend.worker.tasks._system_entity import ensure_system_entities
 
 logger = logging.getLogger('echelon.paradox')
 
@@ -27,7 +28,7 @@ class ParadoxTask:
     
     # Thresholds for paradox spawning
     LOGIC_GAP_THRESHOLD = 0.40      # 40% logic gap triggers breach
-    STABILITY_THRESHOLD = 30.0       # Below 30% stability is dangerous
+    STABILITY_THRESHOLD = 0.30       # Below 30% stability is dangerous (0-1 scale)
     PRICE_DIVERGENCE_THRESHOLD = 0.50  # 50% price difference from connected
     
     # Cooldown: don't spawn new paradox if one resolved recently
@@ -97,16 +98,16 @@ class ParadoxTask:
                 severity
             )
         
-        # Check stability collapse
+        # Check stability collapse (0-1 scale)
         if timeline.stability < self.STABILITY_THRESHOLD:
             severity = (
-                SeverityClass.CLASS_1_CRITICAL if timeline.stability < 15
-                else SeverityClass.CLASS_2_SEVERE if timeline.stability < 25
+                SeverityClass.CLASS_1_CRITICAL if timeline.stability < 0.15
+                else SeverityClass.CLASS_2_SEVERE if timeline.stability < 0.25
                 else SeverityClass.CLASS_3_MODERATE
             )
             return (
                 True,
-                f"Stability collapse: {timeline.stability:.1f}%",
+                f"Stability collapse: {timeline.stability:.0%}",
                 severity
             )
         
@@ -173,57 +174,21 @@ class ParadoxTask:
         )
         session.add(paradox)
         
-        # Update timeline - multiply existing decay rate
-        current_decay_rate = timeline.decay_rate_per_hour or 1.0
-        new_decay_rate = current_decay_rate * (severity_multiplier + 1)
-        
+        # Pattern A: write decay_multiplier ONLY.  EntropyTask reads
+        # base decay_rate_per_hour and applies this multiplier exactly once.
+        # This prevents the double-application bug (see Coherence Review §4).
         await session.execute(
             update(Timeline)
             .where(Timeline.id == timeline.id)
             .values(
                 has_active_paradox=True,
-                decay_rate_per_hour=new_decay_rate,
-                decay_multiplier=severity_multiplier + 1
+                decay_multiplier=severity_multiplier + 1,
             )
         )
         
-        # Get or create SYSTEM agent for wing flaps
-        from backend.database.models import Agent, AgentArchetype, User
-        from backend.auth.password import hash_password
-        
-        system_user_result = await session.execute(
-            select(User).where(User.id == "SYSTEM")
-        )
-        system_user = system_user_result.scalar_one_or_none()
-        
-        if not system_user:
-            system_user = User(
-                id="SYSTEM",
-                username="SYSTEM",
-                email="system@echelon.io",
-                password_hash=hash_password("system"),
-                tier="system",
-            )
-            session.add(system_user)
-            await session.flush()
-        
-        system_agent_result = await session.execute(
-            select(Agent).where(Agent.id == "SYSTEM")
-        )
-        system_agent = system_agent_result.scalar_one_or_none()
-        
-        if not system_agent:
-            system_agent = Agent(
-                id="SYSTEM",
-                name="SYSTEM",
-                archetype=AgentArchetype.DEGEN,
-                owner_id="SYSTEM",
-                wallet_address="0x0000000000000000000000000000000000000000",
-                is_alive=True,
-            )
-            session.add(system_agent)
-            await session.flush()
-        
+        # Ensure SYSTEM entities exist (shared helper)
+        await ensure_system_entities(session)
+
         # Create wing flap for the event
         flap_id = f"PARADOX_{timeline.id}_{uuid.uuid4().hex[:8]}"
         # Use naive datetime (already converted above)
@@ -232,9 +197,9 @@ class ParadoxTask:
             timeline_id=timeline.id,
             agent_id="SYSTEM",
             flap_type=WingFlapType.PARADOX,
-            action=f"⚠️ CONTAINMENT BREACH: {reason}",
-            stability_delta=-10.0,
-            direction="DESTABILISE",
+            action=f"CONTAINMENT BREACH: {reason}",
+            stability_delta=-0.10,  # 0-1 scale (was -10.0 on 0-100)
+            direction=FlapDirection.DESTABILISE.value,
             volume_usd=0.0,
             timeline_stability=timeline.stability,
             timeline_price=timeline.price_yes,
@@ -295,56 +260,21 @@ class ParadoxTask:
                 )
             )
             
-            # Get or create SYSTEM agent for wing flaps
-            from backend.database.models import Agent, AgentArchetype, User
-            from backend.auth.password import hash_password
-            
-            system_user_result = await session.execute(
-                select(User).where(User.id == "SYSTEM")
-            )
-            system_user = system_user_result.scalar_one_or_none()
-            
-            if not system_user:
-                system_user = User(
-                    id="SYSTEM",
-                    username="SYSTEM",
-                    email="system@echelon.io",
-                    password_hash=hash_password("system"),
-                    tier="system",
-                )
-                session.add(system_user)
-                await session.flush()
-            
-            system_agent_result = await session.execute(
-                select(Agent).where(Agent.id == "SYSTEM")
-            )
-            system_agent = system_agent_result.scalar_one_or_none()
-            
-            if not system_agent:
-                system_agent = Agent(
-                    id="SYSTEM",
-                    name="SYSTEM",
-                    archetype=AgentArchetype.DEGEN,
-                    owner_id="SYSTEM",
-                    wallet_address="0x0000000000000000000000000000000000000000",
-                    is_alive=True,
-                )
-                session.add(system_agent)
-                await session.flush()
-            
-            # Create dramatic wing flap
+            # Ensure SYSTEM entities exist (shared helper)
+            await ensure_system_entities(session)
+
+            # Create detonation wing flap
             import uuid
             flap_id = f"DETONATE_{paradox.timeline_id}_{uuid.uuid4().hex[:8]}"
-            # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
             flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
             flap = WingFlap(
                 id=flap_id,
                 timeline_id=paradox.timeline_id,
                 agent_id="SYSTEM",
-                flap_type=WingFlapType.PARADOX,
-                action=f"💥 TIMELINE COLLAPSED: Paradox detonation",
+                flap_type=WingFlapType.DETONATION,
+                action="TIMELINE COLLAPSED: Paradox detonation",
                 stability_delta=-old_stability,
-                direction="DESTABILISE",
+                direction=FlapDirection.DESTABILISE.value,
                 volume_usd=0.0,
                 timeline_stability=0.0,
                 timeline_price=timeline.price_yes,

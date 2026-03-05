@@ -115,6 +115,11 @@ class MarketTheatreBridge:
         evidence_state: dict | None = None,
         theatre_config: dict | None = None,
         force: bool = False,
+        stop_condition: str | None = None,
+        stop_config: dict | None = None,
+        claim_graph: object | None = None,
+        evidence_envelope: object | None = None,
+        time_remaining: float | None = None,
     ) -> SettlementReport:
         """Check resolution readiness, begin resolution, and settle.
 
@@ -144,6 +149,11 @@ class MarketTheatreBridge:
             inquiry_class=inquiry_class,
             evidence_state=evidence_state,
             theatre_config=theatre_config,
+            stop_condition=stop_condition,
+            stop_config=stop_config,
+            claim_graph=claim_graph,
+            evidence_envelope=evidence_envelope,
+            time_remaining=time_remaining,
         )
 
         if not ready and not force:

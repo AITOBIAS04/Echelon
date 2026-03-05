@@ -11,14 +11,37 @@ from enum import Enum
 
 
 class WingFlapType(str, Enum):
-    """Types of causal state transitions."""
+    """Types of causal state transitions.
 
+    Kept in sync with backend.database.models.WingFlapType.
+    """
+
+    # --- Original 010b types ---
     TRADE = "TRADE"
     SHIELD = "SHIELD"
     SABOTAGE = "SABOTAGE"
-    RIPPLE = "RIPPLE"  # schema only — no source in 010b
+    RIPPLE = "RIPPLE"  # schema only — seed fixtures
     PARADOX = "PARADOX"
     ENTROPY = "ENTROPY"
+    FOUNDER_YIELD = "FOUNDER_YIELD"
+    # --- 016 Coherence Lock additions ---
+    MIRROR_SYNC = "MIRROR_SYNC"
+    MIRROR_TRADE = "MIRROR_TRADE"
+    EVIDENCE = "EVIDENCE"
+    CLAIM = "CLAIM"
+    COUNTER_SIGNAL = "COUNTER_SIGNAL"
+    CORROBORATION = "CORROBORATION"
+    DETONATION = "DETONATION"
+    FORK_SPAWN = "FORK_SPAWN"
+    STOP_CONDITION = "STOP_CONDITION"
+    CERTIFICATE = "CERTIFICATE"
+
+
+class FlapDirection(str, Enum):
+    """Direction of a Wing Flap's stability impact."""
+    STABILISE = "STABILISE"
+    DESTABILISE = "DESTABILISE"
+    NEUTRAL = "NEUTRAL"
 
 
 @dataclass
@@ -32,6 +55,7 @@ class WingFlap:
     stability_impact: float  # signed: positive = stabilising
     pre_stability: float
     post_stability: float
+    direction: FlapDirection  # STABILISE / DESTABILISE / NEUTRAL
     trigger_detail: dict
     timestamp: str
 
@@ -81,6 +105,14 @@ class ButterflyEngine:
         if flap_type == WingFlapType.TRADE and "cost" in trigger_detail:
             timeline.volume += abs(trigger_detail["cost"])
 
+        # Derive direction from impact
+        if impact > 0:
+            direction = FlapDirection.STABILISE
+        elif impact < 0:
+            direction = FlapDirection.DESTABILISE
+        else:
+            direction = FlapDirection.NEUTRAL
+
         self._flap_counter += 1
         flap = WingFlap(
             flap_id=f"flp_{self._flap_counter:06d}",
@@ -90,6 +122,7 @@ class ButterflyEngine:
             stability_impact=impact,
             pre_stability=pre_stability,
             post_stability=post_stability,
+            direction=direction,
             trigger_detail=trigger_detail,
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
@@ -112,6 +145,17 @@ class ButterflyEngine:
         """Founder's Yield = stability × volume × 0.005."""
         timeline = self._get_or_create_timeline(theatre_id)
         return timeline.stability * timeline.volume * 0.005
+
+    def compute_fork_divergence(
+        self, anchor_theatre_id: str, fork_theatre_id: str
+    ) -> float:
+        """Compute |anchor.stability - fork.stability| as divergence metric.
+
+        Returns 0.0 if either theatre has no recorded flaps.
+        """
+        anchor = self._get_or_create_timeline(anchor_theatre_id)
+        fork = self._get_or_create_timeline(fork_theatre_id)
+        return abs(anchor.stability - fork.stability)
 
     def _get_or_create_timeline(self, theatre_id: str) -> TimelineState:
         """Get existing timeline or create default."""

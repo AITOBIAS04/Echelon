@@ -33,6 +33,7 @@ class ResolutionTrigger(str, Enum):
     PARTICIPATION_THRESHOLD = "participation_threshold"
     CLAIM_VERDICT = "claim_verdict"
     TIME_WINDOW_CLOSED = "time_window_closed"
+    STOP_CONDITION_MET = "stop_condition_met"
 
     def __str__(self) -> str:
         return self.value
@@ -74,6 +75,11 @@ class ResolutionEngine:
         inquiry_class: str,
         evidence_state: dict,
         theatre_config: dict,
+        stop_condition: str | None = None,
+        stop_config: dict | None = None,
+        claim_graph: "ClaimGraph | None" = None,
+        evidence_envelope: "EvidenceEnvelope | None" = None,
+        time_remaining: float | None = None,
     ) -> Tuple[bool, ResolutionTrigger]:
         """Evaluate whether a market is ready for resolution.
 
@@ -85,12 +91,44 @@ class ResolutionEngine:
                 criteria_evaluated, criteria_total, participation_count,
                 claim_verdict, time_window_expired.
             theatre_config: Theatre configuration dict with thresholds.
+            stop_condition: Optional stop condition type from theatre record.
+            stop_config: Optional stop condition config from theatre record.
+            claim_graph: Optional ClaimGraph for stop-condition evaluation.
+            evidence_envelope: Optional EvidenceEnvelope for stop-condition evaluation.
+            time_remaining: Optional seconds remaining for time-based stop conditions.
 
         Returns:
             (ready, trigger_reason) tuple.
         """
         ic = inquiry_class.upper().strip()
         time_expired = evidence_state.get("time_window_expired", False)
+
+        # Stop-condition evaluation — scoped to INVESTIGATIVE only.
+        # Other inquiry classes ignore stop_condition/stop_config entirely.
+        if stop_condition is not None and ic == "INVESTIGATIVE":
+            # Object-graph path (unit/advanced use with full investigation runtime)
+            if claim_graph is not None and evidence_envelope is not None:
+                from backend.investigation.stop_conditions import InvestigationStopConditionEvaluator
+                evaluator = InvestigationStopConditionEvaluator()
+                sc_ready, _ = evaluator.evaluate(
+                    stop_condition=stop_condition,
+                    stop_config=stop_config or {},
+                    claim_graph=claim_graph,
+                    evidence_envelope=evidence_envelope,
+                    time_remaining=time_remaining if time_remaining is not None else -1.0,
+                )
+                if sc_ready:
+                    return True, ResolutionTrigger.STOP_CONDITION_MET
+            else:
+                # Scalar path (production settle flows using evidence_state dict)
+                sc_ready = ResolutionEngine._evaluate_stop_condition_scalar(
+                    stop_condition=stop_condition,
+                    stop_config=stop_config or {},
+                    evidence_state=evidence_state,
+                    time_remaining=time_remaining,
+                )
+                if sc_ready:
+                    return True, ResolutionTrigger.STOP_CONDITION_MET
 
         if ic == "COUNTERFACTUAL":
             # Simulation terminal state or evidence threshold
@@ -150,6 +188,66 @@ class ResolutionEngine:
             if time_expired:
                 return True, ResolutionTrigger.TIME_WINDOW_CLOSED
             return False, ResolutionTrigger.TIME_WINDOW_CLOSED
+
+    @staticmethod
+    def _evaluate_stop_condition_scalar(
+        stop_condition: str,
+        stop_config: dict,
+        evidence_state: dict,
+        time_remaining: float | None,
+    ) -> bool:
+        """Evaluate stop-condition readiness using scalar evidence_state fields.
+
+        This is the production path — no ClaimGraph/EvidenceEnvelope required.
+        Returns True if the stop condition is satisfied, False otherwise.
+        Invalid/unknown stop_condition values fail safely (return False).
+        """
+        sc = stop_condition.upper().strip()
+
+        if sc == "OUTCOME_RESOLUTION":
+            if evidence_state.get("time_window_expired", False):
+                return True
+            if time_remaining is not None and time_remaining <= 0:
+                return True
+            return False
+
+        if sc == "EVIDENCE_THRESHOLD":
+            min_supported = stop_config.get("min_supported_claims", 1)
+            min_score = stop_config.get("min_corroboration_score", 0.0)
+            supported = evidence_state.get("supported_claims", 0)
+            score = evidence_state.get("corroboration_score", 0.0)
+            return supported >= min_supported and score >= min_score
+
+        if sc == "SPONSOR_DEFINED":
+            from datetime import datetime, timezone
+            milestone_str = stop_config.get("milestone_timestamp")
+            if milestone_str is None:
+                return False
+            try:
+                milestone = datetime.fromisoformat(
+                    str(milestone_str).replace("Z", "+00:00")
+                )
+                if milestone.tzinfo is None:
+                    milestone = milestone.replace(tzinfo=timezone.utc)
+            except (ValueError, TypeError):
+                return False
+            # Allow deterministic test override via evidence_state
+            current_time_str = evidence_state.get("current_time")
+            if current_time_str is not None:
+                try:
+                    now = datetime.fromisoformat(
+                        str(current_time_str).replace("Z", "+00:00")
+                    )
+                    if now.tzinfo is None:
+                        now = now.replace(tzinfo=timezone.utc)
+                except (ValueError, TypeError):
+                    now = datetime.now(timezone.utc)
+            else:
+                now = datetime.now(timezone.utc)
+            return now >= milestone
+
+        # Unknown stop condition — fail safely
+        return False
 
     @staticmethod
     def settle(

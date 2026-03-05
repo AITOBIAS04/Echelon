@@ -13,7 +13,7 @@ class TestResolutionTriggerEnum:
     """ResolutionTrigger enum has exactly 6 values."""
 
     def test_enum_values(self):
-        assert len(ResolutionTrigger) == 6
+        assert len(ResolutionTrigger) == 7
         assert ResolutionTrigger.SIMULATION_TERMINAL.value == "simulation_terminal"
         assert ResolutionTrigger.EVIDENCE_THRESHOLD_MET.value == "evidence_threshold_met"
         assert ResolutionTrigger.CRITERIA_COMPLETE.value == "criteria_complete"

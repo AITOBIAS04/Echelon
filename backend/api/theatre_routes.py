@@ -120,6 +120,8 @@ async def create_theatre(
         state="DRAFT",
         construct_id=body.construct_id,
         inquiry_class=body.inquiry_class,
+        stop_condition=body.stop_condition,
+        stop_config=body.stop_config,
     )
     db.add(theatre)
 
@@ -139,13 +141,18 @@ async def create_theatre(
     await db.commit()
     await db.refresh(theatre)
 
-    return {
+    response = {
         "id": theatre.id,
         "state": theatre.state,
         "template_id": theatre.template_id,
         "inquiry_class": theatre.inquiry_class or "COUNTERFACTUAL",
         "created_at": theatre.created_at,
     }
+    if theatre.stop_condition is not None:
+        response["stop_condition"] = theatre.stop_condition
+    if theatre.stop_config is not None:
+        response["stop_config"] = theatre.stop_config
+    return response
 
 
 @router.post("/{theatre_id}/commit", status_code=status.HTTP_200_OK)
@@ -174,18 +181,31 @@ async def commit_theatre(
     version_pins = template_json.get("version_pins", {})
     dataset_hashes = template_json.get("dataset_hashes", {})
 
-    # Compute commitment hash
+    # Build stop fields payload for commitment hash inclusion
+    stop_fields = {}
+    if theatre.stop_condition is not None:
+        stop_fields["stop_condition"] = theatre.stop_condition
+    if theatre.stop_config is not None:
+        stop_fields["stop_config"] = theatre.stop_config
+
+    # Compute commitment hash (includes stop fields when present)
     if _ENGINE_IMPORTED:
         commitment_hash = CommitmentProtocol.compute_hash(
             template=template_json,
             version_pins=version_pins,
             dataset_hashes=dataset_hashes,
         )
+        # Extend with stop fields if present
+        if stop_fields:
+            import hashlib
+            extended_payload = commitment_hash + json.dumps(stop_fields, sort_keys=True)
+            commitment_hash = hashlib.sha256(extended_payload.encode()).hexdigest()
     else:
         # Fallback: simple hash
         import hashlib
+        hash_payload = {**template_json, **stop_fields}
         commitment_hash = hashlib.sha256(
-            json.dumps(template_json, sort_keys=True).encode()
+            json.dumps(hash_payload, sort_keys=True).encode()
         ).hexdigest()
 
     now = datetime.utcnow()
@@ -364,6 +384,8 @@ async def settle_theatre(
             inquiry_class=inquiry_class,
             evidence_state=evidence_state,
             theatre_config=theatre_config,
+            stop_condition=theatre.stop_condition,
+            stop_config=theatre.stop_config,
         )
         if not ready:
             raise HTTPException(

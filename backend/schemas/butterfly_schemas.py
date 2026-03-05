@@ -16,16 +16,32 @@ class AgentArchetype(str, Enum):
     DEGEN = "DEGEN"
 
 class WingFlapType(str, Enum):
-    TRADE = "TRADE"              # Agent executed trade
-    SHIELD = "SHIELD"           # User deployed shield
-    SABOTAGE = "SABOTAGE"       # Saboteur attack
-    RIPPLE = "RIPPLE"           # Fork spawned
-    PARADOX = "PARADOX"         # Containment breach
-    FOUNDER_YIELD = "FOUNDER_YIELD"  # Yield payout
+    # --- Original 010b types ---
+    TRADE = "TRADE"
+    SHIELD = "SHIELD"
+    SABOTAGE = "SABOTAGE"
+    RIPPLE = "RIPPLE"
+    PARADOX = "PARADOX"
+    FOUNDER_YIELD = "FOUNDER_YIELD"
+    ENTROPY = "ENTROPY"
+    # --- 016 Coherence Lock additions ---
+    MIRROR_SYNC = "MIRROR_SYNC"
+    MIRROR_TRADE = "MIRROR_TRADE"
+    EVIDENCE = "EVIDENCE"
+    CLAIM = "CLAIM"
+    COUNTER_SIGNAL = "COUNTER_SIGNAL"
+    CORROBORATION = "CORROBORATION"
+    DETONATION = "DETONATION"
+    FORK_SPAWN = "FORK_SPAWN"
+    STOP_CONDITION = "STOP_CONDITION"
+    CERTIFICATE = "CERTIFICATE"
 
 class StabilityDirection(str, Enum):
-    ANCHOR = "ANCHOR"           # Stabilising (positive delta)
-    DESTABILISE = "DESTABILISE" # Destabilising (negative delta)
+    STABILISE = "STABILISE"       # Positive stability delta
+    DESTABILISE = "DESTABILISE"   # Negative stability delta
+    NEUTRAL = "NEUTRAL"           # No stability change
+    # Legacy alias for backwards compatibility
+    ANCHOR = "ANCHOR"
 
 # ============================================
 # WING FLAP (Causality Event)
@@ -47,13 +63,13 @@ class WingFlap(BaseModel):
     flap_type: WingFlapType
     action: str  # Human-readable: "MEGALODON bought 500 YES @ $0.67"
     
-    # Impact
-    stability_delta: float = Field(..., description="Change in stability (-100 to +100)")
+    # Impact (API returns percentage: -100 to +100)
+    stability_delta: float = Field(..., description="Change in stability percentage (-100 to +100)")
     direction: StabilityDirection
     volume_usd: float
-    
-    # Current state after this flap
-    timeline_stability: float = Field(..., ge=0, le=100)
+
+    # Current state after this flap (API returns percentage 0-100)
+    timeline_stability: float = Field(..., ge=0, le=100, description="Stability as percentage (0-100)")
     timeline_price: float = Field(..., ge=0, le=1)
     
     # Ripple info (if this flap spawned a fork)
@@ -85,50 +101,62 @@ class WingFlapFeedResponse(BaseModel):
 # ============================================
 
 class TimelineHealth(BaseModel):
-    """Health status of a single timeline."""
+    """Health status of a single timeline.
+
+    All percentage fields are serialised as 0-100 for the frontend,
+    even though the backend stores 0-1. The API route layer multiplies
+    by 100 before constructing this schema.
+    """
     id: str
     name: str
-    
-    # Core metrics
+
+    # Core metrics (API: 0-100 percentage)
     stability: float = Field(..., ge=0, le=100)
     surface_tension: float = Field(..., ge=0, le=100, description="Decay threshold")
     price_yes: float = Field(..., ge=0, le=1)
     price_no: float = Field(..., ge=0, le=1)
-    
-    # OSINT alignment
+
+    # OSINT alignment (API: 0-100 percentage)
     osint_alignment: float = Field(..., ge=0, le=100, description="How much price matches reality")
     logic_gap: float = Field(..., ge=0, le=1, description="Price vs Reality divergence")
-    
-    # Gravity (importance score)
+
+    # Gravity (importance score, API: 0-100)
     gravity_score: float = Field(..., ge=0, le=100)
-    gravity_factors: dict  # { "volume": 30, "agent_count": 20, "volatility": 25, ... }
-    
+    gravity_factors: dict
+
     # Liquidity
     total_volume_usd: float
     liquidity_depth_usd: float
-    
+
     # Agents
     active_agent_count: int
     dominant_agent_id: Optional[str] = None
     dominant_agent_name: Optional[str] = None
-    
+
     # Founder
     founder_id: Optional[str] = None
     founder_name: Optional[str] = None
-    founder_yield_rate: float = 0  # % yield per stability point
-    
+    founder_yield_rate: float = 0
+
     # Decay
-    decay_rate_per_hour: float = 1.0  # Base 1%, increased during paradox
-    hours_until_reaper: Optional[float] = None  # None if stable
-    
+    decay_rate_per_hour: float = 0.01  # 0-1 scale (1% = 0.01)
+    decay_multiplier: float = 1.0      # Set by ParadoxTask
+    hours_until_reaper: Optional[float] = None
+
     # Paradox
     has_active_paradox: bool = False
     paradox_id: Optional[str] = None
     paradox_detonation_time: Optional[datetime] = None
-    
+
+    # Anchor / Fork (016 Coherence Lock)
+    is_anchor: bool = False
+    anchor_timeline_id: Optional[str] = None
+    fork_divergence: float = 0.0
+    last_sync_at: Optional[datetime] = None
+
     # Connections
-    connected_timeline_ids: List[str] = []  # For paradox extraction
-    parent_timeline_id: Optional[str] = None  # If this is a fork
+    connected_timeline_ids: List[str] = []
+    parent_timeline_id: Optional[str] = None
 
 class TimelineHealthRequest(BaseModel):
     """Request for timeline health data."""

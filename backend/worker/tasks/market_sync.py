@@ -16,27 +16,30 @@ from typing import Optional
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.database.models import Timeline, WingFlap, WingFlapType, Agent, AgentArchetype, User
+from backend.database.models import Timeline, WingFlap, WingFlapType, FlapDirection
 from backend.integrations.polymarket_client import PolymarketClient
-from backend.auth.password import hash_password
+from backend.worker.tasks._system_entity import ensure_system_entities
 
 logger = logging.getLogger('echelon.market_sync')
 
 
 class MarketSyncTask:
-    """Syncs real Polymarket data into Echelon."""
-    
+    """Syncs real Polymarket data into Echelon.
+
+    Call budget: 1 trending + up to MAX_ACTIVE_MARKETS trades = ≤11 calls/tick.
+    At 10s cadence ≈ 66 req/min (within 100/60s Polymarket limit).
+    """
+
+    # Call-budget guardrail: cap active markets to keep within rate limit
+    MAX_ACTIVE_MARKETS = 10
+
     def __init__(self):
         self.client = PolymarketClient()
         self.last_trade_ids: dict[str, str] = {}
-        
+
         # Map Polymarket condition IDs to Echelon timeline IDs
-        # Configure based on your timelines
-        self.market_mapping = {
-            # Example mappings - update with real Polymarket condition IDs
-            # Format: "polymarket_condition_id": "echelon_timeline_id"
-        }
-        
+        self.market_mapping: dict[str, str] = {}
+
         # Auto-discover mode: if no mapping, create timelines from Polymarket
         self.auto_discover = True
     
@@ -47,23 +50,22 @@ class MarketSyncTask:
         Returns a summary string for logging.
         """
         try:
-            # Ensure SYSTEM user and agent exist
-            await self._ensure_system_entities(session)
-            
+            # Ensure SYSTEM user and agent exist (shared helper)
+            await ensure_system_entities(session)
+
             # Get trending markets from Polymarket
             trending = await self.client.get_trending_markets(limit=20)
-            
+
             # Filter out resolved markets (they have winner=True/False in tokens)
             active_markets = []
             for market in trending:
                 tokens = market.get("tokens", [])
-                # Skip if any token has winner set (market is resolved)
                 is_resolved = any(t.get("winner") is not None for t in tokens)
                 if not is_resolved and market.get("active", True):
                     active_markets.append(market)
-            
-            # Limit to top 10 active markets
-            active_markets = active_markets[:10]
+
+            # Call-budget guardrail: cap active markets
+            active_markets = active_markets[:self.MAX_ACTIVE_MARKETS]
             
             prices_updated = 0
             trades_synced = 0
@@ -93,43 +95,6 @@ class MarketSyncTask:
         except Exception as e:
             logger.error(f"Polymarket sync error: {e}")
             return f"Sync failed: {str(e)[:50]}"
-    
-    async def _ensure_system_entities(self, session: AsyncSession):
-        """Ensure SYSTEM user and agent exist for system-generated events."""
-        # Check for SYSTEM user
-        system_user_result = await session.execute(
-            select(User).where(User.id == "SYSTEM")
-        )
-        system_user = system_user_result.scalar_one_or_none()
-        
-        if not system_user:
-            system_user = User(
-                id="SYSTEM",
-                username="SYSTEM",
-                email="system@echelon.io",
-                password_hash=hash_password("system"),
-                tier="system",
-            )
-            session.add(system_user)
-            await session.flush()
-        
-        # Check for SYSTEM agent
-        system_agent_result = await session.execute(
-            select(Agent).where(Agent.id == "SYSTEM")
-        )
-        system_agent = system_agent_result.scalar_one_or_none()
-        
-        if not system_agent:
-            system_agent = Agent(
-                id="SYSTEM",
-                name="SYSTEM",
-                archetype=AgentArchetype.DEGEN,
-                owner_id="SYSTEM",
-                wallet_address="0x0000000000000000000000000000000000000000",
-                is_alive=True,
-            )
-            session.add(system_agent)
-            await session.flush()
     
     async def _get_or_create_timeline(
         self,
@@ -182,17 +147,18 @@ class MarketSyncTask:
             name=question[:100],
             narrative=question,
             keywords=self._extract_keywords(question),
-            stability=75.0,  # Start stable
-            surface_tension=70.0,
+            stability=0.75,        # 0-1 scale: start stable
+            surface_tension=0.70,  # 0-1 scale
             price_yes=yes_price,
             price_no=1.0 - yes_price,
-            osint_alignment=50.0,
+            osint_alignment=0.50,  # 0-1 scale
             logic_gap=0.0,
-            gravity_score=50.0,
+            gravity_score=0.50,    # 0-1 scale
             total_volume_usd=float(market.get("volume_24hr", 0) or 0),
             liquidity_depth_usd=float(market.get("liquidity", 0) or 0),
             active_agent_count=0,
-            decay_rate_per_hour=1.0,
+            decay_rate_per_hour=0.01,  # 0-1 scale: 1% per hour
+            is_anchor=True,            # Polymarket = anchor reality
             is_active=True,
         )
         session.add(timeline)
@@ -321,11 +287,19 @@ class MarketSyncTask:
         
         # Update volume
         volume_24h = float(market.get("volume_24hr", 0) or 0)
+        sync_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
         if volume_24h > timeline.total_volume_usd:
             await session.execute(
                 update(Timeline)
                 .where(Timeline.id == timeline_id)
-                .values(total_volume_usd=volume_24h)
+                .values(total_volume_usd=volume_24h, last_sync_at=sync_timestamp)
+            )
+        else:
+            # Record successful sync even when volume and price are unchanged.
+            await session.execute(
+                update(Timeline)
+                .where(Timeline.id == timeline_id)
+                .values(last_sync_at=sync_timestamp)
             )
         
         return (price_updated, new_trades)
@@ -336,51 +310,53 @@ class MarketSyncTask:
         timeline: Timeline,
         trade: dict,
     ):
-        """Create a wing flap from a Polymarket trade."""
+        """Create a MIRROR_TRADE wing flap from a Polymarket trade."""
         side = trade.get("side", "BUY")
         outcome = trade.get("outcome", "Yes")
         price = float(trade.get("price", 0.5))
         size = float(trade.get("size", 1))
-        
+
         # Determine if this is YES or NO
         is_yes = (outcome == "Yes" and side == "BUY") or (outcome == "No" and side == "SELL")
-        
+
         # Volume in USD
         volume_usd = size * price
-        
-        # Stability impact
-        stability_delta = min(volume_usd / 10000, 5.0)
+
+        # Stability impact (0-1 scale: cap at 0.05 per trade)
+        stability_delta = min(volume_usd / 10000, 0.05)
         if not is_yes:
             stability_delta = -stability_delta
-        
-        # Calculate new stability
-        new_stability = max(0, min(100, timeline.stability + stability_delta))
-        
-        action_text = f"Polymarket: {side} {outcome} @ ${price:.2f}"
-        
-        # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
+
+        # Calculate new stability (0-1 clamped)
+        new_stability = max(0.0, min(1.0, timeline.stability + stability_delta))
+
+        action_text = f"Polymarket mirror: {side} {outcome} @ ${price:.2f}"
+
         flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
-        
+
         flap_id = f"PM_{timeline.id}_{uuid.uuid4().hex[:8]}"
         flap = WingFlap(
             id=flap_id,
             timeline_id=timeline.id,
             agent_id="SYSTEM",
-            flap_type=WingFlapType.TRADE,
+            flap_type=WingFlapType.MIRROR_TRADE,
             action=action_text,
             stability_delta=stability_delta,
-            direction="ANCHOR" if stability_delta > 0 else "DESTABILISE",
+            direction=(
+                FlapDirection.STABILISE.value if stability_delta > 0
+                else FlapDirection.DESTABILISE.value if stability_delta < 0
+                else FlapDirection.NEUTRAL.value
+            ),
             volume_usd=volume_usd,
             timeline_stability=new_stability,
             timeline_price=price,
             timestamp=flap_timestamp,
         )
         session.add(flap)
-        
-        # Update timeline stability
+
+        # Update timeline stability + last_sync_at
         await session.execute(
             update(Timeline)
             .where(Timeline.id == timeline.id)
-            .values(stability=new_stability)
+            .values(stability=new_stability, last_sync_at=flap_timestamp)
         )
-

@@ -93,7 +93,7 @@ The canonical architecture document is `Echelon_System_Bible_v13.md` (in Obsidia
 | 032 | Observer E2E Integration | — | Wired Community Oracle to Theatre, real calibration certificate | — |
 | 033 | Two-Rail Product Theatres | — | Deterministic scoring for Product Theatre templates | — |
 
-**Test baseline (post 014b):** 932 passed (full suite), 4 skipped, 13 pre-existing collection errors (same node IDs, environment-specific). MCP suite: 102 passed (33 new from 013 Gate C). 4 March 2026.
+**Test baseline (post 015):** ≥942 passed (full suite), 4 skipped, 13 pre-existing collection errors (same node IDs, environment-specific). MCP suite: 102 passed (33 new from 013 Gate C). 4 March 2026.
 
 ---
 
@@ -146,28 +146,34 @@ Canonical inquiry-class taxonomy (Counterfactual, Investigative, Inspection, Sur
 
 Bridge the T0 genome YAML spec to the production agent runtime. Extended `AgentGenome` with structured sub-models (TierProfile, DecisionPolicy, ParadoxBehaviour, InquiryClassAffinity, SuccessMetrics). YAML loader (`genome_loader.py`) with `load_genome()`, `load_genome_pack()`, `compute_commitment_hash()`. Wired into `spawn_agents()` with deterministic variant selection and factory fallback. PyYAML dependency added. No global state mutation. Validator CI integration via pytest wrapper.
 
+### Cycle-015: WorldMonitor Live Deployment + First Non-WM Collector ✓
+
+**Depends on:** Cycle-011 (WM pipeline), Cycle-014 (bounded inquiries need real evidence)
+**Sprints:** 2 | **Tests:** ≥942 (10+ new from live WM tests + Companies House collector)
+
+Cloned WM fork, deployed locally, flipped `@pytest.mark.live_wm` to enabled, verified mock-to-live transition. Added Companies House API as first non-WM collector (free, no auth, UK jurisdiction, settlement-eligible). Registry bumped to v0.4.0-wm-ch (4 sources). Breaks the single-source corroboration limitation: WM + Companies House produces `corroboration_minimum_met: true` for UK corporate Theatres.
+
 ---
 
 ## Active Cycle
 
-### Cycle-015: WorldMonitor Live Deployment + First Non-WM Collector
+### Cycle-014c: Investigation Toolset Implementation
 
-**Depends on:** Cycle-011 (WM pipeline), Cycle-014 (bounded inquiries need real evidence)
-**Context file:** `grimoires/loa/context/echelon_cycle_015.md`
-**Sprints:** 2
+**Depends on:** Cycle-014 (bounded inquiry lifecycle), Cycle-013 (agent runtime), Cycle-010a (LMSR)
+**Context file:** `grimoires/loa/context/echelon_cycle_014c.md`
+**Design input:** `echelon core arch/implement/Echelon_Investigation_Toolset_Design_Note_v1.md` (v1.3.0)
+**Sprints:** 3 | **Expected tests:** ≥970 (38+ new)
 
-Clone the WM fork, deploy locally, flip `@pytest.mark.live_wm` to enabled, verify mock-to-live transition. Then add one non-WM collector — Companies House API (free, no auth, UK jurisdiction, already in registry, settlement-eligible). Breaks the single-source corroboration limitation: WM + Companies House produces `corroboration_minimum_met: true` for UK corporate Theatres.
+Runtime models, services, and hashing infrastructure for the 8-tool investigation toolset: Evidence Envelope (append-only, provenance classes, Merkle hashing), Claim Graph (FACT/CAUSAL/ATTRIBUTION claims, Merkle root), investigation counter-signals (11-class taxonomy separate from pipeline counter-signals), Commitment Monitor (drift detection), Signal Scanner (DeltaBrief output, domain filters), Entity Resolver (multi-source profiles), Investigation Certificate extension (30+ fields, routing logic), and stop condition wiring (outcome/evidence threshold/sponsor-defined). New `backend/investigation/` package. All tools use mock/stub backends — does NOT depend on 015 live collectors.
 
 ### Cycle-016: Results Surface
 
-**Depends on:** Cycles 012–015
+**Depends on:** Cycles 012–015 (all complete), Cycle-014c (investigation toolset)
+**Context file:** `grimoires/loa/context/echelon_cycle_016.md`
+**Design input:** `Echelon_Butterfly_Entropy_Coherence_Review_v1.md` (Sprint 1 pre-work — engine unification, taxonomy extension, anchor/fork model)
+**Sprints:** 5 | **Expected tests:** ≥1060 (50+ new across frontend + backend)
 
-Full platform UI. By this point: live markets with agents, real OSINT evidence, bounded inquiries producing RLMF data, certificates generated continuously. The results surface shows: Theatres, markets, evidence, convergence alerts, Logic Gap status, certificates, agent P&L, audit trails.
-
-**Design references:**
-- **kree8.studio** (Kree8 by Sprrrint) — premium SaaS/tech UI design agency. Use as primary visual language reference for the Results Surface. Dark, polished, modern aesthetic suited to data-dense professional tooling.
-- **Spatial Intelligence "God mode"** — globe view with geographic convergence zones, Logic Gap heat maps, and live market prices overlaid on geographic data. Google Photorealistic 3D Tiles as a potential rendering layer (paid API, usage-based pricing).
-- **Bounded Inquiry Console** (echelon-inquiry-console.pages.dev) — existing lightweight surface. Evaluate whether upgrading this with live market state from 010a/b should be an earlier deliverable (pre-016) to make the thesis visible sooner.
+Full frontend reconciliation + new investigation views. Sprint 1 pre-work resolves Butterfly/Entropy engine coherence gaps (stability scale 0–1 unification, WingFlap taxonomy extension with MIRROR_SYNC/EVIDENCE/CLAIM/COUNTER_SIGNAL types, anchor/fork data model, inquiry-aware entropy, creator fee model). The existing frontend is ~70% mock/presentation with only Verification + Theatre pages properly wired. 5 sprints: (1) Engine coherence remediation + mock purge — wire Portfolio, Marketplace, Agents, Paradox, Watchlist to real backend APIs, fix TypeScript types, (2) Investigation dashboard + certificate explorer + investigation API routes, (3) OpsBoard rebuild as aggregation dashboard + Analytics foundation from real data + RLMF redesign as export viewer + VRF page → informational, (4) Investigation creation wizard + progress tracker + navigation redesign + signal feed migration, (5) Convergence map + agent analytics + WebSocket integration + responsive polish + final mock purge audit. Retires echelon-inquiry-console app. kree8.studio visual identity applied throughout.
 
 ### Cycle-017: OSINT Registry Expansion
 
@@ -194,15 +200,17 @@ Schema additions: `query_determinism` (settlement gate), `receipt_body_required`
                                                    013 (Agent Runtime)
                                                         │
                                                    014 (Bounded Inquiries)
-                                                        │
-                                        015 (WM Live + Non-WM Collector)
-                                                        │
-                                                   016 (Results Surface)
+                                                      ├───────────────────────┐
+                                        015 (WM Live + Non-WM Collector)    014c (Investigation Toolset)
+                                                      │                       │
+                                                   016 (Results Surface) ◄────┘
                                                         │
                                                    017 (Registry Expansion)
 ```
 
-**Key sequencing decision:** 013 (agents) and 014 (bounded inquiries) are separate cycles. Agents must be proven trading correctly in a controlled market before opening bounded inquiry markets. Combining them risks shipping both half-baked.
+**Key sequencing decisions:**
+- 013 (agents) and 014 (bounded inquiries) are separate cycles. Agents must be proven trading correctly in a controlled market before opening bounded inquiry markets. Combining them risks shipping both half-baked.
+- 014c (investigation toolset) and 015 (live collectors) run in parallel — 014c uses mock backends and does not depend on live collectors. Both feed into 016 (results surface).
 
 ---
 

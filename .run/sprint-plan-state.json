@@ -1,0 +1,30 @@
+{
+  "plan_id": "plan-20260305-014c",
+  "branch": "feature/cycle-014c-investigation-toolset",
+  "state": "JACKED_OUT",
+  "timestamps": {
+    "started": "2026-03-05T00:30:00Z",
+    "last_activity": "2026-03-05T04:00:00Z"
+  },
+  "sprints": {
+    "total": 3,
+    "completed": 3,
+    "current": null,
+    "list": [
+      {"id": "sprint-1", "status": "completed", "cycles": 1},
+      {"id": "sprint-2", "status": "completed", "cycles": 1},
+      {"id": "sprint-3", "status": "completed", "cycles": 1}
+    ]
+  },
+  "options": {
+    "from": 1,
+    "to": 3,
+    "max_cycles": 20,
+    "timeout_hours": 8
+  },
+  "metrics": {
+    "total_cycles": 3,
+    "total_files_changed": 26,
+    "total_findings_fixed": 0
+  }
+}

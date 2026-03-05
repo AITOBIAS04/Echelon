@@ -435,11 +435,45 @@
           "tasks": 7
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-014c",
+      "label": "Investigation Toolset Implementation",
+      "status": "archived",
+      "created_at": "2026-03-05T00:00:00Z",
+      "archived": "2026-03-05T04:30:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-05-investigation-toolset-complete",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 33,
+          "label": "Evidence Envelope + Claim Graph (Core Data Layer)",
+          "status": "completed",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 34,
+          "label": "Counter-Signals + Monitor + Scanner + Resolver + Checker",
+          "status": "completed",
+          "tasks": 6
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 35,
+          "label": "Certificate Extension + Stop Conditions + E2E",
+          "status": "completed",
+          "tasks": 6
+        }
+      ]
     }
   ],
   "active_cycle": null,
   "active_bugfix": null,
-  "global_sprint_counter": 32,
+  "global_sprint_counter": 35,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

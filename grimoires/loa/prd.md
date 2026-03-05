@@ -1,143 +1,266 @@
-# PRD — Cycle-015: WorldMonitor Live Deployment + First Non-WM Collector
+# PRD — Cycle-016: Results Surface
 
-**Cycle:** cycle-015
-**Date:** 4 March 2026
-**Predecessor:** cycle-014 (Bounded Inquiry Markets) + cycle-014b (Genome Runtime Integration)
-**Sprints:** 2
-**Baseline:** 932 passed (full suite), 4 skipped, 13 pre-existing collection errors
+**Cycle:** cycle-016
+**Date:** 5 March 2026
+**Predecessor:** cycle-014c (Investigation Toolset), cycle-015 (Live Collectors), cycle-013 (Agent Runtime), cycle-012 (Sponsored Theatres), cycle-010a (LMSR)
+**Sprints:** 6 total (0–5); Sprint-0 complete, Sprints 1–5 ahead
+**Design input:** `echelon_cycle_016.md`, `Echelon_Butterfly_Entropy_Coherence_Review_v1.md` (v1.2.1)
+**Baseline:** ≥1009 passed (post-014c), 15 skipped, 13 pre-existing collection errors
 
 ---
 
 ## 1. Problem Statement
 
-Cycle-011 built the full three-stage OSINT pipeline (collection -> corroboration -> scoring) but everything runs against mock fixtures. No live HTTP calls, no real evidence, no independent corroboration.
+Every backend cycle since 010a has shipped runtime models, services, and tests — but the frontend was built as a **presentation mockup** before most backend systems existed. The audit reveals:
 
-Two critical limitations:
+- **Only 2 of 13 routes are properly wired** (Verification + Theatre)
+- **11 routes use hardcoded mock data** or demo stores that never call real APIs
+- **Backend endpoints exist but are ignored** by the frontend (portfolio, paradox, marketplace)
+- **Some frontend components have no backend at all** (OpsBoard, RLMF, VRF, Analytics/Blackbox)
+- **TypeScript types don't match Pydantic schemas** (field names, types, missing fields)
+- **The investigation toolset (014c) has zero frontend representation**
+- **Engine coherence gaps** — three parallel Butterfly/Entropy implementations diverge in stability scale (0–100 vs 0–1), decay constants, and flap type coverage
 
-1. **No live evidence.** The `WorldMonitorCollector` has never been tested against a running WorldMonitor instance. All tests use JSON fixtures from `backend/osint/tests/fixtures/`. The mock-to-live code path has never been formally verified.
+This cycle does three things: (0) lock engine coherence so the backend emits sane values, (1) reconcile the mock frontend with the real backend, and (2) build the new investigation views that 014c enables.
 
-2. **Single-source corroboration trap.** All three WM sources share `independence_upstream_id: "worldmonitor"`. The `CorroborationEngine` deduplicates by upstream ID, so three WM bundles collapse to 1 distinct group. `corroboration_minimum` (default 2) is never met. Every pipeline run produces `corroboration_met: false` and the scoring composite eats a permanent 0.7 penalty factor.
-
-> Sources: echelon_cycle_015.md:10-18, echelon_platform_roadmap.md:153-159
+> Sources: echelon_cycle_016.md:1-22, Echelon_Butterfly_Entropy_Coherence_Review_v1.md:§1-§2
 
 ## 2. Objective
 
-Two deliverables:
+### Sprint-0: Engine Coherence Lock (COMPLETE)
 
-1. **Sprint 1 — WM Live:** Deploy WorldMonitor locally, create live tests gated behind `@pytest.mark.live_wm`, verify that live HTTP responses produce structurally identical output to mock fixtures. Prove the mock-to-live transition is seamless.
+Resolve all coherence gaps identified in `Echelon_Butterfly_Entropy_Coherence_Review_v1.md` so that the backend emits correct 0–1 stability values, canonical flap directions, and consistent decay behaviour before any frontend wiring begins. Gates A–G acceptance criteria defined in the coherence review.
 
-2. **Sprint 2 — Companies House:** Port the existing Companies House collector from `osint_pipeline/` to `backend/osint/`, add it to the runtime registry with a distinct `independence_upstream_id: "uk_companies_house_backend"`, and verify that WM + Companies House produces `corroboration_minimum_met: true`. The 0.7 penalty lifts to 1.0 for UK corporate Theatres.
+### Sprints 1–5: Results Surface
+
+Build the production frontend — reconcile mock/presentation layer with real backend, wire all existing views to live APIs, build new investigation toolset views, redesign navigation. React 19 + Vite 7 + Tailwind stack preserved; kree8.studio visual identity applied.
 
 ## 3. Success Criteria
 
-1. `WorldMonitorCollector` hits live `/health`, `/api/v1/intelligence/cii`, `/api/v1/market/snapshot`, `/api/v1/maritime/anomaly` endpoints — all produce valid `EvidenceBundle` with correct hash invariants
-2. Mock-to-live parity: same Python types, same field set on `EvidenceBundle`, same hash computation method, same receipt structure
-3. Live tests are **skipped by default** — require `--live-wm` flag or `ECHELON_LIVE_WM=1` env var
-4. Companies House collector implements `BaseCollector` interface with `HTTPTranscriptReceipt`
-5. Runtime registry bumped to `0.4.0-wm-ch` with 4 sources (3 WM + 1 CH)
-6. `CorroborationEngine` produces `corroboration_minimum_met: true` when WM + CH bundles are present (no code changes to engine — just data)
-7. Scoring composite uses 1.0 corroboration factor (not 0.7) when both source groups present
-8. Full pipeline E2E test: collect -> corroborate -> score with both sources -> `p_reality` not penalised
-9. Zero new test failures vs baseline
-10. All new CH mock tests pass by default; live CH tests gated behind `--live-ch` flag
+### SC-0: Engine Coherence Lock (COMPLETE ✓)
 
-## 4. Prerequisites
+| Gate | Description | Status |
+|------|-------------|--------|
+| A | Enum parity: `engines/butterfly.py` and `models.py` WingFlapType enums identical | ✓ |
+| B | 0–1 stability storage everywhere: DB default 0.5, all worker tasks use 0–1 clamps, API boundary via `_as_percent()` | ✓ |
+| C | FlapDirection enum: STABILISE, DESTABILISE, NEUTRAL — all backend writers (worker/tasks + admin_routes) use `FlapDirection.*.value`, no bare string literals | ✓ |
+| D | LogicGapReading dataclass: structured input for EntropyEngine.tick() with backwards compat | ✓ |
+| E | Pattern A decay fix: paradox writes `decay_multiplier` only, entropy applies once | ✓ |
+| F | Fork divergence: `compute_fork_divergence()` method on ButterflyEngine | ✓ |
+| G | Anchor/fork model: `is_anchor`, `anchor_timeline_id`, `fork_divergence` on Timeline | ✓ |
 
-### P0: WorldMonitor Deployment
+### SC-1: Mock Purge + API Wiring
 
-Before Sprint 1 code work begins:
-- WM instance reachable at configured base URL (default `http://localhost:8080`)
-- `GET /health` returns per-domain status (HEALTHY or DEGRADED accepted; UNAVAILABLE = not ready)
-- Setup documentation present at `grimoires/loa/context/WM_LOCAL_SETUP.md` or `docs/`
+1. Portfolio page wired to `/api/v1/user/positions` + `/api/v1/user/portfolio/summary`
+2. Marketplace wired to Polymarket-backed timelines via `/api/v1/timelines/`
+3. Agents page wired to `/api/v1/agents/` with real data (no USE_MOCKS)
+4. Paradox/Breach wired to `/api/v1/paradoxes/active`
+5. Watchlist wired to `/api/v1/user/watchlist`
+6. TypeScript types aligned to backend Pydantic schemas
 
-### P1: Companies House API Key
+### SC-2: Investigation Dashboard + Certificate Explorer
 
-Before Sprint 2 live tests:
-- Free registration at Companies House Developer Hub
-- API key stored in `ECHELON_COMPANIES_HOUSE_API_KEY` env var
-- Mock tests do NOT require the key
+1. `investigation_routes.py` — 11 REST endpoints (list, detail, evidence, claims, counter-signals, drift, certificate, scanner, create, submit evidence, register claim)
+2. Investigation dashboard with tabbed layout (Overview | Evidence | Claims | Signals | Drift)
+3. Evidence Envelope viewer with provenance badges and hash display
+4. Claim Graph viewer with status badges, confidence, evidence refs
+5. Investigation Certificate explorer (30+ fields grouped)
+6. Counter-signal, DeltaBrief, drift, and entity profile panels
 
-## 5. Codebase Grounding
+### SC-3: OpsBoard + Analytics + RLMF
 
-### 5.1 Current State
+1. OpsBoard rebuilt as aggregation dashboard from real endpoints (theatres, paradoxes, investigations, flaps, timeline health)
+2. Analytics page built from real Theatre/market data (agent leaderboard, theatre history, OSINT timeline)
+3. RLMF page redesigned as export viewer
+4. VRF page converted to documentation/roadmap page
 
-| Component | File | Version | State |
-|-----------|------|---------|-------|
-| WM Collector | `backend/osint/collectors/worldmonitor.py` | v0.1.0 | Mock-only. Base URL: `http://localhost:8080` via `WorldMonitorConfig` |
-| BaseCollector | `backend/osint/collectors/base.py` | — | ABC with `_fetch()` template, 2 hash invariant enforcement |
-| Corroboration | `backend/osint/engine/corroboration.py` | — | Groups by `independence_upstream_id`, counts distinct groups vs `corroboration_minimum` |
-| Runtime Registry | `backend/osint/sources.json` | v0.3.2-wm | 3 WM sources, all `independence_upstream_id: "worldmonitor"` |
-| Source Manifest | `backend/osint/source_manifest.py` | — | `build_manifest()` reads registry, flags provisional sources |
-| Reality Provider | `backend/engines/reality_signal.py` | v011.1 | `LiveOSINTRealityProvider` — 4-stage pipeline, 300s staleness |
-| Test Fixtures | `backend/osint/tests/conftest.py` | — | 3 mock response fixtures (CII, Market, Maritime) |
-| CH Collector (legacy) | `osint_pipeline/collectors/companies_house.py` | v0.6.0 | Standalone package, NOT wired to `backend/osint/` |
+### SC-4: Investigation Lifecycle Console + Navigation
 
-### 5.2 Files That Need Creation
+1. Multi-step investigation creation wizard (inquiry → template → domain filters → stop condition → commit)
+2. Investigation progress tracker with stop condition progress
+3. Navigation redesigned: Dashboard, Marketplace, Investigations, Theatres, Analytics, Agents, Portfolio, Certificates, RLMF Exports
+4. Signal feed migrated from inquiry console to main app
 
-| File | Purpose |
-|------|---------|
-| `backend/osint/tests/test_worldmonitor_live.py` | Live WM tests (gated `@pytest.mark.live_wm`) |
-| `backend/osint/tests/test_mock_live_parity.py` | Formal parity verification (gated `@pytest.mark.live_wm`) |
-| `backend/osint/collectors/companies_house.py` | CH collector implementing `BaseCollector` |
-| `backend/osint/tests/test_companies_house.py` | CH mock + live tests |
-| `backend/osint/tests/test_corroboration_with_ch.py` | Corroboration engine with multi-source verification |
-| `backend/osint/tests/test_e2e_corroboration.py` | Full pipeline E2E with WM + CH |
-| `backend/osint/tests/fixtures/ch_company_profile.json` | Mock CH API response |
+### SC-5: Convergence Map + Agent Analytics + WebSocket + Polish
 
-### 5.3 Files That Need Modification
+1. 2D convergence map (1° × 1° cells, grey→amber→red)
+2. Agent performance analytics (trade history, archetype radar, genome viewer)
+3. WebSocket-driven TanStack Query cache invalidation
+4. Responsive layout, loading skeletons, empty states, error states
+5. Zero mock data in production code paths
+
+### SC-6: Test Gate
+
+1. ≥1009 passed (post-014c baseline maintained)
+2. Zero new test failures
+3. 50+ new tests across frontend and backend
+4. Post-016 expected: ≥1060 passed
+
+## 4. Codebase Grounding
+
+### Sprint-0 Files Modified/Created (Engine Coherence Lock)
 
 | File | Change |
 |------|--------|
-| `backend/osint/tests/conftest.py` | Add `live_wm` and `live_ch` pytest markers |
-| `backend/osint/collectors/worldmonitor.py` | Ensure base URL configurable via env var `ECHELON_WM_BASE_URL` |
-| `backend/osint/sources.json` | Add Companies House entry, bump to v0.4.0-wm-ch |
-| `backend/osint/source_manifest.py` | Verify `build_manifest()` picks up CH with `ELIGIBLE` status |
+| `backend/database/models.py` | Extended WingFlapType (10 new), added FlapDirection enum, 0.5 defaults, anchor/fork fields |
+| `backend/alembic/versions/c016_engine_coherence.py` | Migration: enum extension, anchor/fork columns, 0–100→0–1 normalisation, ANCHOR→STABILISE |
+| `backend/worker/tasks/_system_entity.py` | NEW: shared SYSTEM entity helper (eliminates ~30-line boilerplate × 3 files) |
+| `backend/worker/tasks/entropy.py` | Pattern A fix (uses `decay_multiplier`), anchor skip, 0–1 constants, FlapDirection |
+| `backend/worker/tasks/paradox.py` | Writes `decay_multiplier` only, DETONATION flap type, 0–1 thresholds |
+| `backend/worker/tasks/market_sync.py` | MIRROR_TRADE type, `is_anchor=True`, 0–1 scale, MAX_ACTIVE_MARKETS=10, `last_sync_at` on every sync |
+| `backend/worker/tasks/agent_tick.py` | All 5 strategies: 0–1 thresholds/clamps, FlapDirection enum values |
+| `backend/worker/tasks/genesis.py` | 0–1 templates, `is_active`, FORK_SPAWN type, SYSTEM agent, valid WingFlap fields |
+| `backend/worker/tasks/kalshi_sync.py` | 0–1 stability, FlapDirection enum |
+| `backend/engines/butterfly.py` | Enum sync, FlapDirection, auto-direction, `compute_fork_divergence()` |
+| `backend/engines/entropy.py` | LogicGapReading dataclass, backwards-compat `tick()` |
+| `backend/worker/game_loop.py` | Evidence (120s) and divergence (60s) cadence stubs |
+| `backend/schemas/butterfly_schemas.py` | Extended enums, anchor/fork fields, STABILISE/NEUTRAL |
+| `backend/mechanics/butterfly_engine.py` | `_as_percent()` API boundary, direction enums |
+| `backend/engines/tests/test_coherence_016.py` | NEW: 22 tests covering Gates A–G |
+| `backend/api/admin_routes.py` | 0–1 scale, FlapDirection, WingFlapType enums, valid WingFlap fields |
+| `backend/scripts/seed_database.py` | ANCHOR → STABILISE |
 
-## 6. Inquiry Class Interaction
+### Existing Infrastructure (Sprint 1+ Dependencies)
 
-Companies House is `settlement_eligible: true` with `jurisdiction: "GB"`. It naturally serves INVESTIGATIVE and INSPECTION inquiry classes (UK corporate due diligence, company status verification). The inquiry-class affinity is informational — the pipeline collects from all configured sources regardless of inquiry class. What changes is the *weight* assigned during scoring, which is already handled by the existing `oracle_config` mechanism.
+| Component | Location | Relevance |
+|-----------|----------|-----------|
+| Polymarket Client | `backend/integrations/polymarket_client.py` | Market auto-discovery, `get_trending_markets()` |
+| MarketSyncTask | `backend/worker/tasks/market_sync.py` | Creates `TL_PM_*` timelines, syncs prices |
+| Investigation Toolset | `backend/investigation/` | 8 tools, services, 67+ tests |
+| Theatre State Machine | `theatre/engine/state_machine.py` | DRAFT → COMMITTED → ACTIVE → SETTLING → RESOLVED → ARCHIVED |
+| Certificate Pipeline | `backend/services/certificate_pipeline.py` | CalibrationCertificate + InvestigationCertificate |
+| LMSR Market Engine | `backend/market/` | Investigation markets |
+| Agent Runtime | `backend/worker/tasks/agent_tick.py` | 6 archetypes, live at 5s cadence |
+| API Client | `frontend/src/api/client.ts` | Bearer auth, error handling, `localhost:8000` |
 
-## 7. Constraints
+### Frontend–Backend Alignment Audit
 
-- **Local WM only.** Production WM deployment is out of scope. Sprint 1 proves mock-to-live parity against a local instance.
-- **No counter-signal wiring.** All 11 counter-signal classes remain `UNAVAILABLE` with `allow_gap=True`. Needs independent counter-signal sources (future cycle).
-- **No convergence persistence.** In-process logging only for geographic convergence alerts.
-- **Single CH endpoint.** Only `/company/{company_number}` (profile lookup). Additional endpoints (filing-history, officers, PSC, charges, insolvency) deferred to Cycle-017.
-- **No additional non-WM collectors.** Only Companies House in this cycle. SEC EDGAR, UK Gazette, Bank of England follow in 017.
-- **Consumption surface reconciliation deferred.** Intelligence DB says 7 surfaces; research notes reference an 8th `deployability_routing` — reconcile during 017.
+**Working correctly (keep):** Verification (`verification_routes.py`), Theatre (`theatre_routes.py`), API Client
 
-## 8. Sprint Structure
+**Mock frontend, real backend exists (wire up):** Portfolio, Marketplace, Agents, Paradox/Breach, Watchlist
 
-### Sprint 1: WorldMonitor Live Tests
+**Mock frontend, no backend (decide):** OpsBoard → Rebuild as aggregation. RLMF → Redesign as export viewer. VRF → Defer to docs. Analytics → Phase from real data. Exports Console → Stub from pipeline.
 
-**Prerequisite:** P0 (WM deployed locally, /health reachable)
+**No frontend at all (new build):** Investigation Dashboard, Evidence Envelope Viewer, Claim Graph Viewer, Counter-Signal Feed, Signal Scanner/DeltaBrief, Entity Resolver View, Investigation Certificate, Commitment Monitor/Drift, Convergence Map
 
-Tasks:
-1. Add `@pytest.mark.live_wm` marker to conftest
-2. WM base URL env var configuration (`ECHELON_WM_BASE_URL`)
-3. Live WM tests (6 tests: CII collection, market collection, maritime collection, health check, hash invariants, receipt structure)
-4. Mock-to-live parity verification (structural equality of EvidenceBundle, hash computation, receipt fields)
+## 5. Sprint Breakdown
 
-### Sprint 2: Companies House Collector Integration
+### Sprint 0: Engine Coherence Lock ✓ COMPLETE
 
-Tasks:
-1. Port CH collector to `backend/osint/` implementing `BaseCollector`
-2. Update runtime registry to v0.4.0-wm-ch (add CH entry)
-3. Mock fixtures for CH API responses
-4. CH tests (5 mock + 2 live behind `@pytest.mark.live_ch`)
-5. Corroboration engine multi-source verification tests
-6. Source manifest validation (CH picks up as ELIGIBLE)
-7. E2E pipeline test: WM (mock) + CH (mock) -> corroboration_met=true -> scoring factor 1.0
+Pre-work dependency resolved. All Gates A–G pass. 22 new tests. 213 passing (engines+schemas). Zero 0–100 leaks in live runtime paths.
 
-## 9. Regression Target
+### Sprint 1: Mock Purge + Real API Wiring (7 tasks)
 
-**Baseline:** 932 passed, 4 skipped, 13 pre-existing collection errors
-**Gate rule:** >=932 passed. Zero new failures. All new WM live tests skipped by default. All new CH mock tests pass. Existing OSINT pipeline tests unchanged.
+Strip mock data, wire to real backend, fix TypeScript types. No new features — just make existing views truthful.
 
-## 10. What 015 Unlocks
+| Task | Description | Tests |
+|------|-------------|-------|
+| 1.1 | TypeScript type alignment (audit + rewrite all type files) | — |
+| 1.2 | Portfolio page → real API | 1 |
+| 1.3 | Marketplace → Polymarket-backed timelines + trending endpoint | 1 |
+| 1.4 | Agents page → real API + backend enhancement | 1 |
+| 1.5 | Paradox/Breach → real API | 1 |
+| 1.6 | Watchlist → real API | — |
+| 1.7 | Type alignment regression snapshot test | 1 |
 
-- **Real evidence flowing into Theatres** — first time the pipeline processes live HTTP responses, not fixtures
-- **Independent corroboration** — WM + Companies House produces genuine multi-source corroboration for UK corporate Theatres
-- **Settlement-eligible evidence** — Companies House is `settlement_eligible: true`, meaning its evidence can drive resolution
-- **Foundation for 017 (Registry Expansion)** — proves the pattern for adding non-WM collectors. Next candidates: SEC EDGAR, UK Gazette, Bank of England
-- **Confidence in mock fidelity** — formal parity tests prove the mocks accurately represent live behaviour
+**Sprint 1 total:** 5 tests
+
+### Sprint 2: Investigation Dashboard + Certificate Explorer (7 tasks)
+
+| Task | Description | Tests |
+|------|-------------|-------|
+| 2.1 | Investigation API routes (backend, 11 endpoints) | 8 |
+| 2.2 | Investigation dashboard page (tabbed layout) | 1 |
+| 2.3 | Evidence Envelope viewer | 1 |
+| 2.4 | Claim Graph viewer | 1 |
+| 2.5 | Investigation Certificate explorer | 1 |
+| 2.6 | Counter-signal + DeltaBrief + drift + entity panels | 2 |
+| 2.7 | Sprint 2 integration tests | — |
+
+**Sprint 2 total:** 14 tests
+
+### Sprint 3: OpsBoard Rebuild + Analytics + RLMF Redesign (5 tasks)
+
+| Task | Description | Tests |
+|------|-------------|-------|
+| 3.1 | OpsBoard → aggregation dashboard | 1 |
+| 3.2 | Analytics → build from real data | 1 |
+| 3.3 | RLMF → export viewer | 1 |
+| 3.4 | VRF → documentation/roadmap page | — |
+| 3.5 | Sprint 3 mock purge audit | 1 |
+
+**Sprint 3 total:** 4 tests
+
+### Sprint 4: Investigation Lifecycle Console + Navigation (5 tasks)
+
+| Task | Description | Tests |
+|------|-------------|-------|
+| 4.1 | Investigation creation wizard | 1 |
+| 4.2 | Investigation progress tracker | 1 |
+| 4.3 | Navigation redesign | 1 |
+| 4.4 | Signal feed migration | 1 |
+| 4.5 | Sprint 4 integration tests | — |
+
+**Sprint 4 total:** 4 tests
+
+### Sprint 5: Convergence Map + Agent Analytics + WebSocket + Polish (5 tasks)
+
+| Task | Description | Tests |
+|------|-------------|-------|
+| 5.1 | Convergence map (2D grid) | 1 |
+| 5.2 | Agent performance analytics | 1 |
+| 5.3 | WebSocket cache invalidation | 1 |
+| 5.4 | Responsive layout + loading states + polish | — |
+| 5.5 | E2E test + final mock purge audit | 2 |
+
+**Sprint 5 total:** 5 tests
+
+**Grand total:** 22 (Sprint-0) + 32 (Sprints 1–5) = 54 new tests. Post-016 expected: ≥1060 passed.
+
+## 6. Non-Functional Requirements
+
+### NFR-1: Scale Coherence
+All stability values stored on 0.0–1.0 scale internally. API boundary converts to 0–100 via `_as_percent()` for frontend consumption. No mixed-scale values anywhere in the pipeline.
+
+### NFR-2: Design Language
+kree8.studio visual identity: `terminal-bg: #030305`, `terminal-card: #10141A`, `glass-border: rgba(255,255,255,0.1)`. JetBrains Mono for data, Inter for prose. Signal colours: action `#3B82F6`, success `#10B981`, risk `#F59E0B`, danger `#EF4444`. New investigation tokens for provenance badges, claim status badges, routing hints, anchoring state.
+
+### NFR-3: Zero Mock Data
+Post-016, zero mock data constants remain in production frontend code paths. Every component renders from real API data or displays an honest empty/loading state.
+
+### NFR-4: Backward Compatibility
+Sprint-0 engine changes preserve all existing test contracts. Sprint 1+ frontend changes do not modify backend API contracts — only consume them correctly.
+
+## 7. Out of Scope
+
+- 3D globe / Spatial Intelligence "God mode" (deferred — cost and complexity)
+- Real Chainlink VRF integration (page becomes informational)
+- Real-time collaborative investigation (multi-user editing)
+- Mobile native app (responsive web only)
+- Chain anchoring UI beyond status display
+- Agent breeding/genealogy UI (genome is read-only display)
+- $ECHELON token/wallet integration
+- Social trading / leaderboard features
+- Paid OSINT source activation from UI
+- Analytics features requiring new backend endpoints (heatmap, correlation matrix, depth chart) — show placeholders
+- `mechanics/butterfly_engine.py` full rewrite (deferred; `_as_percent()` boundary sufficient for now)
+
+## 8. Dependencies
+
+| Dependency | Status | Impact |
+|------------|--------|--------|
+| Cycle-014c (Investigation Toolset) | ✓ Complete | 8 tools, services, models for investigation views |
+| Cycle-015 (Live Collectors) | ✓ Complete | WM + Companies House adapters for scanner/resolver |
+| Cycle-013 (Agent Runtime) | ✓ Complete | 6 archetypes in live game loop |
+| Cycle-012 (Sponsored Theatres) | ✓ Complete | Theatre creation/commitment lifecycle |
+| Cycle-010a (LMSR) | ✓ Complete | Market engine for all timelines |
+| Coherence Review v1.2.1 | ✓ Resolved (Sprint-0) | Gates A–G locked |
+| Polymarket Client | ✓ Exists | Auto-discovery, sync, trending |
+
+## 9. What This Unlocks
+
+- **Echelon's thesis becomes visible** — markets, evidence, claims, certificates, agents, all rendered from real data
+- **Mock presentation layer retired** — every view shows actual backend state
+- **Investigation workflow is end-to-end** — create inquiry → collect evidence → structure claims → monitor counter-signals → resolve → inspect certificate
+- **Foundation for demos** — the Results Surface is what you show to Soju, investors, early adopters
+- **Inquiry console retired** — separate Cloudflare app superseded

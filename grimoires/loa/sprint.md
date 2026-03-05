@@ -1,192 +1,530 @@
-# Sprint Plan — Cycle-015: WorldMonitor Live Deployment + First Non-WM Collector
+# Sprint Plan — Cycle-016: Results Surface
 
-**Cycle:** cycle-015
-**Date:** 4 March 2026
+**Cycle:** cycle-016
+**Date:** 5 March 2026
 **PRD:** grimoires/loa/prd.md
 **SDD:** grimoires/loa/sdd.md
-**Sprints:** 2
-**Baseline:** 932 passed, 4 skipped, 13 pre-existing collection errors
+**Sprints:** 6 (Sprint-0 complete, Sprints 1–5 ahead)
+**Baseline:** ≥1009 passed (post-014c), 15 skipped, 13 pre-existing collection errors
 
 ---
 
-## Sprint 1 — WorldMonitor Live Tests ✅
+## Sprint 0: Engine Coherence Lock ✓ COMPLETE
 
-**Global ID:** 31
-**Tasks:** 4
-**Focus:** Env var config, pytest markers, live tests, mock-to-live parity verification
-**Prerequisite:** P0 — WM instance reachable at configured base URL, `GET /health` returns not UNAVAILABLE
+Pre-work dependency from `Echelon_Butterfly_Entropy_Coherence_Review_v1.md`. All 7 acceptance gates (A–G) pass. No 0–100 scale leaks remain in live runtime paths.
 
-### Task 1: Pytest Marker Registration + Skip Logic
+### Task 0.1: Model Layer + Migration ✓
 
-**Files:** `backend/osint/tests/conftest.py` (MODIFY)
-**Acceptance:**
-- `pytest_addoption()` adds `--live-wm` and `--live-ch` flags
-- `pytest_configure()` registers `live_wm` and `live_ch` markers
-- `pytest_collection_modifyitems()` skips `live_wm` tests unless `--live-wm` flag or `ECHELON_LIVE_WM=1` env var set
-- Same pattern for `live_ch` / `ECHELON_LIVE_CH`
-- Existing fixtures and conftest content unchanged
-- Running `pytest backend/osint/` without flags: zero new failures, live tests skipped
+**Files modified:**
+- `backend/database/models.py` — WingFlapType (10 new), FlapDirection enum, 0.5 defaults, anchor/fork fields
+- `backend/alembic/versions/c016_engine_coherence.py` — NEW: dialect-safe migration
 
-### Task 2: WM Base URL Env Var Configuration
+**Acceptance Criteria:**
+- [x] 17 WingFlapType values in models.py
+- [x] FlapDirection enum: STABILISE, DESTABILISE, NEUTRAL
+- [x] Timeline defaults: stability=0.5, surface_tension=0.5, osint_alignment=0.5
+- [x] Anchor/fork fields: is_anchor, anchor_timeline_id, fork_divergence, last_sync_at
+- [x] Migration normalises 0–100 → 0–1, migrates ANCHOR → STABILISE
 
-**File:** `backend/osint/collectors/worldmonitor.py` (MODIFY)
-**Acceptance:**
-- `WorldMonitorConfig.__post_init__()` reads `ECHELON_WM_BASE_URL` env var when `base_url` is empty string
-- Priority: constructor param > env var > default (`http://localhost:8080`)
-- Existing tests pass `base_url` explicitly via fixture — zero regressions
-- `WorldMonitorConfig(base_url="http://custom:9090")` uses constructor value, ignores env var
-- `WorldMonitorConfig()` with `ECHELON_WM_BASE_URL=http://remote:8080` uses env var
-- `WorldMonitorConfig()` without env var uses `http://localhost:8080`
+### Task 0.2: Shared SYSTEM Entity ✓
 
-### Task 3: Live WM Tests
+**File created:** `backend/worker/tasks/_system_entity.py`
 
-**File:** `backend/osint/tests/test_worldmonitor_live.py` (NEW)
-**Acceptance:**
-- All 6 tests decorated `@pytest.mark.live_wm`
-- `test_live_health_check`: `GET /health` → HEALTHY or DEGRADED (UNAVAILABLE = fail)
-- `test_live_cii_collection`: POST `/api/v1/intelligence/cii` → valid `EvidenceBundle` with `result.success is True`
-- `test_live_market_collection`: POST `/api/v1/market/snapshot` → valid `EvidenceBundle`
-- `test_live_maritime_collection`: POST `/api/v1/maritime/anomaly` → valid `EvidenceBundle`
-- `test_live_hash_invariants`: `receipt.content_hash == SHA-256(raw_payload)` on live response
-- `test_live_receipt_structure`: `HTTPTranscriptReceipt` fields populated (method, url, content_hash, receipt_hash all non-empty)
-- All tests use `WorldMonitorCollector` with default config (reads `ECHELON_WM_BASE_URL`)
-- Tests skipped by default — require `--live-wm` or `ECHELON_LIVE_WM=1`
+**Acceptance Criteria:**
+- [x] `ensure_system_entities()` returns `(User, Agent)` tuple
+- [x] Creates SYSTEM user + agent if absent
+- [x] Used by entropy.py, paradox.py, market_sync.py
 
-### Task 4: Mock-to-Live Parity Verification
+### Task 0.3: Pattern A Decay Fix ✓
 
-**File:** `backend/osint/tests/test_mock_live_parity.py` (NEW)
-**Acceptance:**
-- All 3 tests decorated `@pytest.mark.live_wm`
-- `test_cii_mock_live_parity`: run CII domain through both mock and live paths, assert structural equality
-- `test_market_mock_live_parity`: same for Market domain
-- `test_maritime_mock_live_parity`: same for Maritime domain
-- Structural equality means: same Python types returned, same field set on `EvidenceBundle`, same receipt type and field set
-- Does NOT assert value equality (live data values differ from mock fixtures)
-- Hash computation method identical (SHA-256 of raw bytes)
-- Tests skipped by default — require `--live-wm` or `ECHELON_LIVE_WM=1`
+**Files modified:**
+- `backend/worker/tasks/paradox.py` — writes `decay_multiplier` only, DETONATION flap type, 0–1 thresholds
+- `backend/worker/tasks/entropy.py` — reads `decay_multiplier`, anchor skip, 0–1 constants, FlapDirection
 
----
+**Acceptance Criteria:**
+- [x] Paradox: writes `decay_multiplier` only, does NOT mutate `decay_rate_per_hour`
+- [x] Entropy: `effective_rate = base_rate × decay_multiplier` (no hardcoded 2.0)
+- [x] Entropy: skips anchor timelines (`Timeline.is_anchor == False` filter)
+- [x] Both use FlapDirection enum values
+- [x] Both use shared SYSTEM entity helper
 
-## Sprint 2 — Companies House Collector Integration ✅
+### Task 0.4: Market Sync + Game Loop ✓
 
-**Global ID:** 32
-**Tasks:** 7
-**Focus:** Port CH collector, update registry, verify corroboration unlock, E2E pipeline
+**Files modified:**
+- `backend/worker/tasks/market_sync.py` — MIRROR_TRADE, is_anchor=True, 0–1 scale, MAX_ACTIVE_MARKETS=10
+- `backend/worker/game_loop.py` — evidence (120s) and divergence (60s) cadence stubs
 
-### Task 1: Port Companies House Collector
+**Acceptance Criteria:**
+- [x] New Polymarket timelines get `is_anchor=True`
+- [x] MIRROR_TRADE flap type for real trades
+- [x] `stability_delta` capped at 0.05 (0–1 scale)
+- [x] `MAX_ACTIVE_MARKETS = 10` call-budget guardrail
+- [x] `last_sync_at` updated on every sync (trade and no-trade)
+- [x] Evidence and divergence stubs in game loop
 
-**File:** `backend/osint/collectors/companies_house.py` (NEW)
-**Acceptance:**
-- `CompaniesHouseCollector` extends `BaseCollector` from `backend/osint/collectors/base.py`
-- Implements `source_id() -> "companies_house_api"`
-- Implements `_fetch(request, theatre_id) -> CollectionResult` — GET `/company/{company_number}` with HTTP Basic auth
-- Implements `health_check() -> HealthStatus` — GET `/company/00000006` as probe
-- Auth: `ECHELON_COMPANIES_HOUSE_API_KEY` env var, HTTP Basic (key as username, blank password)
-- No API key → `CollectionResult(success=False, error="No API key configured")`, does NOT raise
-- Uses stdlib `urllib.request` (same pattern as WM collector)
-- Produces `HTTPTranscriptReceipt` with hash invariants enforced by `BaseCollector.fetch()`
-- Response parsed to `EvidenceBundle` with `NormalisedEvent`, confidence 1.0
-- Profile endpoint only (`/company/{company_number}`) — other endpoints deferred to Cycle-017
+### Task 0.5: Agent Tick — Full 0–1 Conversion ✓
 
-### Task 2: Update Runtime Registry
+**File modified:** `backend/worker/tasks/agent_tick.py`
 
-**File:** `backend/osint/sources.json` (MODIFY)
-**Acceptance:**
-- Version bumped to `0.4.0-wm-ch`
-- Companies House entry added with all required fields (see SDD §3.2)
-- `source_id: "companies_house_api"`
-- `independence_upstream_id: "uk_companies_house_backend"` — distinct from `"worldmonitor"`
-- `settlement_eligible: true`
-- `jurisdiction: "GB"`
-- `world_monitor_domain: null`
-- `collector_status: "active"`
-- Existing 3 WM entries unchanged
-- Total sources: 4
+**Acceptance Criteria:**
+- [x] `_shark_strategy`: osint > 0.5, delta `size / 1_000_000`, clamp `max(0.0, min(1.0, ...))`
+- [x] `_spy_strategy`: delta `uniform(0.01, 0.03)`, clamp `min(1.0, ...)`
+- [x] `_diplomat_strategy`: delta `uniform(0.03, 0.08)`, clamp `min(1.0, ...)`
+- [x] `_saboteur_strategy`: delta `-uniform(0.05, 0.12)`, clamp `max(0.0, ...)`
+- [x] `_whale_strategy`: osint > 0.5, delta `size / 1_000_000`, clamp `max(0.0, min(1.0, ...))`
+- [x] All 5 strategies use `FlapDirection.STABILISE.value` / `.DESTABILISE.value`
 
-### Task 3: Mock Fixtures
+### Task 0.6: Genesis + Kalshi — Full 0–1 Conversion ✓
 
-**File:** `backend/osint/tests/fixtures/ch_company_profile.json` (NEW)
-**Acceptance:**
-- Valid JSON matching Companies House API response schema for company `00000006`
-- Contains: `company_number`, `company_name`, `company_status`, `type`, `date_of_creation`, `registered_office_address`, `sic_codes`
-- Used by mock tests — no API key required
-- Structurally representative of real API response
+**Files modified:**
+- `backend/worker/tasks/genesis.py` — 0–1 templates, `is_active=True`, FORK_SPAWN, SYSTEM agent, valid WingFlap
+- `backend/worker/tasks/kalshi_sync.py` — 0–1 stability, FlapDirection enum, `max(0.0, min(1.0, ...))`
 
-### Task 4: Companies House Tests (Mock + Live)
+**Acceptance Criteria:**
+- [x] Genesis templates: base_stability 0.45–0.82 (not 45–82)
+- [x] Genesis Timeline: surface_tension, osint_alignment, gravity_score all 0–1
+- [x] Genesis: `decay_rate_per_hour=0.01`, `is_active=True` (not `status="ACTIVE"`)
+- [x] Genesis WingFlap: FORK_SPAWN type, `id`, `timestamp`, `agent_id="SYSTEM"`
+- [x] Kalshi: stability delta capped at 0.05, clamp `max(0.0, min(1.0, ...))`
+- [x] Kalshi: `FlapDirection.STABILISE.value` / `.DESTABILISE.value`
 
-**File:** `backend/osint/tests/test_companies_house.py` (NEW)
-**Acceptance:**
-- 5 mock tests (always run):
-  - `test_ch_collection_success`: mock response → valid `EvidenceBundle`, `source_id == "companies_house_api"`
-  - `test_ch_hash_invariants`: `content_hash == SHA-256(raw_payload)` on mock response
-  - `test_ch_receipt_structure`: `HTTPTranscriptReceipt` fields populated (method=GET, url, content_hash)
-  - `test_ch_no_api_key`: no env var → `CollectionResult(success=False)`, no exception raised
-  - `test_ch_404_company`: unknown company number → `success=False`
-- 2 live tests (decorated `@pytest.mark.live_ch`):
-  - `test_live_ch_company_profile`: real API → valid `EvidenceBundle`
-  - `test_live_ch_hash_invariants`: hash invariants on real response
-- Live tests skipped by default — require `--live-ch` or `ECHELON_LIVE_CH=1`
+### Task 0.7: Engine + Schema Layer ✓
 
-### Task 5: Corroboration Engine Multi-Source Verification
+**Files modified:**
+- `backend/engines/butterfly.py` — enum sync, FlapDirection, auto-direction, `compute_fork_divergence()`
+- `backend/engines/entropy.py` — LogicGapReading dataclass, backwards-compat `tick()`
+- `backend/schemas/butterfly_schemas.py` — extended enums, anchor/fork fields, STABILISE/NEUTRAL
+- `backend/mechanics/butterfly_engine.py` — `_as_percent()` API boundary
 
-**File:** `backend/osint/tests/test_corroboration_with_ch.py` (NEW)
-**Acceptance:**
-- `test_wm_only_still_provisional`: 3 WM results → 1 upstream group → `corroboration_met: false`
-- `test_wm_plus_ch_meets_minimum`: 1 WM + 1 CH → 2 upstream groups → `corroboration_met: true`
-- `test_ch_only_insufficient`: 1 CH result alone → 1 group → `corroboration_met: false`
-- `test_corroboration_factor_lifts`: WM + CH → scoring composite uses 1.0 factor (not 0.7)
-- No changes to `backend/osint/engine/corroboration.py` — tests verify existing engine with new data
-- Tests use mock `EvidenceBundle` instances with appropriate `independence_upstream_id` values
+**Acceptance Criteria:**
+- [x] engines/ and models.py WingFlapType enums identical
+- [x] FlapDirection enum in engines/butterfly.py
+- [x] `record_flap()` auto-derives direction from impact sign
+- [x] `compute_fork_divergence()` returns `abs(anchor.stability - fork.stability)`
+- [x] LogicGapReading: `isinstance(reading, str)` backwards compat
+- [x] `_as_percent()` converts 0–1 → 0–100 at API boundary
 
-### Task 6: Source Manifest Update
+### Task 0.8: Coherence Tests ✓
 
-**File:** `backend/osint/source_manifest.py` (MODIFY)
-**Acceptance:**
-- `_get_registry_version()` reads version from loaded registry data instead of returning hardcoded `"0.3.2-wm"`
-- `build()` picks up CH source with `settlement_status: ELIGIBLE`
-- Manifest includes 4 sources total (3 WM + 1 CH)
-- Existing manifest tests pass unchanged
+**File created:** `backend/engines/tests/test_coherence_016.py` — 22 tests
 
-### Task 7: E2E Pipeline Test with Corroboration
+**Acceptance Criteria:**
+- [x] 22 tests covering Gates A–G
+- [x] All pass (213 passed across engines + schemas)
+- [x] Zero new failures (8 pre-existing async heartbeat failures unchanged)
 
-**File:** `backend/osint/tests/test_e2e_corroboration.py` (NEW)
-**Acceptance:**
-- `test_e2e_wm_ch_pipeline`: full pipeline with both WM (mock) + CH (mock) sources
-  - `CollectionRunner.collect()` with oracle config including both source groups
-  - `CorroborationEngine.evaluate()` → `corroboration_minimum_met: true`
-  - `Scorer.compute_composite()` → corroboration factor is 1.0 (not 0.7)
-  - `p_reality` not penalised by corroboration
-- Uses mock responses for both WM and CH — no live API calls
-- Verifies the complete data path: collection → corroboration → scoring
+### Sprint 0 Summary
+
+- **22 new tests** (test_coherence_016.py)
+- **16 files modified/created**
+- **213 passed** (engines + schemas); all new/targeted tests pass. 8 known unrelated async heartbeat failures remain (pre-existing, no pytest-asyncio installed)
+- **Zero 0–100 leaks** in live runtime paths (verified by grep)
+- **Zero bare string directions** in worker/tasks/ and admin_routes (verified by grep)
 
 ---
 
-## File Change Matrix
+## Sprint 1: Mock Purge + Real API Wiring
 
-| File | Action | Sprint | Task |
-|------|--------|--------|------|
-| `backend/osint/tests/conftest.py` | MODIFY | 1 | 1 |
-| `backend/osint/collectors/worldmonitor.py` | MODIFY | 1 | 2 |
-| `backend/osint/tests/test_worldmonitor_live.py` | NEW | 1 | 3 |
-| `backend/osint/tests/test_mock_live_parity.py` | NEW | 1 | 4 |
-| `backend/osint/collectors/companies_house.py` | NEW | 2 | 1 |
-| `backend/osint/sources.json` | MODIFY | 2 | 2 |
-| `backend/osint/tests/fixtures/ch_company_profile.json` | NEW | 2 | 3 |
-| `backend/osint/tests/test_companies_house.py` | NEW | 2 | 4 |
-| `backend/osint/tests/test_corroboration_with_ch.py` | NEW | 2 | 5 |
-| `backend/osint/source_manifest.py` | MODIFY | 2 | 6 |
-| `backend/osint/tests/test_e2e_corroboration.py` | NEW | 2 | 7 |
+Strip mock data, wire to real backend, fix TypeScript types. No new features — just make existing views truthful.
 
-## Gate Rule
+### Task 1.1: TypeScript Type Alignment
 
-**Baseline:** 932 passed, 4 skipped, 13 pre-existing collection errors
-**Gate:** >=932 passed. Zero new failures. All live tests skipped by default.
+**Files:**
+- `frontend/src/types/portfolio.ts` → match `UserPosition`, `PortfolioSummary` from `backend/schemas/user_schemas.py`
+- `frontend/src/types/agents.ts` → match `Agent` DB model from `backend/database/models.py`
+- `frontend/src/types/marketplace.ts` → match Timeline from `backend/schemas/butterfly_schemas.py`
+- `frontend/src/types/breach.ts` → match `Paradox` from `backend/schemas/paradox_schemas.py`
+- New: `frontend/src/types/investigation.ts` — investigation toolset response types
+- New: `frontend/src/types/theatre.ts` — `TheatreResponse`, `TheatreCertificateResponse`, `CommitmentReceiptResponse`
 
-**Post-015 expected:** >=942 passed (932 + 10 new mock tests), 15 skipped (4 pre-existing + 9 live_wm + 2 live_ch)
+**Acceptance Criteria:**
+- [ ] All type files match backend Pydantic schemas (field names, types)
+- [ ] camelCase ↔ snake_case transforms documented in API client
+- [ ] No `any` types in investigation or theatre types
 
-## Sprint Registry
+### Task 1.2: Portfolio Page — Wire to Real API
 
-| Sprint | Local ID | Global ID | Tasks |
-|--------|----------|-----------|-------|
-| Sprint 1 | sprint-1 | 31 | 4 |
-| Sprint 2 | sprint-2 | 32 | 7 |
+**Files:**
+- `frontend/src/hooks/usePortfolio.ts` — TanStack Query calling `/api/v1/user/positions` + `/api/v1/user/portfolio/summary`
+- `frontend/src/pages/PortfolioPage.tsx` — consume real data shape
+- `frontend/src/components/fieldkit/MyPositions.tsx` — update field names
+
+**Acceptance Criteria:**
+- [ ] All `mock*` constants removed
+- [ ] Empty state displayed when no positions
+- [ ] Field mapping: `unrealizedPnL` → `unrealised_pnl_usd`
+
+### Task 1.3: Marketplace Page — Wire to Polymarket-Backed Timelines
+
+**Backend:**
+- Verify `MarketSyncTask.tick()` runs on 10s cadence
+- Add `GET /api/v1/timelines/trending` — timelines sorted by volume
+
+**Frontend:**
+- `frontend/src/api/marketplaceapi.ts` — replace mock generator with `/api/v1/timelines/`
+- `frontend/src/hooks/useMarketplace.ts` — fetch timelines with `TL_PM_*` prefix
+- `frontend/src/pages/MarketplacePage.tsx` — consume Timeline schema
+
+**Acceptance Criteria:**
+- [ ] Marketplace renders from real Polymarket-backed timelines
+- [ ] No hardcoded market data
+- [ ] Trending endpoint returns timelines sorted by volume
+
+### Task 1.4: Agents Page — Wire to Real API
+
+**Frontend:** `frontend/src/hooks/useAgents.ts` — replace 6 hardcoded agents with API calls
+**Backend:** `backend/api/agents_routes.py` — remove `USE_MOCKS=true` default
+
+**Acceptance Criteria:**
+- [ ] Real agent data from DB displayed
+- [ ] Empty state when no agents
+- [ ] Archetype, P&L, win rate, sanity, is_alive fields rendered
+
+### Task 1.5: Paradox/Breach — Wire to Real API
+
+**Files:** `frontend/src/pages/BreachConsolePage.tsx` — replace `useDemoBreaches()` with TanStack Query calling `/api/v1/paradoxes/active`
+
+**Acceptance Criteria:**
+- [ ] No demoStore dependency
+- [ ] Real paradox data rendered
+
+### Task 1.6: Watchlist — Wire to Real API
+
+**Files:** `frontend/src/components/watchlist/` — call `/api/v1/user/watchlist`
+
+**Acceptance Criteria:**
+- [ ] No mock watchlist data
+
+### Task 1.7: Sprint 1 Tests
+
+5 tests:
+1. `usePortfolio.test.ts` — hook calls real endpoint, transforms response correctly
+2. `useMarketplace.test.ts` — hook calls real endpoint, categories match backend
+3. `useAgents.test.ts` — hook calls real endpoint, handles empty list
+4. `BreachConsolePage.test.tsx` — renders real paradox data, no demoStore usage
+5. Type alignment regression: snapshot test all type files against backend OpenAPI spec
+
+**Acceptance Criteria:**
+- [ ] All 5 tests pass
+- [ ] Zero mock data imports in Sprint 1 components
+
+---
+
+## Sprint 2: Investigation Dashboard + Certificate Explorer
+
+### Task 2.1: Investigation API Routes (Backend)
+
+**New files:**
+- `backend/api/investigation_routes.py` — 11 REST endpoints
+- `backend/schemas/investigation.py` — Pydantic request/response models
+- Wire into `backend/main.py`
+
+8 endpoint tests:
+1. `test_list_investigations` — returns list
+2. `test_get_investigation_detail` — returns toolset state
+3. `test_get_evidence` — returns envelope manifest
+4. `test_get_claims` — returns claim graph with status summary
+5. `test_get_counter_signals` — returns counter-signal feed
+6. `test_get_drift` — returns drift events
+7. `test_get_certificate` — returns investigation certificate
+8. `test_create_investigation` — creates and returns investigation
+
+**Acceptance Criteria:**
+- [ ] All 11 endpoints return correct response schemas
+- [ ] All 8 tests pass
+- [ ] Routes delegate to existing `backend/investigation/` services
+
+### Task 2.2: Investigation Dashboard Page
+
+**Files:**
+- `frontend/src/pages/InvestigationPage.tsx`
+- `frontend/src/router.tsx` — add `/investigation` route
+- `frontend/src/hooks/useInvestigation.ts` — TanStack Query hooks
+
+Tabbed layout: Overview | Evidence | Claims | Signals | Drift
+
+**Acceptance Criteria:**
+- [ ] Page renders with real data from investigation endpoints
+- [ ] Tab navigation between all 5 tabs
+- [ ] Loading and empty states for each tab
+
+### Task 2.3: Evidence Envelope Viewer
+
+**Files:**
+- `frontend/src/components/investigation/EvidenceEnvelopePanel.tsx`
+- `frontend/src/components/investigation/EvidenceItemCard.tsx`
+- `frontend/src/components/investigation/ProvenanceBadge.tsx`
+
+**Acceptance Criteria:**
+- [ ] Chronological evidence items with provenance class badges
+- [ ] Content hashes displayed (truncated)
+- [ ] Redaction indicators where applicable
+- [ ] Envelope hash at top of panel
+- [ ] Provenance summary stacked bar
+
+### Task 2.4: Claim Graph Viewer
+
+**Files:**
+- `frontend/src/components/investigation/ClaimGraphPanel.tsx`
+- `frontend/src/components/investigation/ClaimNodeCard.tsx`
+- `frontend/src/components/investigation/ClaimStatusBadge.tsx`
+
+**Acceptance Criteria:**
+- [ ] Vertical card list layout
+- [ ] Claim text, type badge, status badge, confidence ring
+- [ ] Evidence refs, counter-signal links, independence groups
+- [ ] Merkle root hash displayed
+
+### Task 2.5: Investigation Certificate Explorer
+
+**Files:**
+- `frontend/src/components/investigation/InvestigationCertificateView.tsx`
+- `frontend/src/components/investigation/CertificateFieldGroup.tsx`
+- `frontend/src/components/investigation/RoutingHintBadge.tsx`
+
+**Acceptance Criteria:**
+- [ ] All 30+ fields displayed, grouped by section (header, evidence, claims, counter-signals, drift, anchoring, hashes, stop condition)
+- [ ] Routing hint badge (ALLOWED / REVIEW_REQUIRED) with correct colours
+- [ ] Anchoring state badge
+
+### Task 2.6: Counter-Signal + DeltaBrief + Drift + Entity Panels
+
+**Files:**
+- `frontend/src/components/investigation/CounterSignalPanel.tsx`
+- `frontend/src/components/investigation/DeltaBriefPanel.tsx`
+- `frontend/src/components/investigation/DriftEventsPanel.tsx`
+- `frontend/src/components/investigation/EntityProfilePanel.tsx`
+
+2 tests:
+1. `CounterSignalPanel.test.tsx` — summary counts, material flag display
+2. `DeltaBriefPanel.test.tsx` — domain filter chips, access tier display
+
+**Acceptance Criteria:**
+- [ ] Counter-signals: 11 classes, material flags, detection method, summary counts
+- [ ] DeltaBrief: domain filter chips, anomaly cards, access tier display
+- [ ] Drift: type badge, impact assessment, original→new diff
+- [ ] Entity: profile fields, source queries, provenance
+
+### Task 2.7: Sprint 2 Integration Tests
+
+4 tests:
+1. `InvestigationPage.test.tsx` — renders with mock data, tab navigation
+2. `EvidenceEnvelopePanel.test.tsx` — provenance badges, redaction indicators
+3. `ClaimGraphPanel.test.tsx` — status badges match status values
+4. `InvestigationCertificateView.test.tsx` — all field groups render, routing hint correct
+
+**Acceptance Criteria:**
+- [ ] All 14 Sprint 2 tests pass
+
+---
+
+## Sprint 3: OpsBoard Rebuild + Analytics + RLMF Redesign
+
+### Task 3.1: OpsBoard — Rebuild as Aggregation Dashboard
+
+**Files:**
+- `frontend/src/api/opsBoard.ts` — delete mock generator, build real aggregation
+- `frontend/src/pages/HomePage.tsx` — redesign
+
+Sources: active theatres, paradoxes, investigations, agents, recent wing flaps, timeline health — all from existing endpoints.
+
+Layout: 4 summary cards + activity feed + quick-access panels.
+
+**Acceptance Criteria:**
+- [ ] Zero mock generator code
+- [ ] 4 summary cards render from real endpoints
+- [ ] Activity feed shows recent wing flaps
+
+### Task 3.2: Analytics Page — Build from Real Data
+
+**Files:**
+- `frontend/src/pages/BlackboxPage.tsx` — redesign
+- `frontend/src/components/blackbox/` — replace mock components
+
+Analytics v1: theatre history, agent leaderboard, OSINT timeline, market prices. "Coming Soon" placeholders for heatmap/correlation/depth chart.
+
+**Acceptance Criteria:**
+- [ ] Real data rendered for available analytics
+- [ ] Honest "Coming Soon" for unbuilt features
+- [ ] Zero mock chart data
+
+### Task 3.3: RLMF Page — Redesign as Export Viewer
+
+**Files:** `frontend/src/pages/RLMFPage.tsx` — complete rewrite
+
+Show: RLMF export status per Theatre, manifest, sample records, download link.
+
+**Acceptance Criteria:**
+- [ ] Viewer for real pipeline output
+- [ ] No demo/presentation mockup
+
+### Task 3.4: VRF Page — Convert to Documentation/Roadmap
+
+**Files:** `frontend/src/pages/VRFPage.tsx`
+
+Replace simulation with: explanation of VRF's role, roadmap status, link to System Bible §VII.
+
+**Acceptance Criteria:**
+- [ ] No simulated demo
+- [ ] Informational content only
+
+### Task 3.5: Sprint 3 Tests
+
+4 tests:
+1. `HomePage.test.tsx` — renders aggregation cards from real data
+2. `BlackboxPage.test.tsx` — renders available data, shows placeholders
+3. `RLMFPage.test.tsx` — renders export viewer
+4. Mock purge audit — zero mock imports in Sprint 3 components
+
+**Acceptance Criteria:**
+- [ ] All 4 tests pass
+
+---
+
+## Sprint 4: Investigation Lifecycle Console + Navigation Redesign
+
+### Task 4.1: Investigation Creation Wizard
+
+**Files:**
+- `frontend/src/components/investigation/CreateInvestigationWizard.tsx`
+- `frontend/src/components/investigation/DomainFilterSelector.tsx`
+- `frontend/src/components/investigation/StopConditionConfigurator.tsx`
+
+5-step wizard: inquiry question → template → domain filters (9 categories) → stop condition → review & commit.
+
+**Acceptance Criteria:**
+- [ ] Wizard navigation (next/back/cancel)
+- [ ] Domain filter selector shows 9 categories with source group preview
+- [ ] Stop condition configurator supports 3 types
+- [ ] Immutability warning on commit step
+- [ ] POST to `/api/v1/investigations/` on submit
+
+### Task 4.2: Investigation Progress Tracker
+
+**Files:**
+- `frontend/src/components/investigation/InvestigationProgressBar.tsx`
+- `frontend/src/components/investigation/StopConditionProgress.tsx`
+
+**Acceptance Criteria:**
+- [ ] Progress bar for each stop condition type
+- [ ] Evidence count, claim status distribution, counter-signal count
+- [ ] Corroboration indicator
+
+### Task 4.3: Navigation Redesign
+
+**Files:**
+- `frontend/src/components/layout/AppLayout.tsx`
+- `frontend/src/components/layout/Sidebar.tsx`
+- `frontend/src/router.tsx`
+
+New structure: Dashboard, Marketplace, Investigations (with sub-routes), Theatres, Analytics, Agents, Portfolio, Certificates, RLMF Exports.
+
+**Acceptance Criteria:**
+- [ ] All routes accessible
+- [ ] No dead links
+- [ ] `/vrf` removed from main nav
+- [ ] Investigation sub-routes (active, signal feed, create)
+
+### Task 4.4: Signal Feed Migration
+
+**Files:**
+- `frontend/src/components/investigation/SignalFeedPanel.tsx`
+- `frontend/src/components/investigation/SignalCard.tsx`
+
+Source-badged signal cards with click-through to "Create Investigation from Signal."
+
+**Acceptance Criteria:**
+- [ ] Signals render with correct source badges
+- [ ] Click-through pre-fills creation wizard
+
+### Task 4.5: Sprint 4 Tests
+
+4 tests:
+1. `CreateInvestigationWizard.test.tsx` — wizard navigation, immutability warning
+2. `InvestigationProgressBar.test.tsx` — progress for each stop condition type
+3. Navigation test — all routes accessible, no dead links
+4. `SignalFeedPanel.test.tsx` — signals render with source badges
+
+**Acceptance Criteria:**
+- [ ] All 4 tests pass
+
+---
+
+## Sprint 5: Convergence Map + Agent Analytics + WebSocket + Polish
+
+### Task 5.1: Convergence Map
+
+**Files:**
+- `frontend/src/components/convergence/ConvergenceMap.tsx`
+- `frontend/src/components/convergence/ConvergenceCell.tsx`
+
+2D grid: 1° × 1° cells, grey → amber → red. Click for detail.
+
+**Acceptance Criteria:**
+- [ ] Grid renders with correct colour gradient
+- [ ] Click expands to show event types, sources, matched theatres
+
+### Task 5.2: Agent Performance Analytics
+
+**Files:**
+- `frontend/src/components/agents/AgentPerformanceDashboard.tsx`
+- `frontend/src/components/agents/ArchetypeComparison.tsx`
+- `frontend/src/components/agents/TradeHistory.tsx`
+- `frontend/src/components/agents/GenomeViewer.tsx`
+
+**Acceptance Criteria:**
+- [ ] Trade history renders
+- [ ] Archetype comparison radar chart
+- [ ] Genome viewer (read-only YAML display)
+
+### Task 5.3: WebSocket Integration
+
+**Files:**
+- `frontend/src/hooks/useWebSocket.ts`
+- `frontend/src/hooks/useRealtimeInvestigation.ts`
+
+Pattern: WS event → identify query keys → `queryClient.invalidateQueries()` → auto-refetch.
+
+Events: wing_flap, price_update, paradox_spawn, investigation_event, position_update.
+
+**Acceptance Criteria:**
+- [ ] WS events trigger correct query invalidation
+- [ ] No full-page reloads
+
+### Task 5.4: Responsive Layout + Loading States + Polish
+
+**Acceptance Criteria:**
+- [ ] Responsive breakpoints (stack on narrow viewports)
+- [ ] Loading skeletons on all data panels
+- [ ] Empty states for all panels
+- [ ] Error states with retry buttons
+- [ ] Consistent `terminal-*` token usage
+- [ ] Keyboard navigation for tab panels
+
+### Task 5.5: Final Mock Purge Audit + E2E Test
+
+5 tests:
+1. `ConvergenceMap.test.tsx` — cells render, click expands
+2. `AgentPerformanceDashboard.test.tsx` — trade history renders
+3. `useWebSocket.test.ts` — WS events trigger correct invalidation
+4. **Final mock purge audit** — grep for `mock`, `MOCK`, `demo`, `hardcoded`, `fake` — zero in production paths
+5. **E2E test** — create investigation → view evidence → inspect claims → check certificate
+
+**Acceptance Criteria:**
+- [ ] All 5 tests pass
+- [ ] Zero mock data in production code paths
+
+---
+
+## Test Summary
+
+| Sprint | New Tests | Cumulative |
+|--------|-----------|------------|
+| 0 ✓ | 22 | 22 |
+| 1 | 5 | 27 |
+| 2 | 14 | 41 |
+| 3 | 4 | 45 |
+| 4 | 4 | 49 |
+| 5 | 5 | 54 |
+
+**Post-016 expected:** ≥1060 passed (1009 baseline + ~54 new — allowing for some overlap/consolidation).

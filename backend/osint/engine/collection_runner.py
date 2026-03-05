@@ -24,6 +24,7 @@ class CollectionPlan:
     evaluation_window: tuple[datetime, datetime]    # (start, end)
     geo: GeoPoint | None = None                     # Geographic focus (optional)
     timeout_s: float = 30.0                         # Per-collector timeout
+    source_params: dict[str, dict] = field(default_factory=dict)  # per-source params
 
 
 class CollectionRunner:
@@ -75,6 +76,7 @@ class CollectionRunner:
             )
 
         timeout_s = oracle_config.get("timeout_s", 30.0)
+        source_params = oracle_config.get("source_params", {})
 
         return CollectionPlan(
             theatre_id=theatre_id,
@@ -82,6 +84,7 @@ class CollectionRunner:
             evaluation_window=(start, end),
             geo=geo,
             timeout_s=timeout_s,
+            source_params=source_params,
         )
 
     async def collect(self, plan: CollectionPlan) -> list[CollectionResult]:
@@ -110,6 +113,10 @@ class CollectionRunner:
     ) -> CollectionResult:
         """Wrap collector.fetch() with per-collector timeout."""
         request = self._build_request(plan)
+        # Merge per-source params (source-specific keys override generic)
+        extra = plan.source_params.get(collector.source_id(), {})
+        if extra:
+            request.update(extra)
         try:
             return await asyncio.wait_for(
                 collector.fetch(

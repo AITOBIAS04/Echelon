@@ -6,7 +6,6 @@ corroboration_minimum_met: true and scoring factor 1.0.
 """
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
@@ -65,6 +64,9 @@ class TestE2ECorroboration:
                 "end": datetime.now(timezone.utc).isoformat(),
             },
             "timeout_s": 5.0,
+            "source_params": {
+                "companies_house_api": {"company_number": "00000006"},
+            },
         }
         plan = runner.build_plan(oracle_config, "e2e-test")
 
@@ -74,18 +76,8 @@ class TestE2ECorroboration:
 
         with patch.object(wm_collector, "_do_http_post", return_value=wm_fixture), \
              patch.object(ch_collector, "_do_http_get", return_value=ch_fixture):
-
-            # Add company_number to the request for CH collector
-            original_build = runner._build_request
-
-            def _patched_build(p):
-                req = original_build(p)
-                req["company_number"] = "00000006"
-                return req
-
-            with patch.object(runner, "_build_request", side_effect=_patched_build):
-                # Stage 1: Collection
-                results = await runner.collect(plan)
+            # Stage 1: Collection (source_params delivers company_number to CH)
+            results = await runner.collect(plan)
 
         # Verify both collected successfully
         successful = [r for r in results if r.success]

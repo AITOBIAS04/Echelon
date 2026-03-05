@@ -27,6 +27,14 @@ class ButterflyEngine:
         self.timeline_repo = timeline_repo
         self.agent_repo = agent_repo
         self.osint_service = osint_service
+
+    @staticmethod
+    def _as_percent(value: Optional[float]) -> float:
+        """Normalise a mixed-scale value to percentage (0-100) for API schemas."""
+        if value is None:
+            return 0.0
+        # New storage is 0-1; legacy rows are already 0-100.
+        return value * 100.0 if -1.0 <= value <= 1.0 else value
     
     # =========================================
     # WING FLAP CREATION
@@ -58,7 +66,7 @@ class ButterflyEngine:
         
         # Determine direction
         direction = (
-            StabilityDirection.ANCHOR if stability_delta > 0 
+            StabilityDirection.STABILISE if stability_delta > 0 
             else StabilityDirection.DESTABILISE
         )
         
@@ -252,8 +260,11 @@ class ButterflyEngine:
         volatility_score = min(25, timeline.logic_gap * 83.33)  # 0.3 gap = 25 points
         
         # Component 4: Narrative Relevance (0-25)
-        # Use OSINT alignment as proxy
-        narrative_score = min(25, (timeline.osint_alignment / 100) * 25)
+        # Use OSINT alignment as proxy. Support mixed 0-1 / 0-100 storage.
+        alignment = timeline.osint_alignment or 0.0
+        if 0.0 <= alignment <= 1.0:
+            alignment *= 100.0
+        narrative_score = min(25, (alignment / 100.0) * 25)
         
         total_gravity = volume_score + agent_score + volatility_score + narrative_score
         
@@ -518,21 +529,21 @@ class ButterflyEngine:
         
         # Convert direction enum
         from ..schemas.butterfly_schemas import StabilityDirection
-        direction_enum = StabilityDirection.ANCHOR  # Default
+        direction_enum = StabilityDirection.STABILISE  # Default
         if hasattr(db_flap, 'direction'):
             try:
                 direction_value = db_flap.direction
                 if hasattr(direction_value, 'value'):
                     direction_value = direction_value.value
-                direction_enum = StabilityDirection[direction_value] if direction_value in StabilityDirection.__members__ else StabilityDirection.ANCHOR
+                direction_enum = StabilityDirection[direction_value] if direction_value in StabilityDirection.__members__ else StabilityDirection.STABILISE
             except (KeyError, AttributeError):
                 pass
         
-        # Clamp values to schema constraints
-        # Stability can exceed 100% in edge cases, but schema requires <= 100
-        clamped_stability = min(100.0, max(0.0, db_flap.timeline_stability or 0.0))
+        # Clamp values to schema constraints (schema uses percentage 0-100)
+        clamped_stability = min(100.0, max(0.0, self._as_percent(db_flap.timeline_stability)))
         # Price must be between 0 and 1
         clamped_price = min(1.0, max(0.0, db_flap.timeline_price or 0.0))
+        delta_percent = self._as_percent(db_flap.stability_delta)
         
         return WingFlap(
             id=db_flap.id,
@@ -544,7 +555,7 @@ class ButterflyEngine:
             agent_archetype=agent_archetype,
             flap_type=db_flap.flap_type,
             action=db_flap.action,
-            stability_delta=db_flap.stability_delta,
+            stability_delta=delta_percent,
             direction=direction_enum,
             volume_usd=db_flap.volume_usd,
             timeline_stability=clamped_stability,
@@ -634,16 +645,20 @@ class ButterflyEngine:
                     try:
                         # Calculate gravity using the timeline object directly (avoid async get call)
                         gravity = self._calculate_gravity_from_timeline(timeline)
-                        gravity_score = gravity.total_gravity if hasattr(gravity, 'total_gravity') else (timeline.gravity_score or 0)
+                        gravity_score = (
+                            gravity.total_gravity
+                            if hasattr(gravity, 'total_gravity')
+                            else self._as_percent(timeline.gravity_score or 0.0)
+                        )
                         
                         health = TimelineHealth(
                             id=timeline.id,
                             name=timeline.name,
-                            stability=timeline.stability,
-                            surface_tension=timeline.surface_tension or 50.0,
+                            stability=self._as_percent(timeline.stability),
+                            surface_tension=self._as_percent(timeline.surface_tension or 0.0),
                             price_yes=timeline.price_yes,
                             price_no=timeline.price_no,
-                            osint_alignment=timeline.osint_alignment or 50.0,
+                            osint_alignment=self._as_percent(timeline.osint_alignment or 0.0),
                             logic_gap=timeline.logic_gap or 0.0,
                             gravity_score=gravity_score,
                             gravity_factors=getattr(gravity, 'gravity_factors', {}) if hasattr(gravity, 'gravity_factors') else {},
@@ -656,11 +671,17 @@ class ButterflyEngine:
                             founder_name=None,  # TODO: Load from user
                             founder_yield_rate=timeline.founder_yield_rate or 0.0,
                             decay_rate_per_hour=timeline.decay_rate_per_hour or self.BASE_DECAY_PER_HOUR,
+                            decay_multiplier=timeline.decay_multiplier or 1.0,
                             hours_until_reaper=None,  # TODO: Calculate from stability/decay
                             has_active_paradox=timeline.has_active_paradox or False,
                             paradox_id=None,  # TODO: Load from paradox table
                             paradox_detonation_time=None,
-                            connected_timeline_ids=timeline.connected_timeline_ids or []
+                            is_anchor=timeline.is_anchor or False,
+                            anchor_timeline_id=timeline.anchor_timeline_id,
+                            fork_divergence=timeline.fork_divergence or 0.0,
+                            last_sync_at=timeline.last_sync_at,
+                            connected_timeline_ids=timeline.connected_timeline_ids or [],
+                            parent_timeline_id=timeline.parent_timeline_id,
                         )
                         health_list.append(health)
                     except Exception as e:
@@ -674,7 +695,7 @@ class ButterflyEngine:
                 if sort_by == "gravity_score":
                     health_list.sort(key=lambda h: h.gravity_score, reverse=reverse)
                 elif sort_by == "stability":
-                    health_list.sort(key=lambda h: h.stability_score, reverse=reverse)
+                    health_list.sort(key=lambda h: h.stability, reverse=reverse)
                 
                 return health_list[:limit]
             except Exception as e:
@@ -757,4 +778,3 @@ class ButterflyEngine:
     def get_fork_tree(self, timeline_id: str, depth: int = 3) -> dict:
         """Get fork tree structure."""
         return {"timeline_id": timeline_id, "children": [], "depth": depth}
-

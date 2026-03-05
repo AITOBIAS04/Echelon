@@ -35,42 +35,48 @@ logger = logging.getLogger('echelon.gameloop')
 class GameLoop:
     """
     The heartbeat of Echelon.
-    
+
     Runs multiple tasks at different intervals:
     - Entropy: Every 60 seconds
     - Paradox scan: Every 30 seconds
-    - Market sync: Every 10 seconds
+    - Market sync: Every 10 seconds (call-budget: ≤11 API calls/tick)
     - Agent tick: Every 5 seconds
+    - Evidence: Every 120 seconds (stub — wired in 016 Sprint-1)
+    - Divergence: Every 60 seconds (stub — wired in 016 Sprint-1)
+    - Genesis (Phoenix protocol): Every 300 seconds
     """
-    
+
     def __init__(self):
         self.running = False
         self.tick_count = 0
         self.start_time: Optional[datetime] = None
-        
+
         # Task instances
         self.entropy_task = EntropyTask()
         self.paradox_task = ParadoxTask()
         self.market_task = MarketSyncTask()
         self.agent_task = AgentTickTask()
-        
+
         # Task intervals (in seconds)
         self.intervals = {
-            'entropy': 60,      # Decay stability every minute
-            'paradox': 30,      # Check for breaches every 30s
-            'market': 10,       # Sync prices every 10s
-            'agent': 5,         # Agent decisions every 5s
-            'genesis': 300,     # Phoenix protocol every 5 minutes
+            'entropy': 60,       # Decay stability every minute
+            'paradox': 30,       # Check for breaches every 30s
+            'market': 10,        # Sync prices every 10s
+            'agent': 5,          # Agent decisions every 5s
+            'evidence': 120,     # OSINT evidence ingestion (stub)
+            'divergence': 60,    # Fork divergence computation (stub)
+            'genesis': 300,      # Phoenix protocol every 5 minutes
         }
-        
+
         # Last run times (timezone-aware)
-        # Use epoch start instead of datetime.min to avoid timezone issues
         min_time = datetime(1970, 1, 1, tzinfo=timezone.utc)
         self.last_run = {
             'entropy': min_time,
             'paradox': min_time,
             'market': min_time,
             'agent': min_time,
+            'evidence': min_time,
+            'divergence': min_time,
             'genesis': min_time,
         }
     
@@ -139,6 +145,14 @@ class GameLoop:
         if self._is_due('agent', now):
             await self._run_task('agent', self.agent_task.tick, session)
 
+        # Evidence ingestion (stub — wired in 016 Sprint-1)
+        if self._is_due('evidence', now):
+            await self._run_task('evidence', self._evidence_stub, session)
+
+        # Fork divergence computation (stub — wired in 016 Sprint-1)
+        if self._is_due('divergence', now):
+            await self._run_task('divergence', self._divergence_stub, session)
+
         # Phoenix protocol (genesis)
         if self._is_due('genesis', now):
             await self._run_task('genesis', self._genesis_task, session)
@@ -162,6 +176,14 @@ class GameLoop:
             
         except Exception as e:
             logger.error(f"[{task_name.upper():8}] Failed: {e}")
+
+    async def _evidence_stub(self, session):
+        """Placeholder for OSINT evidence ingestion — wired in 016 Sprint-1."""
+        return None  # no-op until evidence engine is connected
+
+    async def _divergence_stub(self, session):
+        """Placeholder for fork divergence computation — wired in 016 Sprint-1."""
+        return None  # no-op until divergence engine is connected
 
     async def _genesis_task(self, session):
         """Phoenix Protocol - ensure minimum timelines exist."""
