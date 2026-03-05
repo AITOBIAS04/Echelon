@@ -439,8 +439,10 @@
     {
       "cycle_id": "cycle-014c",
       "label": "Investigation Toolset Implementation",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-05T00:00:00Z",
+      "archived": "2026-03-05T04:30:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-05-investigation-toolset-complete",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -469,7 +471,7 @@
       ]
     }
   ],
-  "active_cycle": "cycle-014c",
+  "active_cycle": null,
   "active_bugfix": null,
   "global_sprint_counter": 35,
   "bugfix_cycles": [],
