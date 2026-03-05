@@ -532,6 +532,10 @@ class Theatre(Base):
     version_pins: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     dataset_hashes: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
+    # Investigation stop condition (set on creation, included in commitment hash)
+    stop_condition: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    stop_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
     # Execution tracking
     progress: Mapped[int] = mapped_column(Integer, default=0)
     total_episodes: Mapped[int] = mapped_column(Integer, default=0)

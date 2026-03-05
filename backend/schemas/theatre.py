@@ -26,6 +26,15 @@ class TheatreCreate(BaseModel):
     )
     version_pins: dict = Field(default_factory=dict)
     dataset_hashes: dict = Field(default_factory=dict)
+    stop_condition: Optional[str] = Field(
+        None,
+        max_length=30,
+        description="Stop condition type (OUTCOME_RESOLUTION|EVIDENCE_THRESHOLD|SPONSOR_DEFINED)",
+    )
+    stop_config: Optional[dict] = Field(
+        None,
+        description="Stop condition configuration (thresholds, milestones, etc.)",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -135,6 +144,8 @@ class TheatreResponse(BaseModel):
     error: Optional[str]
     resolved_at: Optional[datetime]
     certificate_id: Optional[str]
+    stop_condition: Optional[str] = None
+    stop_config: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
