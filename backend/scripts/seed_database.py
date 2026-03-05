@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from backend.database.connection import async_session_maker, init_db
 from backend.database.models import (
     User, Agent, Timeline, WingFlap, Paradox, UserPosition,
-    AgentArchetype, WingFlapType, ParadoxStatus, SeverityClass
+    AgentArchetype, WingFlapType, FlapDirection, ParadoxStatus, SeverityClass
 )
 
 
@@ -298,22 +298,23 @@ async def seed_timelines(session, users: list) -> list:
     """Create 10 diverse timelines across categories."""
     timelines = [
         # ===== GEOPOLITICAL =====
+        # All stability/surface_tension/osint_alignment/gravity_score on 0.0–1.0 scale
         Timeline(
             id="TL_GHOST_TANKER",
             name="Ghost Tanker - Venezuela Dark Fleet",
             narrative="What if 3 oil tankers going dark near Venezuela signals sanctions evasion at scale?",
             keywords=["tanker", "venezuela", "oil", "sanctions", "shipping", "dark fleet"],
-            stability=45.2,
-            surface_tension=52.0,
+            stability=0.452,
+            surface_tension=0.52,
             price_yes=0.67,
             price_no=0.33,
-            osint_alignment=35.0,
+            osint_alignment=0.35,
             logic_gap=0.32,
-            gravity_score=84.5,
+            gravity_score=0.845,
             total_volume_usd=125000.0,
             liquidity_depth_usd=45000.0,
             active_agent_count=18,
-            decay_rate_per_hour=2.5,
+            decay_rate_per_hour=0.025,
             founder_id=users[0].id,
             founder_yield_rate=0.002,
             connected_timeline_ids=["TL_HORMUZ_CHOKEPOINT", "TL_TEHRAN_BLACKOUT"],
@@ -324,17 +325,17 @@ async def seed_timelines(session, users: list) -> list:
             name="Tehran Blackout Protocol",
             narrative="What if the sudden communications blackout in Tehran indicates regime instability?",
             keywords=["iran", "tehran", "blackout", "regime", "communications", "protests"],
-            stability=28.5,
-            surface_tension=22.0,
+            stability=0.285,
+            surface_tension=0.22,
             price_yes=0.52,
             price_no=0.48,
-            osint_alignment=38.0,
+            osint_alignment=0.38,
             logic_gap=0.45,
-            gravity_score=91.2,
+            gravity_score=0.912,
             total_volume_usd=89000.0,
             liquidity_depth_usd=28000.0,
             active_agent_count=24,
-            decay_rate_per_hour=5.0,
+            decay_rate_per_hour=0.05,
             founder_id=users[1].id,
             founder_yield_rate=0.003,
             connected_timeline_ids=["TL_HORMUZ_CHOKEPOINT", "TL_GHOST_TANKER"],
@@ -345,40 +346,40 @@ async def seed_timelines(session, users: list) -> list:
             name="Hormuz Strait Chokepoint",
             narrative="What if Iranian naval exercises escalate into a shipping lane blockade?",
             keywords=["hormuz", "iran", "shipping", "blockade", "navy", "oil"],
-            stability=91.5,
-            surface_tension=88.0,
+            stability=0.915,
+            surface_tension=0.88,
             price_yes=0.41,
             price_no=0.59,
-            osint_alignment=52.0,
+            osint_alignment=0.52,
             logic_gap=0.11,
-            gravity_score=78.3,
+            gravity_score=0.783,
             total_volume_usd=340000.0,
             liquidity_depth_usd=125000.0,
             active_agent_count=32,
-            decay_rate_per_hour=1.0,
+            decay_rate_per_hour=0.01,
             founder_id=users[4].id,
             founder_yield_rate=0.001,
             connected_timeline_ids=["TL_TEHRAN_BLACKOUT", "TL_GHOST_TANKER"],
             has_active_paradox=False
         ),
-        
+
         # ===== FINANCIAL =====
         Timeline(
             id="TL_FED_PIVOT",
             name="Fed Pivot January 2026",
             narrative="What if the Federal Reserve cuts rates by 50bps instead of 25bps?",
             keywords=["fed", "rates", "fomc", "powell", "inflation", "pivot"],
-            stability=67.2,
-            surface_tension=71.0,
+            stability=0.672,
+            surface_tension=0.71,
             price_yes=0.72,
             price_no=0.28,
-            osint_alignment=68.0,
+            osint_alignment=0.68,
             logic_gap=0.12,
-            gravity_score=92.1,
+            gravity_score=0.921,
             total_volume_usd=520000.0,
             liquidity_depth_usd=180000.0,
             active_agent_count=45,
-            decay_rate_per_hour=1.0,
+            decay_rate_per_hour=0.01,
             founder_id=users[1].id,
             founder_yield_rate=0.0015,
             connected_timeline_ids=["TL_NVIDIA_EARNINGS", "TL_ETH_ETF"],
@@ -389,40 +390,40 @@ async def seed_timelines(session, users: list) -> list:
             name="NVIDIA Q4 Earnings Shock",
             narrative="What if NVIDIA misses earnings expectations by more than 10%?",
             keywords=["nvidia", "earnings", "ai", "chips", "gpu", "datacenter"],
-            stability=58.5,
-            surface_tension=62.0,
+            stability=0.585,
+            surface_tension=0.62,
             price_yes=0.23,
             price_no=0.77,
-            osint_alignment=78.0,
+            osint_alignment=0.78,
             logic_gap=0.18,
-            gravity_score=86.4,
+            gravity_score=0.864,
             total_volume_usd=180000.0,
             liquidity_depth_usd=65000.0,
             active_agent_count=28,
-            decay_rate_per_hour=1.5,
+            decay_rate_per_hour=0.015,
             founder_id=users[2].id,
             founder_yield_rate=0.002,
             connected_timeline_ids=["TL_FED_PIVOT", "TL_OPENAI_EXODUS"],
             has_active_paradox=False
         ),
-        
+
         # ===== TECH =====
         Timeline(
             id="TL_OPENAI_EXODUS",
             name="OpenAI Exodus Event",
             narrative="What if 5+ senior OpenAI researchers announce departure to competitor?",
             keywords=["openai", "ai", "exodus", "researchers", "anthropic", "google"],
-            stability=63.3,
-            surface_tension=58.0,
+            stability=0.633,
+            surface_tension=0.58,
             price_yes=0.35,
             price_no=0.65,
-            osint_alignment=71.0,
+            osint_alignment=0.71,
             logic_gap=0.22,
-            gravity_score=79.8,
+            gravity_score=0.798,
             total_volume_usd=95000.0,
             liquidity_depth_usd=32000.0,
             active_agent_count=19,
-            decay_rate_per_hour=1.5,
+            decay_rate_per_hour=0.015,
             founder_id=users[3].id,
             founder_yield_rate=0.002,
             connected_timeline_ids=["TL_NVIDIA_EARNINGS", "TL_APPLE_AI_PIVOT"],
@@ -433,40 +434,40 @@ async def seed_timelines(session, users: list) -> list:
             name="Apple AI Strategy Pivot",
             narrative="What if Apple announces acquisition of AI startup for >$5B?",
             keywords=["apple", "ai", "acquisition", "strategy", "siri", "llm"],
-            stability=55.1,
-            surface_tension=52.0,
+            stability=0.551,
+            surface_tension=0.52,
             price_yes=0.58,
             price_no=0.42,
-            osint_alignment=82.0,
+            osint_alignment=0.82,
             logic_gap=0.15,
-            gravity_score=72.6,
+            gravity_score=0.726,
             total_volume_usd=145000.0,
             liquidity_depth_usd=48000.0,
             active_agent_count=22,
-            decay_rate_per_hour=1.5,
+            decay_rate_per_hour=0.015,
             founder_id=users[0].id,
             founder_yield_rate=0.002,
             connected_timeline_ids=["TL_OPENAI_EXODUS", "TL_NVIDIA_EARNINGS"],
             has_active_paradox=False
         ),
-        
+
         # ===== CRYPTO =====
         Timeline(
             id="TL_ETH_ETF",
             name="Ethereum ETF Approval",
             narrative="What if SEC approves spot Ethereum ETF before Q2 2026?",
             keywords=["ethereum", "etf", "sec", "crypto", "approval", "spot"],
-            stability=48.5,
-            surface_tension=45.0,
+            stability=0.485,
+            surface_tension=0.45,
             price_yes=0.81,
             price_no=0.19,
-            osint_alignment=91.0,
+            osint_alignment=0.91,
             logic_gap=0.08,
-            gravity_score=88.9,
+            gravity_score=0.889,
             total_volume_usd=680000.0,
             liquidity_depth_usd=220000.0,
             active_agent_count=52,
-            decay_rate_per_hour=1.0,
+            decay_rate_per_hour=0.01,
             founder_id=users[4].id,
             founder_yield_rate=0.001,
             connected_timeline_ids=["TL_FED_PIVOT", "TL_TETHER_COLLAPSE"],
@@ -477,40 +478,40 @@ async def seed_timelines(session, users: list) -> list:
             name="Tether Stability Crisis",
             narrative="What if Tether de-pegs by more than 5% for over 24 hours?",
             keywords=["tether", "usdt", "stablecoin", "depeg", "crisis", "reserves"],
-            stability=23.4,
-            surface_tension=18.0,
+            stability=0.234,
+            surface_tension=0.18,
             price_yes=0.12,
             price_no=0.88,
-            osint_alignment=67.0,
+            osint_alignment=0.67,
             logic_gap=0.55,
-            gravity_score=95.2,
+            gravity_score=0.952,
             total_volume_usd=890000.0,
             liquidity_depth_usd=280000.0,
             active_agent_count=67,
-            decay_rate_per_hour=8.0,
+            decay_rate_per_hour=0.08,
             founder_id=users[3].id,
             founder_yield_rate=0.003,
             connected_timeline_ids=["TL_ETH_ETF", "TL_FED_PIVOT"],
             has_active_paradox=True
         ),
-        
+
         # ===== SCIENCE =====
         Timeline(
             id="TL_ANTARCTIC_SHELF",
             name="Antarctic Ice Shelf Event",
             narrative="What if Thwaites Glacier shows acceleration beyond model predictions?",
             keywords=["antarctica", "thwaites", "glacier", "climate", "ice", "collapse"],
-            stability=52.7,
-            surface_tension=48.0,
+            stability=0.527,
+            surface_tension=0.48,
             price_yes=0.44,
             price_no=0.56,
-            osint_alignment=56.0,
+            osint_alignment=0.56,
             logic_gap=0.31,
-            gravity_score=68.4,
+            gravity_score=0.684,
             total_volume_usd=67000.0,
             liquidity_depth_usd=22000.0,
             active_agent_count=14,
-            decay_rate_per_hour=1.5,
+            decay_rate_per_hour=0.015,
             founder_id=users[2].id,
             founder_yield_rate=0.002,
             connected_timeline_ids=["TL_HORMUZ_CHOKEPOINT"],
@@ -653,28 +654,28 @@ async def seed_wing_flaps(session, timelines: list, agents: list) -> list:
         
         volume = random.uniform(500, 75000)
         
-        # Generate stability delta based on flap type
+        # Generate stability delta based on flap type (0-1 scale)
         if flap_type == WingFlapType.SHIELD:
-            stability_delta = random.uniform(2, 12)
+            stability_delta = random.uniform(0.02, 0.12)
             action = f"{agent.name} {random.choice(shield_narratives)} {timeline.name}"
         elif flap_type == WingFlapType.SABOTAGE:
-            stability_delta = -random.uniform(5, 18)
+            stability_delta = -random.uniform(0.05, 0.18)
             action = f"{agent.name} {random.choice(sabotage_narratives)} {timeline.name}"
         elif flap_type == WingFlapType.RIPPLE:
-            stability_delta = random.uniform(-8, 8)
+            stability_delta = random.uniform(-0.08, 0.08)
             action = f"{agent.name} {random.choice(ripple_narratives)} {timeline.name}"
         else:  # TRADE
-            stability_delta = random.uniform(-12, 12)
+            stability_delta = random.uniform(-0.12, 0.12)
             action_verb, side = random.choice(trade_actions)
             price = random.uniform(0.15, 0.85)
             shares = int(volume / price)
             action = f"{agent.name} {action_verb} {shares:,} {side} @ ${price:.2f}"
-        
+
         # Whales have bigger impact
         if agent.archetype == AgentArchetype.WHALE:
             volume *= 3
             stability_delta *= 1.5
-        
+
         flap = WingFlap(
             id=f"FLAP_{i:05d}",
             timestamp=base_time - timedelta(minutes=i*1.5 + random.randint(0, 30)),
@@ -682,13 +683,13 @@ async def seed_wing_flaps(session, timelines: list, agents: list) -> list:
             agent_id=agent.id,
             flap_type=flap_type,
             action=action,
-            stability_delta=round(stability_delta, 2),
-            direction="ANCHOR" if stability_delta > 0 else "DESTABILISE",
+            stability_delta=round(stability_delta, 4),
+            direction=FlapDirection.STABILISE.value if stability_delta > 0 else FlapDirection.DESTABILISE.value,
             volume_usd=round(volume, 2),
-            timeline_stability=round(max(0, min(100, timeline.stability + stability_delta)), 1),
+            timeline_stability=round(max(0.0, min(1.0, timeline.stability + stability_delta)), 4),
             timeline_price=timeline.price_yes,
-            spawned_ripple=abs(stability_delta) > 10,
-            ripple_timeline_id=random.choice([t.id for t in timelines if t.id != timeline.id]) if abs(stability_delta) > 10 else None,
+            spawned_ripple=abs(stability_delta) > 0.10,
+            ripple_timeline_id=random.choice([t.id for t in timelines if t.id != timeline.id]) if abs(stability_delta) > 0.10 else None,
             founder_yield_earned=round(abs(stability_delta) * 0.001 * volume, 2) if stability_delta > 0 else None
         )
         flaps.append(flap)

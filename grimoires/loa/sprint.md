@@ -1,452 +1,530 @@
-# Sprint Plan — Cycle-014c: Investigation Toolset Implementation
+# Sprint Plan — Cycle-016: Results Surface
 
-**Cycle:** cycle-014c
+**Cycle:** cycle-016
 **Date:** 5 March 2026
 **PRD:** grimoires/loa/prd.md
 **SDD:** grimoires/loa/sdd.md
-**Sprints:** 3
-**Baseline:** ≥942 passed, 15 skipped, 13 pre-existing collection errors
+**Sprints:** 6 (Sprint-0 complete, Sprints 1–5 ahead)
+**Baseline:** ≥1009 passed (post-014c), 15 skipped, 13 pre-existing collection errors
 
 ---
 
-## Sprint 1: Evidence Envelope + Claim Graph (Core Data Layer)
+## Sprint 0: Engine Coherence Lock ✓ COMPLETE
 
-The two foundational models — everything else in sprints 2 and 3 depends on them.
+Pre-work dependency from `Echelon_Butterfly_Entropy_Coherence_Review_v1.md`. All 7 acceptance gates (A–G) pass. No 0–100 scale leaks remain in live runtime paths.
 
-### Task 1.1: Package Init + ProvenanceClass + EvidenceItem Model
+### Task 0.1: Model Layer + Migration ✓
+
+**Files modified:**
+- `backend/database/models.py` — WingFlapType (10 new), FlapDirection enum, 0.5 defaults, anchor/fork fields
+- `backend/alembic/versions/c016_engine_coherence.py` — NEW: dialect-safe migration
+
+**Acceptance Criteria:**
+- [x] 17 WingFlapType values in models.py
+- [x] FlapDirection enum: STABILISE, DESTABILISE, NEUTRAL
+- [x] Timeline defaults: stability=0.5, surface_tension=0.5, osint_alignment=0.5
+- [x] Anchor/fork fields: is_anchor, anchor_timeline_id, fork_divergence, last_sync_at
+- [x] Migration normalises 0–100 → 0–1, migrates ANCHOR → STABILISE
+
+### Task 0.2: Shared SYSTEM Entity ✓
+
+**File created:** `backend/worker/tasks/_system_entity.py`
+
+**Acceptance Criteria:**
+- [x] `ensure_system_entities()` returns `(User, Agent)` tuple
+- [x] Creates SYSTEM user + agent if absent
+- [x] Used by entropy.py, paradox.py, market_sync.py
+
+### Task 0.3: Pattern A Decay Fix ✓
+
+**Files modified:**
+- `backend/worker/tasks/paradox.py` — writes `decay_multiplier` only, DETONATION flap type, 0–1 thresholds
+- `backend/worker/tasks/entropy.py` — reads `decay_multiplier`, anchor skip, 0–1 constants, FlapDirection
+
+**Acceptance Criteria:**
+- [x] Paradox: writes `decay_multiplier` only, does NOT mutate `decay_rate_per_hour`
+- [x] Entropy: `effective_rate = base_rate × decay_multiplier` (no hardcoded 2.0)
+- [x] Entropy: skips anchor timelines (`Timeline.is_anchor == False` filter)
+- [x] Both use FlapDirection enum values
+- [x] Both use shared SYSTEM entity helper
+
+### Task 0.4: Market Sync + Game Loop ✓
+
+**Files modified:**
+- `backend/worker/tasks/market_sync.py` — MIRROR_TRADE, is_anchor=True, 0–1 scale, MAX_ACTIVE_MARKETS=10
+- `backend/worker/game_loop.py` — evidence (120s) and divergence (60s) cadence stubs
+
+**Acceptance Criteria:**
+- [x] New Polymarket timelines get `is_anchor=True`
+- [x] MIRROR_TRADE flap type for real trades
+- [x] `stability_delta` capped at 0.05 (0–1 scale)
+- [x] `MAX_ACTIVE_MARKETS = 10` call-budget guardrail
+- [x] `last_sync_at` updated on every sync (trade and no-trade)
+- [x] Evidence and divergence stubs in game loop
+
+### Task 0.5: Agent Tick — Full 0–1 Conversion ✓
+
+**File modified:** `backend/worker/tasks/agent_tick.py`
+
+**Acceptance Criteria:**
+- [x] `_shark_strategy`: osint > 0.5, delta `size / 1_000_000`, clamp `max(0.0, min(1.0, ...))`
+- [x] `_spy_strategy`: delta `uniform(0.01, 0.03)`, clamp `min(1.0, ...)`
+- [x] `_diplomat_strategy`: delta `uniform(0.03, 0.08)`, clamp `min(1.0, ...)`
+- [x] `_saboteur_strategy`: delta `-uniform(0.05, 0.12)`, clamp `max(0.0, ...)`
+- [x] `_whale_strategy`: osint > 0.5, delta `size / 1_000_000`, clamp `max(0.0, min(1.0, ...))`
+- [x] All 5 strategies use `FlapDirection.STABILISE.value` / `.DESTABILISE.value`
+
+### Task 0.6: Genesis + Kalshi — Full 0–1 Conversion ✓
+
+**Files modified:**
+- `backend/worker/tasks/genesis.py` — 0–1 templates, `is_active=True`, FORK_SPAWN, SYSTEM agent, valid WingFlap
+- `backend/worker/tasks/kalshi_sync.py` — 0–1 stability, FlapDirection enum, `max(0.0, min(1.0, ...))`
+
+**Acceptance Criteria:**
+- [x] Genesis templates: base_stability 0.45–0.82 (not 45–82)
+- [x] Genesis Timeline: surface_tension, osint_alignment, gravity_score all 0–1
+- [x] Genesis: `decay_rate_per_hour=0.01`, `is_active=True` (not `status="ACTIVE"`)
+- [x] Genesis WingFlap: FORK_SPAWN type, `id`, `timestamp`, `agent_id="SYSTEM"`
+- [x] Kalshi: stability delta capped at 0.05, clamp `max(0.0, min(1.0, ...))`
+- [x] Kalshi: `FlapDirection.STABILISE.value` / `.DESTABILISE.value`
+
+### Task 0.7: Engine + Schema Layer ✓
+
+**Files modified:**
+- `backend/engines/butterfly.py` — enum sync, FlapDirection, auto-direction, `compute_fork_divergence()`
+- `backend/engines/entropy.py` — LogicGapReading dataclass, backwards-compat `tick()`
+- `backend/schemas/butterfly_schemas.py` — extended enums, anchor/fork fields, STABILISE/NEUTRAL
+- `backend/mechanics/butterfly_engine.py` — `_as_percent()` API boundary
+
+**Acceptance Criteria:**
+- [x] engines/ and models.py WingFlapType enums identical
+- [x] FlapDirection enum in engines/butterfly.py
+- [x] `record_flap()` auto-derives direction from impact sign
+- [x] `compute_fork_divergence()` returns `abs(anchor.stability - fork.stability)`
+- [x] LogicGapReading: `isinstance(reading, str)` backwards compat
+- [x] `_as_percent()` converts 0–1 → 0–100 at API boundary
+
+### Task 0.8: Coherence Tests ✓
+
+**File created:** `backend/engines/tests/test_coherence_016.py` — 22 tests
+
+**Acceptance Criteria:**
+- [x] 22 tests covering Gates A–G
+- [x] All pass (213 passed across engines + schemas)
+- [x] Zero new failures (8 pre-existing async heartbeat failures unchanged)
+
+### Sprint 0 Summary
+
+- **22 new tests** (test_coherence_016.py)
+- **16 files modified/created**
+- **213 passed** (engines + schemas); all new/targeted tests pass. 8 known unrelated async heartbeat failures remain (pre-existing, no pytest-asyncio installed)
+- **Zero 0–100 leaks** in live runtime paths (verified by grep)
+- **Zero bare string directions** in worker/tasks/ and admin_routes (verified by grep)
+
+---
+
+## Sprint 1: Mock Purge + Real API Wiring
+
+Strip mock data, wire to real backend, fix TypeScript types. No new features — just make existing views truthful.
+
+### Task 1.1: TypeScript Type Alignment
+
+**Files:**
+- `frontend/src/types/portfolio.ts` → match `UserPosition`, `PortfolioSummary` from `backend/schemas/user_schemas.py`
+- `frontend/src/types/agents.ts` → match `Agent` DB model from `backend/database/models.py`
+- `frontend/src/types/marketplace.ts` → match Timeline from `backend/schemas/butterfly_schemas.py`
+- `frontend/src/types/breach.ts` → match `Paradox` from `backend/schemas/paradox_schemas.py`
+- New: `frontend/src/types/investigation.ts` — investigation toolset response types
+- New: `frontend/src/types/theatre.ts` — `TheatreResponse`, `TheatreCertificateResponse`, `CommitmentReceiptResponse`
+
+**Acceptance Criteria:**
+- [ ] All type files match backend Pydantic schemas (field names, types)
+- [ ] camelCase ↔ snake_case transforms documented in API client
+- [ ] No `any` types in investigation or theatre types
+
+### Task 1.2: Portfolio Page — Wire to Real API
+
+**Files:**
+- `frontend/src/hooks/usePortfolio.ts` — TanStack Query calling `/api/v1/user/positions` + `/api/v1/user/portfolio/summary`
+- `frontend/src/pages/PortfolioPage.tsx` — consume real data shape
+- `frontend/src/components/fieldkit/MyPositions.tsx` — update field names
+
+**Acceptance Criteria:**
+- [ ] All `mock*` constants removed
+- [ ] Empty state displayed when no positions
+- [ ] Field mapping: `unrealizedPnL` → `unrealised_pnl_usd`
+
+### Task 1.3: Marketplace Page — Wire to Polymarket-Backed Timelines
+
+**Backend:**
+- Verify `MarketSyncTask.tick()` runs on 10s cadence
+- Add `GET /api/v1/timelines/trending` — timelines sorted by volume
+
+**Frontend:**
+- `frontend/src/api/marketplaceapi.ts` — replace mock generator with `/api/v1/timelines/`
+- `frontend/src/hooks/useMarketplace.ts` — fetch timelines with `TL_PM_*` prefix
+- `frontend/src/pages/MarketplacePage.tsx` — consume Timeline schema
+
+**Acceptance Criteria:**
+- [ ] Marketplace renders from real Polymarket-backed timelines
+- [ ] No hardcoded market data
+- [ ] Trending endpoint returns timelines sorted by volume
+
+### Task 1.4: Agents Page — Wire to Real API
+
+**Frontend:** `frontend/src/hooks/useAgents.ts` — replace 6 hardcoded agents with API calls
+**Backend:** `backend/api/agents_routes.py` — remove `USE_MOCKS=true` default
+
+**Acceptance Criteria:**
+- [ ] Real agent data from DB displayed
+- [ ] Empty state when no agents
+- [ ] Archetype, P&L, win rate, sanity, is_alive fields rendered
+
+### Task 1.5: Paradox/Breach — Wire to Real API
+
+**Files:** `frontend/src/pages/BreachConsolePage.tsx` — replace `useDemoBreaches()` with TanStack Query calling `/api/v1/paradoxes/active`
+
+**Acceptance Criteria:**
+- [ ] No demoStore dependency
+- [ ] Real paradox data rendered
+
+### Task 1.6: Watchlist — Wire to Real API
+
+**Files:** `frontend/src/components/watchlist/` — call `/api/v1/user/watchlist`
+
+**Acceptance Criteria:**
+- [ ] No mock watchlist data
+
+### Task 1.7: Sprint 1 Tests
+
+5 tests:
+1. `usePortfolio.test.ts` — hook calls real endpoint, transforms response correctly
+2. `useMarketplace.test.ts` — hook calls real endpoint, categories match backend
+3. `useAgents.test.ts` — hook calls real endpoint, handles empty list
+4. `BreachConsolePage.test.tsx` — renders real paradox data, no demoStore usage
+5. Type alignment regression: snapshot test all type files against backend OpenAPI spec
+
+**Acceptance Criteria:**
+- [ ] All 5 tests pass
+- [ ] Zero mock data imports in Sprint 1 components
+
+---
+
+## Sprint 2: Investigation Dashboard + Certificate Explorer
+
+### Task 2.1: Investigation API Routes (Backend)
 
 **New files:**
-- `backend/investigation/__init__.py`
-- `backend/investigation/models.py`
-- `backend/investigation/tests/__init__.py`
+- `backend/api/investigation_routes.py` — 11 REST endpoints
+- `backend/schemas/investigation.py` — Pydantic request/response models
+- Wire into `backend/main.py`
 
-**Implementation:**
-1. Create `backend/investigation/` package with `__init__.py`
-2. Create `backend/investigation/tests/` package with `__init__.py`
-3. Implement `ProvenanceClass` enum (5 values: PUBLIC_PRIMARY, PUBLIC_SECONDARY, PRIVATE_LEAK, ANALYST_DERIVED, THIRD_PARTY_TOOL_OUTPUT)
-4. Implement `EvidenceItem` frozen Pydantic model (evidence_id, content_hash, provenance_class, submitted_at, content_type, source_description, references)
-
-**Acceptance Criteria:**
-- [ ] ProvenanceClass has exactly 5 values
-- [ ] EvidenceItem is frozen (immutable)
-- [ ] SHA-256 content_hash field is str type
-- [ ] references defaults to empty list
-
-### Task 1.2: Evidence Envelope Service
-
-**New file:** `backend/investigation/evidence_envelope.py`
-
-**Implementation:**
-1. `RedactionEvent` frozen Pydantic model (redaction_id, evidence_id, reason_class, redacted_at)
-2. `EvidenceEnvelope` class with:
-   - `submit()` — append-only, sequential IDs (E001, E002, ...), SHA-256 content hash
-   - `redact()` — log redaction event, does NOT alter envelope hash
-   - `get_item()`, `get_manifest()`, `compute_envelope_hash()`
-   - Properties: `items`, `redactions`, `provenance_summary`
-3. Envelope hash = SHA-256 of pipe-separated content_hashes in submission order
+8 endpoint tests:
+1. `test_list_investigations` — returns list
+2. `test_get_investigation_detail` — returns toolset state
+3. `test_get_evidence` — returns envelope manifest
+4. `test_get_claims` — returns claim graph with status summary
+5. `test_get_counter_signals` — returns counter-signal feed
+6. `test_get_drift` — returns drift events
+7. `test_get_certificate` — returns investigation certificate
+8. `test_create_investigation` — creates and returns investigation
 
 **Acceptance Criteria:**
-- [ ] submit() is append-only — no delete method exists
-- [ ] Sequential IDs: E001, E002, E003, ...
-- [ ] redact() adds RedactionEvent but envelope hash unchanged
-- [ ] compute_envelope_hash() deterministic for same content in same order
-- [ ] provenance_summary returns {class_name: count} dict
-
-### Task 1.3: Evidence Envelope Tests
-
-**New file:** `backend/investigation/tests/test_evidence_envelope.py`
-
-8 tests:
-1. `test_submit_and_retrieve` — submit item, retrieve by ID, verify hash
-2. `test_append_only` — submit 3 items, verify sequential IDs (E001, E002, E003)
-3. `test_provenance_summary` — submit mixed provenance classes, verify counts
-4. `test_envelope_hash_deterministic` — same content in same order → same hash
-5. `test_envelope_hash_changes_on_new_item` — hash changes after new submission
-6. `test_redaction_preserves_hash` — redacting item doesn't change envelope hash
-7. `test_redaction_logged` — redaction event recorded with reason and timestamp
-8. `test_manifest_format` — verify manifest matches expected JSON structure
-
-**Acceptance Criteria:**
+- [ ] All 11 endpoints return correct response schemas
 - [ ] All 8 tests pass
-- [ ] Tests use no external dependencies (pure unit tests)
+- [ ] Routes delegate to existing `backend/investigation/` services
 
-### Task 1.4: Claim Graph Model + Merkle Hashing
+### Task 2.2: Investigation Dashboard Page
 
-**New file:** `backend/investigation/claim_graph.py`
+**Files:**
+- `frontend/src/pages/InvestigationPage.tsx`
+- `frontend/src/router.tsx` — add `/investigation` route
+- `frontend/src/hooks/useInvestigation.ts` — TanStack Query hooks
 
-**Implementation:**
-1. `ClaimType` enum (FACT, CAUSAL, ATTRIBUTION)
-2. `ClaimStatus` enum (SUPPORTED, PARTIALLY_SUPPORTED, UNCONFIRMED, CONTRADICTED)
-3. `CorroborationCheck` frozen Pydantic model (for forward reference; also defined in corroboration_checker.py)
-4. `ClaimNode` frozen Pydantic model (claim_id, claim_text, claim_type, evidence_refs, osint_checks, counter_signals, status, confidence, independence_groups)
-5. `ClaimGraph` class with:
-   - `add_claim()` — sequential IDs (C001, C002, ...)
-   - `update_claim_status()` — replace claim with updated status (returns new frozen node)
-   - `link_counter_signal()` — add counter-signal ID to claim
-   - `compute_root_hash()` — Merkle root per §3.7 spec
-   - `get_status_summary()` — {status: count} dict
-   - Property: `claims`
-6. Merkle hashing: canonical_json per claim → SHA-256 leaf → pairwise merge → odd leaf duplicated
+Tabbed layout: Overview | Evidence | Claims | Signals | Drift
 
 **Acceptance Criteria:**
-- [ ] Uses `canonical_json()` from `theatre.engine.canonical_json`
-- [ ] Merkle: single claim → root = SHA-256(canonical_json(claim))
-- [ ] Merkle: two claims → root = SHA-256(hash(c1) + hash(c2))
-- [ ] Merkle: odd count → last leaf duplicated before merging
-- [ ] Claims sorted by claim_id (lexicographic) before hashing
-- [ ] update_claim_status returns new ClaimNode (frozen immutability)
+- [ ] Page renders with real data from investigation endpoints
+- [ ] Tab navigation between all 5 tabs
+- [ ] Loading and empty states for each tab
 
-### Task 1.5: Claim Graph Tests
+### Task 2.3: Evidence Envelope Viewer
 
-**New file:** `backend/investigation/tests/test_claim_graph.py`
-
-9 tests:
-1. `test_add_claim` — add claim, verify fields
-2. `test_status_update` — update from UNCONFIRMED to SUPPORTED
-3. `test_merkle_root_deterministic` — same claims → same root hash
-4. `test_merkle_root_single_claim` — single claim: root = hash(canonical_json(claim))
-5. `test_merkle_root_two_claims` — two claims: root = SHA-256(hash(c1) + hash(c2))
-6. `test_merkle_root_odd_count` — 3 claims: last leaf duplicated
-7. `test_merkle_root_uses_canonical_json` — verify canonical_json is used (not json.dumps)
-8. `test_status_summary` — verify {SUPPORTED: N, ...} counts
-9. `test_link_counter_signal` — link CS to claim, verify it appears in claim's list
+**Files:**
+- `frontend/src/components/investigation/EvidenceEnvelopePanel.tsx`
+- `frontend/src/components/investigation/EvidenceItemCard.tsx`
+- `frontend/src/components/investigation/ProvenanceBadge.tsx`
 
 **Acceptance Criteria:**
-- [ ] All 9 tests pass
-- [ ] Merkle tests verify exact hash values (not just "different from X")
+- [ ] Chronological evidence items with provenance class badges
+- [ ] Content hashes displayed (truncated)
+- [ ] Redaction indicators where applicable
+- [ ] Envelope hash at top of panel
+- [ ] Provenance summary stacked bar
+
+### Task 2.4: Claim Graph Viewer
+
+**Files:**
+- `frontend/src/components/investigation/ClaimGraphPanel.tsx`
+- `frontend/src/components/investigation/ClaimNodeCard.tsx`
+- `frontend/src/components/investigation/ClaimStatusBadge.tsx`
+
+**Acceptance Criteria:**
+- [ ] Vertical card list layout
+- [ ] Claim text, type badge, status badge, confidence ring
+- [ ] Evidence refs, counter-signal links, independence groups
+- [ ] Merkle root hash displayed
+
+### Task 2.5: Investigation Certificate Explorer
+
+**Files:**
+- `frontend/src/components/investigation/InvestigationCertificateView.tsx`
+- `frontend/src/components/investigation/CertificateFieldGroup.tsx`
+- `frontend/src/components/investigation/RoutingHintBadge.tsx`
+
+**Acceptance Criteria:**
+- [ ] All 30+ fields displayed, grouped by section (header, evidence, claims, counter-signals, drift, anchoring, hashes, stop condition)
+- [ ] Routing hint badge (ALLOWED / REVIEW_REQUIRED) with correct colours
+- [ ] Anchoring state badge
+
+### Task 2.6: Counter-Signal + DeltaBrief + Drift + Entity Panels
+
+**Files:**
+- `frontend/src/components/investigation/CounterSignalPanel.tsx`
+- `frontend/src/components/investigation/DeltaBriefPanel.tsx`
+- `frontend/src/components/investigation/DriftEventsPanel.tsx`
+- `frontend/src/components/investigation/EntityProfilePanel.tsx`
+
+2 tests:
+1. `CounterSignalPanel.test.tsx` — summary counts, material flag display
+2. `DeltaBriefPanel.test.tsx` — domain filter chips, access tier display
+
+**Acceptance Criteria:**
+- [ ] Counter-signals: 11 classes, material flags, detection method, summary counts
+- [ ] DeltaBrief: domain filter chips, anomaly cards, access tier display
+- [ ] Drift: type badge, impact assessment, original→new diff
+- [ ] Entity: profile fields, source queries, provenance
+
+### Task 2.7: Sprint 2 Integration Tests
+
+4 tests:
+1. `InvestigationPage.test.tsx` — renders with mock data, tab navigation
+2. `EvidenceEnvelopePanel.test.tsx` — provenance badges, redaction indicators
+3. `ClaimGraphPanel.test.tsx` — status badges match status values
+4. `InvestigationCertificateView.test.tsx` — all field groups render, routing hint correct
+
+**Acceptance Criteria:**
+- [ ] All 14 Sprint 2 tests pass
 
 ---
 
-## Sprint 2: Counter-Signals + Monitor + Scanner + Resolver + Checker
+## Sprint 3: OpsBoard Rebuild + Analytics + RLMF Redesign
 
-### Task 2.1: Investigation Counter-Signal Classes + Feed
+### Task 3.1: OpsBoard — Rebuild as Aggregation Dashboard
 
-**New file:** `backend/investigation/counter_signals.py`
+**Files:**
+- `frontend/src/api/opsBoard.ts` — delete mock generator, build real aggregation
+- `frontend/src/pages/HomePage.tsx` — redesign
 
-**Implementation:**
-1. `InvestigationCounterSignalClass` enum — 11 values (separate from pipeline counter-signals)
-2. `InvestigationCounterSignal` frozen Pydantic model
-3. `InvestigationCounterSignalFeed` class:
-   - `log_counter_signal()` — sequential IDs (CS001, CS002, ...)
-   - `get_summary()` — {checked, gaps, material_contradictions}
-   - `get_detail()` — per-signal detail for certificate
-   - Property: `signals`
-4. Classes 10+11 (MARKET_DIVERGENCE, WITNESS_SOURCE_RECANTATION) only count toward `checked` when explicitly logged
+Sources: active theatres, paradoxes, investigations, agents, recent wing flaps, timeline health — all from existing endpoints.
+
+Layout: 4 summary cards + activity feed + quick-access panels.
 
 **Acceptance Criteria:**
-- [ ] 11 investigation-specific counter-signal classes
-- [ ] Separate enum from pipeline COUNTER_SIGNAL_CLASSES
-- [ ] MARKET_DIVERGENCE and WITNESS_SOURCE_RECANTATION are event-driven only
-- [ ] get_summary() returns correct checked/gaps/material counts
+- [ ] Zero mock generator code
+- [ ] 4 summary cards render from real endpoints
+- [ ] Activity feed shows recent wing flaps
 
-### Task 2.2: Commitment Monitor
+### Task 3.2: Analytics Page — Build from Real Data
 
-**New file:** `backend/investigation/commitment_monitor.py`
+**Files:**
+- `frontend/src/pages/BlackboxPage.tsx` — redesign
+- `frontend/src/components/blackbox/` — replace mock components
 
-**Implementation:**
-1. `DriftType` enum (5 values)
-2. `DriftImpact` enum (MATERIAL, NON_MATERIAL)
-3. `DriftEvent` frozen Pydantic model
-4. `CommitmentMonitor` class:
-   - `log_drift()` — sequential IDs (D001, D002, ...)
-   - `has_material_drift()` — True if any event has MATERIAL impact
-   - Property: `events`
+Analytics v1: theatre history, agent leaderboard, OSINT timeline, market prices. "Coming Soon" placeholders for heatmap/correlation/depth chart.
 
 **Acceptance Criteria:**
-- [ ] has_material_drift() returns False when no material events
-- [ ] has_material_drift() returns True when any event has MATERIAL impact
-- [ ] DriftEvent includes evidence_ref (optional) for provenance
+- [ ] Real data rendered for available analytics
+- [ ] Honest "Coming Soon" for unbuilt features
+- [ ] Zero mock chart data
 
-### Task 2.3: Signal Scanner
+### Task 3.3: RLMF Page — Redesign as Export Viewer
 
-**New file:** `backend/investigation/signal_scanner.py`
+**Files:** `frontend/src/pages/RLMFPage.tsx` — complete rewrite
 
-**Implementation:**
-1. `DomainFilter` enum (9 values)
-2. `DOMAIN_FILTER_SOURCE_GROUPS` mapping
-3. `SourceQuery`, `Anomaly` frozen Pydantic models
-4. `DeltaBrief` frozen Pydantic model with content_hash
-5. `SignalScanner` class:
-   - `__init__(domain_filters)` — store filters
-   - `scan(subject)` — mock scan returning stub DeltaBrief
-   - `active_source_groups` property
-   - Access-tier policy: only tier A; B/C skipped with reason
-   - Scanner manifest format
+Show: RLMF export status per Theatre, manifest, sample records, download link.
 
 **Acceptance Criteria:**
-- [ ] Domain filter → source group mapping resolves correctly
-- [ ] Multiple filters merge source groups (no duplicates)
-- [ ] DeltaBrief content_hash is SHA-256 of canonical JSON
-- [ ] Tier B/C sources recorded as skipped with reason
-- [ ] Scanner manifest includes requested/resolved/skipped/access_tier_policy
+- [ ] Viewer for real pipeline output
+- [ ] No demo/presentation mockup
 
-### Task 2.4: Entity Resolver
+### Task 3.4: VRF Page — Convert to Documentation/Roadmap
 
-**New file:** `backend/investigation/entity_resolver.py`
+**Files:** `frontend/src/pages/VRFPage.tsx`
 
-**Implementation:**
-1. `SourceQueryRecord`, `EntityQuery` frozen Pydantic models
-2. `EntityProfile` frozen Pydantic model with profile_hash
-3. `EntityResolver` class:
-   - `resolve(query)` — stub returning mock Companies House + London Gazette profile
-   - Profile hash = SHA-256 of canonical_json(profile_dict excluding profile_hash)
+Replace simulation with: explanation of VRF's role, roadmap status, link to System Bible §VII.
 
 **Acceptance Criteria:**
-- [ ] Profile hash deterministic for same data
-- [ ] Source query records include provenance per source
-- [ ] Unknown entity handled gracefully (returns empty/minimal profile)
+- [ ] No simulated demo
+- [ ] Informational content only
 
-### Task 2.5: Investigation Corroboration Checker
+### Task 3.5: Sprint 3 Tests
 
-**New file:** `backend/investigation/corroboration_checker.py`
-
-**Implementation:**
-1. `CorroborationCheck` frozen Pydantic model (claim_id, source_id, upstream_group, status, confidence)
-2. `InvestigationCorroborationChecker` class:
-   - `evaluate_claim(claim, checks)` → `ClaimStatus`
-   - Hard invariant: SUPPORTED requires ≥2 distinct upstream_group with status='confirmed'
-   - PRIVATE_LEAK-only evidence cannot achieve SUPPORTED
-   - Single upstream group → PARTIALLY_SUPPORTED at best
+4 tests:
+1. `HomePage.test.tsx` — renders aggregation cards from real data
+2. `BlackboxPage.test.tsx` — renders available data, shows placeholders
+3. `RLMFPage.test.tsx` — renders export viewer
+4. Mock purge audit — zero mock imports in Sprint 3 components
 
 **Acceptance Criteria:**
-- [ ] SUPPORTED requires ≥2 distinct upstream_group values with 'confirmed'
-- [ ] Single upstream group yields PARTIALLY_SUPPORTED max
-- [ ] No override mechanism, no admin bypass
-- [ ] Deterministic output for same inputs
-
-### Task 2.6: Sprint 2 Tests
-
-**New files:**
-- `backend/investigation/tests/test_counter_signals.py` (6 tests)
-- `backend/investigation/tests/test_commitment_monitor.py` (5 tests)
-- `backend/investigation/tests/test_signal_scanner.py` (5 tests)
-- `backend/investigation/tests/test_entity_resolver.py` (4 tests)
-- `backend/investigation/tests/test_corroboration_checker.py` (5 tests)
-
-Counter-signal tests (6):
-1. `test_log_counter_signal` — log and retrieve
-2. `test_summary_counts` — checked/gaps/material counts correct
-3. `test_market_divergence_only_counted_when_logged` — class 10 event-driven
-4. `test_witness_recantation_only_counted_when_logged` — class 11 event-driven
-5. `test_detail_format` — per-signal detail matches certificate schema
-6. `test_material_vs_non_material` — material flag correctly tracked
-
-Commitment monitor tests (5):
-1. `test_log_drift_event` — log and retrieve
-2. `test_has_material_drift_false` — no material → False
-3. `test_has_material_drift_true` — material event → True
-4. `test_drift_event_fields` — all fields populated
-5. `test_multiple_drift_events` — accumulates correctly
-
-Signal scanner tests (5):
-1. `test_domain_filter_to_source_groups` — mapping resolves correctly
-2. `test_combined_filters` — multiple filters merge source groups
-3. `test_deltabrief_hash_deterministic` — same input → same hash
-4. `test_scan_with_mock_sources` — scan produces DeltaBrief
-5. `test_scanner_manifest_format` — manifest JSON structure correct
-
-Entity resolver tests (4):
-1. `test_resolve_companies_house` — mock CH → valid EntityProfile
-2. `test_profile_hash_deterministic` — same data → same hash
-3. `test_source_query_record` — provenance metadata per source correct
-4. `test_unknown_entity` — graceful failure for unknown entity
-
-Corroboration checker tests (5):
-1. `test_supported_requires_two_independent_upstreams` — one upstream cannot SUPPORTED
-2. `test_supported_with_two_independent_upstreams` — two groups → SUPPORTED
-3. `test_private_leak_only_remains_unconfirmed` — PRIVATE_LEAK-only stays UNCONFIRMED
-4. `test_partial_status_with_single_upstream` — single → PARTIALLY_SUPPORTED
-5. `test_checker_output_deterministic` — same inputs → same output
-
-**Acceptance Criteria:**
-- [ ] All 25 tests pass
-- [ ] No external dependencies (pure unit tests)
+- [ ] All 4 tests pass
 
 ---
 
-## Sprint 3: Certificate Extension + Stop Conditions + E2E
+## Sprint 4: Investigation Lifecycle Console + Navigation Redesign
 
-### Task 3.1: Stop Condition Schema + Persistence + Commitment Hash
+### Task 4.1: Investigation Creation Wizard
 
-**Modified files:**
-- `backend/schemas/theatre.py` — add stop_condition, stop_config to TheatreCreate
-- `backend/database/models.py` — add stop_condition, stop_config columns to Theatre
-- `backend/api/theatre_routes.py` — store on create, include in commitment hash, reject mutation post-COMMITTED
-- New Alembic migration
+**Files:**
+- `frontend/src/components/investigation/CreateInvestigationWizard.tsx`
+- `frontend/src/components/investigation/DomainFilterSelector.tsx`
+- `frontend/src/components/investigation/StopConditionConfigurator.tsx`
 
-**Implementation:**
-1. Add `stop_condition: str | None = None` and `stop_config: dict | None = None` to TheatreCreate schema
-2. Add `stop_condition = Column(String(30), nullable=True)` and `stop_config = Column(JSON, nullable=True)` to Theatre model
-3. Create Alembic migration adding both columns
-4. In `create_theatre`: store stop fields from request
-5. In `commit_theatre`: include stop_condition and stop_config in commitment hash payload
-6. Post-COMMITTED: reject changes to stop fields with 400 response
+5-step wizard: inquiry question → template → domain filters (9 categories) → stop condition → review & commit.
 
 **Acceptance Criteria:**
-- [ ] stop_condition and stop_config stored on theatre creation
-- [ ] Commitment hash includes stop fields (changes when stop_config changes pre-commit)
-- [ ] Mutation rejected post-COMMITTED (400/422 response)
-- [ ] Existing theatres without stop conditions work unchanged
-- [ ] Alembic migration applies cleanly
+- [ ] Wizard navigation (next/back/cancel)
+- [ ] Domain filter selector shows 9 categories with source group preview
+- [ ] Stop condition configurator supports 3 types
+- [ ] Immutability warning on commit step
+- [ ] POST to `/api/v1/investigations/` on submit
 
-### Task 3.2: Investigation Certificate + Builder
+### Task 4.2: Investigation Progress Tracker
 
-**New file:** `backend/investigation/certificate.py`
-
-**Implementation:**
-1. `StopCondition` enum (OUTCOME_RESOLUTION, EVIDENCE_THRESHOLD, SPONSOR_DEFINED)
-2. `InvestigationCertificate` frozen Pydantic model with 30+ fields
-3. `InvestigationCertificateBuilder` class:
-   - `build()` — assembles certificate from all toolset artefacts
-   - Routing logic: material drift → counter-signal → single provenance → anchoring pending → ALLOWED
-   - Populates all hash fields from envelope/claim_graph
-   - Populates all summary fields from counter-signals/drift/redactions
+**Files:**
+- `frontend/src/components/investigation/InvestigationProgressBar.tsx`
+- `frontend/src/components/investigation/StopConditionProgress.tsx`
 
 **Acceptance Criteria:**
-- [ ] All 30+ fields present in InvestigationCertificate
-- [ ] Routing: material drift → REVIEW_REQUIRED with "drift_event_material"
-- [ ] Routing: material counter-signal → REVIEW_REQUIRED with "counter_signal_material"
-- [ ] Routing: single provenance class → REVIEW_REQUIRED with "single_provenance_class"
-- [ ] Routing: anchoring pending → REVIEW_REQUIRED with "anchoring_pending"
-- [ ] Routing: normal case → ALLOWED
-- [ ] Certificate hash fields match envelope/claim_graph computed values
+- [ ] Progress bar for each stop condition type
+- [ ] Evidence count, claim status distribution, counter-signal count
+- [ ] Corroboration indicator
 
-### Task 3.3: Stop Condition Evaluator
+### Task 4.3: Navigation Redesign
 
-**New file:** `backend/investigation/stop_conditions.py`
+**Files:**
+- `frontend/src/components/layout/AppLayout.tsx`
+- `frontend/src/components/layout/Sidebar.tsx`
+- `frontend/src/router.tsx`
 
-**Implementation:**
-1. `InvestigationStopConditionEvaluator` class:
-   - `evaluate(stop_condition, stop_config, claim_graph, evidence_envelope, time_remaining)` → `(bool, str)`
-   - OUTCOME_RESOLUTION: ready when time_remaining <= 0
-   - EVIDENCE_THRESHOLD: ready when claim graph meets stop_config thresholds (min_supported_claims, min_corroboration_score)
-   - SPONSOR_DEFINED: ready when milestone_timestamp reached
-2. Reads stop_config keys only — no runtime overrides accepted
+New structure: Dashboard, Marketplace, Investigations (with sub-routes), Theatres, Analytics, Agents, Portfolio, Certificates, RLMF Exports.
 
 **Acceptance Criteria:**
-- [ ] OUTCOME_RESOLUTION: ready when time runs out
-- [ ] EVIDENCE_THRESHOLD: ready when N claims SUPPORTED
-- [ ] SPONSOR_DEFINED: ready when milestone date reached
-- [ ] Only reads committed stop_config (no mutable runtime overrides)
+- [ ] All routes accessible
+- [ ] No dead links
+- [ ] `/vrf` removed from main nav
+- [ ] Investigation sub-routes (active, signal feed, create)
 
-### Task 3.4: Investigation Toolset Orchestrator
+### Task 4.4: Signal Feed Migration
 
-**New file:** `backend/investigation/toolset.py`
+**Files:**
+- `frontend/src/components/investigation/SignalFeedPanel.tsx`
+- `frontend/src/components/investigation/SignalCard.tsx`
 
-**Implementation:**
-1. `InvestigationConfig` Pydantic model (domain_filters, stop_condition, stop_config)
-2. `InvestigationToolset` class:
-   - `__init__(config)` — instantiate all 8 tools
-   - Delegation methods: submit_evidence, register_claim, log_counter_signal, log_drift, run_scan, resolve_entity
-   - `build_certificate()` — delegates to InvestigationCertificateBuilder
+Source-badged signal cards with click-through to "Create Investigation from Signal."
 
 **Acceptance Criteria:**
-- [ ] All 8 tools instantiated and wired
-- [ ] Delegation methods pass through to underlying tools
-- [ ] build_certificate() produces valid InvestigationCertificate
+- [ ] Signals render with correct source badges
+- [ ] Click-through pre-fills creation wizard
 
-### Task 3.5: Deterministic Artefact Writers
+### Task 4.5: Sprint 4 Tests
 
-**New file:** `backend/investigation/artifacts.py`
-
-**Implementation:**
-1. `write_artifact(name, data)` → `(json_string, sha256_hash)`
-2. Uses `canonical_json()` for deterministic serialisation
-3. Supports all 9 artefact types: deltabrief, scanner_manifest, entity_profile, evidence_manifest, corroboration_results, counter_signals, claim_graph, drift_events, market_summary
+4 tests:
+1. `CreateInvestigationWizard.test.tsx` — wizard navigation, immutability warning
+2. `InvestigationProgressBar.test.tsx` — progress for each stop condition type
+3. Navigation test — all routes accessible, no dead links
+4. `SignalFeedPanel.test.tsx` — signals render with source badges
 
 **Acceptance Criteria:**
-- [ ] Same inputs → byte-identical output
-- [ ] Uses canonical_json() (sorted keys, no whitespace)
-- [ ] Hash preimages match certificate fields
-
-### Task 3.6: Sprint 3 Tests
-
-**New files:**
-- `backend/investigation/tests/test_certificate.py` (8 tests)
-- `backend/investigation/tests/test_stop_conditions.py` (5 tests)
-- `backend/investigation/tests/test_stop_condition_commitment.py` (4 tests)
-- `backend/investigation/tests/test_artifacts.py` (5 tests)
-- `backend/investigation/tests/test_toolset_e2e.py` (3 tests)
-
-Certificate tests (8):
-1. `test_build_minimal_certificate` — envelope + claim graph → valid certificate
-2. `test_certificate_includes_all_fields` — all 30+ fields present
-3. `test_routing_hint_material_drift` — material drift → REVIEW_REQUIRED
-4. `test_routing_hint_material_counter_signal` — material CS → REVIEW_REQUIRED
-5. `test_routing_hint_single_provenance` — all PUBLIC_PRIMARY → REVIEW_REQUIRED
-6. `test_routing_hint_allowed` — normal case → ALLOWED
-7. `test_certificate_hash_deterministic` — same inputs → same hashes
-8. `test_provenance_summary_in_certificate` — counts match envelope
-
-Stop condition tests (5):
-1. `test_outcome_resolution_time_expired` — ready when time runs out
-2. `test_outcome_resolution_time_remaining` — not ready while time left
-3. `test_evidence_threshold_met` — N SUPPORTED claims → ready
-4. `test_evidence_threshold_not_met` — insufficient → not ready
-5. `test_sponsor_defined_milestone` — milestone reached → ready
-
-Stop condition commitment tests (4):
-1. `test_stop_condition_persisted_on_create` — stored on theatre
-2. `test_stop_config_included_in_commitment_hash` — hash changes with stop_config
-3. `test_stop_condition_immutable_post_commit` — mutation rejected post-COMMITTED
-4. `test_resolution_uses_committed_stop_config_only` — runtime override rejected
-
-Artefact tests (5):
-1. `test_artifact_writer_deterministic` — same inputs → byte-identical
-2. `test_manifest_contains_access_tier_policy` — scanner manifest correct
-3. `test_claim_graph_json_matches_root_hash` — root hash recomputes
-4. `test_evidence_manifest_hash_matches_certificate_field` — bundle hash matches
-5. `test_counter_signal_artifact_matches_certificate_detail` — detail parity
-
-E2E tests (3):
-1. `test_e2e_investigation_lifecycle` — full lifecycle: submit evidence → register claims → corroborate → counter-signals → build certificate → verify all hashes chain
-2. `test_e2e_with_drift_event` — same + material drift → REVIEW_REQUIRED
-3. `test_e2e_evidence_threshold_resolution` — early resolution via evidence threshold
-
-**Acceptance Criteria:**
-- [ ] All 25 tests pass
-- [ ] E2E tests verify hash chaining across all tools
-- [ ] Stop condition commitment tests use actual theatre schema/routes
+- [ ] All 4 tests pass
 
 ---
 
-## Gate Rule
+## Sprint 5: Convergence Map + Agent Analytics + WebSocket + Polish
 
-≥942 passed (current baseline), 15 skipped, 13 pre-existing collection errors (same node IDs). Zero new failures. All 67 new investigation toolset tests pass. Post-014c expected: ≥1009 passed.
+### Task 5.1: Convergence Map
+
+**Files:**
+- `frontend/src/components/convergence/ConvergenceMap.tsx`
+- `frontend/src/components/convergence/ConvergenceCell.tsx`
+
+2D grid: 1° × 1° cells, grey → amber → red. Click for detail.
+
+**Acceptance Criteria:**
+- [ ] Grid renders with correct colour gradient
+- [ ] Click expands to show event types, sources, matched theatres
+
+### Task 5.2: Agent Performance Analytics
+
+**Files:**
+- `frontend/src/components/agents/AgentPerformanceDashboard.tsx`
+- `frontend/src/components/agents/ArchetypeComparison.tsx`
+- `frontend/src/components/agents/TradeHistory.tsx`
+- `frontend/src/components/agents/GenomeViewer.tsx`
+
+**Acceptance Criteria:**
+- [ ] Trade history renders
+- [ ] Archetype comparison radar chart
+- [ ] Genome viewer (read-only YAML display)
+
+### Task 5.3: WebSocket Integration
+
+**Files:**
+- `frontend/src/hooks/useWebSocket.ts`
+- `frontend/src/hooks/useRealtimeInvestigation.ts`
+
+Pattern: WS event → identify query keys → `queryClient.invalidateQueries()` → auto-refetch.
+
+Events: wing_flap, price_update, paradox_spawn, investigation_event, position_update.
+
+**Acceptance Criteria:**
+- [ ] WS events trigger correct query invalidation
+- [ ] No full-page reloads
+
+### Task 5.4: Responsive Layout + Loading States + Polish
+
+**Acceptance Criteria:**
+- [ ] Responsive breakpoints (stack on narrow viewports)
+- [ ] Loading skeletons on all data panels
+- [ ] Empty states for all panels
+- [ ] Error states with retry buttons
+- [ ] Consistent `terminal-*` token usage
+- [ ] Keyboard navigation for tab panels
+
+### Task 5.5: Final Mock Purge Audit + E2E Test
+
+5 tests:
+1. `ConvergenceMap.test.tsx` — cells render, click expands
+2. `AgentPerformanceDashboard.test.tsx` — trade history renders
+3. `useWebSocket.test.ts` — WS events trigger correct invalidation
+4. **Final mock purge audit** — grep for `mock`, `MOCK`, `demo`, `hardcoded`, `fake` — zero in production paths
+5. **E2E test** — create investigation → view evidence → inspect claims → check certificate
+
+**Acceptance Criteria:**
+- [ ] All 5 tests pass
+- [ ] Zero mock data in production code paths
 
 ---
 
-## Files Created/Modified Summary
+## Test Summary
 
-| Sprint | File | Action |
-|--------|------|--------|
-| 1 | `backend/investigation/__init__.py` | NEW |
-| 1 | `backend/investigation/models.py` | NEW |
-| 1 | `backend/investigation/evidence_envelope.py` | NEW |
-| 1 | `backend/investigation/claim_graph.py` | NEW |
-| 1 | `backend/investigation/tests/__init__.py` | NEW |
-| 1 | `backend/investigation/tests/test_evidence_envelope.py` | NEW |
-| 1 | `backend/investigation/tests/test_claim_graph.py` | NEW |
-| 2 | `backend/investigation/counter_signals.py` | NEW |
-| 2 | `backend/investigation/commitment_monitor.py` | NEW |
-| 2 | `backend/investigation/signal_scanner.py` | NEW |
-| 2 | `backend/investigation/entity_resolver.py` | NEW |
-| 2 | `backend/investigation/corroboration_checker.py` | NEW |
-| 2 | `backend/investigation/tests/test_counter_signals.py` | NEW |
-| 2 | `backend/investigation/tests/test_commitment_monitor.py` | NEW |
-| 2 | `backend/investigation/tests/test_signal_scanner.py` | NEW |
-| 2 | `backend/investigation/tests/test_entity_resolver.py` | NEW |
-| 2 | `backend/investigation/tests/test_corroboration_checker.py` | NEW |
-| 3 | `backend/schemas/theatre.py` | MODIFY |
-| 3 | `backend/database/models.py` | MODIFY |
-| 3 | `backend/api/theatre_routes.py` | MODIFY |
-| 3 | Alembic migration | NEW |
-| 3 | `backend/investigation/certificate.py` | NEW |
-| 3 | `backend/investigation/stop_conditions.py` | NEW |
-| 3 | `backend/investigation/toolset.py` | NEW |
-| 3 | `backend/investigation/artifacts.py` | NEW |
-| 3 | `backend/investigation/tests/test_certificate.py` | NEW |
-| 3 | `backend/investigation/tests/test_stop_conditions.py` | NEW |
-| 3 | `backend/investigation/tests/test_stop_condition_commitment.py` | NEW |
-| 3 | `backend/investigation/tests/test_artifacts.py` | NEW |
-| 3 | `backend/investigation/tests/test_toolset_e2e.py` | NEW |
+| Sprint | New Tests | Cumulative |
+|--------|-----------|------------|
+| 0 ✓ | 22 | 22 |
+| 1 | 5 | 27 |
+| 2 | 14 | 41 |
+| 3 | 4 | 45 |
+| 4 | 4 | 49 |
+| 5 | 5 | 54 |
+
+**Post-016 expected:** ≥1060 passed (1009 baseline + ~54 new — allowing for some overlap/consolidation).

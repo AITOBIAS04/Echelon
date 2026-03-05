@@ -1,11 +1,12 @@
 {
   "simstim_id": "simstim-20260305-cycle-014c",
   "schema_version": 1,
-  "state": "RUNNING",
-  "phase": "implementation",
+  "state": "JACKED_OUT",
+  "phase": "complete",
   "timestamps": {
     "started": "2026-03-05T00:00:00Z",
-    "last_activity": "2026-03-05T00:30:00Z"
+    "last_activity": "2026-03-05T15:00:00Z",
+    "completed": "2026-03-05T15:00:00Z"
   },
   "phases": {
     "preflight": "completed",
@@ -16,8 +17,8 @@
     "planning": "completed",
     "flatline_sprint": "skipped",
     "flatline_beads": "skipped",
-    "implementation": "in_progress",
-    "complete": "pending"
+    "implementation": "completed",
+    "complete": "completed"
   },
   "artifacts": {
     "prd": {"path": "grimoires/loa/prd.md"},

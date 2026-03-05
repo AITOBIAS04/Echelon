@@ -15,7 +15,7 @@ from typing import Optional
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.database.models import Timeline, WingFlap, WingFlapType
+from backend.database.models import Timeline, WingFlap, WingFlapType, FlapDirection
 from backend.integrations.kalshi_client import KalshiClient
 
 logger = logging.getLogger('echelon.kalshi')
@@ -194,7 +194,7 @@ class KalshiSyncTask:
         # Calculate stability impact
         # Large trades have more impact
         volume_usd = count * price_decimal * 100  # Approximate USD value
-        stability_delta = min(volume_usd / 10000, 5.0)  # Max 5% per trade
+        stability_delta = min(volume_usd / 10000, 0.05)  # Max 0.05 per trade (0-1 scale)
         
         # YES trades anchor (stabilise), NO trades destabilise
         if side == 'NO':
@@ -238,7 +238,7 @@ class KalshiSyncTask:
             await session.flush()
         
         # Calculate new stability
-        new_stability = max(0, min(100, timeline.stability + stability_delta))
+        new_stability = max(0.0, min(1.0, timeline.stability + stability_delta))
         
         flap_id = f"KALSHI_{timeline.id}_{uuid.uuid4().hex[:8]}"
         # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
@@ -250,7 +250,7 @@ class KalshiSyncTask:
             flap_type=WingFlapType.TRADE,
             action=f"Kalshi: {count} {side} @ ${price_decimal:.2f}",
             stability_delta=stability_delta,
-            direction="ANCHOR" if stability_delta > 0 else "DESTABILISE",
+            direction=FlapDirection.STABILISE.value if stability_delta > 0 else FlapDirection.DESTABILISE.value,
             volume_usd=volume_usd,
             timeline_stability=new_stability,
             timeline_price=price_decimal,

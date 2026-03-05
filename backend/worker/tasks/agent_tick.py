@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database.models import (
     Agent, Timeline, WingFlap,
-    AgentArchetype, WingFlapType
+    AgentArchetype, WingFlapType, FlapDirection
 )
 
 logger = logging.getLogger('echelon.agents')
@@ -123,25 +123,24 @@ class AgentTickTask:
         # Find timeline with highest logic gap
         target = max(timelines, key=lambda t: t.logic_gap * (t.total_volume_usd or 0))
         
-        # Decide direction based on OSINT alignment
-        # If OSINT alignment < 50%, reality disagrees with market -> short
-        side = "YES" if target.osint_alignment > 50 else "NO"
-        
+        # Decide direction based on OSINT alignment (0-1 scale)
+        # If OSINT alignment < 0.5, reality disagrees with market -> short
+        side = "YES" if target.osint_alignment > 0.5 else "NO"
+
         # Position size based on agent genome
         aggression = agent.genome.get('aggression', 0.5) if agent.genome else 0.5
         base_size = 1000
         size = base_size * (1 + aggression)
-        
+
         # Calculate price
         price = target.price_yes if side == "YES" else target.price_no
         contracts = int(size / price) if price > 0 else 0
-        
-        # Create trade
-        stability_delta = size / 10000 * (1 if side == "YES" else -1)
-        new_stability = max(0, min(100, target.stability + stability_delta))
-        
+
+        # Create trade (stability delta on 0-1 scale)
+        stability_delta = size / 1_000_000 * (1 if side == "YES" else -1)  # ~0.001-0.002
+        new_stability = max(0.0, min(1.0, target.stability + stability_delta))
+
         flap_id = f"SHARK_{agent.id}_{uuid.uuid4().hex[:8]}"
-        # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
         flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
         flap = WingFlap(
             id=flap_id,
@@ -150,14 +149,14 @@ class AgentTickTask:
             flap_type=WingFlapType.TRADE,
             action=f"{agent.name} bought {contracts} {side} @ ${price:.2f}",
             stability_delta=stability_delta,
-            direction="ANCHOR" if stability_delta > 0 else "DESTABILISE",
+            direction=FlapDirection.STABILISE.value if stability_delta > 0 else FlapDirection.DESTABILISE.value,
             volume_usd=size,
             timeline_stability=new_stability,
             timeline_price=target.price_yes,
             timestamp=flap_timestamp,
         )
         session.add(flap)
-        
+
         # Update agent stats
         current_trades = agent.trades_count or 0
         await session.execute(
@@ -165,7 +164,7 @@ class AgentTickTask:
             .where(Agent.id == agent.id)
             .values(trades_count=current_trades + 1)
         )
-        
+
         # Update timeline
         current_volume = target.total_volume_usd or 0.0
         await session.execute(
@@ -176,7 +175,7 @@ class AgentTickTask:
                 total_volume_usd=current_volume + size,
             )
         )
-        
+
         return True
     
     async def _spy_strategy(
@@ -199,10 +198,10 @@ class AgentTickTask:
         # Find most unstable timeline
         target = min(timelines, key=lambda t: t.stability)
         
-        # Spy deploys recon (small stabilising action)
-        stability_delta = random.uniform(1.0, 3.0)
-        new_stability = min(100, target.stability + stability_delta)
-        
+        # Spy deploys recon (small stabilising action, 0-1 scale)
+        stability_delta = random.uniform(0.01, 0.03)
+        new_stability = min(1.0, target.stability + stability_delta)
+
         flap_id = f"SPY_{agent.id}_{uuid.uuid4().hex[:8]}"
         # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
         flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -213,7 +212,7 @@ class AgentTickTask:
             flap_type=WingFlapType.SHIELD,
             action=f"{agent.name} deployed RECON on {target.name[:30]}...",
             stability_delta=stability_delta,
-            direction="ANCHOR",
+            direction=FlapDirection.STABILISE.value,
             volume_usd=0.0,
             timeline_stability=new_stability,
             timeline_price=target.price_yes,
@@ -257,10 +256,10 @@ class AgentTickTask:
         else:
             target = random.choice(paradox_timelines)
         
-        # Deploy shield
-        stability_delta = random.uniform(3.0, 8.0)
-        new_stability = min(100, target.stability + stability_delta)
-        
+        # Deploy shield (0-1 scale)
+        stability_delta = random.uniform(0.03, 0.08)
+        new_stability = min(1.0, target.stability + stability_delta)
+
         flap_id = f"DIPLOMAT_{agent.id}_{uuid.uuid4().hex[:8]}"
         # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
         flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -271,7 +270,7 @@ class AgentTickTask:
             flap_type=WingFlapType.SHIELD,
             action=f"{agent.name} deployed SHIELD on {target.name[:30]}...",
             stability_delta=stability_delta,
-            direction="ANCHOR",
+            direction=FlapDirection.STABILISE.value,
             volume_usd=0.0,
             timeline_stability=new_stability,
             timeline_price=target.price_yes,
@@ -311,10 +310,10 @@ class AgentTickTask:
         
         target = max(stable_timelines, key=lambda t: t.stability)
         
-        # Sabotage attack
-        stability_delta = -random.uniform(5.0, 12.0)
-        new_stability = max(0, target.stability + stability_delta)
-        
+        # Sabotage attack (0-1 scale)
+        stability_delta = -random.uniform(0.05, 0.12)
+        new_stability = max(0.0, target.stability + stability_delta)
+
         flap_id = f"SABOTEUR_{agent.id}_{uuid.uuid4().hex[:8]}"
         # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
         flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -325,7 +324,7 @@ class AgentTickTask:
             flap_type=WingFlapType.SABOTAGE,
             action=f"{agent.name} launched SABOTAGE on {target.name[:30]}...",
             stability_delta=stability_delta,
-            direction="DESTABILISE",
+            direction=FlapDirection.DESTABILISE.value,
             volume_usd=0.0,
             timeline_stability=new_stability,
             timeline_price=target.price_yes,
@@ -376,15 +375,16 @@ class AgentTickTask:
         if target.logic_gap < 0.30:
             return False
         
-        # Massive trade
-        side = "YES" if target.osint_alignment > 50 else "NO"
+        # Massive trade (0-1 scale; osint_alignment is 0-1)
+        side = "YES" if target.osint_alignment > 0.5 else "NO"
         size = random.uniform(10000, 50000)
         price = target.price_yes if side == "YES" else target.price_no
         contracts = int(size / price) if price > 0 else 0
-        
-        stability_delta = size / 5000 * (1 if side == "YES" else -1)
-        new_stability = max(0, min(100, target.stability + stability_delta))
-        
+
+        # Whale stability impact: ~0.01-0.05 on 0-1 scale
+        stability_delta = size / 1_000_000 * (1 if side == "YES" else -1)
+        new_stability = max(0.0, min(1.0, target.stability + stability_delta))
+
         flap_id = f"WHALE_{agent.id}_{uuid.uuid4().hex[:8]}"
         # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
         flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -395,7 +395,7 @@ class AgentTickTask:
             flap_type=WingFlapType.TRADE,
             action=f"🐋 {agent.name} bought {contracts} {side} @ ${price:.2f}",
             stability_delta=stability_delta,
-            direction="ANCHOR" if stability_delta > 0 else "DESTABILISE",
+            direction=FlapDirection.STABILISE.value if stability_delta > 0 else FlapDirection.DESTABILISE.value,
             volume_usd=size,
             timeline_stability=new_stability,
             timeline_price=target.price_yes,

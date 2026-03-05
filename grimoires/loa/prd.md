@@ -1,254 +1,266 @@
-# PRD — Cycle-014c: Investigation Toolset Implementation
+# PRD — Cycle-016: Results Surface
 
-**Cycle:** cycle-014c
+**Cycle:** cycle-016
 **Date:** 5 March 2026
-**Predecessor:** cycle-014 (Bounded Inquiry Markets), cycle-013 (Agent Runtime), cycle-010a (LMSR)
-**Sprints:** 3
-**Design input:** `Echelon_Investigation_Toolset_Design_Note_v1.md` (v1.3.0)
-**Baseline:** ≥942 passed (full suite), 15 skipped, 13 pre-existing collection errors
+**Predecessor:** cycle-014c (Investigation Toolset), cycle-015 (Live Collectors), cycle-013 (Agent Runtime), cycle-012 (Sponsored Theatres), cycle-010a (LMSR)
+**Sprints:** 6 total (0–5); Sprint-0 complete, Sprints 1–5 ahead
+**Design input:** `echelon_cycle_016.md`, `Echelon_Butterfly_Entropy_Coherence_Review_v1.md` (v1.2.1)
+**Baseline:** ≥1009 passed (post-014c), 15 skipped, 13 pre-existing collection errors
 
 ---
 
 ## 1. Problem Statement
 
-Cycle-014 built the bounded inquiry lifecycle with five inquiry classes (Counterfactual, Investigative, Inspection, Survey, Scrutiny), but the INVESTIGATIVE class has no dedicated tooling beyond what other classes share. An investigation-class inquiry cannot:
+Every backend cycle since 010a has shipped runtime models, services, and tests — but the frontend was built as a **presentation mockup** before most backend systems existed. The audit reveals:
 
-- Structure evidence with provenance tracking and immutability guarantees
-- Build a Merkle-hashed claim graph linking evidence to conclusions
-- Track investigation-level counter-signals (separate from pipeline-level OSINT counter-signals)
-- Monitor commitment drift in the investigation target
-- Scan for anomalies across OSINT domain filters
-- Resolve entities across multiple sources with provenance per source
-- Enforce the hard corroboration invariant: no claim SUPPORTED without ≥2 independent upstream groups
-- Produce an investigation-specific certificate with 30+ fields, routing logic, and anchoring metadata
+- **Only 2 of 13 routes are properly wired** (Verification + Theatre)
+- **11 routes use hardcoded mock data** or demo stores that never call real APIs
+- **Backend endpoints exist but are ignored** by the frontend (portfolio, paradox, marketplace)
+- **Some frontend components have no backend at all** (OpsBoard, RLMF, VRF, Analytics/Blackbox)
+- **TypeScript types don't match Pydantic schemas** (field names, types, missing fields)
+- **The investigation toolset (014c) has zero frontend representation**
+- **Engine coherence gaps** — three parallel Butterfly/Entropy implementations diverge in stability scale (0–100 vs 0–1), decay constants, and flap type coverage
 
-Without this toolset, INVESTIGATIVE class inquiries are functionally identical to other inquiry classes — they have distinct resolution triggers and agent behaviour profiles, but no investigation-specific data structures or analysis capabilities.
+This cycle does three things: (0) lock engine coherence so the backend emits sane values, (1) reconcile the mock frontend with the real backend, and (2) build the new investigation views that 014c enables.
 
-> Sources: echelon_cycle_014c.md:11-16, echelon_platform_roadmap.md:160-167
+> Sources: echelon_cycle_016.md:1-22, Echelon_Butterfly_Entropy_Coherence_Review_v1.md:§1-§2
 
 ## 2. Objective
 
-Build the runtime models, services, and hashing infrastructure for the 8-tool investigation toolset. All tools use mock/stub backends — this cycle does NOT depend on live collectors beyond what cycle-015 already provides (WM + Companies House).
+### Sprint-0: Engine Coherence Lock (COMPLETE)
 
-### 8 Investigation Tools
+Resolve all coherence gaps identified in `Echelon_Butterfly_Entropy_Coherence_Review_v1.md` so that the backend emits correct 0–1 stability values, canonical flap directions, and consistent decay behaviour before any frontend wiring begins. Gates A–G acceptance criteria defined in the coherence review.
 
-| # | Tool | Purpose |
-|---|------|---------|
-| 1 | Evidence Envelope | Append-only evidence container with provenance classes and Merkle-based envelope hash |
-| 2 | Claim Graph | FACT/CAUSAL/ATTRIBUTION claims linked to evidence, Merkle root hashing |
-| 3 | Investigation Counter-Signal Feed | 11-class taxonomy separate from pipeline counter-signals |
-| 4 | Commitment Monitor | Drift detection with impact assessment and Paradox Engine integration point |
-| 5 | Signal Scanner | DeltaBrief output, domain filters mapped to OSINT registry source groups |
-| 6 | Entity Resolver | Multi-source entity profiles with provenance metadata per source |
-| 7 | Investigation Corroboration Checker | Claim-centric independence enforcement (≥2 upstream groups for SUPPORTED) |
-| 8 | Investigation Certificate | 30+ field extension of CalibrationCertificate with routing logic |
+### Sprints 1–5: Results Surface
 
-### Supporting Infrastructure
-
-- **Stop condition contract** — `stop_condition` + `stop_config` committed immutably at theatre creation, wired through commitment hashing and resolution engine
-- **Deterministic artefact writers** — canonical JSON output files with reproducible hashing
-- **Integration orchestrator** — `InvestigationToolset` class wiring all 8 tools together
+Build the production frontend — reconcile mock/presentation layer with real backend, wire all existing views to live APIs, build new investigation toolset views, redesign navigation. React 19 + Vite 7 + Tailwind stack preserved; kree8.studio visual identity applied.
 
 ## 3. Success Criteria
 
-### SC-1: Evidence Envelope
-1. Append-only submission with sequential IDs (`E001`, `E002`, ...)
-2. SHA-256 content hashing per item
-3. 5 provenance classes: PUBLIC_PRIMARY, PUBLIC_SECONDARY, PRIVATE_LEAK, ANALYST_DERIVED, THIRD_PARTY_TOOL_OUTPUT
-4. Redaction events logged but do NOT alter envelope hash
-5. Envelope hash is deterministic for same content in same order
+### SC-0: Engine Coherence Lock (COMPLETE ✓)
 
-### SC-2: Claim Graph
-1. 3 claim types: FACT, CAUSAL, ATTRIBUTION
-2. 4 claim statuses: SUPPORTED, PARTIALLY_SUPPORTED, UNCONFIRMED, CONTRADICTED
-3. Evidence linkage via evidence_refs to Evidence Envelope item IDs
-4. Merkle root hashing per design note §3.7: canonical JSON, SHA-256 pairwise, odd leaf duplicated
-5. Uses existing `canonical_json()` from `theatre.engine.canonical_json`
+| Gate | Description | Status |
+|------|-------------|--------|
+| A | Enum parity: `engines/butterfly.py` and `models.py` WingFlapType enums identical | ✓ |
+| B | 0–1 stability storage everywhere: DB default 0.5, all worker tasks use 0–1 clamps, API boundary via `_as_percent()` | ✓ |
+| C | FlapDirection enum: STABILISE, DESTABILISE, NEUTRAL — all backend writers (worker/tasks + admin_routes) use `FlapDirection.*.value`, no bare string literals | ✓ |
+| D | LogicGapReading dataclass: structured input for EntropyEngine.tick() with backwards compat | ✓ |
+| E | Pattern A decay fix: paradox writes `decay_multiplier` only, entropy applies once | ✓ |
+| F | Fork divergence: `compute_fork_divergence()` method on ButterflyEngine | ✓ |
+| G | Anchor/fork model: `is_anchor`, `anchor_timeline_id`, `fork_divergence` on Timeline | ✓ |
 
-### SC-3: Investigation Counter-Signals
-1. 11 investigation-specific classes (separate enum from pipeline counter-signals)
-2. Classes 10 (MARKET_DIVERGENCE) and 11 (WITNESS_SOURCE_RECANTATION) only count toward `checked` when explicitly logged
-3. Summary includes checked/gaps/material_contradictions counts
-4. Detail output matches certificate schema requirements
+### SC-1: Mock Purge + API Wiring
 
-### SC-4: Commitment Monitor
-1. 5 drift types tracked with impact assessment (MATERIAL/NON_MATERIAL)
-2. `has_material_drift()` triggers `routing_hint: REVIEW_REQUIRED` in certificate
+1. Portfolio page wired to `/api/v1/user/positions` + `/api/v1/user/portfolio/summary`
+2. Marketplace wired to Polymarket-backed timelines via `/api/v1/timelines/`
+3. Agents page wired to `/api/v1/agents/` with real data (no USE_MOCKS)
+4. Paradox/Breach wired to `/api/v1/paradoxes/active`
+5. Watchlist wired to `/api/v1/user/watchlist`
+6. TypeScript types aligned to backend Pydantic schemas
 
-### SC-5: Signal Scanner
-1. 9 domain filters mapped to OSINT registry source groups
-2. DeltaBrief output with content hash
-3. Access-tier policy enforced: only tier A by default, B/C skipped with reason
-4. Scanner manifest includes requested/resolved/skipped groups
+### SC-2: Investigation Dashboard + Certificate Explorer
 
-### SC-6: Entity Resolver
-1. EntityProfile with provenance metadata per source
-2. Profile hash deterministic via canonical JSON
-3. Companies House + London Gazette backends stubbed
+1. `investigation_routes.py` — 11 REST endpoints (list, detail, evidence, claims, counter-signals, drift, certificate, scanner, create, submit evidence, register claim)
+2. Investigation dashboard with tabbed layout (Overview | Evidence | Claims | Signals | Drift)
+3. Evidence Envelope viewer with provenance badges and hash display
+4. Claim Graph viewer with status badges, confidence, evidence refs
+5. Investigation Certificate explorer (30+ fields grouped)
+6. Counter-signal, DeltaBrief, drift, and entity profile panels
 
-### SC-7: Corroboration Checker
-1. SUPPORTED requires ≥2 distinct `independence_upstream_id` groups (hard invariant, no override)
-2. PRIVATE_LEAK-only evidence cannot achieve SUPPORTED status
-3. Single upstream group yields PARTIALLY_SUPPORTED at most
+### SC-3: OpsBoard + Analytics + RLMF
 
-### SC-8: Investigation Certificate
-1. All 30+ fields from design note §6 present
-2. Routing logic: material drift, material counter-signal, single provenance class, anchoring pending → REVIEW_REQUIRED
-3. Default routing: ALLOWED
-4. Anchor state defaults to LOCAL_UNANCHORED
+1. OpsBoard rebuilt as aggregation dashboard from real endpoints (theatres, paradoxes, investigations, flaps, timeline health)
+2. Analytics page built from real Theatre/market data (agent leaderboard, theatre history, OSINT timeline)
+3. RLMF page redesigned as export viewer
+4. VRF page converted to documentation/roadmap page
 
-### SC-9: Stop Conditions
-1. Three types: OUTCOME_RESOLUTION, EVIDENCE_THRESHOLD, SPONSOR_DEFINED
-2. `stop_condition` and `stop_config` persisted on theatre at creation, included in commitment hash
-3. Immutable post-COMMITTED — mutation attempt returns 400/422
-4. Resolution engine reads committed values only (no runtime override)
+### SC-4: Investigation Lifecycle Console + Navigation
 
-### SC-10: Test Gate
-1. ≥942 passed (current baseline)
+1. Multi-step investigation creation wizard (inquiry → template → domain filters → stop condition → commit)
+2. Investigation progress tracker with stop condition progress
+3. Navigation redesigned: Dashboard, Marketplace, Investigations, Theatres, Analytics, Agents, Portfolio, Certificates, RLMF Exports
+4. Signal feed migrated from inquiry console to main app
+
+### SC-5: Convergence Map + Agent Analytics + WebSocket + Polish
+
+1. 2D convergence map (1° × 1° cells, grey→amber→red)
+2. Agent performance analytics (trade history, archetype radar, genome viewer)
+3. WebSocket-driven TanStack Query cache invalidation
+4. Responsive layout, loading skeletons, empty states, error states
+5. Zero mock data in production code paths
+
+### SC-6: Test Gate
+
+1. ≥1009 passed (post-014c baseline maintained)
 2. Zero new test failures
-3. 67+ new investigation toolset tests pass
-4. Post-014c expected: ≥1009 passed
+3. 50+ new tests across frontend and backend
+4. Post-016 expected: ≥1060 passed
 
 ## 4. Codebase Grounding
 
-### Existing Infrastructure (No Changes Needed)
-
-| Component | Location | Relevance |
-|-----------|----------|-----------|
-| LMSR Market Engine | `backend/market/` | Investigation markets use existing engine |
-| Bounded Inquiry Lifecycle | `backend/schemas/inquiry.py`, `backend/services/evidence_service.py` | INVESTIGATIVE class has distinct evidence rules and resolution triggers |
-| Corroboration Engine | `backend/osint/engine/corroboration.py` | Independence-weighted dedup, distinct group counting |
-| Pipeline Counter-Signals | `backend/osint/engine/counter_signal.py` | 11 pipeline-level classes (kept separate from investigation classes) |
-| Evidence Models | `backend/osint/models/evidence.py` | EvidenceBundle, HTTPTranscriptReceipt, CollectionResult |
-| Certificate Pipeline | `backend/services/certificate_pipeline.py` | CalibrationCertificate, CertificatePipeline.generate() |
-| Theatre State Machine | `theatre/engine/state_machine.py` | DRAFT → COMMITTED → ACTIVE → SETTLING → RESOLVED → ARCHIVED |
-| Resolution Engine | `backend/market/resolution.py` | ResolutionTrigger enum, check_resolution_ready() |
-| Canonical JSON | `theatre/engine/canonical_json.py` | canonical_json() for deterministic serialisation |
-
-### Files Modified (Shared Schema)
+### Sprint-0 Files Modified/Created (Engine Coherence Lock)
 
 | File | Change |
 |------|--------|
-| `backend/schemas/theatre.py` | Add `stop_condition` and `stop_config` fields to theatre create/commit schemas |
-| `backend/database/models.py` | Add `stop_condition` and `stop_config` columns to Theatre model |
-| `backend/api/theatre_routes.py` | Add immutability enforcement for stop fields post-COMMITTED, include in commitment hash |
-| New Alembic migration | Add stop_condition/stop_config columns |
+| `backend/database/models.py` | Extended WingFlapType (10 new), added FlapDirection enum, 0.5 defaults, anchor/fork fields |
+| `backend/alembic/versions/c016_engine_coherence.py` | Migration: enum extension, anchor/fork columns, 0–100→0–1 normalisation, ANCHOR→STABILISE |
+| `backend/worker/tasks/_system_entity.py` | NEW: shared SYSTEM entity helper (eliminates ~30-line boilerplate × 3 files) |
+| `backend/worker/tasks/entropy.py` | Pattern A fix (uses `decay_multiplier`), anchor skip, 0–1 constants, FlapDirection |
+| `backend/worker/tasks/paradox.py` | Writes `decay_multiplier` only, DETONATION flap type, 0–1 thresholds |
+| `backend/worker/tasks/market_sync.py` | MIRROR_TRADE type, `is_anchor=True`, 0–1 scale, MAX_ACTIVE_MARKETS=10, `last_sync_at` on every sync |
+| `backend/worker/tasks/agent_tick.py` | All 5 strategies: 0–1 thresholds/clamps, FlapDirection enum values |
+| `backend/worker/tasks/genesis.py` | 0–1 templates, `is_active`, FORK_SPAWN type, SYSTEM agent, valid WingFlap fields |
+| `backend/worker/tasks/kalshi_sync.py` | 0–1 stability, FlapDirection enum |
+| `backend/engines/butterfly.py` | Enum sync, FlapDirection, auto-direction, `compute_fork_divergence()` |
+| `backend/engines/entropy.py` | LogicGapReading dataclass, backwards-compat `tick()` |
+| `backend/worker/game_loop.py` | Evidence (120s) and divergence (60s) cadence stubs |
+| `backend/schemas/butterfly_schemas.py` | Extended enums, anchor/fork fields, STABILISE/NEUTRAL |
+| `backend/mechanics/butterfly_engine.py` | `_as_percent()` API boundary, direction enums |
+| `backend/engines/tests/test_coherence_016.py` | NEW: 22 tests covering Gates A–G |
+| `backend/api/admin_routes.py` | 0–1 scale, FlapDirection, WingFlapType enums, valid WingFlap fields |
+| `backend/scripts/seed_database.py` | ANCHOR → STABILISE |
 
-### New Package
+### Existing Infrastructure (Sprint 1+ Dependencies)
 
-All new code lives in `backend/investigation/`:
+| Component | Location | Relevance |
+|-----------|----------|-----------|
+| Polymarket Client | `backend/integrations/polymarket_client.py` | Market auto-discovery, `get_trending_markets()` |
+| MarketSyncTask | `backend/worker/tasks/market_sync.py` | Creates `TL_PM_*` timelines, syncs prices |
+| Investigation Toolset | `backend/investigation/` | 8 tools, services, 67+ tests |
+| Theatre State Machine | `theatre/engine/state_machine.py` | DRAFT → COMMITTED → ACTIVE → SETTLING → RESOLVED → ARCHIVED |
+| Certificate Pipeline | `backend/services/certificate_pipeline.py` | CalibrationCertificate + InvestigationCertificate |
+| LMSR Market Engine | `backend/market/` | Investigation markets |
+| Agent Runtime | `backend/worker/tasks/agent_tick.py` | 6 archetypes, live at 5s cadence |
+| API Client | `frontend/src/api/client.ts` | Bearer auth, error handling, `localhost:8000` |
 
-```
-backend/investigation/
-├── __init__.py
-├── models.py                    # ProvenanceClass, EvidenceItem
-├── evidence_envelope.py         # EvidenceEnvelope, RedactionEvent
-├── claim_graph.py               # ClaimGraph, ClaimNode, ClaimType, ClaimStatus
-├── counter_signals.py           # InvestigationCounterSignalClass, InvestigationCounterSignalFeed
-├── commitment_monitor.py        # CommitmentMonitor, DriftType, DriftEvent
-├── signal_scanner.py            # SignalScanner, DomainFilter, DeltaBrief
-├── entity_resolver.py           # EntityResolver, EntityProfile
-├── corroboration_checker.py     # InvestigationCorroborationChecker, CorroborationCheck
-├── certificate.py               # InvestigationCertificate, InvestigationCertificateBuilder
-├── stop_conditions.py           # InvestigationStopConditionEvaluator, StopCondition
-├── artifacts.py                 # Deterministic JSON artefact writers
-├── toolset.py                   # InvestigationToolset orchestrator
-└── tests/
-    ├── __init__.py
-    ├── test_evidence_envelope.py
-    ├── test_claim_graph.py
-    ├── test_counter_signals.py
-    ├── test_commitment_monitor.py
-    ├── test_signal_scanner.py
-    ├── test_entity_resolver.py
-    ├── test_corroboration_checker.py
-    ├── test_certificate.py
-    ├── test_stop_conditions.py
-    ├── test_stop_condition_commitment.py
-    ├── test_artifacts.py
-    └── test_toolset_e2e.py
-```
+### Frontend–Backend Alignment Audit
+
+**Working correctly (keep):** Verification (`verification_routes.py`), Theatre (`theatre_routes.py`), API Client
+
+**Mock frontend, real backend exists (wire up):** Portfolio, Marketplace, Agents, Paradox/Breach, Watchlist
+
+**Mock frontend, no backend (decide):** OpsBoard → Rebuild as aggregation. RLMF → Redesign as export viewer. VRF → Defer to docs. Analytics → Phase from real data. Exports Console → Stub from pipeline.
+
+**No frontend at all (new build):** Investigation Dashboard, Evidence Envelope Viewer, Claim Graph Viewer, Counter-Signal Feed, Signal Scanner/DeltaBrief, Entity Resolver View, Investigation Certificate, Commitment Monitor/Drift, Convergence Map
 
 ## 5. Sprint Breakdown
 
-### Sprint 1: Evidence Envelope + Claim Graph (Core Data Layer)
+### Sprint 0: Engine Coherence Lock ✓ COMPLETE
 
-The two foundational models — everything else depends on them.
+Pre-work dependency resolved. All Gates A–G pass. 22 new tests. 213 passing (engines+schemas). Zero 0–100 leaks in live runtime paths.
 
-| Task | Description | Tests |
-|------|-------------|-------|
-| 1.1 | ProvenanceClass enum + EvidenceItem model | — |
-| 1.2 | EvidenceEnvelope service (append-only, redaction, Merkle hash) | 8 |
-| 1.3 | ClaimGraph model + Merkle root hashing (§3.7 spec) | 9 |
+### Sprint 1: Mock Purge + Real API Wiring (7 tasks)
 
-**Sprint 1 total:** 17 tests
-
-### Sprint 2: Counter-Signals + Monitor + Scanner + Resolver + Checker
+Strip mock data, wire to real backend, fix TypeScript types. No new features — just make existing views truthful.
 
 | Task | Description | Tests |
 |------|-------------|-------|
-| 2.1 | InvestigationCounterSignalClass enum + InvestigationCounterSignalFeed | 6 |
-| 2.2 | CommitmentMonitor (drift detection, impact assessment) | 5 |
-| 2.3 | SignalScanner (domain filters, DeltaBrief, access-tier policy) | 5 |
-| 2.4 | EntityResolver (multi-source profiles, provenance per source) | 4 |
-| 2.6 | InvestigationCorroborationChecker (independence enforcement) | 5 |
+| 1.1 | TypeScript type alignment (audit + rewrite all type files) | — |
+| 1.2 | Portfolio page → real API | 1 |
+| 1.3 | Marketplace → Polymarket-backed timelines + trending endpoint | 1 |
+| 1.4 | Agents page → real API + backend enhancement | 1 |
+| 1.5 | Paradox/Breach → real API | 1 |
+| 1.6 | Watchlist → real API | — |
+| 1.7 | Type alignment regression snapshot test | 1 |
 
-**Sprint 2 total:** 25 tests
+**Sprint 1 total:** 5 tests
 
-### Sprint 3: Certificate Extension + Stop Conditions + E2E
+### Sprint 2: Investigation Dashboard + Certificate Explorer (7 tasks)
 
 | Task | Description | Tests |
 |------|-------------|-------|
-| 3.0 | Stop condition contract (schema + persistence + commitment hash) | 4 |
-| 3.1 | InvestigationCertificate model (30+ fields) | — |
-| 3.2 | InvestigationCertificateBuilder (routing logic) | 8 |
-| 3.3 | Stop condition evaluator (3 types) | 5 |
-| 3.4 | InvestigationToolset orchestrator | — |
-| 3.5 | Deterministic artefact writers | 5 |
-| 3.6 | E2E integration tests | 3 |
+| 2.1 | Investigation API routes (backend, 11 endpoints) | 8 |
+| 2.2 | Investigation dashboard page (tabbed layout) | 1 |
+| 2.3 | Evidence Envelope viewer | 1 |
+| 2.4 | Claim Graph viewer | 1 |
+| 2.5 | Investigation Certificate explorer | 1 |
+| 2.6 | Counter-signal + DeltaBrief + drift + entity panels | 2 |
+| 2.7 | Sprint 2 integration tests | — |
 
-**Sprint 3 total:** 25 tests
+**Sprint 2 total:** 14 tests
 
-**Grand total:** 67 new tests. Post-014c expected: ≥1009 passed.
+### Sprint 3: OpsBoard Rebuild + Analytics + RLMF Redesign (5 tasks)
+
+| Task | Description | Tests |
+|------|-------------|-------|
+| 3.1 | OpsBoard → aggregation dashboard | 1 |
+| 3.2 | Analytics → build from real data | 1 |
+| 3.3 | RLMF → export viewer | 1 |
+| 3.4 | VRF → documentation/roadmap page | — |
+| 3.5 | Sprint 3 mock purge audit | 1 |
+
+**Sprint 3 total:** 4 tests
+
+### Sprint 4: Investigation Lifecycle Console + Navigation (5 tasks)
+
+| Task | Description | Tests |
+|------|-------------|-------|
+| 4.1 | Investigation creation wizard | 1 |
+| 4.2 | Investigation progress tracker | 1 |
+| 4.3 | Navigation redesign | 1 |
+| 4.4 | Signal feed migration | 1 |
+| 4.5 | Sprint 4 integration tests | — |
+
+**Sprint 4 total:** 4 tests
+
+### Sprint 5: Convergence Map + Agent Analytics + WebSocket + Polish (5 tasks)
+
+| Task | Description | Tests |
+|------|-------------|-------|
+| 5.1 | Convergence map (2D grid) | 1 |
+| 5.2 | Agent performance analytics | 1 |
+| 5.3 | WebSocket cache invalidation | 1 |
+| 5.4 | Responsive layout + loading states + polish | — |
+| 5.5 | E2E test + final mock purge audit | 2 |
+
+**Sprint 5 total:** 5 tests
+
+**Grand total:** 22 (Sprint-0) + 32 (Sprints 1–5) = 54 new tests. Post-016 expected: ≥1060 passed.
 
 ## 6. Non-Functional Requirements
 
-### NFR-1: Determinism
-All hash computations (envelope hash, claim graph Merkle root, artefact hashes, commitment hash) must be deterministic given the same inputs. Use `canonical_json()` for JSON serialisation.
+### NFR-1: Scale Coherence
+All stability values stored on 0.0–1.0 scale internally. API boundary converts to 0–100 via `_as_percent()` for frontend consumption. No mixed-scale values anywhere in the pipeline.
 
-### NFR-2: Immutability
-Evidence Envelope is append-only — no delete method. Redaction adds metadata without altering the hash chain. Stop conditions are immutable post-COMMITTED.
+### NFR-2: Design Language
+kree8.studio visual identity: `terminal-bg: #030305`, `terminal-card: #10141A`, `glass-border: rgba(255,255,255,0.1)`. JetBrains Mono for data, Inter for prose. Signal colours: action `#3B82F6`, success `#10B981`, risk `#F59E0B`, danger `#EF4444`. New investigation tokens for provenance badges, claim status badges, routing hints, anchoring state.
 
-### NFR-3: Independence
-Investigation counter-signals are a separate taxonomy from pipeline counter-signals. No shared state, no shared enum values. Both can coexist for the same theatre.
+### NFR-3: Zero Mock Data
+Post-016, zero mock data constants remain in production frontend code paths. Every component renders from real API data or displays an honest empty/loading state.
 
 ### NFR-4: Backward Compatibility
-All changes to shared schema files (theatre.py, models.py, theatre_routes.py) must preserve existing behaviour for non-INVESTIGATIVE inquiry classes. Stop condition fields are optional with defaults.
+Sprint-0 engine changes preserve all existing test contracts. Sprint 1+ frontend changes do not modify backend API contracts — only consume them correctly.
 
 ## 7. Out of Scope
 
-- Base contract deployment and on-chain anchoring enforcement (requires Solidity)
-- Paid-tier (B/C) source activation in Signal Scanner without explicit access approval
-- Full live-query coverage across all domain filters
-- Domain filter UI (requires Cycle-016 Results Surface)
-- RLMF export from investigation markets (existing RLMF export applies)
-- Blockchain forensics, leaked data sourcing, KYC/AML (design note §7 exclusions)
-- Entity Resolver jurisdictions beyond Companies House + London Gazette stubs
+- 3D globe / Spatial Intelligence "God mode" (deferred — cost and complexity)
+- Real Chainlink VRF integration (page becomes informational)
+- Real-time collaborative investigation (multi-user editing)
+- Mobile native app (responsive web only)
+- Chain anchoring UI beyond status display
+- Agent breeding/genealogy UI (genome is read-only display)
+- $ECHELON token/wallet integration
+- Social trading / leaderboard features
+- Paid OSINT source activation from UI
+- Analytics features requiring new backend endpoints (heatmap, correlation matrix, depth chart) — show placeholders
+- `mechanics/butterfly_engine.py` full rewrite (deferred; `_as_percent()` boundary sufficient for now)
 
 ## 8. Dependencies
 
 | Dependency | Status | Impact |
 |------------|--------|--------|
-| Cycle-014 (Bounded Inquiries) | ✓ Complete | INVESTIGATIVE class lifecycle, evidence rules |
-| Cycle-013 (Agent Runtime) | ✓ Complete | Agent behaviour profiles for INVESTIGATIVE |
-| Cycle-010a (LMSR) | ✓ Complete | Market engine for investigation markets |
-| Cycle-015 (Live WM + CH) | ✓ Complete | Optional live adapters for scanner/resolver |
-| `canonical_json()` | ✓ Exists | `theatre/engine/canonical_json.py` |
-| `CorroborationEngine` | ✓ Exists | `backend/osint/engine/corroboration.py` |
+| Cycle-014c (Investigation Toolset) | ✓ Complete | 8 tools, services, models for investigation views |
+| Cycle-015 (Live Collectors) | ✓ Complete | WM + Companies House adapters for scanner/resolver |
+| Cycle-013 (Agent Runtime) | ✓ Complete | 6 archetypes in live game loop |
+| Cycle-012 (Sponsored Theatres) | ✓ Complete | Theatre creation/commitment lifecycle |
+| Cycle-010a (LMSR) | ✓ Complete | Market engine for all timelines |
+| Coherence Review v1.2.1 | ✓ Resolved (Sprint-0) | Gates A–G locked |
+| Polymarket Client | ✓ Exists | Auto-discovery, sync, trending |
 
 ## 9. What This Unlocks
 
-- **Investigation-class inquiries become functional** — full evidence-receipting, claim-structuring, counter-signal-monitoring investigation platform
-- **Certificate consumers get actionable artefacts** — claim graph root hash, provenance summary, independence groups, counter-signal detail, drift events
-- **Foundation for Cycle-016 (Results Surface)** — toolset models define the data the UI will display
-- **Foundation for live investigations** — Signal Scanner and Entity Resolver can use optional live adapters without interface changes
+- **Echelon's thesis becomes visible** — markets, evidence, claims, certificates, agents, all rendered from real data
+- **Mock presentation layer retired** — every view shows actual backend state
+- **Investigation workflow is end-to-end** — create inquiry → collect evidence → structure claims → monitor counter-signals → resolve → inspect certificate
+- **Foundation for demos** — the Results Surface is what you show to Soju, investors, early adopters
+- **Inquiry console retired** — separate Cloudflare app superseded

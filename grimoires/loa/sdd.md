@@ -1,744 +1,417 @@
-# SDD — Cycle-014c: Investigation Toolset Implementation
+# SDD — Cycle-016: Results Surface
 
-**Cycle:** cycle-014c
+**Cycle:** cycle-016
 **Date:** 5 March 2026
 **PRD:** grimoires/loa/prd.md
-**Design input:** `Echelon_Investigation_Toolset_Design_Note_v1.md` (v1.3.0)
+**Design input:** `echelon_cycle_016.md`, `Echelon_Butterfly_Entropy_Coherence_Review_v1.md` (v1.2.1)
 
 ---
 
 ## 1. Architecture Overview
 
-Cycle-014c adds a new `backend/investigation/` package containing runtime models, services, and hashing infrastructure for 8 investigation tools. All tools are in-memory/mock — no new external dependencies. The package integrates with existing infrastructure via:
+Cycle-016 spans two layers: (0) a backend engine coherence lock that unifies stability scale and flap contracts across all runtime paths, and (1–5) a full production frontend that replaces the mock presentation layer with real API-wired views.
 
-1. `theatre/engine/canonical_json.py` — deterministic serialisation for all hashing
-2. `backend/schemas/theatre.py` + `backend/database/models.py` — stop condition fields on Theatre
-3. `backend/api/theatre_routes.py` — immutability enforcement for committed stop conditions
-4. `backend/market/resolution.py` — stop condition evaluation in resolution engine
+### 1.1 Sprint-0: Engine Coherence Lock (COMPLETE)
 
-```
-backend/investigation/
-├── __init__.py
-├── models.py                    # ProvenanceClass, EvidenceItem
-├── evidence_envelope.py         # EvidenceEnvelope, RedactionEvent
-├── claim_graph.py               # ClaimGraph, ClaimNode, Merkle root
-├── counter_signals.py           # InvestigationCounterSignalClass/Feed
-├── commitment_monitor.py        # CommitmentMonitor, DriftType/Event
-├── signal_scanner.py            # SignalScanner, DomainFilter, DeltaBrief
-├── entity_resolver.py           # EntityResolver, EntityProfile
-├── corroboration_checker.py     # InvestigationCorroborationChecker
-├── certificate.py               # InvestigationCertificate + Builder
-├── stop_conditions.py           # StopCondition, Evaluator
-├── artifacts.py                 # Deterministic JSON artefact writers
-├── toolset.py                   # InvestigationToolset orchestrator
-└── tests/                       # 67+ tests
-```
-
-Data flow for a complete investigation lifecycle:
+Sprint-0 resolved the three-implementation problem identified in the coherence review. The codebase had three overlapping Butterfly/Entropy implementations (`engines/`, `mechanics/`, `worker/tasks/`) that diverged in scale, constants, and flap coverage. Sprint-0 unified them:
 
 ```
-Theatre created (DRAFT) with stop_condition + stop_config
-  → Committed (commitment hash includes stop fields)
-    → Investigation begins:
-      → SignalScanner.scan() → DeltaBrief
-      → EntityResolver.resolve() → EntityProfile
-      → EvidenceEnvelope.submit() (append-only)
-      → ClaimGraph.add_claim() (linked to evidence)
-      → CorroborationChecker.evaluate_claim() → ClaimStatus
-      → CounterSignalFeed.log_counter_signal()
-      → CommitmentMonitor.log_drift()
-    → Stop condition met (evaluator reads committed params only)
-    → InvestigationCertificateBuilder.build() → InvestigationCertificate
-    → Deterministic artefact writers → JSON files
+┌─────────────────────────┐
+│  engines/ (spec layer)  │ ← 0–1 scale, full enum, FlapDirection
+│  ButterflyEngine        │    compute_fork_divergence(), LogicGapReading
+│  EntropyEngine          │    Pattern A: decay_multiplier only
+└─────────┬───────────────┘
+          │ contract parity
+┌─────────▼───────────────┐
+│  worker/tasks/ (runtime) │ ← 0–1 scale, FlapDirection.value, SYSTEM entity
+│  agent_tick.py           │    5 strategies: uniform(0.01,0.03) not (1.0,3.0)
+│  entropy.py              │    timeline.decay_multiplier, anchor skip
+│  paradox.py              │    decay_multiplier write only, DETONATION type
+│  market_sync.py          │    MIRROR_TRADE, is_anchor=True, MAX_ACTIVE_MARKETS=10
+│  genesis.py              │    FORK_SPAWN type, 0–1 templates, SYSTEM agent
+│  kalshi_sync.py          │    0–1 clamp, FlapDirection enum
+└─────────┬───────────────┘
+          │ _as_percent() at API boundary
+┌─────────▼───────────────┐
+│  mechanics/ (API layer)  │ ← 0–100 for frontend consumption
+│  butterfly_engine.py     │    _as_percent() static method on serialisation
+└─────────────────────────┘
 ```
 
----
+**Key data contracts:**
 
-## 2. Sprint 1 — Evidence Envelope + Claim Graph
+- **Stability:** `0.0–1.0` in DB and all runtime code. `_as_percent()` × 100 at API serialisation boundary.
+- **Direction:** `FlapDirection.STABILISE.value | DESTABILISE.value | NEUTRAL.value` — no bare string literals.
+- **Decay:** Paradox writes `decay_multiplier` on Timeline. Entropy reads `base_rate × decay_multiplier` once. No hardcoded `2.0`.
+- **Anchor model:** `is_anchor=True` for Polymarket timelines. `anchor_timeline_id` FK for forks. Anchors don't decay (entropy filter: `Timeline.is_anchor == False`).
+- **WingFlapType:** 17 values total (7 original + 10 new 016 types). All synced between `engines/butterfly.py`, `database/models.py`, and `schemas/butterfly_schemas.py`.
 
-### 2.1 ProvenanceClass + EvidenceItem
+### 1.2 Sprints 1–5: Frontend Architecture
 
-**New file:** `backend/investigation/models.py`
+Frontend stack: React 19 + Vite 7 + Tailwind + TanStack Query (React Query v5).
 
-```python
-from enum import Enum
-from datetime import datetime
-from pydantic import BaseModel, Field
-
-
-class ProvenanceClass(str, Enum):
-    PUBLIC_PRIMARY = "public_primary"
-    PUBLIC_SECONDARY = "public_secondary"
-    PRIVATE_LEAK = "private_leak"
-    ANALYST_DERIVED = "analyst_derived"
-    THIRD_PARTY_TOOL_OUTPUT = "third_party_tool_output"
-
-
-class EvidenceItem(BaseModel):
-    model_config = {"frozen": True}
-    evidence_id: str                    # Sequential "E001", "E002", ...
-    content_hash: str                   # SHA-256 of raw content bytes
-    provenance_class: ProvenanceClass
-    submitted_at: datetime
-    content_type: str                   # MIME type
-    source_description: str
-    references: list[str] = Field(default_factory=list)
+```
+frontend/src/
+├── api/              ← API clients (replace mock generators)
+├── components/
+│   ├── investigation/ ← NEW: 20+ components for investigation views
+│   ├── convergence/   ← NEW: convergence map
+│   ├── agents/        ← Enhanced: performance analytics
+│   ├── layout/        ← Modified: navigation redesign
+│   └── ...            ← Existing components (updated for real data)
+├── hooks/            ← TanStack Query hooks (replace mock stores)
+├── pages/            ← Page components (wired to real APIs)
+├── types/            ← TypeScript types (aligned to Pydantic schemas)
+└── router.tsx        ← Updated routes
 ```
 
-Frozen Pydantic model. SHA-256 hashing via `hashlib.sha256(content).hexdigest()`.
+Data flow for API wiring pattern:
 
-### 2.2 EvidenceEnvelope
-
-**New file:** `backend/investigation/evidence_envelope.py`
-
-```python
-class RedactionEvent(BaseModel):
-    model_config = {"frozen": True}
-    redaction_id: str                   # "R001", "R002", ...
-    evidence_id: str
-    reason_class: str                   # accidental_secret | defamatory | illegal | doxxing | copyright
-    redacted_at: datetime
-
-
-class EvidenceEnvelope:
-    """Append-only evidence container with Merkle-based integrity."""
-
-    def __init__(self) -> None:
-        self._items: list[EvidenceItem] = []
-        self._redactions: list[RedactionEvent] = []
-        self._counter: int = 0
-        self._redaction_counter: int = 0
-
-    def submit(self, content: bytes, provenance_class: ProvenanceClass,
-               content_type: str, source_description: str,
-               references: list[str] | None = None) -> EvidenceItem:
-        """Append evidence item. Sequential ID, SHA-256 content hash."""
-
-    def redact(self, evidence_id: str, reason_class: str) -> RedactionEvent:
-        """Log redaction event. Does NOT alter envelope hash."""
-
-    def get_item(self, evidence_id: str) -> EvidenceItem | None: ...
-    def get_manifest(self) -> dict: ...
-
-    def compute_envelope_hash(self) -> str:
-        """SHA-256 of concatenated item content_hashes (including redacted)."""
-
-    @property
-    def items(self) -> list[EvidenceItem]: ...
-    @property
-    def redactions(self) -> list[RedactionEvent]: ...
-    @property
-    def provenance_summary(self) -> dict[str, int]: ...
+```
+Backend (Pydantic schema)
+  → FastAPI endpoint (JSON response)
+    → frontend/src/api/ (fetch client)
+      → frontend/src/hooks/ (TanStack Query hook with cache key)
+        → frontend/src/pages/ (page component)
+          → frontend/src/components/ (rendered UI)
 ```
 
-**Immutability contract:** No `delete()` method. `redact()` adds metadata only. `compute_envelope_hash()` includes all items including redacted ones.
+WebSocket integration (Sprint 5):
 
-**Hash computation:** SHA-256 of pipe-separated `content_hash` values in submission order:
-```python
-hashlib.sha256("|".join(item.content_hash for item in self._items).encode()).hexdigest()
 ```
-
-### 2.3 ClaimGraph + Merkle Root
-
-**New file:** `backend/investigation/claim_graph.py`
-
-```python
-class ClaimType(str, Enum):
-    FACT = "fact"
-    CAUSAL = "causal"
-    ATTRIBUTION = "attribution"
-
-
-class ClaimStatus(str, Enum):
-    SUPPORTED = "supported"
-    PARTIALLY_SUPPORTED = "partially_supported"
-    UNCONFIRMED = "unconfirmed"
-    CONTRADICTED = "contradicted"
-
-
-class CorroborationCheck(BaseModel):
-    """Imported from corroboration_checker.py. Forward-declared here for type reference."""
-    model_config = {"frozen": True}
-    claim_id: str
-    source_id: str
-    upstream_group: str
-    status: str
-    confidence: float = Field(ge=0.0, le=1.0)
-
-
-class ClaimNode(BaseModel):
-    model_config = {"frozen": True}
-    claim_id: str
-    claim_text: str
-    claim_type: ClaimType
-    evidence_refs: list[str]
-    osint_checks: list[CorroborationCheck] = Field(default_factory=list)
-    counter_signals: list[str] = Field(default_factory=list)
-    status: ClaimStatus = ClaimStatus.UNCONFIRMED
-    confidence: float = Field(ge=0.0, le=1.0, default=0.0)
-    independence_groups: list[str] = Field(default_factory=list)
-
-
-class ClaimGraph:
-    """Structured claim-evidence-source mapping with Merkle root."""
-
-    def __init__(self) -> None:
-        self._claims: list[ClaimNode] = []
-        self._counter: int = 0
-
-    def add_claim(self, claim_text: str, claim_type: ClaimType,
-                  evidence_refs: list[str]) -> ClaimNode: ...
-
-    def update_claim_status(self, claim_id: str, status: ClaimStatus,
-                            confidence: float,
-                            independence_groups: list[str]) -> ClaimNode:
-        """Replace claim with updated status. Returns new frozen node."""
-
-    def link_counter_signal(self, claim_id: str, counter_signal_id: str) -> None: ...
-
-    def compute_root_hash(self) -> str:
-        """Merkle root per design note §3.7."""
-
-    def get_status_summary(self) -> dict[str, int]: ...
-
-    @property
-    def claims(self) -> list[ClaimNode]: ...
-```
-
-**Merkle hashing spec (§3.7):**
-
-```python
-from theatre.engine.canonical_json import canonical_json
-
-def compute_root_hash(self) -> str:
-    if not self._claims:
-        return hashlib.sha256(b"").hexdigest()
-
-    # 1. Sort claims by claim_id (lexicographic)
-    sorted_claims = sorted(self._claims, key=lambda c: c.claim_id)
-
-    # 2. Leaf hashes = SHA-256(canonical_json(claim))
-    leaves = [
-        hashlib.sha256(canonical_json(c.model_dump()).encode()).hexdigest()
-        for c in sorted_claims
-    ]
-
-    # 3. Merkle tree: pairwise SHA-256, odd leaf duplicated
-    while len(leaves) > 1:
-        if len(leaves) % 2 == 1:
-            leaves.append(leaves[-1])  # Duplicate odd leaf
-        leaves = [
-            hashlib.sha256((leaves[i] + leaves[i + 1]).encode()).hexdigest()
-            for i in range(0, len(leaves), 2)
-        ]
-
-    return leaves[0]
+Backend WS event (wing_flap | price_update | paradox_spawn | investigation_event)
+  → frontend/src/hooks/useWebSocket.ts
+    → identify query keys
+      → queryClient.invalidateQueries()
+        → auto-refetch via TanStack Query
 ```
 
 ---
 
-## 3. Sprint 2 — Counter-Signals + Monitor + Scanner + Resolver + Checker
+## 2. Sprint-0 — Engine Coherence Lock (COMPLETE)
 
-### 3.1 Investigation Counter-Signal Classes
+### 2.1 Models Layer
 
-**New file:** `backend/investigation/counter_signals.py`
-
-Separate taxonomy from pipeline counter-signals in `osint/osint_pipeline/engine/counter_signal.py`. No shared enum, no shared state.
+**Modified:** `backend/database/models.py`
 
 ```python
-class InvestigationCounterSignalClass(str, Enum):
-    OFFICIAL_DENIAL = "official_denial"
-    REGULATORY_CLEARANCE = "regulatory_clearance"
-    FILING_CONTRADICTION = "filing_contradiction"
-    COMPETING_ANALYSIS = "competing_analysis"
-    TIMELINE_INCONSISTENCY = "timeline_inconsistency"
-    SOURCE_RELIABILITY_DEGRADATION = "source_reliability_degradation"
-    ENTITY_STATUS_CHANGE = "entity_status_change"
-    JURISDICTIONAL_CONFLICT = "jurisdictional_conflict"
-    RETRACTION_OR_CORRECTION = "retraction_or_correction"
-    MARKET_DIVERGENCE = "market_divergence"
-    WITNESS_SOURCE_RECANTATION = "witness_source_recantation"
+class FlapDirection(str, enum.Enum):
+    STABILISE = "STABILISE"
+    DESTABILISE = "DESTABILISE"
+    NEUTRAL = "NEUTRAL"
 
-
-class InvestigationCounterSignal(BaseModel):
-    model_config = {"frozen": True}
-    counter_signal_id: str
-    signal_class: InvestigationCounterSignalClass
-    detected_at: datetime
-    evidence_ref: str | None = None
-    material: bool
-    resolution_impact: str
-    detection_method: str  # "automated_osint" | "paradox_engine" | "human_submitted"
-
-
-class InvestigationCounterSignalFeed:
-    def __init__(self) -> None:
-        self._signals: list[InvestigationCounterSignal] = []
-        self._counter: int = 0
-
-    def log_counter_signal(self, signal_class: InvestigationCounterSignalClass,
-                           material: bool, resolution_impact: str,
-                           detection_method: str,
-                           evidence_ref: str | None = None) -> InvestigationCounterSignal: ...
-
-    def get_summary(self) -> dict:
-        """Returns {checked: N, gaps: N, material_contradictions: N}."""
-        # Classes 10+11 only count toward 'checked' when explicitly logged
-
-    def get_detail(self) -> list[dict]: ...
-
-    @property
-    def signals(self) -> list[InvestigationCounterSignal]: ...
+class WingFlapType(str, enum.Enum):
+    # 7 original + 10 new
+    TRADE = "TRADE"
+    SHIELD = "SHIELD"
+    SABOTAGE = "SABOTAGE"
+    RIPPLE = "RIPPLE"
+    PARADOX = "PARADOX"
+    FOUNDER_YIELD = "FOUNDER_YIELD"
+    ENTROPY = "ENTROPY"
+    MIRROR_SYNC = "MIRROR_SYNC"
+    MIRROR_TRADE = "MIRROR_TRADE"
+    EVIDENCE = "EVIDENCE"
+    CLAIM = "CLAIM"
+    COUNTER_SIGNAL = "COUNTER_SIGNAL"
+    CORROBORATION = "CORROBORATION"
+    DETONATION = "DETONATION"
+    FORK_SPAWN = "FORK_SPAWN"
+    STOP_CONDITION = "STOP_CONDITION"
+    CERTIFICATE = "CERTIFICATE"
 ```
 
-**Key rule:** `MARKET_DIVERGENCE` and `WITNESS_SOURCE_RECANTATION` are event-driven. They only appear in `checked` count when an `InvestigationCounterSignal` instance for that class exists in `_signals`. They do not passively contribute to coverage metrics.
-
-### 3.2 Commitment Monitor
-
-**New file:** `backend/investigation/commitment_monitor.py`
+Timeline anchor/fork fields:
 
 ```python
-class DriftType(str, Enum):
-    ENTITY_RESTRUCTURE = "entity_restructure"
-    CONTRACT_AMENDMENT = "contract_amendment"
-    MARKET_RULE_CHANGE = "market_rule_change"
-    REGULATORY_STATUS_CHANGE = "regulatory_status_change"
-    JURISDICTION_CHANGE = "jurisdiction_change"
-
-
-class DriftImpact(str, Enum):
-    MATERIAL = "material"
-    NON_MATERIAL = "non_material"
-
-
-class DriftEvent(BaseModel):
-    model_config = {"frozen": True}
-    drift_id: str
-    drift_type: DriftType
-    detected_at: datetime
-    original_value: str
-    new_value: str
-    evidence_ref: str | None = None
-    impact_assessment: DriftImpact
-
-
-class CommitmentMonitor:
-    def __init__(self) -> None:
-        self._events: list[DriftEvent] = []
-        self._counter: int = 0
-
-    def log_drift(self, drift_type: DriftType, original_value: str,
-                  new_value: str, impact_assessment: DriftImpact,
-                  evidence_ref: str | None = None) -> DriftEvent: ...
-
-    def has_material_drift(self) -> bool:
-        return any(e.impact_assessment == DriftImpact.MATERIAL for e in self._events)
-
-    @property
-    def events(self) -> list[DriftEvent]: ...
+# Timeline model additions
+is_anchor: Mapped[bool] = mapped_column(Boolean, default=False)
+anchor_timeline_id: Mapped[Optional[str]] = mapped_column(
+    String(50), ForeignKey("timelines.id"), nullable=True)
+fork_divergence: Mapped[float] = mapped_column(Float, default=0.0)
+last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 ```
 
-### 3.3 Signal Scanner
+### 2.2 Migration
 
-**New file:** `backend/investigation/signal_scanner.py`
+**New:** `backend/alembic/versions/c016_engine_coherence.py`
 
-```python
-class DomainFilter(str, Enum):
-    CORPORATE_AND_ENTITY = "corporate_and_entity"
-    FINANCE_AND_MARKETS = "finance_and_markets"
-    MARITIME = "maritime"
-    AIRSPACE = "airspace"
-    GEOPOLITICAL_AND_CONFLICT = "geopolitical_and_conflict"
-    CYBER_THREAT = "cyber_threat"
-    PROPERTY_AND_LAND = "property_and_land"
-    COURT_AND_LEGAL = "court_and_legal"
-    SATELLITE_AND_EARTH_OBSERVATION = "satellite_and_earth_observation"
+Dialect-safe migration:
+1. Extends WingFlapType enum (PostgreSQL: `ALTER TYPE ... ADD VALUE`, SQLite: no-op)
+2. Adds anchor/fork columns to timelines
+3. Normalises stability/surface_tension/osint_alignment: `SET col = col / 100.0 WHERE col > 1.0`
+4. Migrates direction data: `UPDATE wing_flaps SET direction = 'STABILISE' WHERE direction = 'ANCHOR'`
 
-# Maps domain filters to OSINT registry source groups
-DOMAIN_FILTER_SOURCE_GROUPS: dict[DomainFilter, list[str]] = {
-    DomainFilter.CORPORATE_AND_ENTITY: ["official_gov", "corporate_filing", "entity_resolution"],
-    DomainFilter.FINANCE_AND_MARKETS: ["market_data", "central_bank", "prediction_market"],
-    DomainFilter.MARITIME: ["maritime_ais", "geospatial_verification"],
-    DomainFilter.AIRSPACE: ["flight_tracking"],
-    DomainFilter.GEOPOLITICAL_AND_CONFLICT: ["conflict_event", "humanitarian_data", "disaster_alert"],
-    DomainFilter.CYBER_THREAT: ["cyber_threat"],
-    DomainFilter.PROPERTY_AND_LAND: ["property_registry"],
-    DomainFilter.COURT_AND_LEGAL: ["court_filing", "insolvency"],
-    DomainFilter.SATELLITE_AND_EARTH_OBSERVATION: ["satellite_imagery", "seismology"],
-}
+### 2.3 Pattern A Decay Fix
 
-
-class SourceQuery(BaseModel):
-    model_config = {"frozen": True}
-    source_id: str
-    source_group: str
-    query: str
-    result_count: int
-    access_tier: str  # "A", "B", "C"
-    skipped: bool = False
-    skip_reason: str | None = None
-
-
-class Anomaly(BaseModel):
-    model_config = {"frozen": True}
-    anomaly_id: str
-    source_id: str
-    description: str
-    severity: float = Field(ge=0.0, le=1.0)
-    detected_at: datetime
-
-
-class DeltaBrief(BaseModel):
-    model_config = {"frozen": True}
-    brief_id: str
-    domain_filters: list[DomainFilter]
-    generated_at: datetime
-    source_queries: list[SourceQuery]
-    anomalies: list[Anomaly]
-    content_hash: str  # SHA-256 of canonical JSON
-
-
-class SignalScanner:
-    def __init__(self, domain_filters: list[DomainFilter]) -> None:
-        self._domain_filters = domain_filters
-
-    def scan(self, subject: str) -> DeltaBrief:
-        """Mock scan. Returns stub DeltaBrief with source queries and empty anomalies."""
-
-    @property
-    def active_source_groups(self) -> list[str]:
-        """Flatten domain filters to source groups."""
-
-    def _build_manifest(self, queries: list[SourceQuery]) -> dict:
-        """Scanner manifest with requested/resolved/skipped groups and access_tier_policy."""
+**Before (buggy):**
+```
+paradox.py: timeline.decay_rate_per_hour = base * (severity + 1)  ← MUTATES rate
+             timeline.decay_multiplier = severity + 1
+entropy.py: effective = timeline.decay_rate_per_hour * 2.0         ← hardcoded 2×
+Result: base × (sev+1) × 2.0 = double-application
 ```
 
-**Access-tier policy:** Default tier A only. Tier B/C sources recorded as `skipped=True` with `skip_reason="access_tier_b_not_authorized"`.
-
-### 3.4 Entity Resolver
-
-**New file:** `backend/investigation/entity_resolver.py`
-
-```python
-class SourceQueryRecord(BaseModel):
-    model_config = {"frozen": True}
-    source_id: str
-    source_name: str
-    query_time: datetime
-    result_found: bool
-    fields_populated: list[str]
-
-
-class EntityQuery(BaseModel):
-    model_config = {"frozen": True}
-    entity_name: str
-    jurisdiction: str
-    registration_number: str | None = None
-
-
-class EntityProfile(BaseModel):
-    model_config = {"frozen": True}
-    entity_id: str
-    entity_name: str
-    jurisdiction: str
-    registration_number: str | None = None
-    incorporation_date: str | None = None
-    registered_address: str | None = None
-    directors: list[dict] = Field(default_factory=list)
-    filing_history_summary: list[dict] = Field(default_factory=list)
-    gazette_notices: list[dict] = Field(default_factory=list)
-    regulatory_entries: list[dict] = Field(default_factory=list)
-    source_queries: list[SourceQueryRecord] = Field(default_factory=list)
-    profile_hash: str = ""  # SHA-256 of canonical JSON (set by resolver)
-
-
-class EntityResolver:
-    def resolve(self, query: EntityQuery) -> EntityProfile:
-        """Stub resolver. Returns mock profile for Companies House + London Gazette."""
+**After (fixed):**
+```
+paradox.py: timeline.decay_multiplier = severity + 1               ← ONLY writes multiplier
+entropy.py: effective = base_rate × timeline.decay_multiplier      ← reads multiplier, applies once
+Result: base × (sev+1) = correct single-application
 ```
 
-Profile hash computed via `canonical_json()` of the profile dict excluding `profile_hash` itself.
+### 2.4 Shared SYSTEM Entity
 
-### 3.5 Corroboration Checker
-
-**New file:** `backend/investigation/corroboration_checker.py`
+**New:** `backend/worker/tasks/_system_entity.py`
 
 ```python
-class CorroborationCheck(BaseModel):
-    model_config = {"frozen": True}
-    claim_id: str
-    source_id: str
-    upstream_group: str
-    status: str  # confirmed | contradicted | unavailable
-    confidence: float = Field(ge=0.0, le=1.0)
+async def ensure_system_entities(session: AsyncSession) -> tuple[User, Agent]:
+    """Returns (system_user, system_agent), creating if absent."""
+```
 
+Eliminates ~30 lines of identical boilerplate in entropy.py, paradox.py, market_sync.py. Note: `kalshi_sync.py` still duplicates this boilerplate (cleanup deferred).
 
-class InvestigationCorroborationChecker:
-    def evaluate_claim(self, claim: ClaimNode,
-                       checks: list[CorroborationCheck]) -> ClaimStatus:
-        """Derive claim status from corroboration checks.
+### 2.5 Scale Conversion Reference
 
-        Hard invariant: SUPPORTED requires >=2 distinct upstream_group values
-        with status='confirmed'. No override, no admin bypass.
+| Context | Old | New |
+|---------|-----|-----|
+| `_shark_strategy` delta | `size / 10000` (~0.1–0.15) | `size / 1_000_000` (~0.001–0.002) |
+| `_spy_strategy` delta | `uniform(1.0, 3.0)` | `uniform(0.01, 0.03)` |
+| `_diplomat_strategy` delta | `uniform(3.0, 8.0)` | `uniform(0.03, 0.08)` |
+| `_saboteur_strategy` delta | `-uniform(5.0, 12.0)` | `-uniform(0.05, 0.12)` |
+| `_whale_strategy` threshold | `osint_alignment > 50` | `> 0.5` |
+| `_whale_strategy` delta | `size / 5000` (~2–10) | `size / 1_000_000` (~0.01–0.05) |
+| Genesis base_stability | `45.0–82.0` | `0.45–0.82` |
+| Genesis surface_tension | `uniform(40, 70)` | `uniform(0.40, 0.70)` |
+| Genesis osint_alignment | `price_yes * 100` | `price_yes` (already 0–1) |
+| Genesis gravity_score | `uniform(50, 80)` | `uniform(0.50, 0.80)` |
+| Genesis decay_rate | `1.0` | `0.01` |
+| Genesis flap_type | `"GENESIS"` (invalid) | `WingFlapType.FORK_SPAWN` |
+| Genesis Timeline.status | `"ACTIVE"` (no such column) | `is_active=True` |
+| Kalshi stability cap | `min(5.0)` | `min(0.05)` |
+| Kalshi clamp | `max(0, min(100, ...))` | `max(0.0, min(1.0, ...))` |
+| Market sync delta cap | `5.0` | `0.05` |
 
-        PRIVATE_LEAK-only evidence cannot achieve SUPPORTED.
-        Single upstream group → PARTIALLY_SUPPORTED at best.
-        """
+---
 
-    def _count_independent_groups(self, checks: list[CorroborationCheck]) -> int:
-        """Count distinct upstream_group values with status='confirmed'."""
+## 3. Sprint 1 — Mock Purge + Real API Wiring
+
+### 3.1 TypeScript Type Alignment
+
+**Files:** `frontend/src/types/*.ts`
+
+Rewrite all type files to match backend Pydantic schemas. Key alignments:
+- `types/portfolio.ts` → `UserPosition`, `PortfolioSummary` from `backend/schemas/user_schemas.py`
+- `types/agents.ts` → `Agent` from `backend/database/models.py`
+- `types/marketplace.ts` → Timeline schema from `backend/schemas/butterfly_schemas.py`
+- `types/breach.ts` → `Paradox` from `backend/schemas/paradox_schemas.py`
+- New: `types/investigation.ts` — all investigation toolset response types
+- New: `types/theatre.ts` — `TheatreResponse`, `TheatreCertificateResponse`
+
+### 3.2 Portfolio Wiring
+
+Replace `usePortfolio.ts` mock with TanStack Query calling:
+- `GET /api/v1/user/positions` — individual positions
+- `GET /api/v1/user/portfolio/summary` — aggregate P&L
+
+Field mapping: `unrealizedPnL` → `unrealised_pnl_usd` (camelCase→snake_case in response transform)
+
+### 3.3 Marketplace Wiring
+
+**The relationship:** Polymarket = base reality. Echelon mirrors markets as `TL_PM_*` timelines, then forks.
+
+Backend tasks:
+- Verify `MarketSyncTask.tick()` runs on 10s cadence
+- Add `GET /api/v1/timelines/trending` — returns timelines sorted by volume
+
+Frontend: Replace mock market generator with TanStack Query fetching timelines with `TL_PM_*` prefix.
+
+### 3.4 Agents Wiring
+
+Remove `USE_MOCKS=true` default in `backend/api/agents_routes.py`. Frontend hook fetches from `GET /api/v1/agents/`. Display: archetype, P&L, win rate, sanity, is_alive. Accept that genealogy/lineage is out of scope.
+
+### 3.5 Paradox/Breach + Watchlist Wiring
+
+Replace `useDemoBreaches()` with TanStack Query calling `/api/v1/paradoxes/active`. Replace watchlist mock with `/api/v1/user/watchlist`.
+
+---
+
+## 4. Sprint 2 — Investigation Dashboard + Certificate Explorer
+
+### 4.1 Investigation API Routes
+
+**New:** `backend/api/investigation_routes.py`
+
+```
+GET  /api/v1/investigations/                       — list active investigations
+GET  /api/v1/investigations/{id}                   — investigation detail
+GET  /api/v1/investigations/{id}/evidence          — evidence envelope manifest
+GET  /api/v1/investigations/{id}/claims            — claim graph + status summary
+GET  /api/v1/investigations/{id}/counter-signals   — counter-signal feed
+GET  /api/v1/investigations/{id}/drift             — drift events
+GET  /api/v1/investigations/{id}/certificate       — investigation certificate
+GET  /api/v1/investigations/{id}/scanner           — latest DeltaBrief
+POST /api/v1/investigations/                       — create investigation
+POST /api/v1/investigations/{id}/evidence          — submit evidence item
+POST /api/v1/investigations/{id}/claims            — register claim
+```
+
+**New:** `backend/schemas/investigation.py` — Pydantic request/response models
+
+All endpoints delegate to existing `backend/investigation/` service layer from cycle-014c. Routes are thin wrappers.
+
+### 4.2 Investigation Dashboard Component Tree
+
+```
+InvestigationPage.tsx
+├── InvestigationHeader (routing hint badge, inquiry question, dates)
+├── TabNavigation (Overview | Evidence | Claims | Signals | Drift)
+├── EvidenceEnvelopePanel.tsx
+│   ├── EnvelopeHashDisplay
+│   ├── ProvenanceSummaryBar
+│   └── EvidenceItemCard.tsx × N
+│       └── ProvenanceBadge.tsx
+├── ClaimGraphPanel.tsx
+│   ├── MerkleRootDisplay
+│   ├── ClaimStatusSummary
+│   └── ClaimNodeCard.tsx × N
+│       ├── ClaimStatusBadge.tsx
+│       └── EvidenceRefLinks
+├── CounterSignalPanel.tsx
+├── DeltaBriefPanel.tsx
+├── DriftEventsPanel.tsx
+├── EntityProfilePanel.tsx
+└── InvestigationCertificateView.tsx
+    ├── CertificateFieldGroup.tsx × 8
+    └── RoutingHintBadge.tsx
+```
+
+### 4.3 Design Tokens (Investigation)
+
+```css
+/* Provenance class badges */
+--provenance-public-primary: #4ADE80;    /* emerald */
+--provenance-public-secondary: #3B82F6;  /* blue */
+--provenance-private-leak: #F59E0B;      /* amber */
+--provenance-analyst-derived: #8B5CF6;   /* purple */
+--provenance-third-party: #6B7280;       /* grey */
+
+/* Claim status badges */
+--claim-supported: #4ADE80;
+--claim-partially: #FACC15;
+--claim-unconfirmed: #6B7280;
+--claim-contradicted: #FB7185;
+
+/* Routing/anchoring */
+--routing-allowed: #4ADE80;
+--routing-review: #F59E0B;
+--anchor-unanchored: #6B7280;
+--anchor-anchored: #4ADE80;
 ```
 
 ---
 
-## 4. Sprint 3 — Certificate + Stop Conditions + E2E
+## 5. Sprint 3 — OpsBoard + Analytics + RLMF
 
-### 4.1 Stop Condition Contract
+### 5.1 OpsBoard Aggregation
 
-**Modified files:**
+The OpsBoard is rebuilt as a pure aggregation dashboard — no new backend endpoints. Consumes:
 
-**`backend/schemas/theatre.py`** — Add to `TheatreCreate`:
-```python
-stop_condition: str | None = None   # "outcome_resolution" | "evidence_threshold" | "sponsor_defined"
-stop_config: dict | None = None     # Committed parameters (thresholds, milestones)
-```
+| Widget | Source Endpoint |
+|--------|----------------|
+| Active Theatres count | `GET /api/v1/theatres` filtered by state |
+| Active Paradoxes count | `GET /api/v1/paradoxes/active` |
+| Active Investigations count | `GET /api/v1/investigations/` |
+| Agent count | `GET /api/v1/agents/` |
+| Recent Wing Flaps | `GET /api/v1/butterfly/wing-flaps/recent` |
+| Timeline Health | `GET /api/v1/butterfly/timelines/health` |
 
-**`backend/database/models.py`** — Add to Theatre model:
-```python
-stop_condition = Column(String(30), nullable=True)
-stop_config = Column(JSON, nullable=True)
-```
+Layout: 4 summary cards + activity feed + quick-access panels.
 
-**New Alembic migration** — adds two nullable columns.
+### 5.2 Analytics from Real Data
 
-**`backend/api/theatre_routes.py`** — Modifications:
-1. `create_theatre`: store `stop_condition` and `stop_config` from request
-2. `commit_theatre`: include `stop_condition` and `stop_config` in commitment hash payload
-3. `settle_theatre` (or any mutation path post-COMMITTED): reject changes to `stop_condition`/`stop_config` with 400/422
+Analytics v1 renders what exists:
+- Theatre history → resolved theatres with scores from `/api/v1/theatres` + `/api/v1/certificates`
+- Agent leaderboard → from `/api/v1/agents/` sorted by P&L
+- OSINT timeline → from `/api/v1/osint/signals`
+- "Coming Soon" placeholders for features needing new endpoints (heatmap, correlation matrix, depth chart)
 
-### 4.2 Investigation Certificate
+### 5.3 RLMF Export Viewer
 
-**New file:** `backend/investigation/certificate.py`
-
-```python
-class StopCondition(str, Enum):
-    OUTCOME_RESOLUTION = "outcome_resolution"
-    EVIDENCE_THRESHOLD = "evidence_threshold"
-    SPONSOR_DEFINED = "sponsor_defined"
-
-
-class InvestigationCertificate(BaseModel):
-    model_config = {"frozen": True}
-
-    # Base fields (from CalibrationCertificate)
-    certificate_id: str
-    oracle_output_id: str
-    inquiry_class: str = "INVESTIGATIVE"
-    inquiry_question: str
-    template_id: str
-    composite_score: float
-    verification_tier: str
-    commitment_hash: str
-    issued_at: datetime
-    expires_at: datetime
-    theatre_committed_at: datetime
-    theatre_resolved_at: datetime
-
-    # Investigation-specific
-    stop_condition_used: StopCondition
-    stop_condition_trigger: str
-    evidence_bundle_hash: str
-    evidence_item_count: int
-    evidence_provenance_summary: dict[str, int]
-    claim_graph_root_hash: str
-    claim_count: int
-    claim_status_summary: dict[str, int]
-    independence_summary: dict[str, list[str]]
-    counter_signal_summary: dict[str, int]
-    counter_signal_detail: list[dict]
-    drift_events: list[dict]
-    redaction_events: list[dict]
-    signal_scanner_domains: list[str]
-    osint_source_manifest: list[dict]
-    market_summary: dict
-
-    # Routing
-    routing_hint: str = "ALLOWED"
-    review_reason_code: str | None = None
-
-    # Anchoring
-    anchor_frequency: str = "daily_batch_utc_0000"
-    anchor_block_heights: list[int] = Field(default_factory=list)
-    anchor_state: str = "LOCAL_UNANCHORED"
-```
-
-### 4.3 Certificate Builder
-
-**Same file:** `backend/investigation/certificate.py`
-
-```python
-class InvestigationCertificateBuilder:
-    def build(
-        self,
-        envelope: EvidenceEnvelope,
-        claim_graph: ClaimGraph,
-        counter_signal_feed: InvestigationCounterSignalFeed,
-        commitment_monitor: CommitmentMonitor,
-        signal_scanner_domains: list[DomainFilter],
-        stop_condition: StopCondition,
-        stop_condition_trigger: str,
-        market_summary: dict,
-        osint_source_manifest: list[dict],
-        base_certificate_fields: dict,
-    ) -> InvestigationCertificate:
-        """Assembles certificate from all toolset artefacts."""
-```
-
-**Routing logic (evaluated in order, first match wins):**
-1. `commitment_monitor.has_material_drift()` → `REVIEW_REQUIRED`, `"drift_event_material"`
-2. Any counter-signal with `material=True` → `REVIEW_REQUIRED`, `"counter_signal_material"`
-3. All evidence items share a single provenance class → `REVIEW_REQUIRED`, `"single_provenance_class"`
-4. `anchor_state != "ANCHORED"` → `REVIEW_REQUIRED`, `"anchoring_pending"`
-5. Otherwise → `ALLOWED`
-
-### 4.4 Stop Condition Evaluator
-
-**New file:** `backend/investigation/stop_conditions.py`
-
-```python
-class InvestigationStopConditionEvaluator:
-    def evaluate(
-        self,
-        stop_condition: StopCondition,
-        stop_config: dict,
-        claim_graph: ClaimGraph,
-        evidence_envelope: EvidenceEnvelope,
-        time_remaining: float,
-    ) -> tuple[bool, str]:
-        """Returns (ready, trigger_reason).
-
-        OUTCOME_RESOLUTION: ready when time_remaining <= 0
-        EVIDENCE_THRESHOLD: ready when claim graph meets committed threshold
-            stop_config keys: min_supported_claims (int), min_corroboration_score (float)
-        SPONSOR_DEFINED: ready when current time >= committed milestone
-            stop_config keys: milestone_timestamp (ISO 8601 string)
-        """
-```
-
-Reads `stop_config` keys only — never accepts runtime overrides.
-
-### 4.5 Toolset Orchestrator
-
-**New file:** `backend/investigation/toolset.py`
-
-```python
-class InvestigationConfig(BaseModel):
-    domain_filters: list[DomainFilter] = Field(default_factory=list)
-    stop_condition: StopCondition = StopCondition.OUTCOME_RESOLUTION
-    stop_config: dict = Field(default_factory=dict)
-
-
-class InvestigationToolset:
-    def __init__(self, config: InvestigationConfig) -> None:
-        self.envelope = EvidenceEnvelope()
-        self.claim_graph = ClaimGraph()
-        self.counter_signals = InvestigationCounterSignalFeed()
-        self.commitment_monitor = CommitmentMonitor()
-        self.signal_scanner = SignalScanner(config.domain_filters)
-        self.entity_resolver = EntityResolver()
-        self._config = config
-
-    def submit_evidence(self, content: bytes, provenance_class: ProvenanceClass,
-                        content_type: str, source_description: str,
-                        references: list[str] | None = None) -> EvidenceItem: ...
-
-    def register_claim(self, claim_text: str, claim_type: ClaimType,
-                       evidence_refs: list[str]) -> ClaimNode: ...
-
-    def log_counter_signal(self, **kwargs) -> InvestigationCounterSignal: ...
-    def log_drift(self, **kwargs) -> DriftEvent: ...
-    def run_scan(self, subject: str) -> DeltaBrief: ...
-    def resolve_entity(self, query: EntityQuery) -> EntityProfile: ...
-
-    def build_certificate(self, market_summary: dict,
-                          osint_source_manifest: list[dict],
-                          base_certificate_fields: dict,
-                          stop_condition_trigger: str) -> InvestigationCertificate: ...
-```
-
-### 4.6 Deterministic Artefact Writers
-
-**New file:** `backend/investigation/artifacts.py`
-
-```python
-def write_artifact(name: str, data: dict | list) -> tuple[str, str]:
-    """Write deterministic JSON artefact. Returns (json_string, sha256_hash)."""
-    from theatre.engine.canonical_json import canonical_json
-    json_str = canonical_json(data)
-    content_hash = hashlib.sha256(json_str.encode()).hexdigest()
-    return json_str, content_hash
-```
-
-Artefact names: `deltabrief.json`, `scanner_manifest.json`, `entity_profile.json`, `evidence_manifest.json`, `corroboration_results.json`, `counter_signals.json`, `claim_graph.json`, `drift_events.json`, `market_summary.json`.
-
-All use `canonical_json()` — sorted keys, no whitespace, UTF-8. Hash preimages match certificate fields.
+Redesign from demo to viewer: RLMF export status per Theatre, export manifest (format, record count, schema version), sample records, download link.
 
 ---
 
-## 5. Test Strategy
+## 6. Sprint 4 — Investigation Lifecycle + Navigation
 
-67+ new tests across 12 test files. All mock-only — no live HTTP calls.
+### 6.1 Investigation Creation Wizard
 
-| Test File | Tests | Coverage |
-|-----------|-------|----------|
-| test_evidence_envelope.py | 8 | Submit, append-only, redaction, hash determinism |
-| test_claim_graph.py | 9 | Add claim, status update, Merkle root (1/2/3/odd claims) |
-| test_counter_signals.py | 6 | Log, summary, class 10/11 event-driven rule |
-| test_commitment_monitor.py | 5 | Log drift, material detection |
-| test_signal_scanner.py | 5 | Domain filter mapping, DeltaBrief hash, manifest |
-| test_entity_resolver.py | 4 | Resolve, hash determinism, provenance, unknown entity |
-| test_corroboration_checker.py | 5 | Independence invariant, PRIVATE_LEAK rule |
-| test_certificate.py | 8 | Build, all fields, routing logic (4 cases) |
-| test_stop_conditions.py | 5 | 3 condition types, time/threshold/milestone |
-| test_stop_condition_commitment.py | 4 | Persist, hash inclusion, immutability, committed-only |
-| test_artifacts.py | 5 | Determinism, manifest format, hash parity |
-| test_toolset_e2e.py | 3 | Full lifecycle, drift event, early resolution |
+5-step wizard: inquiry question → template selection → domain filters (9 categories) → stop condition config → review & commit.
 
-**Gate rule:** ≥942 passed (baseline), zero new failures, 67+ new tests pass. Post-014c expected: ≥1009.
+Stop condition types: OUTCOME_RESOLUTION, EVIDENCE_THRESHOLD, SPONSOR_DEFINED.
+
+Immutability warning on commit step — once committed, stop conditions cannot be changed.
+
+### 6.2 Navigation Structure
+
+```
+Dashboard (was OpsBoard/Home)
+Marketplace
+Investigations
+  └─ Active Investigations
+  └─ Signal Feed
+  └─ Create Investigation
+Theatres (list + detail)
+Analytics (was Blackbox)
+Agents
+Portfolio
+Certificates
+  └─ Calibration Certificates
+  └─ Investigation Certificates
+RLMF Exports
+```
+
+Remove: `/vrf` from main nav (move to info page), `/agents/export` (fold into RLMF).
 
 ---
 
-## 6. Shared Schema Changes
+## 7. Sprint 5 — Convergence Map + WebSocket + Polish
 
-### 6.1 Theatre Schema
+### 7.1 Convergence Map
 
-`backend/schemas/theatre.py` — add to `TheatreCreate`:
-```python
-stop_condition: str | None = None
-stop_config: dict | None = None
+2D grid: 1° × 1° cells. Colour gradient: grey (no activity) → amber (moderate convergence) → red (high convergence). Click for detail: event types, sources, matched theatres.
+
+Data source: `ConvergenceDetector` service from existing backend.
+
+### 7.2 WebSocket Cache Invalidation
+
+Pattern:
+```typescript
+// useWebSocket.ts
+ws.onmessage = (event) => {
+  const { type, payload } = JSON.parse(event.data);
+  switch (type) {
+    case 'wing_flap':
+      queryClient.invalidateQueries({ queryKey: ['timelines', 'health'] });
+      break;
+    case 'price_update':
+      queryClient.invalidateQueries({ queryKey: ['timelines', payload.id] });
+      break;
+    case 'paradox_spawn':
+      queryClient.invalidateQueries({ queryKey: ['paradoxes'] });
+      break;
+    case 'investigation_event':
+      queryClient.invalidateQueries({ queryKey: ['investigations', payload.id] });
+      break;
+  }
+};
 ```
 
-Both optional with `None` defaults. Non-INVESTIGATIVE inquiry classes ignore them.
+### 7.3 Polish Checklist
 
-### 6.2 Theatre Database Model
-
-`backend/database/models.py` — add to Theatre:
-```python
-stop_condition = Column(String(30), nullable=True)
-stop_config = Column(JSON, nullable=True)
-```
-
-### 6.3 Alembic Migration
-
-New migration file adding two nullable columns to the `theatres` table. No data migration needed.
-
-### 6.4 Theatre Routes
-
-`backend/api/theatre_routes.py`:
-- `create_theatre`: store stop fields from request body
-- `commit_theatre`: include stop fields in commitment hash computation
-- Post-COMMITTED: reject any mutation attempt on stop fields (400 response)
-
-### 6.5 Backward Compatibility
-
-All changes are additive with nullable/optional defaults. Existing theatres without stop conditions continue to work unchanged. Non-INVESTIGATIVE inquiry classes are unaffected.
+- Responsive breakpoints (stack on narrow viewports)
+- Loading skeletons (Tailwind animation tokens)
+- Empty states for all panels
+- Error states with retry buttons
+- Consistent `terminal-*` token usage
+- Keyboard navigation for tab panels
+- Zero remaining mock data imports (final grep audit)

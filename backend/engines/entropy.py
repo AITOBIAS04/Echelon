@@ -1,18 +1,35 @@
 """Entropy Engine — temporal decay of timeline stability.
 
 Runs on ENTROPY heartbeat tick (60s cadence). Decay rate scales with
-Logic Gap status. Sprint 1 defaults to "healthy".
+Logic Gap reading. Sprint 1 defaults to "healthy".
 """
 from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional
 
 from backend.engines.butterfly import ButterflyEngine, WingFlap, WingFlapType
 from backend.engines.config import EntropyConfig
 
-_MULTIPLIERS = {
-    "healthy": 1.0,
-    "stressed": None,  # filled from config
-    "danger": None,
-    "critical": None,
+
+@dataclass
+class LogicGapReading:
+    """Structured Logic Gap measurement from OSINT evidence engine.
+
+    Attributes:
+        status: One of "healthy", "stressed", "danger", "critical".
+        magnitude: Raw gap value 0.0–1.0 (0 = perfect alignment).
+    """
+    status: str = "healthy"
+    magnitude: float = 0.0
+
+
+# Named thresholds for status → multiplier (config values injected at init)
+_STATUS_MAP = {
+    "healthy",
+    "stressed",
+    "danger",
+    "critical",
 }
 
 
@@ -24,10 +41,29 @@ class EntropyEngine:
         self._butterfly = butterfly
 
     def tick(
-        self, theatre_id: str, logic_gap_status: str = "healthy"
+        self,
+        theatre_id: str,
+        reading: Optional[LogicGapReading] = None,
+        *,
+        # Legacy convenience — will be removed in 017
+        logic_gap_status: str = "healthy",
     ) -> WingFlap:
-        """Apply decay to timeline stability. Returns ENTROPY WingFlap."""
-        rate = self.get_effective_decay_rate(logic_gap_status)
+        """Apply decay to timeline stability. Returns ENTROPY WingFlap.
+
+        Accepts either a ``LogicGapReading`` (preferred) or a plain string
+        ``logic_gap_status`` for backwards compatibility.
+        """
+        if reading is not None:
+            # Support legacy callers passing a string as positional arg
+            if isinstance(reading, str):
+                status = reading
+                reading = None  # clear so magnitude defaults to 0.0
+            else:
+                status = reading.status
+        else:
+            status = logic_gap_status
+
+        rate = self.get_effective_decay_rate(status)
         impact = -rate  # always negative — decay is destabilising
 
         return self._butterfly.record_flap(
@@ -36,7 +72,8 @@ class EntropyEngine:
             agent_id=None,
             impact=impact,
             trigger_detail={
-                "logic_gap_status": logic_gap_status,
+                "logic_gap_status": status,
+                "logic_gap_magnitude": reading.magnitude if reading else 0.0,
                 "effective_decay_rate": rate,
             },
         )

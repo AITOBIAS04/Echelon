@@ -5,6 +5,7 @@ God Mode: Trigger events on demand for demos and testing.
 
 import random
 import logging
+import uuid
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone
 
@@ -13,7 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from backend.database.connection import get_async_session
-from backend.database.models import Timeline, Paradox, WingFlap, Agent, User, UserPosition
+from backend.database.models import (
+    Timeline, Paradox, WingFlap, Agent, User, UserPosition,
+    WingFlapType, FlapDirection,
+)
 from backend.worker.tasks.genesis import phoenix_protocol, SCENARIO_TEMPLATES
 from backend.scripts.seed_database import (
     seed_users,
@@ -75,24 +79,27 @@ async def inject_chaos(
     )
     session.add(paradox)
     
-    # Update timeline
+    # Update timeline (0-1 scale)
     timeline.has_active_paradox = True
-    timeline.stability = max(20, timeline.stability - 15)
-    
+    timeline.stability = max(0.20, timeline.stability - 0.15)
+
     # Create wing flap
     agent_id = await _get_any_agent_id(session)
     if agent_id:
+        flap_id = f"ADMIN_CHAOS_{timeline.id}_{uuid.uuid4().hex[:8]}"
+        flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
         flap = WingFlap(
+            id=flap_id,
             timeline_id=timeline.id,
             agent_id=agent_id,
-            flap_type="PARADOX",
+            flap_type=WingFlapType.PARADOX,
             action=f"GOD MODE: Paradox injected into {timeline.name}",
-            stability_delta=-15,
-            direction="DESTABILISE",
-            volume_usd=0,
+            stability_delta=-0.15,
+            direction=FlapDirection.DESTABILISE.value,
+            volume_usd=0.0,
             timeline_stability=timeline.stability,
             timeline_price=timeline.price_yes,
-            spawned_ripple=False,
+            timestamp=flap_timestamp,
         )
         session.add(flap)
     
@@ -126,36 +133,40 @@ async def spawn_timeline(
 @router.post("/heal-timeline/{timeline_id}")
 async def heal_timeline(
     timeline_id: str,
-    stability_boost: float = 30.0,
+    stability_boost: float = 0.30,
     session: AsyncSession = Depends(get_async_session)
 ):
     """
     GOD MODE: Boost a timeline's stability.
+    stability_boost is on 0-1 scale (default 0.30 = +30%).
     """
     query = select(Timeline).where(Timeline.id == timeline_id)
     result = await session.execute(query)
     timeline = result.scalar_one_or_none()
-    
+
     if not timeline:
         raise HTTPException(status_code=404, detail="Timeline not found")
-    
+
     old_stability = timeline.stability
-    timeline.stability = min(100, timeline.stability + stability_boost)
-    
+    timeline.stability = min(1.0, timeline.stability + stability_boost)
+
     # Create wing flap
     agent_id = await _get_any_agent_id(session)
     if agent_id:
+        flap_id = f"ADMIN_HEAL_{timeline.id}_{uuid.uuid4().hex[:8]}"
+        flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
         flap = WingFlap(
+            id=flap_id,
             timeline_id=timeline.id,
             agent_id=agent_id,
-            flap_type="SHIELD",
-            action=f"GOD MODE: Divine intervention (+{stability_boost}% stability)",
+            flap_type=WingFlapType.SHIELD,
+            action=f"GOD MODE: Divine intervention (+{stability_boost:.0%} stability)",
             stability_delta=stability_boost,
-            direction="ANCHOR",
-            volume_usd=0,
+            direction=FlapDirection.STABILISE.value,
+            volume_usd=0.0,
             timeline_stability=timeline.stability,
             timeline_price=timeline.price_yes,
-            spawned_ripple=False,
+            timestamp=flap_timestamp,
         )
         session.add(flap)
     
@@ -230,4 +241,3 @@ async def simulation_status(
         "min_timelines_threshold": 4,
         "phoenix_would_trigger": timeline_count < 4,
     }
-

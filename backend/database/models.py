@@ -32,6 +32,7 @@ class AgentArchetype(str, enum.Enum):
     DEGEN = "DEGEN"
 
 class WingFlapType(str, enum.Enum):
+    # --- Original 010b types ---
     TRADE = "TRADE"
     SHIELD = "SHIELD"
     SABOTAGE = "SABOTAGE"
@@ -39,6 +40,24 @@ class WingFlapType(str, enum.Enum):
     PARADOX = "PARADOX"
     FOUNDER_YIELD = "FOUNDER_YIELD"
     ENTROPY = "ENTROPY"  # System-generated stability decay
+    # --- 016 Coherence Lock additions ---
+    MIRROR_SYNC = "MIRROR_SYNC"        # Polymarket price sync (no trade)
+    MIRROR_TRADE = "MIRROR_TRADE"      # Polymarket trade mirrored into anchor
+    EVIDENCE = "EVIDENCE"              # OSINT evidence ingestion
+    CLAIM = "CLAIM"                    # Claim submitted to timeline
+    COUNTER_SIGNAL = "COUNTER_SIGNAL"  # Counter-evidence against claim
+    CORROBORATION = "CORROBORATION"    # Evidence corroborating existing claim
+    DETONATION = "DETONATION"          # Paradox detonation (timeline collapse)
+    FORK_SPAWN = "FORK_SPAWN"          # Fork created from anchor
+    STOP_CONDITION = "STOP_CONDITION"  # Investigation stop condition met
+    CERTIFICATE = "CERTIFICATE"        # Verification certificate issued
+
+
+class FlapDirection(str, enum.Enum):
+    """Direction of a Wing Flap's stability impact."""
+    STABILISE = "STABILISE"      # Positive stability impact
+    DESTABILISE = "DESTABILISE"  # Negative stability impact
+    NEUTRAL = "NEUTRAL"          # Sync / lifecycle — no stability change
 
 class ParadoxStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
@@ -88,14 +107,14 @@ class Timeline(Base):
     narrative: Mapped[str] = mapped_column(Text)
     keywords: Mapped[List[str]] = mapped_column(ARRAY(String), default=[])
     
-    # Core metrics
-    stability: Mapped[float] = mapped_column(Float, default=50.0)
-    surface_tension: Mapped[float] = mapped_column(Float, default=50.0)
+    # Core metrics (0.0–1.0 scale; migration normalises legacy 0–100 values)
+    stability: Mapped[float] = mapped_column(Float, default=0.5)
+    surface_tension: Mapped[float] = mapped_column(Float, default=0.5)
     price_yes: Mapped[float] = mapped_column(Float, default=0.5)
     price_no: Mapped[float] = mapped_column(Float, default=0.5)
     
-    # OSINT alignment
-    osint_alignment: Mapped[float] = mapped_column(Float, default=50.0)
+    # OSINT alignment (0.0–1.0 scale)
+    osint_alignment: Mapped[float] = mapped_column(Float, default=0.5)
     logic_gap: Mapped[float] = mapped_column(Float, default=0.0)
     
     # Gravity
@@ -118,22 +137,30 @@ class Timeline(Base):
     # Relationships
     parent_timeline_id: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("timelines.id"), nullable=True)
     connected_timeline_ids: Mapped[List[str]] = mapped_column(ARRAY(String), default=[])
-    
+
+    # Anchor / fork model (016 Coherence Lock)
+    is_anchor: Mapped[bool] = mapped_column(Boolean, default=False)
+    anchor_timeline_id: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("timelines.id"), nullable=True)
+    fork_divergence: Mapped[float] = mapped_column(Float, default=0.0)
+    last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     # Status
     has_active_paradox: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    
+
     # Relationships
     wing_flaps: Mapped[List["WingFlap"]] = relationship(back_populates="timeline")
     paradoxes: Mapped[List["Paradox"]] = relationship(back_populates="timeline")
-    
+
     # Indexes
     __table_args__ = (
         Index("ix_timelines_gravity", "gravity_score"),
         Index("ix_timelines_stability", "stability"),
         Index("ix_timelines_active", "is_active"),
+        Index("ix_timelines_anchor", "is_anchor"),
     )
 
 # ============================================
@@ -217,7 +244,7 @@ class WingFlap(Base):
     
     # Impact
     stability_delta: Mapped[float] = mapped_column(Float)
-    direction: Mapped[str] = mapped_column(String(20))  # ANCHOR or DESTABILISE
+    direction: Mapped[str] = mapped_column(String(20))  # STABILISE, DESTABILISE, or NEUTRAL
     volume_usd: Mapped[float] = mapped_column(Float)
     
     # State after flap
