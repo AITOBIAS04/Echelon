@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from backend.schemas.inquiry import resolve_inquiry_class
 
@@ -36,6 +36,19 @@ class TheatreCreate(BaseModel):
         description="Stop condition configuration (thresholds, milestones, etc.)",
     )
 
+    @field_validator("stop_condition", mode="before")
+    @classmethod
+    def validate_stop_condition(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        normalised = v.upper().strip()
+        valid = {"OUTCOME_RESOLUTION", "EVIDENCE_THRESHOLD", "SPONSOR_DEFINED"}
+        if normalised not in valid:
+            raise ValueError(
+                f"stop_condition must be one of {sorted(valid)}, got '{v}'"
+            )
+        return normalised
+
     @model_validator(mode="before")
     @classmethod
     def reject_null_inquiry_class(cls, values: dict) -> dict:
@@ -58,6 +71,51 @@ class TheatreCreate(BaseModel):
         else:
             # Explicit value — validate it
             self.inquiry_class = str(resolve_inquiry_class(self.inquiry_class))
+        return self
+
+    @model_validator(mode="after")
+    def validate_stop_config_shape(self) -> "TheatreCreate":
+        # Stop fields are only valid for INVESTIGATIVE inquiry class
+        if (self.stop_condition is not None or self.stop_config is not None) and self.inquiry_class != "INVESTIGATIVE":
+            raise ValueError(
+                f"stop_condition/stop_config are only allowed for INVESTIGATIVE inquiry class, "
+                f"got inquiry_class='{self.inquiry_class}'"
+            )
+
+        if self.stop_config is not None and self.stop_condition is None:
+            raise ValueError("stop_config requires stop_condition to be set")
+
+        if self.stop_condition == "SPONSOR_DEFINED":
+            cfg = self.stop_config or {}
+            ms = cfg.get("milestone_timestamp")
+            if ms is None:
+                raise ValueError(
+                    "SPONSOR_DEFINED requires milestone_timestamp in stop_config"
+                )
+            from datetime import datetime as _dt
+            try:
+                # Python 3.9 fromisoformat doesn't handle 'Z' suffix
+                _dt.fromisoformat(str(ms).replace("Z", "+00:00"))
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"milestone_timestamp must be valid ISO 8601, got '{ms}'"
+                )
+
+        if self.stop_condition == "EVIDENCE_THRESHOLD" and self.stop_config:
+            cfg = self.stop_config
+            msc = cfg.get("min_supported_claims")
+            if msc is not None:
+                if not isinstance(msc, int) or msc < 1:
+                    raise ValueError(
+                        f"min_supported_claims must be int >= 1, got {msc!r}"
+                    )
+            mcs = cfg.get("min_corroboration_score")
+            if mcs is not None:
+                if not isinstance(mcs, (int, float)) or not (0 <= mcs <= 1):
+                    raise ValueError(
+                        f"min_corroboration_score must be float 0-1, got {mcs!r}"
+                    )
+
         return self
 
 

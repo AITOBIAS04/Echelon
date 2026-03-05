@@ -107,7 +107,7 @@ class TestE2EInvestigationLifecycle:
                 registration_number="12345678",
             )
         )
-        assert profile.entity_id == "ENT001"
+        assert profile.entity_id.startswith("ENT-") and len(profile.entity_id) == 16
         assert len(profile.profile_hash) == 64
 
         # Step 7: Build certificate

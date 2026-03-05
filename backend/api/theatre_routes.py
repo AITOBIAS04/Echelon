@@ -384,6 +384,8 @@ async def settle_theatre(
             inquiry_class=inquiry_class,
             evidence_state=evidence_state,
             theatre_config=theatre_config,
+            stop_condition=theatre.stop_condition,
+            stop_config=theatre.stop_config,
         )
         if not ready:
             raise HTTPException(

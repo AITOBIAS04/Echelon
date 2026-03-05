@@ -20,30 +20,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    try:
-        op.add_column(
-            "theatres",
-            sa.Column("stop_condition", sa.String(30), nullable=True),
-        )
-    except Exception:
-        pass  # Column may already exist
-
-    try:
-        op.add_column(
-            "theatres",
-            sa.Column("stop_config", sa.JSON(), nullable=True),
-        )
-    except Exception:
-        pass  # Column may already exist
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [c["name"] for c in inspector.get_columns("theatres")]
+    if "stop_condition" not in columns:
+        op.add_column("theatres", sa.Column("stop_condition", sa.String(30), nullable=True))
+    if "stop_config" not in columns:
+        op.add_column("theatres", sa.Column("stop_config", sa.JSON(), nullable=True))
 
 
 def downgrade() -> None:
-    try:
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    columns = [c["name"] for c in inspector.get_columns("theatres")]
+    if "stop_config" in columns:
         op.drop_column("theatres", "stop_config")
-    except Exception:
-        pass
-
-    try:
+    if "stop_condition" in columns:
         op.drop_column("theatres", "stop_condition")
-    except Exception:
-        pass

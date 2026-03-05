@@ -34,6 +34,7 @@ class TestStopConditionPersistence:
             template_id="tmpl-001",
             construct_id="construct-001",
             template_json=_make_template_json(),
+            inquiry_class="INVESTIGATIVE",
             stop_condition="EVIDENCE_THRESHOLD",
             stop_config={"min_supported_claims": 3},
         )
@@ -83,6 +84,7 @@ class TestStopConditionPersistence:
             template_id="tmpl-001",
             construct_id="construct-001",
             template_json=_make_template_json(),
+            inquiry_class="INVESTIGATIVE",
             stop_condition="EVIDENCE_THRESHOLD",
             stop_config={"min_supported_claims": 3},
         )

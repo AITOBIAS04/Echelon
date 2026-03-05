@@ -1,6 +1,7 @@
 """Tests for Entity Resolver — multi-source entity profiles with provenance."""
 
 import hashlib
+import re
 
 from theatre.engine.canonical_json import canonical_json
 
@@ -22,7 +23,7 @@ class TestResolveCompaniesHouse:
 
         profile = resolver.resolve(query)
 
-        assert profile.entity_id == "ENT001"
+        assert profile.entity_id.startswith("ENT-") and len(profile.entity_id) == 16
         assert profile.entity_name == "Acme Holdings Ltd"
         assert profile.jurisdiction == "UK"
         assert profile.registration_number == "12345678"
@@ -100,3 +101,35 @@ class TestUnknownEntity:
         ch_query = profile.source_queries[0]
         assert ch_query.result_found is False
         assert ch_query.fields_populated == []
+
+
+class TestEntityIdDeterminism:
+    def test_same_instance_same_query_same_id_and_hash(self):
+        resolver = EntityResolver()
+        query = EntityQuery(
+            entity_name="Idempotent Corp",
+            jurisdiction="UK",
+            registration_number="55555555",
+        )
+        profile1 = resolver.resolve(query)
+        profile2 = resolver.resolve(query)
+        assert profile1.entity_id == profile2.entity_id
+        assert profile1.profile_hash == profile2.profile_hash
+
+    def test_different_query_different_entity_id(self):
+        resolver = EntityResolver()
+        q1 = EntityQuery(entity_name="Alpha Ltd", jurisdiction="UK")
+        q2 = EntityQuery(entity_name="Beta Ltd", jurisdiction="UK")
+        p1 = resolver.resolve(q1)
+        p2 = resolver.resolve(q2)
+        assert p1.entity_id != p2.entity_id
+
+    def test_entity_id_format(self):
+        resolver = EntityResolver()
+        query = EntityQuery(
+            entity_name="Format Test Ltd",
+            jurisdiction="UK",
+            registration_number="77777777",
+        )
+        profile = resolver.resolve(query)
+        assert re.match(r"^ENT-[0-9a-f]{12}$", profile.entity_id)

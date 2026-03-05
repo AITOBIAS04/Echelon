@@ -62,8 +62,13 @@ class EntityResolver:
 
     def resolve(self, query: EntityQuery) -> EntityProfile:
         """Stub resolver. Returns mock profile."""
-        self._counter += 1
-        entity_id = f"ENT{self._counter:03d}"
+        self._counter += 1  # kept for ordering
+        id_payload = canonical_json({
+            "entity_name": query.entity_name,
+            "jurisdiction": query.jurisdiction,
+            "registration_number": query.registration_number,
+        })
+        entity_id = f"ENT-{hashlib.sha256(id_payload.encode()).hexdigest()[:12]}"
         now = datetime.now(timezone.utc)
 
         source_queries = [

@@ -105,8 +105,9 @@ class InvestigationCertificateBuilder:
     1. Material drift         -> REVIEW_REQUIRED ("drift_event_material")
     2. Material counter-signal -> REVIEW_REQUIRED ("counter_signal_material")
     3. Single provenance class -> REVIEW_REQUIRED ("single_provenance_class")
-    4. Anchoring pending       -> REVIEW_REQUIRED ("anchoring_pending")
-    5. Otherwise              -> ALLOWED ("all_checks_passed")
+    4. Otherwise              -> ALLOWED ("all_checks_passed")
+
+    Note: Anchoring status is set post-build and is not part of the routing cascade.
     """
 
     def build(
@@ -235,9 +236,8 @@ class InvestigationCertificateBuilder:
         if len(provenance_summary) == 1 and sum(provenance_summary.values()) > 0:
             return RoutingDecision.REVIEW_REQUIRED.value, "single_provenance_class"
 
-        # Priority 4: Anchoring pending (always pending at build time)
-        # Note: this is intentionally not triggered — anchoring is set post-build.
-        # We only flag if no items exist (edge case).
+        # Anchoring is applied post-build by the persistence layer, so it is
+        # never evaluated as a routing criterion here.
 
         # Default: ALLOWED
         return RoutingDecision.ALLOWED.value, "all_checks_passed"
