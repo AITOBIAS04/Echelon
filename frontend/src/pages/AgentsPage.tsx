@@ -48,8 +48,9 @@ export function AgentsPage() {
     return style === 'aggressive' ? 'rgba(239, 68, 68, 0.3)' : style === 'moderate' ? 'rgba(250, 204, 21, 0.2)' : 'rgba(74, 222, 128, 0.2)';
   };
 
-  const formatTime = (date: Date): string => {
-    return date.toISOString().substr(11, 8);
+  const formatTime = (date: string | Date): string => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toISOString().substr(11, 8);
   };
 
   return (

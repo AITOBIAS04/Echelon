@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional, List
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
 
 from ..database.repositories.agent_repository import AgentRepository
 from ..dependencies import get_db
@@ -20,19 +21,64 @@ from ..dependencies import get_db
 router = APIRouter(prefix="/api/v1/agents", tags=["Agents"])
 
 
-class Agent(BaseModel):
-    """Agent response model."""
+class AgentResponse(BaseModel):
+    """Agent response model — full roster fields."""
     id: str
-    name: Optional[str] = None
-    archetype: Optional[str] = None
+    name: str
+    archetype: str
+    tier: int = 1
+    level: int = 1
+
+    # Status
+    sanity: int = 100
+    max_sanity: int = 100
     is_alive: bool = True
-    owner_id: Optional[str] = None
+    death_cause: Optional[str] = None
+
+    # Owner
+    owner_id: str
+
+    # Performance
+    total_pnl_usd: float = 0.0
+    win_rate: float = 0.0
+    trades_count: int = 0
+
+    # Genome
+    genome: dict = {}
+    parent_agent_ids: List[str] = []
+
+    # Timestamps
+    created_at: datetime
+    updated_at: datetime
 
 
 class AgentListResponse(BaseModel):
     """List of agents response."""
-    agents: List[Agent]
+    agents: List[AgentResponse]
     total: int
+
+
+def _agent_to_response(agent) -> AgentResponse:
+    """Convert ORM Agent to response model."""
+    return AgentResponse(
+        id=agent.id,
+        name=getattr(agent, 'name', agent.id),
+        archetype=getattr(agent, 'archetype', 'DEGEN'),
+        tier=getattr(agent, 'tier', 1),
+        level=getattr(agent, 'level', 1),
+        sanity=getattr(agent, 'sanity', 100),
+        max_sanity=getattr(agent, 'max_sanity', 100),
+        is_alive=getattr(agent, 'is_alive', True),
+        death_cause=getattr(agent, 'death_cause', None),
+        owner_id=getattr(agent, 'owner_id', ''),
+        total_pnl_usd=getattr(agent, 'total_pnl_usd', 0.0),
+        win_rate=getattr(agent, 'win_rate', 0.0),
+        trades_count=getattr(agent, 'trades_count', 0),
+        genome=getattr(agent, 'genome', {}),
+        parent_agent_ids=getattr(agent, 'parent_agent_ids', []) or [],
+        created_at=getattr(agent, 'created_at', datetime.utcnow()),
+        updated_at=getattr(agent, 'updated_at', datetime.utcnow()),
+    )
 
 
 @router.get("/", response_model=AgentListResponse)
@@ -45,81 +91,45 @@ async def list_agents(
 ):
     """
     Get list of all agents (roster).
-    
+
     Returns paginated list of agents with optional filtering.
     """
-    import os
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if USE_MOCKS:
-        # Return mock data structure
-        return AgentListResponse(
-            agents=[],
-            total=0
-        )
-    
     repo = AgentRepository(db_session)
-    
-    # Get all alive agents (or all if is_alive is None)
+
+    # Get agents filtered by alive status
     if is_alive is None or is_alive:
         agents = await repo.get_all_alive()
     else:
-        # For dead agents, we'd need a different method
-        agents = []
-    
+        agents = await repo.get_all_dead()
+
     # Filter by archetype if provided
     if archetype:
         agents = [a for a in agents if hasattr(a, 'archetype') and a.archetype == archetype.upper()]
-    
+
     # Paginate
     total = len(agents)
     agents = agents[offset:offset + limit]
-    
-    # Convert to response model
-    agent_list = [
-        Agent(
-            id=a.id,
-            name=getattr(a, 'name', None),
-            archetype=getattr(a, 'archetype', None),
-            is_alive=getattr(a, 'is_alive', True),
-            owner_id=getattr(a, 'owner_id', None)
-        )
-        for a in agents
-    ]
-    
+
     return AgentListResponse(
-        agents=agent_list,
+        agents=[_agent_to_response(a) for a in agents],
         total=total
     )
 
 
-@router.get("/{agent_id}", response_model=Agent)
+@router.get("/{agent_id}", response_model=AgentResponse)
 async def get_agent(
     agent_id: str,
     db_session: AsyncSession = Depends(get_db)
 ):
     """
     Get detailed information about a specific agent.
-    
+
     Includes agent stats, P&L, and current status.
     """
-    import os
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if USE_MOCKS:
-        raise HTTPException(status_code=404, detail="Agent not found (mock mode)")
-    
     repo = AgentRepository(db_session)
     agent = await repo.get(agent_id)
-    
+
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
-    
-    return Agent(
-        id=agent.id,
-        name=getattr(agent, 'name', None),
-        archetype=getattr(agent, 'archetype', None),
-        is_alive=getattr(agent, 'is_alive', True),
-        owner_id=getattr(agent, 'owner_id', None)
-    )
 
+    return _agent_to_response(agent)

@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database.models import Timeline, WingFlap, WingFlapType, FlapDirection
 from backend.integrations.polymarket_client import PolymarketClient
 from backend.worker.tasks._system_entity import ensure_system_entities
+from backend.worker.tasks._ws_broadcast import broadcast_flap
 
 logger = logging.getLogger('echelon.market_sync')
 
@@ -353,6 +354,7 @@ class MarketSyncTask:
             timestamp=flap_timestamp,
         )
         session.add(flap)
+        await broadcast_flap(flap)
 
         # Update timeline stability + last_sync_at
         await session.execute(

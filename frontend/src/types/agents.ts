@@ -1,95 +1,59 @@
-// Agents Types
-// Types for the Agent Roster and Global Intelligence pages
+// Agent Types — Aligned with backend/database/models.py Agent + backend/api/agents_routes.py
+// API response types use snake_case matching raw JSON from backend.
 
-export type SanityLevel = 'stable' | 'stressed' | 'critical' | 'breakdown';
-export type SanityStatus = 'STABLE' | 'STRESSED' | 'CRITICAL' | 'BREAKDOWN RISK';
+export type AgentArchetype = 'SHARK' | 'SPY' | 'DIPLOMAT' | 'SABOTEUR' | 'WHALE' | 'DEGEN';
 
-export type Archetype = 'WHALE' | 'SHARK' | 'DIPLOMAT' | 'SPY' | 'SABOTEUR' | 'DEGEN';
+// ============================================
+// AGENT (GET /api/v1/agents, GET /api/v1/agents/:id)
+// ============================================
 
 export interface Agent {
   id: string;
   name: string;
-  archetype: Archetype;
-  emoji: string;
-  pnl: number;
-  pnlDisplay: string;
-  generation: number;
-  lineage: string;
-  isGenesis: boolean;
-  parents?: string;
-  actions: number;
-  winRate: number;
+  archetype: AgentArchetype;
+  tier: number;
+  level: number;
+
+  // Status
   sanity: number;
-  sanityLevel: SanityLevel;
-  sanityStatus: SanityStatus;
-  color: string;
+  max_sanity: number;
+  is_alive: boolean;
+  death_cause: string | null;
+
+  // Owner
+  owner_id: string;
+
+  // Performance
+  total_pnl_usd: number;
+  win_rate: number;
+  trades_count: number;
+
+  // Genome (evolution)
+  genome: Record<string, unknown>;
+  parent_agent_ids: string[];
+
+  // Timestamps
+  created_at: string;
+  updated_at: string;
 }
 
-export interface ArchetypeCount {
-  archetype: Archetype;
-  emoji: string;
-  count: number;
+export interface AgentListResponse {
+  agents: Agent[];
+  total: number;
 }
 
-export interface PerformanceStats {
-  totalPL: number;
-  winRate: number;
-  totalActions: number;
-  avgSanity: number;
-  genesisAgents: number;
-}
+// ============================================
+// FRONTEND VIEW HELPERS
+// ============================================
 
-export interface SanityDistribution {
-  stable: number;
-  stressed: number;
-  critical: number;
-  breakdown: number;
-}
+export type SanityLevel = 'stable' | 'stressed' | 'critical' | 'breakdown';
 
-export interface DashboardStats {
-  totalAgents: number;
-  deployedAgents: number;
-  movements24h: number;
-  activeConflicts: number;
-}
-
-export interface Theatre {
-  id: string;
-  name: string;
-  agents: number;
-  activity: number;
-  activityLevel: 'high' | 'medium' | 'low';
-  volume: number;
-  instability: number;
-}
-
-export interface Movement {
-  id: string;
-  agent: string;
-  action: 'deploy' | 'withdraw' | 'strategy';
-  theatre: string;
-  timestamp: Date;
-  velocity: number;
-  velocityType: 'positive' | 'negative' | 'neutral';
-}
-
-export interface StrategyCluster {
-  archetype: Archetype;
-  emoji: string;
-  count: number;
-  totalPL: number;
-  avgWinRate: number;
-  style: 'aggressive' | 'moderate' | 'conservative';
-}
-
-export interface Conflict {
-  id: string;
-  agent1: string;
-  agent2: string;
-  theatre: string;
-  severity: 'high-impact' | 'medium-impact' | 'low-impact';
-  impact: number;
-  details: string;
+export function getSanityLevel(sanity: number, maxSanity: number): SanityLevel {
+  const ratio = maxSanity > 0 ? sanity / maxSanity : 0;
+  if (ratio >= 0.7) return 'stable';
+  if (ratio >= 0.4) return 'stressed';
+  if (ratio >= 0.15) return 'critical';
+  return 'breakdown';
 }
 
 export type AgentView = 'roster' | 'intelligence';

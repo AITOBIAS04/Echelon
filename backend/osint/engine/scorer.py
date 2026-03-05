@@ -161,6 +161,13 @@ class Scorer:
         # Gather all evidence bundles for the output
         all_bundles = corroboration.primary_bundles + corroboration.corroborating_bundles
 
+        # Feed convergence detector buffer (game loop drains every 120s)
+        try:
+            from backend.worker.tasks.convergence_tick import push_evidence_bundles
+            push_evidence_bundles(all_bundles)
+        except ImportError:
+            pass
+
         # Bundle hash
         bundle_hash = self.compute_bundle_hash(all_bundles)
 

@@ -6,12 +6,16 @@ import {
   BarChart3,
   Briefcase,
   Cpu,
-  Shield,
   ShieldCheck,
   Users,
-  Rocket,
   AlertTriangle,
   Upload,
+  Search,
+  List,
+  Radio,
+  Plus,
+  Home,
+  Map,
   X,
 } from 'lucide-react';
 
@@ -36,19 +40,26 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { path: '/home', label: 'Dashboard', icon: Home },
   { path: '/marketplace', label: 'Marketplace', icon: LayoutDashboard },
+  { path: '/investigation', label: 'Investigations', icon: Search, matchPrefixes: ['/investigation'] },
+  { path: '/convergence', label: 'Convergence', icon: Map },
   { path: '/analytics', label: 'Analytics', icon: BarChart3 },
   { path: '/portfolio', label: 'Portfolio', icon: Briefcase },
-  { path: '/rlmf', label: 'RLMF', icon: Cpu },
-  { path: '/launchpad', label: 'Launchpad', icon: Rocket },
-  { path: '/vrf', label: 'VRF', icon: Shield },
-  { path: '/verify', label: 'Verify', icon: ShieldCheck },
   { path: '/agents', label: 'Agents', icon: Users, matchPrefixes: ['/agents', '/agent/'] },
+  { path: '/rlmf', label: 'RLMF Exports', icon: Cpu },
+  { path: '/verify', label: 'Verify', icon: ShieldCheck },
 ];
 
 const AGENTS_SUBNAV: SubNavItem[] = [
   { path: '/agents/breach', label: 'Breach Console', icon: AlertTriangle },
   { path: '/agents/export', label: 'Export Console', icon: Upload },
+];
+
+const INVESTIGATION_SUBNAV: SubNavItem[] = [
+  { path: '/investigation', label: 'Active', icon: List },
+  { path: '/investigation/signals', label: 'Signal Feed', icon: Radio },
+  { path: '/investigation/create', label: 'Create', icon: Plus },
 ];
 
 /**
@@ -58,12 +69,14 @@ function NavContent({
   isExpanded,
   isActive,
   isAgentsSection,
+  isInvestigationSection,
   location,
   onLinkClick,
 }: {
   isExpanded: boolean;
   isActive: (item: NavItem) => boolean;
   isAgentsSection: boolean;
+  isInvestigationSection: boolean;
   location: { pathname: string };
   onLinkClick?: () => void;
 }) {
@@ -139,34 +152,37 @@ function NavContent({
           );
         })}
 
-        {/* Agents Subnav - shown when expanded and in Agents section */}
-        {isExpanded && isAgentsSection && (
-          <>
-          <div className="h-px bg-terminal-border/40 mx-3 my-1" />
-          <div className="mt-1 flex flex-col gap-1 pl-2 border-l border-terminal-border ml-3">
-            {AGENTS_SUBNAV.map((item) => {
-              const active = location.pathname === item.path;
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  onClick={onLinkClick}
-                  className={clsx(
-                    'flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-200',
-                    active
-                      ? 'text-status-info bg-status-info/10'
-                      : 'text-terminal-text-muted hover:text-terminal-text-secondary hover:bg-terminal-panel'
-                  )}
-                >
-                  {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0" />}
-                  <span>{item.label}</span>
-                </NavLink>
-              );
-            })}
-          </div>
-          </>
-        )}
+        {/* Section Subnavs - shown when expanded and in matching section */}
+        {isExpanded && (isAgentsSection || isInvestigationSection) && (() => {
+          const subnav = isInvestigationSection ? INVESTIGATION_SUBNAV : AGENTS_SUBNAV;
+          return (
+            <>
+              <div className="h-px bg-terminal-border/40 mx-3 my-1" />
+              <div className="mt-1 flex flex-col gap-1 pl-2 border-l border-terminal-border ml-3">
+                {subnav.map((item) => {
+                  const active = location.pathname === item.path;
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      onClick={onLinkClick}
+                      className={clsx(
+                        'flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-200',
+                        active
+                          ? 'text-status-info bg-status-info/10'
+                          : 'text-terminal-text-muted hover:text-terminal-text-secondary hover:bg-terminal-panel'
+                      )}
+                    >
+                      {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0" />}
+                      <span>{item.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
       </nav>
     </>
   );
@@ -186,6 +202,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   }, [location.pathname]);
 
   const isAgentsSection = location.pathname.startsWith('/agents') || location.pathname.startsWith('/agent/');
+  const isInvestigationSection = location.pathname.startsWith('/investigation');
 
   const handleMouseEnter = useCallback(() => {
     if (collapseTimeoutRef.current) {
@@ -217,6 +234,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
           isExpanded={isExpanded}
           isActive={isActive}
           isAgentsSection={isAgentsSection}
+          isInvestigationSection={isInvestigationSection}
           location={location}
         />
       </aside>
@@ -257,6 +275,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
           isExpanded={true}
           isActive={isActive}
           isAgentsSection={isAgentsSection}
+          isInvestigationSection={isInvestigationSection}
           location={location}
           onLinkClick={onMobileClose}
         />

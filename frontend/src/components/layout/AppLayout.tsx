@@ -8,8 +8,11 @@ import { RlmfUiProvider } from '../../contexts/RlmfUiContext';
 import { VerifyUiProvider } from '../../contexts/VerifyUiContext';
 import { DemoEngine } from '../../demo/DemoEngine';
 import { DemoToastHost } from '../../demo/DemoToastHost';
+import { useRealtimeInvalidation } from '../../hooks/useRealtimeInvestigation';
 
 export function AppLayout() {
+  // WebSocket → TanStack Query bridge (platform-wide real-time updates)
+  useRealtimeInvalidation('platform');
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 

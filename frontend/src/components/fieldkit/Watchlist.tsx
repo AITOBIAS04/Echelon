@@ -115,8 +115,11 @@ export function Watchlist() {
   }, [allTimelines, selectedView, activeFilter, isInitialized, trackedIds]);
 
   // Calculate counts for each filter
-  const counts = {
+  const counts: Record<WatchlistFilter, number> = {
     'all': allTimelines?.length || 0,
+    'timelines': allTimelines?.length || 0,
+    'agents': 0,
+    'at-risk': getFilteredCount(allTimelines || [], 'paradox-watch'),
     'brittle': getFilteredCount(allTimelines || [], 'brittle'),
     'paradox-watch': getFilteredCount(allTimelines || [], 'paradox-watch'),
     'high-entropy': getFilteredCount(allTimelines || [], 'high-entropy'),

@@ -22,6 +22,7 @@ from backend.worker.tasks.paradox import ParadoxTask
 from backend.worker.tasks.market_sync import MarketSyncTask
 from backend.worker.tasks.agent_tick import AgentTickTask
 from backend.worker.tasks.genesis import run_genesis_task
+from backend.worker.tasks.convergence_tick import convergence_tick
 
 # Configure logging
 logging.basicConfig(
@@ -41,7 +42,7 @@ class GameLoop:
     - Paradox scan: Every 30 seconds
     - Market sync: Every 10 seconds (call-budget: ≤11 API calls/tick)
     - Agent tick: Every 5 seconds
-    - Evidence: Every 120 seconds (stub — wired in 016 Sprint-1)
+    - Evidence/Convergence: Every 120 seconds (drains OSINT buffer → heatmap)
     - Divergence: Every 60 seconds (stub — wired in 016 Sprint-1)
     - Genesis (Phoenix protocol): Every 300 seconds
     """
@@ -63,7 +64,7 @@ class GameLoop:
             'paradox': 30,       # Check for breaches every 30s
             'market': 10,        # Sync prices every 10s
             'agent': 5,          # Agent decisions every 5s
-            'evidence': 120,     # OSINT evidence ingestion (stub)
+            'evidence': 120,     # OSINT convergence detection (heatmap)
             'divergence': 60,    # Fork divergence computation (stub)
             'genesis': 300,      # Phoenix protocol every 5 minutes
         }
@@ -145,9 +146,9 @@ class GameLoop:
         if self._is_due('agent', now):
             await self._run_task('agent', self.agent_task.tick, session)
 
-        # Evidence ingestion (stub — wired in 016 Sprint-1)
+        # Convergence detection (drains OSINT evidence buffer → heatmap)
         if self._is_due('evidence', now):
-            await self._run_task('evidence', self._evidence_stub, session)
+            await self._run_task('evidence', convergence_tick, session)
 
         # Fork divergence computation (stub — wired in 016 Sprint-1)
         if self._is_due('divergence', now):
@@ -177,9 +178,7 @@ class GameLoop:
         except Exception as e:
             logger.error(f"[{task_name.upper():8}] Failed: {e}")
 
-    async def _evidence_stub(self, session):
-        """Placeholder for OSINT evidence ingestion — wired in 016 Sprint-1."""
-        return None  # no-op until evidence engine is connected
+    # _evidence_stub removed — replaced by convergence_tick (016 remediation)
 
     async def _divergence_stub(self, session):
         """Placeholder for fork divergence computation — wired in 016 Sprint-1."""
