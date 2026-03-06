@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, FileText, GitBranch, AlertTriangle, TrendingDown } from 'lucide-react';
 import {
   useInvestigationList,
@@ -15,6 +16,7 @@ import { EvidenceEnvelopePanel } from '../components/investigation/EvidenceEnvel
 import { ClaimGraphPanel } from '../components/investigation/ClaimGraphPanel';
 import { CounterSignalPanel } from '../components/investigation/CounterSignalPanel';
 import { DriftEventsPanel } from '../components/investigation/DriftEventsPanel';
+import { EmptyState } from '../components/empty-states/EmptyState';
 import type { InvestigationSummary } from '../types/investigation';
 
 type Tab = 'overview' | 'evidence' | 'claims' | 'signals' | 'drift';
@@ -42,11 +44,13 @@ function InvestigationListPanel({
   investigations,
   selectedId,
   onSelect,
+  onCreateNew,
   isLoading,
 }: {
   investigations: InvestigationSummary[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onCreateNew: () => void;
   isLoading: boolean;
 }) {
   if (isLoading) {
@@ -59,9 +63,19 @@ function InvestigationListPanel({
 
   if (investigations.length === 0) {
     return (
-      <div className="p-4 text-terminal-text-muted text-xs">
-        No investigations found. Create one via the API.
-      </div>
+      <EmptyState
+        type="ZERO_STATE"
+        icon={<Search className="w-7 h-7" />}
+        title="No investigations yet"
+        description="Investigations let you track evidence, claims, and counter-signals across theatres."
+        actions={[
+          {
+            label: 'New Investigation',
+            onClick: onCreateNew,
+            variant: 'primary',
+          },
+        ]}
+      />
     );
   }
 
@@ -157,6 +171,7 @@ function OverviewTab({ investigation }: { investigation: NonNullable<ReturnType<
 }
 
 export function InvestigationPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -202,6 +217,7 @@ export function InvestigationPage() {
             investigations={investigations}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            onCreateNew={() => navigate('/investigation/create')}
             isLoading={listLoading}
           />
         </div>

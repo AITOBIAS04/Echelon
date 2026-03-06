@@ -7,6 +7,8 @@
  */
 
 import { useExports } from '../hooks/useExports';
+import { EmptyState } from '../components/empty-states/EmptyState';
+import { FileOutput } from 'lucide-react';
 import type { ExportJob, ExportDatasetKind } from '../types/exports';
 
 const KIND_LABELS: Record<ExportDatasetKind, string> = {
@@ -165,9 +167,13 @@ export function RLMFPage() {
               {error}
             </div>
           ) : jobs.length === 0 ? (
-            <div className="text-xs text-terminal-text-muted text-center py-8">
-              No export jobs found. Use the API to create exports.
-            </div>
+            <EmptyState
+              type="NOT_YET_GENERATED"
+              icon={<FileOutput className="w-6 h-6" />}
+              title="No exports generated"
+              description="RLMF exports are generated from theatre trading data, human judgements, and audit traces."
+              triggerText="Triggered by: Theatre settlement or manual export request"
+            />
           ) : (
             <div className="space-y-3">
               {jobs.map((job) => (

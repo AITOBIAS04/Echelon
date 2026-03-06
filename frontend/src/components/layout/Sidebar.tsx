@@ -9,14 +9,15 @@ import {
   ShieldCheck,
   Users,
   AlertTriangle,
-  Upload,
   Search,
   List,
-  Radio,
   Plus,
+  Radio,
   Home,
-  Map,
   X,
+  Globe,
+  Award,
+  Boxes,
 } from 'lucide-react';
 
 interface NavItem {
@@ -41,24 +42,24 @@ interface SidebarProps {
 
 const NAV_ITEMS: NavItem[] = [
   { path: '/home', label: 'Dashboard', icon: Home },
-  { path: '/marketplace', label: 'Marketplace', icon: LayoutDashboard },
+  { path: '/theatres', label: 'Theatres', icon: LayoutDashboard, matchPrefixes: ['/theatres', '/theatre/'] },
+  { path: '/fleet', label: 'Fleet', icon: Users, matchPrefixes: ['/fleet'] },
   { path: '/investigation', label: 'Investigations', icon: Search, matchPrefixes: ['/investigation'] },
-  { path: '/convergence', label: 'Convergence', icon: Map },
-  { path: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { path: '/paradox-console', label: 'Paradox Console', icon: AlertTriangle },
+  { path: '/world-monitor', label: 'World Monitor', icon: Globe },
+  { path: '/signal-map', label: 'Signal Map', icon: Radio },
   { path: '/portfolio', label: 'Portfolio', icon: Briefcase },
-  { path: '/agents', label: 'Agents', icon: Users, matchPrefixes: ['/agents', '/agent/'] },
+  { path: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { path: '/certificates', label: 'Certificates', icon: Award },
   { path: '/rlmf', label: 'RLMF Exports', icon: Cpu },
   { path: '/verify', label: 'Verify', icon: ShieldCheck },
+  { path: '/scenario-packs', label: 'Scenario Packs', icon: Boxes },
 ];
 
-const AGENTS_SUBNAV: SubNavItem[] = [
-  { path: '/agents/breach', label: 'Breach Console', icon: AlertTriangle },
-  { path: '/agents/export', label: 'Export Console', icon: Upload },
-];
-
+// Investigation keeps a subnav for its own sub-pages (Active + Create).
+// Signal Feed moved to top-level /signal-map; /agents/export moved to RLMF surface.
 const INVESTIGATION_SUBNAV: SubNavItem[] = [
   { path: '/investigation', label: 'Active', icon: List },
-  { path: '/investigation/signals', label: 'Signal Feed', icon: Radio },
   { path: '/investigation/create', label: 'Create', icon: Plus },
 ];
 
@@ -68,14 +69,12 @@ const INVESTIGATION_SUBNAV: SubNavItem[] = [
 function NavContent({
   isExpanded,
   isActive,
-  isAgentsSection,
   isInvestigationSection,
   location,
   onLinkClick,
 }: {
   isExpanded: boolean;
   isActive: (item: NavItem) => boolean;
-  isAgentsSection: boolean;
   isInvestigationSection: boolean;
   location: { pathname: string };
   onLinkClick?: () => void;
@@ -152,37 +151,34 @@ function NavContent({
           );
         })}
 
-        {/* Section Subnavs - shown when expanded and in matching section */}
-        {isExpanded && (isAgentsSection || isInvestigationSection) && (() => {
-          const subnav = isInvestigationSection ? INVESTIGATION_SUBNAV : AGENTS_SUBNAV;
-          return (
-            <>
-              <div className="h-px bg-terminal-border/40 mx-3 my-1" />
-              <div className="mt-1 flex flex-col gap-1 pl-2 border-l border-terminal-border ml-3">
-                {subnav.map((item) => {
-                  const active = location.pathname === item.path;
-                  const Icon = item.icon;
-                  return (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      onClick={onLinkClick}
-                      className={clsx(
-                        'flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-200',
-                        active
-                          ? 'text-status-info bg-status-info/10'
-                          : 'text-terminal-text-muted hover:text-terminal-text-secondary hover:bg-terminal-panel'
-                      )}
-                    >
-                      {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0" />}
-                      <span>{item.label}</span>
-                    </NavLink>
-                  );
-                })}
-              </div>
-            </>
-          );
-        })()}
+        {/* Investigation subnav — only shown when expanded and in section */}
+        {isExpanded && isInvestigationSection && (
+          <>
+            <div className="h-px bg-terminal-border/40 mx-3 my-1" />
+            <div className="mt-1 flex flex-col gap-1 pl-2 border-l border-terminal-border ml-3">
+              {INVESTIGATION_SUBNAV.map((item) => {
+                const active = location.pathname === item.path;
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={onLinkClick}
+                    className={clsx(
+                      'flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-200',
+                      active
+                        ? 'text-status-info bg-status-info/10'
+                        : 'text-terminal-text-muted hover:text-terminal-text-secondary hover:bg-terminal-panel'
+                    )}
+                  >
+                    {Icon && <Icon className="w-3.5 h-3.5 flex-shrink-0" />}
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          </>
+        )}
       </nav>
     </>
   );
@@ -201,7 +197,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     return false;
   }, [location.pathname]);
 
-  const isAgentsSection = location.pathname.startsWith('/agents') || location.pathname.startsWith('/agent/');
   const isInvestigationSection = location.pathname.startsWith('/investigation');
 
   const handleMouseEnter = useCallback(() => {
@@ -233,7 +228,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         <NavContent
           isExpanded={isExpanded}
           isActive={isActive}
-          isAgentsSection={isAgentsSection}
           isInvestigationSection={isInvestigationSection}
           location={location}
         />
@@ -274,10 +268,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         <NavContent
           isExpanded={true}
           isActive={isActive}
-          isAgentsSection={isAgentsSection}
           isInvestigationSection={isInvestigationSection}
-          location={location}
           onLinkClick={onMobileClose}
+          location={location}
         />
       </aside>
     </>

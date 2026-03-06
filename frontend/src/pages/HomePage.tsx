@@ -6,6 +6,7 @@
  */
 
 import { useOpsBoard } from '../hooks/useOpsBoard';
+import { EmptyState } from '../components/empty-states/EmptyState';
 
 function SummaryCard({
   label,
@@ -107,9 +108,17 @@ export function HomePage() {
         </div>
         <div className="divide-y divide-terminal-border/50">
           {data.recentFlaps.length === 0 ? (
-            <div className="px-4 py-8 text-center text-xs text-terminal-text-muted">
-              No recent activity.
-            </div>
+            data.paradoxes.totalActive === 0 ? (
+              <EmptyState
+                type="ALL_CLEAR"
+                description="All systems nominal. No active paradoxes or recent agent activity."
+                timestamp={new Date().toLocaleTimeString()}
+              />
+            ) : (
+              <div className="px-4 py-8 text-center text-xs text-terminal-text-muted">
+                No recent activity.
+              </div>
+            )
           ) : (
             data.recentFlaps.map((flap) => (
               <div

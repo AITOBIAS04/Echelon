@@ -52,7 +52,7 @@ export interface TheatreListResponse {
 // TEMPLATE
 // ============================================
 
-export interface TemplateResponse {
+export interface TemplateSummaryResponse {
   id: string;
   template_family: string;
   execution_path: string;
@@ -63,8 +63,12 @@ export interface TemplateResponse {
   created_at: string;
 }
 
+export interface TemplateDetailResponse extends TemplateSummaryResponse {
+  template_json: Record<string, unknown>;
+}
+
 export interface TemplateListResponse {
-  templates: TemplateResponse[];
+  templates: TemplateSummaryResponse[];
   total: number;
   limit: number;
   offset: number;

@@ -165,6 +165,12 @@ class TemplateResponse(BaseModel):
         return self
 
 
+class TemplateDetailResponse(TemplateResponse):
+    """Detailed template view including full template JSON."""
+
+    template_json: dict
+
+
 class TemplateListResponse(BaseModel):
     """Paginated list of templates."""
 

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Bell, GitCompare, BarChart3, X, ChevronDown, Cpu, Truck, Zap, Beaker, Users } from 'lucide-react';
 import { clsx } from 'clsx';
 import { MarketCard } from '../components/marketplace/MarketCard';
@@ -8,6 +9,7 @@ import { ActiveBreaches } from '../components/marketplace/ActiveBreaches';
 import { useMarketData, useRibbonEvents, useIntercepts, useBreaches } from '../hooks/useMarketplace';
 import type { Alert, CompareSlot } from '../types/marketplace';
 import { useRegisterTopActionBarActions } from '../contexts/TopActionBarActionsContext';
+import { EmptyState } from '../components/empty-states/EmptyState';
 
 // Market categories with icons (no emojis)
 const CATEGORIES = [
@@ -116,6 +118,7 @@ const mockCompareTheatres: CompareSlot[] = [
 type SortOption = 'activity' | 'volume' | 'newest' | 'instability';
 
 export function MarketplacePage() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryId>('all');
   const [sortBy, setSortBy] = useState<SortOption>('activity');
@@ -431,11 +434,30 @@ export function MarketplacePage() {
             )}
 
             {filteredMarkets().length === 0 && !marketsLoading && (
-              <div className="flex flex-col items-center justify-center py-12">
-                <BarChart3 className="w-12 h-12 mb-4 text-terminal-text-muted opacity-50" />
-                <p className="text-sm text-terminal-text-muted">No markets found</p>
-                <p className="text-xs mt-1 text-terminal-text-muted">Try adjusting your search or filters</p>
-              </div>
+              totalMarkets === 0 ? (
+                <EmptyState
+                  type="ZERO_STATE"
+                  icon={<BarChart3 className="w-7 h-7" />}
+                  title="No theatres yet"
+                  description="Theatres appear here once they are created from a template. Create your first theatre to get started."
+                  actions={[
+                    {
+                      label: 'Create Theatre',
+                      onClick: () => navigate('/theatres/create'),
+                      variant: 'primary',
+                    },
+                  ]}
+                />
+              ) : (
+                <EmptyState
+                  type="NO_RESULTS"
+                  filterDescription={searchQuery || selectedCategory !== 'all' ? `${selectedCategory !== 'all' ? selectedCategory : ''} ${searchQuery}`.trim() : undefined}
+                  onClearFilters={() => {
+                    setSearchQuery('');
+                    setSelectedCategory('all');
+                  }}
+                />
+              )
             )}
           </div>
         </div>
