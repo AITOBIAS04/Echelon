@@ -473,8 +473,10 @@
     {
       "cycle_id": "cycle-016",
       "label": "Results Surface",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-05T15:00:00Z",
+      "archived": "2026-03-05T19:10:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-05-results-surface",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -522,11 +524,64 @@
           "tasks": 5
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-017",
+      "label": "Policy Surface",
+      "status": "active",
+      "created_at": "2026-03-06T22:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 42,
+          "label": "Schema Foundation + Migration",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 43,
+          "label": "Deployability Routing",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 44,
+          "label": "TAO Flow Metrics",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 45,
+          "label": "Registry Schema Expansion",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-4",
+          "global_id": 46,
+          "label": "Coherence Gates",
+          "status": "completed",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-5",
+          "global_id": 47,
+          "label": "WebSocket Policy Events + Frontend Integration + Polish",
+          "status": "completed",
+          "tasks": 5
+        }
+      ]
     }
   ],
-  "active_cycle": "cycle-016",
+  "active_cycle": "cycle-017",
   "active_bugfix": null,
-  "global_sprint_counter": 41,
+  "global_sprint_counter": 47,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

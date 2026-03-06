@@ -113,6 +113,10 @@ export interface Timeline {
   fork_divergence: number;
   last_sync_at: string | null;
 
+  // TAO Flow (Cycle-017)
+  net_inflow_24h?: number;
+  net_inflow_7d?: number;
+
   // Connections
   connected_timeline_ids: string[];
   parent_timeline_id: string | null;
@@ -237,6 +241,8 @@ export type {
 export type {
   TheatreState,
   InquiryClass,
+  RoutingHint,
+  GateStatus,
   TheatreResponse,
   TheatreListResponse,
   TemplateSummaryResponse,

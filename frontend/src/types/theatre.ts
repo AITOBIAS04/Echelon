@@ -90,6 +90,9 @@ export interface CommitmentReceiptResponse {
 // CALIBRATION CERTIFICATE
 // ============================================
 
+export type RoutingHint = 'ALLOWED' | 'REVIEW_REQUIRED' | 'BLOCKED';
+export type GateStatus = 'PENDING' | 'PASSED' | 'FAILED';
+
 export interface TheatreCertificateResponse {
   id: string;
   theatre_id: string;
@@ -119,6 +122,13 @@ export interface TheatreCertificateResponse {
   theatre_resolved_at: string;
   ground_truth_source: string;
   execution_path: string;
+  // Cycle-017: Policy Surface
+  routing_hint: RoutingHint | null;
+  review_reason_code: string | null;
+  coherence_review_required: boolean;
+  coherence_gate_status: string | null;
+  coherence_reviewed_at: string | null;
+  is_deployable: boolean;
 }
 
 export interface TheatreCertificateSummaryResponse {
@@ -130,6 +140,10 @@ export interface TheatreCertificateSummaryResponse {
   replay_count: number;
   execution_path: string;
   issued_at: string;
+  // Cycle-017: Policy Surface
+  routing_hint: RoutingHint | null;
+  coherence_gate_status: string | null;
+  is_deployable: boolean;
 }
 
 export interface CertificateListResponse {

@@ -160,10 +160,43 @@ class ConnectionManager:
             ripple
         )
     
+    async def broadcast_routing_decision(self, certificate_id: str, decision: dict, theatre_id: str = ""):
+        """Broadcast a routing decision for a certificate."""
+        payload = {
+            "certificate_id": certificate_id,
+            **decision,
+        }
+        await self.broadcast_global("ROUTING_DECISION", payload)
+        if theatre_id:
+            await self.broadcast_to_channel(
+                f"theatre:{theatre_id}",
+                "ROUTING_DECISION",
+                payload,
+            )
+
+    async def broadcast_coherence_gate_transition(self, certificate_id: str, transition: dict):
+        """Broadcast a coherence gate state transition."""
+        await self.broadcast_global("COHERENCE_GATE_TRANSITION", {
+            "certificate_id": certificate_id,
+            **transition,
+        })
+
+    async def broadcast_tao_flow_alert(self, timeline_id: str, alert: dict):
+        """Broadcast a TAO flow threshold alert for a timeline."""
+        await self.broadcast_global("TAO_FLOW_ALERT", {
+            "timeline_id": timeline_id,
+            **alert,
+        })
+        await self.broadcast_to_channel(
+            f"timeline:{timeline_id}",
+            "TAO_FLOW_ALERT",
+            alert,
+        )
+
     async def send_position_update(self, user_id: str, position: dict):
         """Send position update to specific user."""
         await self.send_to_user(user_id, "POSITION_UPDATE", position)
-    
+
     async def send_alert(self, user_id: str, alert: dict):
         """Send alert to specific user."""
         await self.send_to_user(user_id, "ALERT", alert)

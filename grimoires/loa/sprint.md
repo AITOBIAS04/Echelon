@@ -1,523 +1,675 @@
-# Sprint Plan — Cycle-016: Results Surface
+# Sprint Plan — Cycle-017: Policy Surface
 
-**Cycle:** cycle-016
-**Date:** 5 March 2026
-**PRD:** grimoires/loa/prd.md
-**SDD:** grimoires/loa/sdd.md
-**Sprints:** 6 (Sprint-0 complete, Sprints 1–5 ahead)
-**Baseline:** ≥1009 passed (post-014c), 15 skipped, 13 pre-existing collection errors
-
----
-
-## Sprint 0: Engine Coherence Lock ✓ COMPLETE
-
-Pre-work dependency from `Echelon_Butterfly_Entropy_Coherence_Review_v1.md`. All 7 acceptance gates (A–G) pass. No 0–100 scale leaks remain in live runtime paths.
-
-### Task 0.1: Model Layer + Migration ✓
-
-**Files modified:**
-- `backend/database/models.py` — WingFlapType (10 new), FlapDirection enum, 0.5 defaults, anchor/fork fields
-- `backend/alembic/versions/c016_engine_coherence.py` — NEW: dialect-safe migration
-
-**Acceptance Criteria:**
-- [x] 17 WingFlapType values in models.py
-- [x] FlapDirection enum: STABILISE, DESTABILISE, NEUTRAL
-- [x] Timeline defaults: stability=0.5, surface_tension=0.5, osint_alignment=0.5
-- [x] Anchor/fork fields: is_anchor, anchor_timeline_id, fork_divergence, last_sync_at
-- [x] Migration normalises 0–100 → 0–1, migrates ANCHOR → STABILISE
-
-### Task 0.2: Shared SYSTEM Entity ✓
-
-**File created:** `backend/worker/tasks/_system_entity.py`
-
-**Acceptance Criteria:**
-- [x] `ensure_system_entities()` returns `(User, Agent)` tuple
-- [x] Creates SYSTEM user + agent if absent
-- [x] Used by entropy.py, paradox.py, market_sync.py
-
-### Task 0.3: Pattern A Decay Fix ✓
-
-**Files modified:**
-- `backend/worker/tasks/paradox.py` — writes `decay_multiplier` only, DETONATION flap type, 0–1 thresholds
-- `backend/worker/tasks/entropy.py` — reads `decay_multiplier`, anchor skip, 0–1 constants, FlapDirection
-
-**Acceptance Criteria:**
-- [x] Paradox: writes `decay_multiplier` only, does NOT mutate `decay_rate_per_hour`
-- [x] Entropy: `effective_rate = base_rate × decay_multiplier` (no hardcoded 2.0)
-- [x] Entropy: skips anchor timelines (`Timeline.is_anchor == False` filter)
-- [x] Both use FlapDirection enum values
-- [x] Both use shared SYSTEM entity helper
-
-### Task 0.4: Market Sync + Game Loop ✓
-
-**Files modified:**
-- `backend/worker/tasks/market_sync.py` — MIRROR_TRADE, is_anchor=True, 0–1 scale, MAX_ACTIVE_MARKETS=10
-- `backend/worker/game_loop.py` — evidence (120s) and divergence (60s) cadence stubs
-
-**Acceptance Criteria:**
-- [x] New Polymarket timelines get `is_anchor=True`
-- [x] MIRROR_TRADE flap type for real trades
-- [x] `stability_delta` capped at 0.05 (0–1 scale)
-- [x] `MAX_ACTIVE_MARKETS = 10` call-budget guardrail
-- [x] `last_sync_at` updated on every sync (trade and no-trade)
-- [x] Evidence and divergence stubs in game loop
-
-### Task 0.5: Agent Tick — Full 0–1 Conversion ✓
-
-**File modified:** `backend/worker/tasks/agent_tick.py`
-
-**Acceptance Criteria:**
-- [x] `_shark_strategy`: osint > 0.5, delta `size / 1_000_000`, clamp `max(0.0, min(1.0, ...))`
-- [x] `_spy_strategy`: delta `uniform(0.01, 0.03)`, clamp `min(1.0, ...)`
-- [x] `_diplomat_strategy`: delta `uniform(0.03, 0.08)`, clamp `min(1.0, ...)`
-- [x] `_saboteur_strategy`: delta `-uniform(0.05, 0.12)`, clamp `max(0.0, ...)`
-- [x] `_whale_strategy`: osint > 0.5, delta `size / 1_000_000`, clamp `max(0.0, min(1.0, ...))`
-- [x] All 5 strategies use `FlapDirection.STABILISE.value` / `.DESTABILISE.value`
-
-### Task 0.6: Genesis + Kalshi — Full 0–1 Conversion ✓
-
-**Files modified:**
-- `backend/worker/tasks/genesis.py` — 0–1 templates, `is_active=True`, FORK_SPAWN, SYSTEM agent, valid WingFlap
-- `backend/worker/tasks/kalshi_sync.py` — 0–1 stability, FlapDirection enum, `max(0.0, min(1.0, ...))`
-
-**Acceptance Criteria:**
-- [x] Genesis templates: base_stability 0.45–0.82 (not 45–82)
-- [x] Genesis Timeline: surface_tension, osint_alignment, gravity_score all 0–1
-- [x] Genesis: `decay_rate_per_hour=0.01`, `is_active=True` (not `status="ACTIVE"`)
-- [x] Genesis WingFlap: FORK_SPAWN type, `id`, `timestamp`, `agent_id="SYSTEM"`
-- [x] Kalshi: stability delta capped at 0.05, clamp `max(0.0, min(1.0, ...))`
-- [x] Kalshi: `FlapDirection.STABILISE.value` / `.DESTABILISE.value`
-
-### Task 0.7: Engine + Schema Layer ✓
-
-**Files modified:**
-- `backend/engines/butterfly.py` — enum sync, FlapDirection, auto-direction, `compute_fork_divergence()`
-- `backend/engines/entropy.py` — LogicGapReading dataclass, backwards-compat `tick()`
-- `backend/schemas/butterfly_schemas.py` — extended enums, anchor/fork fields, STABILISE/NEUTRAL
-- `backend/mechanics/butterfly_engine.py` — `_as_percent()` API boundary
-
-**Acceptance Criteria:**
-- [x] engines/ and models.py WingFlapType enums identical
-- [x] FlapDirection enum in engines/butterfly.py
-- [x] `record_flap()` auto-derives direction from impact sign
-- [x] `compute_fork_divergence()` returns `abs(anchor.stability - fork.stability)`
-- [x] LogicGapReading: `isinstance(reading, str)` backwards compat
-- [x] `_as_percent()` converts 0–1 → 0–100 at API boundary
-
-### Task 0.8: Coherence Tests ✓
-
-**File created:** `backend/engines/tests/test_coherence_016.py` — 22 tests
-
-**Acceptance Criteria:**
-- [x] 22 tests covering Gates A–G
-- [x] All pass (213 passed across engines + schemas)
-- [x] Zero new failures (8 pre-existing async heartbeat failures unchanged)
-
-### Sprint 0 Summary
-
-- **22 new tests** (test_coherence_016.py)
-- **16 files modified/created**
-- **213 passed** (engines + schemas); all new/targeted tests pass. 8 known unrelated async heartbeat failures remain (pre-existing, no pytest-asyncio installed)
-- **Zero 0–100 leaks** in live runtime paths (verified by grep)
-- **Zero bare string directions** in worker/tasks/ and admin_routes (verified by grep)
+**Cycle:** cycle-017
+**Date:** 6 March 2026
+**PRD:** grimoires/loa/prd_017.md
+**SDD:** grimoires/loa/sdd_017.md
+**Sprints:** 6 (0–5)
+**Baseline:** ≥1060 passed (post-016), 8 pre-existing async heartbeat failures
 
 ---
 
-## Sprint 1: Mock Purge + Real API Wiring ✓ COMPLETE
+## Sprint 0: Schema Foundation + Migration
 
-Strip mock data, wire to real backend, fix TypeScript types. No new features -- just make existing views truthful. 33 files changed (25 modified, 8 new). 19 tests pass. Zero TSC errors.
+Extend all backend models with Cycle 017 columns. Create the Alembic migration. Extend Pydantic schemas. No runtime logic — just the data layer.
 
-### Task 1.1: TypeScript Type Alignment ✓
+### Task 0.1: Model Layer — Add All 017 Columns
+
+**Files modified:**
+- `backend/database/models.py` — TheatreCertificate (routing + coherence), Timeline (TAO flow)
+
+**TheatreCertificate additions:**
+
+```python
+routing_hint: Mapped[Optional[str]] = mapped_column(
+    String(20), nullable=True, index=True)
+review_reason_code: Mapped[Optional[str]] = mapped_column(
+    String(100), nullable=True)
+coherence_review_required: Mapped[bool] = mapped_column(
+    Boolean, default=False)
+coherence_gate_status: Mapped[Optional[str]] = mapped_column(
+    String(20), nullable=True)
+coherence_reviewed_at: Mapped[Optional[datetime]] = mapped_column(
+    DateTime, nullable=True)
+coherence_reviewer_id: Mapped[Optional[str]] = mapped_column(
+    String(50), nullable=True)
+```
+
+**Timeline additions:**
+
+```python
+net_inflow_24h: Mapped[float] = mapped_column(Float, default=0.0)
+net_inflow_7d: Mapped[float] = mapped_column(Float, default=0.0)
+flow_updated_at: Mapped[Optional[datetime]] = mapped_column(
+    DateTime, nullable=True)
+```
+
+**Acceptance Criteria:**
+- [ ] TheatreCertificate has 6 new columns (routing_hint, review_reason_code, coherence_review_required, coherence_gate_status, coherence_reviewed_at, coherence_reviewer_id)
+- [ ] Timeline has 3 new columns (net_inflow_24h, net_inflow_7d, flow_updated_at)
+- [ ] All new columns are nullable or have safe defaults
+- [ ] Existing model tests pass unchanged
+
+### Task 0.2: Source Registry Model
+
+**Context:** An existing typed JSON-backed OSINT source registry lives at `backend/osint/models/registry.py`. Prefer extending the existing registry with policy fields. Only create a new `SourceRegistryEntry` DB table if Sprint 3 explicitly needs DB persistence beyond the JSON-backed approach.
 
 **Files:**
-- `frontend/src/types/portfolio.ts` → match `UserPosition`, `PortfolioSummary` from `backend/schemas/user_schemas.py`
-- `frontend/src/types/agents.ts` → match `Agent` DB model from `backend/database/models.py`
-- `frontend/src/types/marketplace.ts` → match Timeline from `backend/schemas/butterfly_schemas.py`
-- `frontend/src/types/breach.ts` → match `Paradox` from `backend/schemas/paradox_schemas.py`
-- New: `frontend/src/types/investigation.ts` — investigation toolset response types
-- New: `frontend/src/types/theatre.ts` — `TheatreResponse`, `TheatreCertificateResponse`, `CommitmentReceiptResponse`
+- `backend/osint/models/registry.py` — extend existing typed entries with policy fields
+- Verify `backend/investigation/evidence_envelope.py` source handling
+
+**Default path — extend existing OSINT registry:**
+
+Add `query_determinism`, `receipt_body_required`, and `requires_legal_review` fields to the existing typed source entries in `backend/osint/models/registry.py`. This keeps source metadata co-located and avoids a new DB table.
+
+**Fallback (only if DB persistence needed):**
+
+```python
+class SourceRegistryEntry(Base):
+    __tablename__ = "source_registry"
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    source_name: Mapped[str] = mapped_column(String(255))
+    source_type: Mapped[str] = mapped_column(String(50))
+    query_determinism: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True)
+    receipt_body_required: Mapped[bool] = mapped_column(
+        Boolean, default=False)
+    requires_legal_review: Mapped[bool] = mapped_column(
+        Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow)
+```
 
 **Acceptance Criteria:**
-- [x] All type files match backend Pydantic schemas (field names, types)
-- [x] camelCase ↔ snake_case transforms documented in API client
-- [x] No `any` types in investigation or theatre types
+- [ ] Registry fields exist on source entries (either in-registry or DB-backed)
+- [ ] query_determinism accepts: pure_id_lookup, search_endpoint, bulk_export
+- [ ] receipt_body_required defaults to False
+- [ ] requires_legal_review defaults to False
 
-### Task 1.2: Portfolio Page — Wire to Real API ✓
+### Task 0.3: Alembic Migration
 
-**Files:**
-- `frontend/src/hooks/usePortfolio.ts` — TanStack Query calling `/api/v1/user/positions` + `/api/v1/user/portfolio/summary`
-- `frontend/src/pages/PortfolioPage.tsx` — consume real data shape
-- `frontend/src/components/fieldkit/MyPositions.tsx` — update field names
+**New file:** `backend/alembic/versions/c017_policy_surface.py`
 
-**Acceptance Criteria:**
-- [x] All `mock*` constants removed
-- [x] Empty state displayed when no positions
-- [x] Field mapping: `unrealizedPnL` → `unrealised_pnl_usd`
+Dialect-safe migration:
 
-### Task 1.3: Marketplace Page — Wire to Polymarket-Backed Timelines ✓
-
-**Backend:**
-- Verify `MarketSyncTask.tick()` runs on 10s cadence
-- Add `GET /api/v1/timelines/trending` — timelines sorted by volume
-
-**Frontend:**
-- `frontend/src/api/marketplaceapi.ts` — replace mock generator with `/api/v1/timelines/`
-- `frontend/src/hooks/useMarketplace.ts` — fetch timelines with `TL_PM_*` prefix
-- `frontend/src/pages/MarketplacePage.tsx` — consume Timeline schema
+1. Add 6 columns to `theatre_certificates`
+2. Add 3 columns to `timelines`
+3. If DB persistence path chosen: create `source_registry` table. Otherwise skip (fields live in existing OSINT registry).
+4. Create index on `theatre_certificates.routing_hint`
 
 **Acceptance Criteria:**
-- [x] Marketplace renders from real Polymarket-backed timelines
-- [x] No hardcoded market data
-- [x] Trending endpoint returns timelines sorted by volume
+- [ ] Migration runs clean on PostgreSQL
+- [ ] Migration runs clean on SQLite (dialect-safe)
+- [ ] Downgrade removes all new columns/table
+- [ ] 2 tests: upgrade/downgrade round-trip, verify column existence
 
-### Task 1.4: Agents Page — Wire to Real API ✓
+### Task 0.4: Pydantic Schema Extensions
 
-**Frontend:** `frontend/src/hooks/useAgents.ts` — replace 6 hardcoded agents with API calls
-**Backend:** `backend/api/agents_routes.py` — remove `USE_MOCKS=true` default
+**Files modified:**
+- `backend/schemas/theatre.py` — extend TheatreCertificateResponse, TheatreCertificateSummaryResponse
+- `backend/schemas/butterfly_schemas.py` — extend timeline response (if applicable)
+
+**TheatreCertificateResponse additions:**
+
+```python
+routing_hint: Optional[str] = None
+review_reason_code: Optional[str] = None
+coherence_review_required: bool = False
+coherence_gate_status: Optional[str] = None
+coherence_reviewed_at: Optional[datetime] = None
+is_deployable: bool = True  # computed
+```
+
+**TheatreCertificateSummaryResponse additions:**
+
+```python
+routing_hint: Optional[str] = None
+coherence_gate_status: Optional[str] = None
+is_deployable: bool = True  # computed
+```
+
+**Timeline response additions:**
+
+```python
+net_inflow_24h: float = 0.0
+net_inflow_7d: float = 0.0
+```
 
 **Acceptance Criteria:**
-- [x] Real agent data from DB displayed
-- [x] Empty state when no agents
-- [x] Archetype, P&L, win rate, sanity, is_alive fields rendered
+- [ ] All new fields are optional or have safe defaults
+- [ ] Existing API consumers see no breaking changes
+- [ ] `is_deployable` is computed from routing_hint + coherence_gate_status
+- [ ] 2 tests: serialise certificate with/without 017 fields, verify defaults
 
-### Task 1.5: Paradox/Breach — Wire to Real API ✓
+### Sprint 0 Summary Target
 
-**Files:** `frontend/src/pages/BreachConsolePage.tsx` — replace `useDemoBreaches()` with TanStack Query calling `/api/v1/paradoxes/active`
-
-**Acceptance Criteria:**
-- [x] No demoStore dependency
-- [x] Real paradox data rendered
-
-### Task 1.6: Watchlist — Wire to Real API ✓
-
-**Files:** `frontend/src/components/watchlist/` — call `/api/v1/user/watchlist`
-
-**Acceptance Criteria:**
-- [x] No mock watchlist data
-
-### Task 1.7: Sprint 1 Tests ✓
-
-5 tests:
-1. `usePortfolio.test.ts` — hook calls real endpoint, transforms response correctly
-2. `useMarketplace.test.ts` — hook calls real endpoint, categories match backend
-3. `useAgents.test.ts` — hook calls real endpoint, handles empty list
-4. `BreachConsolePage.test.tsx` — renders real paradox data, no demoStore usage
-5. Type alignment regression: snapshot test all type files against backend OpenAPI spec
-
-**Acceptance Criteria:**
-- [x] All 5 tests pass
-- [x] Zero mock data imports in Sprint 1 components
+- **4 tests**
+- **3–5 files modified/created**
+- **Zero regressions** on existing 1060+ tests
+- All 017 columns exist and are queryable
 
 ---
 
-## Sprint 2: Investigation Dashboard + Certificate Explorer ✓ COMPLETE
+## Sprint 1: Deployability Routing
 
-### Task 2.1: Investigation API Routes (Backend) ✓
+Build the routing evaluation engine. Compute routing hints at certificate issuance. Expose via API.
 
-**New files:**
-- `backend/api/investigation_routes.py` — 11 REST endpoints
-- `backend/schemas/investigation.py` — Pydantic request/response models
-- Wire into `backend/main.py`
+### Task 1.1: RoutingEvaluator Service
 
-8 endpoint tests:
-1. `test_list_investigations` — returns list
-2. `test_get_investigation_detail` — returns toolset state
-3. `test_get_evidence` — returns envelope manifest
-4. `test_get_claims` — returns claim graph with status summary
-5. `test_get_counter_signals` — returns counter-signal feed
-6. `test_get_drift` — returns drift events
-7. `test_get_certificate` — returns investigation certificate
-8. `test_create_investigation` — creates and returns investigation
+**New file:** `backend/services/routing_evaluator.py`
 
-**Acceptance Criteria:**
-- [x] All 11 endpoints return correct response schemas
-- [x] All 8 tests pass
-- [x] Routes delegate to existing `backend/investigation/` services
+Configurable policy with priority-ordered rules:
 
-### Task 2.2: Investigation Dashboard Page ✓
+| Priority | Rule | Result |
+|----------|------|--------|
+| 1 | verification_tier in BLOCKED_TIERS (REJECTED) | BLOCKED |
+| 2 | composite_score < block_threshold (0.3) | BLOCKED |
+| 3 | verification_tier in REVIEW_TIERS (DRAFT, CONTESTED) | REVIEW_REQUIRED |
+| 4 | composite_score < review_threshold (0.6) | REVIEW_REQUIRED |
+| 5 | inquiry_class in ALWAYS_REVIEW (INVESTIGATIVE, SCRUTINY) | REVIEW_REQUIRED |
+| 6 | Default | ALLOWED |
 
-**Files:**
-- `frontend/src/pages/InvestigationPage.tsx`
-- `frontend/src/router.tsx` — add `/investigation` route
-- `frontend/src/hooks/useInvestigation.ts` — TanStack Query hooks
+Each rule produces a `RoutingDecision(hint, reason_code, rule_name)`.
 
-Tabbed layout: Overview | Evidence | Claims | Signals | Drift
+4 tests:
+1. Score below block threshold → BLOCKED + reason code
+2. INVESTIGATIVE inquiry class + good score → REVIEW_REQUIRED
+3. REJECTED tier → BLOCKED regardless of score
+4. Good score + COUNTERFACTUAL → ALLOWED
 
 **Acceptance Criteria:**
-- [x] Page renders with real data from investigation endpoints
-- [x] Tab navigation between all 5 tabs
-- [x] Loading and empty states for each tab
+- [x] RoutingEvaluator with RoutingPolicy dataclass
+- [x] evaluate() returns RoutingDecision
+- [x] First matching rule wins (priority order)
+- [x] All 4 tests pass
 
-### Task 2.3: Evidence Envelope Viewer ✓
+### Task 1.2: Certificate Pipeline Integration
 
-**Files:**
-- `frontend/src/components/investigation/EvidenceEnvelopePanel.tsx`
-- `frontend/src/components/investigation/EvidenceItemCard.tsx`
-- `frontend/src/components/investigation/ProvenanceBadge.tsx`
+**Files modified:**
+- `backend/services/certificate_pipeline.py` — hook routing evaluation after scoring
 
-**Acceptance Criteria:**
-- [x] Chronological evidence items with provenance class badges
-- [x] Content hashes displayed (truncated)
-- [x] Redaction indicators where applicable
-- [x] Envelope hash at top of panel
-- [x] Provenance summary stacked bar
+After certificate scores are computed, before persistence:
 
-### Task 2.4: Claim Graph Viewer ✓
+```python
+evaluator = RoutingEvaluator()
+decision = evaluator.evaluate(certificate)
+certificate.routing_hint = decision.hint.value
+certificate.review_reason_code = decision.reason_code
+```
 
-**Files:**
-- `frontend/src/components/investigation/ClaimGraphPanel.tsx`
-- `frontend/src/components/investigation/ClaimNodeCard.tsx`
-- `frontend/src/components/investigation/ClaimStatusBadge.tsx`
-
-**Acceptance Criteria:**
-- [x] Vertical card list layout
-- [x] Claim text, type badge, status badge, confidence ring
-- [x] Evidence refs, counter-signal links, independence groups
-- [x] Merkle root hash displayed
-
-### Task 2.5: Investigation Certificate Explorer ✓
-
-**Files:**
-- `frontend/src/components/investigation/InvestigationCertificateView.tsx`
-- `frontend/src/components/investigation/CertificateFieldGroup.tsx`
-- `frontend/src/components/investigation/RoutingHintBadge.tsx`
-
-**Acceptance Criteria:**
-- [x] All 30+ fields displayed, grouped by section (header, evidence, claims, counter-signals, drift, anchoring, hashes, stop condition)
-- [x] Routing hint badge (ALLOWED / REVIEW_REQUIRED) with correct colours
-- [x] Anchoring state badge
-
-### Task 2.6: Counter-Signal + DeltaBrief + Drift + Entity Panels ✓
-
-**Files:**
-- `frontend/src/components/investigation/CounterSignalPanel.tsx`
-- `frontend/src/components/investigation/DeltaBriefPanel.tsx`
-- `frontend/src/components/investigation/DriftEventsPanel.tsx`
-- `frontend/src/components/investigation/EntityProfilePanel.tsx`
+Also create a `TheatreAuditEvent` with `event_type="ROUTING_DECISION"`.
 
 2 tests:
-1. `CounterSignalPanel.test.tsx` — summary counts, material flag display
-2. `DeltaBriefPanel.test.tsx` — domain filter chips, access tier display
+1. Certificate issuance produces routing_hint
+2. Audit event logged with correct detail_json
 
 **Acceptance Criteria:**
-- [x] Counter-signals: 11 classes, material flags, detection method, summary counts
-- [x] DeltaBrief: domain filter chips, anomaly cards, access tier display
-- [x] Drift: type badge, impact assessment, original→new diff
-- [x] Entity: profile fields, source queries, provenance
+- [x] Every new certificate gets a routing_hint
+- [x] routing_hint persisted to DB
+- [x] Audit event with ROUTING_DECISION type created
+- [x] Both tests pass
 
-### Task 2.7: Sprint 2 Integration Tests ✓
+### Task 1.3: API Filter — Certificates by Routing Hint
 
-4 tests:
-1. `InvestigationPage.test.tsx` — renders with mock data, tab navigation
-2. `EvidenceEnvelopePanel.test.tsx` — provenance badges, redaction indicators
-3. `ClaimGraphPanel.test.tsx` — status badges match status values
-4. `InvestigationCertificateView.test.tsx` — all field groups render, routing hint correct
+**Files modified:**
+- `backend/api/theatre_routes.py` — extend `GET /api/v1/certificates` with `routing_hint` query param
+
+```python
+@router.get("/api/v1/certificates")
+async def list_certificates(
+    routing_hint: Optional[str] = Query(None),
+    ...
+):
+    query = select(TheatreCertificate)
+    if routing_hint:
+        query = query.where(
+            TheatreCertificate.routing_hint == routing_hint.upper()
+        )
+    ...
+```
+
+1 test:
+1. Filter returns only certificates matching routing_hint
 
 **Acceptance Criteria:**
-- [x] All 14 Sprint 2 tests pass
+- [x] `GET /api/v1/certificates?routing_hint=REVIEW_REQUIRED` works
+- [x] Invalid routing_hint values return empty list (not error)
+- [x] Test passes
+
+### Task 1.4: Frontend — Routing Hint Badge (Behind Flag)
+
+**Files modified:**
+- `frontend/src/pages/CertificatesPage.tsx` — conditional routing badge
+- `frontend/src/hooks/useCertificateGallery.ts` — parse new response fields
+
+Behind `isEnabled('CYCLE_017_DEPLOYABILITY_ROUTING')`:
+- Show `RoutingHintBadge` on certificate cards (reuse from investigation cert view)
+- ALLOWED = green, REVIEW_REQUIRED = amber, BLOCKED = red
+
+1 test:
+1. Badge renders correct colour for each routing_hint value
+
+**Acceptance Criteria:**
+- [x] Badge only appears when flag enabled
+- [x] Correct colours for all 3 routing_hint values
+- [x] Test passes
+
+### Sprint 1 Summary Target
+
+- **8 tests**
+- **3 new files, 3 modified**
+- RoutingEvaluator computes hints; pipeline persists them; API exposes and filters; frontend renders (flagged)
 
 ---
 
-## Sprint 3: OpsBoard Rebuild + Analytics + RLMF Redesign
+## Sprint 2: TAO Flow Metrics
 
-### Task 3.1: OpsBoard — Rebuild as Aggregation Dashboard
+Build windowed capital flow aggregation. Surface on timeline/theatre responses.
 
-**Files:**
-- `frontend/src/api/opsBoard.ts` — delete mock generator, build real aggregation
-- `frontend/src/pages/HomePage.tsx` — redesign
+### Task 2.1: TaoFlowAggregator Service
 
-Sources: active theatres, paradoxes, investigations, agents, recent wing flaps, timeline health — all from existing endpoints.
+**New file:** `backend/services/tao_flow_aggregator.py`
 
-Layout: 4 summary cards + activity feed + quick-access panels.
+Core method: windowed SUM of trade-type wing flap `volume_usd` values.
 
-**Acceptance Criteria:**
-- [x] Zero mock generator code
-- [x] 4 summary cards render from real endpoints
-- [x] Activity feed shows recent wing flaps
+```python
+async def compute_for_timeline(session, timeline_id, now=None):
+    """Returns (net_inflow_24h, net_inflow_7d)."""
+```
 
-### Task 3.2: Analytics Page — Build from Real Data
+`compute_all()` iterates active timelines and updates their flow fields.
 
-**Files:**
-- `frontend/src/pages/BlackboxPage.tsx` — redesign
-- `frontend/src/components/blackbox/` — replace mock components
-
-Analytics v1: theatre history, agent leaderboard, OSINT timeline, market prices. "Coming Soon" placeholders for heatmap/correlation/depth chart.
+3 tests:
+1. 24h window with mixed buy/sell → correct net
+2. 7d window computation
+3. Zero trades → 0.0 for both windows
 
 **Acceptance Criteria:**
-- [x] Real data rendered for available analytics
-- [x] Honest "Coming Soon" for unbuilt features
-- [x] Zero mock chart data
+- [x] Correctly sums TRADE + MIRROR_TRADE flap `volume_usd` values
+- [x] Uses indexed timestamp column for windowed queries
+- [x] Returns (0.0, 0.0) when no trades exist
+- [x] All 3 tests pass
 
-### Task 3.3: RLMF Page — Redesign as Export Viewer
+### Task 2.2: Game Loop Integration
 
-**Files:** `frontend/src/pages/RLMFPage.tsx` — complete rewrite
+**Files modified:**
+- `backend/worker/game_loop.py` — add TAO flow aggregation at 60s cadence
 
-Show: RLMF export status per Theatre, manifest, sample records, download link.
+```python
+if tick_count % 12 == 0:  # 60s at 5s tick
+    aggregator = TaoFlowAggregator()
+    await aggregator.compute_all(session)
+```
 
-**Acceptance Criteria:**
-- [x] Viewer for real pipeline output
-- [x] No demo/presentation mockup
-
-### Task 3.4: VRF Page — Convert to Documentation/Roadmap
-
-**Files:** `frontend/src/pages/VRFPage.tsx`
-
-Replace simulation with: explanation of VRF's role, roadmap status, link to System Bible §VII.
-
-**Acceptance Criteria:**
-- [x] No simulated demo
-- [x] Informational content only
-
-### Task 3.5: Sprint 3 Tests
-
-4 tests:
-1. `HomePage.test.tsx` — renders aggregation cards from real data
-2. `BlackboxPage.test.tsx` — renders available data, shows placeholders
-3. `RLMFPage.test.tsx` — renders export viewer
-4. Mock purge audit — zero mock imports in Sprint 3 components
+1 test:
+1. Game loop calls compute_all on correct cadence
 
 **Acceptance Criteria:**
-- [x] All 4 tests pass
+- [x] TAO flow runs every 60s (not every tick)
+- [x] Does not block game loop (async)
+- [x] Test passes
+
+### Task 2.3: API Response Extensions
+
+**Files modified:**
+- `backend/schemas/butterfly_schemas.py` (or wherever timeline responses live)
+- `backend/api/theatre_routes.py` — theatre detail includes flow from associated timeline
+
+Response fields added in Sprint 0 schema work; this task verifies they serialize correctly.
+
+1 test:
+1. Timeline API response includes net_inflow_24h and net_inflow_7d
+
+**Acceptance Criteria:**
+- [x] Both flow fields present in API response
+- [x] Default 0.0 when no aggregation has run
+- [x] Test passes
+
+### Task 2.4: Frontend — Flow Badges (Behind Flag)
+
+**Files modified:**
+- `frontend/src/pages/MarketplacePage.tsx` — flow badge on theatre cards
+- `frontend/src/pages/WorldMonitorPage.tsx` — flow badge on timeline cards
+
+Behind `isEnabled('CYCLE_017_TAO_FLOW')`:
+- Badge shows net_inflow_24h
+- Green (positive), red (negative), grey (zero)
+- Tooltip: "24h: +$1,234 / 7d: -$567"
+
+1 test:
+1. Badge renders correct colour and value
+
+**Acceptance Criteria:**
+- [x] Badge only appears when flag enabled
+- [x] Correct colour for positive/negative/zero
+- [x] Test passes
+
+### Sprint 2 Summary Target
+
+- **6 tests**
+- **1 new file, 3 modified**
+- TAO flow aggregation runs on game loop; updates timeline fields; API exposes; frontend renders (flagged)
 
 ---
 
-## Sprint 4: Investigation Lifecycle Console + Navigation Redesign ✓ COMPLETE
+## Sprint 3: Registry Schema Expansion
 
-### Task 4.1: Investigation Creation Wizard ✓
+Extend source metadata with query determinism, receipt requirements, and legal review flags.
 
-**Files:**
-- `frontend/src/components/investigation/CreateInvestigationWizard.tsx`
-- `frontend/src/components/investigation/DomainFilterSelector.tsx`
-- `frontend/src/components/investigation/StopConditionConfigurator.tsx`
+### Task 3.1: Source Registry Model + Seed Data
 
-5-step wizard: inquiry question → template → domain filters (9 categories) → stop condition → review & commit.
+**Files modified:**
+- `backend/osint/models/registry.py` — extend existing typed entries with policy fields
+- If DB path: `backend/database/models.py` + migration from Sprint 0
 
-**Acceptance Criteria:**
-- [x] Wizard navigation (next/back/cancel)
-- [x] Domain filter selector shows 9 categories with source group preview
-- [x] Stop condition configurator supports 3 types
-- [x] Immutability warning on commit step
-- [x] POST to `/api/v1/investigations/` on submit
+Seed known sources with appropriate registry fields:
+- Polymarket → `pure_id_lookup`, no receipt, no legal review
+- Companies House → `search_endpoint`, receipt required, no legal review
+- Private leak sources → `bulk_export`, receipt required, legal review required
 
-### Task 4.2: Investigation Progress Tracker ✓
-
-**Files:**
-- `frontend/src/components/investigation/InvestigationProgressBar.tsx`
-- `frontend/src/components/investigation/StopConditionProgress.tsx`
+1 test:
+1. Source registry entries correctly store and return policy fields
 
 **Acceptance Criteria:**
-- [x] Progress bar for each stop condition type
-- [x] Evidence count, claim status distribution, counter-signal count
-- [x] Corroboration indicator
+- [x] Policy fields accessible on source entries (in-registry or DB-backed)
+- [x] Seed data applied for known sources
+- [x] Test passes
 
-### Task 4.3: Navigation Redesign ✓
+### Task 3.2: Evidence Submission — Receipt Enforcement
 
-**Files:**
-- `frontend/src/components/layout/AppLayout.tsx`
-- `frontend/src/components/layout/Sidebar.tsx`
-- `frontend/src/router.tsx`
+**Files modified:**
+- `backend/investigation/evidence_envelope.py` — check receipt_body_required
+- `backend/api/investigation_routes.py` — validate on evidence POST
 
-New structure: Dashboard, Marketplace, Investigations (with sub-routes), Theatres, Analytics, Agents, Portfolio, Certificates, RLMF Exports.
+When source has `receipt_body_required=True`:
+- Evidence submission without `receipt_body` returns 422
+- Evidence submission with `receipt_body` proceeds normally
 
-**Acceptance Criteria:**
-- [x] All routes accessible
-- [x] No dead links
-- [x] `/vrf` removed from main nav
-- [x] Investigation sub-routes (active, signal feed, create)
-
-### Task 4.4: Signal Feed Migration ✓
-
-**Files:**
-- `frontend/src/components/investigation/SignalFeedPanel.tsx`
-- `frontend/src/components/investigation/SignalCard.tsx`
-
-Source-badged signal cards with click-through to "Create Investigation from Signal."
+2 tests:
+1. Submit evidence without receipt when required → 422
+2. Submit evidence with receipt when required → 200
 
 **Acceptance Criteria:**
-- [x] Signals render with correct source badges
-- [x] Click-through pre-fills creation wizard
+- [x] 422 with clear error message when receipt missing
+- [x] Normal flow when receipt present
+- [x] Non-required sources unaffected
+- [x] Both tests pass
 
-### Task 4.5: Sprint 4 Tests ✓
+### Task 3.3: Legal Review Flag — Investigation Detail API
 
-4 tests:
-1. `CreateInvestigationWizard.test.tsx` — wizard navigation, immutability warning
-2. `InvestigationProgressBar.test.tsx` — progress for each stop condition type
-3. Navigation test — all routes accessible, no dead links
-4. `SignalFeedPanel.test.tsx` — signals render with source badges
+**Files modified:**
+- `backend/api/investigation_routes.py` — extend detail response
+- `backend/schemas/investigation_schemas.py` — add `has_legal_review_requirement`
+
+When any evidence source in an investigation has `requires_legal_review=True`, the investigation detail response includes `has_legal_review_requirement: true`.
+
+1 test:
+1. Investigation with legal-review source returns flag=true
 
 **Acceptance Criteria:**
-- [x] All 4 tests pass
+- [x] Flag computed from source registry entries
+- [x] Default false when no legal review sources
+- [x] Test passes
+
+### Task 3.4: Frontend — Registry Badges (Behind Flag)
+
+**Files modified:**
+- `frontend/src/pages/InvestigationPage.tsx` — legal review warning badge
+- `frontend/src/components/investigation/EvidenceItemCard.tsx` — source type badge
+
+Behind `isEnabled('CYCLE_017_REGISTRY_SCHEMA')`:
+- Evidence items show query determinism badge
+- Legal review warning at investigation header when `has_legal_review_requirement`
+
+No tests (visual integration, verified manually).
+
+**Acceptance Criteria:**
+- [x] Badges only appear when flag enabled
+- [x] Legal review warning is prominent but not blocking
+
+### Sprint 3 Summary Target
+
+- **4 tests**
+- **2 files modified, 0–1 new**
+- Registry fields enforced on evidence submission; legal review flagged; frontend renders (flagged)
 
 ---
 
-## Sprint 5: Convergence Map + Agent Analytics + WebSocket + Polish ✓ COMPLETE
+## Sprint 4: Coherence Gates
 
-### Task 5.1: Convergence Map ✓
+Build the post-routing coherence gate system. Gate lifecycle: PENDING → PASSED / FAILED.
 
-**Files:**
-- `frontend/src/components/convergence/ConvergenceMap.tsx`
-- `frontend/src/components/convergence/ConvergenceCell.tsx`
-- `frontend/src/pages/ConvergencePage.tsx`
-- `frontend/src/router.tsx` (added /convergence route)
-- `frontend/src/components/layout/Sidebar.tsx` (added Convergence nav)
+### Task 4.1: CoherenceGateEvaluator Service
 
-2D grid: 1° × 1° cells, grey → amber → red. Click for detail.
+**New file:** `backend/services/coherence_gate_evaluator.py`
 
-**Acceptance Criteria:**
-- [x] Grid renders with correct colour gradient
-- [x] Click expands to show event types, sources, matched theatres
+Rules for requiring coherence review:
+- `routing_hint == REVIEW_REQUIRED` → always
+- `inquiry_class == INVESTIGATIVE` and `composite_score < 0.8` → yes
+- `verification_tier == CONTESTED` → yes
+- Otherwise → no
 
-### Task 5.2: Agent Performance Analytics ✓
+Methods: `should_require_review()`, `open_gate()`, `resolve_gate()`
 
-**Files:**
-- `frontend/src/components/agents/AgentPerformanceDashboard.tsx`
-- `frontend/src/components/agents/ArchetypeComparison.tsx`
-- `frontend/src/components/agents/TradeHistory.tsx`
-- `frontend/src/components/agents/GenomeViewer.tsx`
-- `frontend/src/components/agents/AgentDetail.tsx` (replaced placeholder)
+3 tests:
+1. REVIEW_REQUIRED routing → gate opens (PENDING)
+2. resolve_gate(PASSED) → status + timestamp + reviewer
+3. resolve_gate(FAILED) → status + timestamp + reviewer
 
 **Acceptance Criteria:**
-- [x] Trade history renders
-- [x] Archetype comparison normalised bar charts
-- [x] Genome viewer (read-only YAML display)
+- [x] should_require_review correctly evaluates conditions
+- [x] open_gate sets coherence_review_required=True, gate_status=PENDING
+- [x] resolve_gate sets status, timestamp, reviewer_id
+- [x] All 3 tests pass
 
-### Task 5.3: WebSocket Integration ✓
+### Task 4.2: Audit Event Logging
 
-**Files:**
-- `frontend/src/hooks/useWebSocket.ts`
-- `frontend/src/hooks/useRealtimeInvestigation.ts`
-- `frontend/src/components/layout/AppLayout.tsx`
+**Files modified:**
+- `backend/services/coherence_gate_evaluator.py` — create TheatreAuditEvent on transitions
 
-Pattern: WS event → normalise case → identify query keys → `queryClient.invalidateQueries()` → auto-refetch.
+Audit events:
+- `COHERENCE_GATE_OPENED` — when gate goes to PENDING
+- `COHERENCE_GATE_RESOLVED` — when gate goes to PASSED/FAILED
 
-Events: WING_FLAP, PARADOX_SPAWN, PARADOX_MOVED, DETONATION, RIPPLE, POSITION_UPDATE, ALERT, INVESTIGATION_EVENT.
+detail_json includes: certificate_id, from_status, to_status, reviewer_id (if resolve)
 
-**Acceptance Criteria:**
-- [x] WS events trigger correct query invalidation
-- [x] No full-page reloads
-
-### Task 5.4: Responsive Layout + Loading States + Polish ✓
+1 test:
+1. Gate open + resolve creates 2 audit events with correct types
 
 **Acceptance Criteria:**
-- [x] Responsive breakpoints (stack on narrow viewports)
-- [x] Loading skeletons on all data panels
-- [x] Empty states for all panels
-- [x] Error states with retry buttons
-- [x] Consistent `terminal-*` token usage
-- [x] Keyboard navigation for tab panels
+- [x] Both event types logged
+- [x] detail_json contains all context
+- [x] Test passes
 
-### Task 5.5: Final Mock Purge Audit + E2E Test ✓
+### Task 4.3: Deployment Guard
 
-5 tests:
-1. `ConvergenceMap.test.tsx` — cells render, click expands
-2. `AgentPerformanceDashboard.test.tsx` — trade history renders
-3. `useRealtimeInvestigation.test.ts` — WS events trigger correct invalidation
-4. **Final mock purge audit** — grep for `mock`, `MOCK`, `demo`, `hardcoded`, `fake` — zero in production paths
-5. **E2E test** — create investigation → view evidence → inspect claims → check certificate
+**Files modified:**
+- `backend/schemas/theatre.py` — `is_deployable` computed field
+
+```python
+@model_validator(mode="after")
+def compute_is_deployable(self) -> "TheatreCertificateResponse":
+    if self.routing_hint == "BLOCKED":
+        self.is_deployable = False
+    elif self.coherence_review_required and self.coherence_gate_status != "PASSED":
+        self.is_deployable = False
+    else:
+        self.is_deployable = True
+    return self
+```
+
+1 test:
+1. BLOCKED → not deployable, PENDING gate → not deployable, PASSED gate → deployable
 
 **Acceptance Criteria:**
-- [x] All 5 tests pass
-- [x] Zero mock data in production code paths
+- [x] is_deployable correctly reflects routing + gate status
+- [x] Test passes
+
+### Task 4.4: Gate Status API Endpoint
+
+**Files modified:**
+- `backend/api/theatre_routes.py` — add gate endpoints
+
+```
+GET  /api/v1/certificates/{id}/gate         — gate status + audit trail
+POST /api/v1/certificates/{id}/gate/resolve  — resolve gate (PASSED/FAILED)
+```
+
+Auth: resolve endpoint uses `Depends(get_current_user)` from `backend/dependencies.py`. Reviewer identity is `user.user_id` from the `TokenData` model (not `user.sub`).
+
+1 test:
+1. POST resolve → GET shows updated status + audit trail
+
+**Acceptance Criteria:**
+- [x] GET returns gate status, reviewer, timestamp, audit events
+- [x] POST validates status is PASSED or FAILED
+- [x] Only resolves gates in PENDING state
+- [x] Test passes
+
+### Task 4.5: Frontend — Gate Status Badge (Behind Flag)
+
+**Files modified:**
+- `frontend/src/pages/CertificatesPage.tsx` — gate status column
+- New or extended certificate detail component
+
+Behind `isEnabled('CYCLE_017_COHERENCE_GATES')`:
+- PENDING = amber pulse, PASSED = green, FAILED = red
+- `is_deployable` indicator on certificate card
+
+No tests (visual integration).
+
+**Acceptance Criteria:**
+- [x] Badge only appears when flag enabled
+- [x] Correct colours for all 3 gate states
+- [x] is_deployable indicator clear
+
+### Sprint 4 Summary Target
+
+- **6 tests**
+- **1 new file, 2 modified**
+- Gate lifecycle works; deployment guard enforced; API endpoint exposes; frontend renders (flagged)
+
+---
+
+## Sprint 5: WebSocket Policy Events + Frontend Integration + Polish
+
+Extend WS with policy events. Remove 017-scoped feature flags (retain `CYCLE_017_TAO_FLOW` and `WEBSOCKET_REALTIME` if still gating non-017 surfaces). Final integration and polish.
+
+### Task 5.1: WebSocket Policy Event Types
+
+**Files modified:**
+- `backend/websockets/realtime_manager.py` — 3 new broadcast methods
+
+```python
+broadcast_routing_decision(certificate_id, decision)
+broadcast_coherence_gate_transition(certificate_id, transition)
+broadcast_tao_flow_alert(timeline_id, alert)
+```
+
+Hook broadcasts into:
+- `certificate_pipeline.py` → ROUTING_DECISION
+- `coherence_gate_evaluator.py` → COHERENCE_GATE_TRANSITION
+- `tao_flow_aggregator.py` → TAO_FLOW_ALERT (when threshold crossed)
+
+2 tests:
+1. Certificate issuance triggers ROUTING_DECISION WS event
+2. Gate resolution triggers COHERENCE_GATE_TRANSITION WS event
+
+**Acceptance Criteria:**
+- [x] All 3 event types broadcast correctly
+- [x] Events include correct payloads
+- [x] Both tests pass
+
+### Task 5.2: Frontend — Remove 017-Scoped Feature Flags
+
+**Files modified:**
+- All pages/components that check `isEnabled('CYCLE_017_*')` — remove checks
+- `frontend/src/lib/featureFlags.ts` — remove 017-scoped flag definitions
+
+Remove the three flags whose sole purpose is gating 017 UI:
+- `CYCLE_017_DEPLOYABILITY_ROUTING` — remove
+- `CYCLE_017_REGISTRY_SCHEMA` — remove
+- `CYCLE_017_COHERENCE_GATES` — remove
+
+Retain flags with broader scope:
+- `CYCLE_017_TAO_FLOW` — retain if it still gates staged Alpamayo behaviour beyond pure flow metrics
+- `WEBSOCKET_REALTIME` — retain; this is a generic realtime gate used by the shared channel hook, not a disposable 017-only shim
+
+Replace all patterns like:
+
+```typescript
+{isEnabled('CYCLE_017_DEPLOYABILITY_ROUTING') && <RoutingHintBadge />}
+```
+
+With:
+
+```typescript
+<RoutingHintBadge />
+```
+
+**Acceptance Criteria:**
+- [x] Zero `isEnabled('CYCLE_017_DEPLOYABILITY_ROUTING')`, `CYCLE_017_REGISTRY_SCHEMA`, or `CYCLE_017_COHERENCE_GATES` references in codebase
+- [x] All 017 routing/registry/coherence UI renders unconditionally
+- [x] `CYCLE_017_TAO_FLOW` and `WEBSOCKET_REALTIME` retained with clear comments on remaining dependencies
+
+### Task 5.3: Frontend — Delete Stubs, Extend Real Types
+
+**Files modified/deleted:**
+- **Delete:** `frontend/src/types/cycle017.ts`
+- **Extend:** `frontend/src/types/theatre.ts` — add routing_hint, coherence fields, is_deployable, TAO flow
+- **Extend:** `frontend/src/types/index.ts` — add RoutingHint, GateStatus union types
+- **Extend:** `frontend/src/types/investigation.ts` — add registry schema fields (if applicable)
+
+**Acceptance Criteria:**
+- [x] `cycle017.ts` deleted
+- [x] All 017 types live on their canonical type files
+- [x] Zero imports from `cycle017.ts` in codebase
+
+### Task 5.4: Frontend — Polish + States
+
+**Files modified:**
+- All pages with 017 additions — verify loading, empty, error states
+- Responsive layout for new badges/columns
+
+2 tests:
+1. Certificate explorer renders all 017 fields correctly
+2. Timeline card renders TAO flow badge correctly
+
+**Acceptance Criteria:**
+- [x] Loading skeletons for new data
+- [x] Empty states when fields are null
+- [x] Responsive on narrow viewports
+- [x] Both tests pass
+
+### Task 5.5: E2E Test — Full Policy Lifecycle
+
+1 test:
+1. Create theatre → run → settle → certificate issued → routing hint = REVIEW_REQUIRED → coherence gate PENDING → resolve gate PASSED → verify `is_deployable = true` (computed field, not the agent deployment flow which is out of scope)
+
+**Acceptance Criteria:**
+- [x] Full lifecycle works end-to-end
+- [x] All intermediate states correct
+- [x] Test passes
+
+### Task 5.6: Final Audit
+
+Grep-based audit:
+- Zero `CYCLE_017_DEPLOYABILITY_ROUTING`, `CYCLE_017_REGISTRY_SCHEMA`, or `CYCLE_017_COHERENCE_GATES` references
+- Zero imports from `cycle017.ts`
+- Zero `isEnabled` calls for the three removed flags
+- `CYCLE_017_TAO_FLOW` and `WEBSOCKET_REALTIME` retained only if still gating non-017 surfaces
+- All new fields present in API responses
+
+**Acceptance Criteria:**
+- [x] Clean audit
+- [x] Build passes
+- [x] All tests pass
+
+### Sprint 5 Summary Target
+
+- **5 tests**
+- **Multiple files modified, 1 deleted**
+- WS policy events live; feature flags removed; types migrated; all UI native; E2E verified
 
 ---
 
@@ -525,11 +677,23 @@ Events: WING_FLAP, PARADOX_SPAWN, PARADOX_MOVED, DETONATION, RIPPLE, POSITION_UP
 
 | Sprint | New Tests | Cumulative |
 |--------|-----------|------------|
-| 0 ✓ | 22 | 22 |
-| 1 | 5 | 27 |
-| 2 | 14 | 41 |
-| 3 | 4 | 45 |
-| 4 | 4 | 49 |
-| 5 | 5 | 54 |
+| 0 | 4 | 4 |
+| 1 | 8 | 12 |
+| 2 | 6 | 18 |
+| 3 | 4 | 22 |
+| 4 | 6 | 28 |
+| 5 | 5 | 33 |
 
-**Post-016 expected:** ≥1060 passed (1009 baseline + ~54 new — allowing for some overlap/consolidation).
+**Post-017 expected:** ≥1100 passed (1060 baseline + ~33 new + overlap/consolidation margin).
+
+---
+
+## Risk Register
+
+| Risk | Mitigation |
+|------|------------|
+| WingFlap field name | **Resolved:** field is `volume_usd`, not `amount`. No migration needed. |
+| Source metadata model approach | Existing typed OSINT registry at `backend/osint/models/registry.py` — extend first, new DB table only if persistence needed |
+| Investigation persistence is in-memory | Registry fields work in-memory too; DB persistence is a separate cycle |
+| TAO flow queries may be slow at scale | Index on (timeline_id, flap_type, timestamp); async aggregation |
+| Gate resolution has no multi-user workflow | Out of scope; single-reviewer model in this cycle |

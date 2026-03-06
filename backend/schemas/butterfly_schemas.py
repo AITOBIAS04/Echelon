@@ -154,6 +154,10 @@ class TimelineHealth(BaseModel):
     fork_divergence: float = 0.0
     last_sync_at: Optional[datetime] = None
 
+    # ── Cycle-017: TAO Flow ──
+    net_inflow_24h: float = 0.0
+    net_inflow_7d: float = 0.0
+
     # Connections
     connected_timeline_ids: List[str] = []
     parent_timeline_id: Optional[str] = None

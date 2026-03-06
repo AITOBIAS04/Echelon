@@ -68,6 +68,12 @@ _VALID_PRIORITY_BUCKETS = frozenset([
     "avoid",
 ])
 
+_VALID_QUERY_DETERMINISM = frozenset([
+    "pure_id_lookup",
+    "search_endpoint",
+    "bulk_export",
+])
+
 
 @dataclass
 class RegistrySource:
@@ -83,6 +89,11 @@ class RegistrySource:
     priority_bucket: str = "scoring_grade"      # Priority bucket string
     settlement_eligible: bool = False
     jurisdiction: str | None = None
+
+    # ── Cycle-017: Policy Surface ──
+    query_determinism: str | None = None       # pure_id_lookup | search_endpoint | bulk_export
+    receipt_body_required: bool = False
+    requires_legal_review: bool = False
 
 
 class RegistryLoader:
@@ -114,6 +125,9 @@ class RegistryLoader:
                 priority_bucket=entry.get("priority_bucket", "scoring_grade"),
                 settlement_eligible=entry.get("settlement_eligible", False),
                 jurisdiction=entry.get("jurisdiction"),
+                query_determinism=entry.get("query_determinism"),
+                receipt_body_required=entry.get("receipt_body_required", False),
+                requires_legal_review=entry.get("requires_legal_review", False),
             )
             self._sources[source.source_id] = source
 
@@ -172,6 +186,10 @@ class RegistryLoader:
             if not source.independence_upstream_id:
                 errors.append(
                     f"{sid}: independence_upstream_id is empty"
+                )
+            if source.query_determinism is not None and source.query_determinism not in _VALID_QUERY_DETERMINISM:
+                errors.append(
+                    f"{sid}: invalid query_determinism '{source.query_determinism}'"
                 )
             # Settlement invariant: eligible sources must have valid receipt mode
             if source.settlement_eligible:

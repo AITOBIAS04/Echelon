@@ -696,6 +696,8 @@ class ButterflyEngine:
                             anchor_timeline_id=timeline.anchor_timeline_id,
                             fork_divergence=timeline.fork_divergence or 0.0,
                             last_sync_at=timeline.last_sync_at,
+                            net_inflow_24h=getattr(timeline, 'net_inflow_24h', 0.0) or 0.0,
+                            net_inflow_7d=getattr(timeline, 'net_inflow_7d', 0.0) or 0.0,
                             connected_timeline_ids=timeline.connected_timeline_ids or [],
                             parent_timeline_id=timeline.parent_timeline_id,
                         )

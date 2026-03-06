@@ -10,6 +10,46 @@ import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { useCertificateGallery } from '../hooks/useCertificateGallery';
 import { EmptyState } from '../components/empty-states/EmptyState';
+function GateStatusBadge({ status }: { status: string }) {
+  const config = {
+    PENDING: { color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', pulse: true },
+    PASSED: { color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', pulse: false },
+    FAILED: { color: 'bg-red-500/20 text-red-400 border-red-500/30', pulse: false },
+  }[status] ?? { color: 'bg-neutral-500/20 text-neutral-400 border-neutral-500/30', pulse: false };
+
+  return (
+    <span className={clsx('px-2 py-0.5 rounded text-[10px] font-mono uppercase border', config.color, config.pulse && 'animate-pulse')}>
+      {status}
+    </span>
+  );
+}
+
+function DeployableBadge({ deployable }: { deployable: boolean }) {
+  return (
+    <span className={clsx(
+      'px-2 py-0.5 rounded text-[10px] font-mono uppercase border',
+      deployable
+        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+        : 'bg-red-500/20 text-red-400 border-red-500/30',
+    )}>
+      {deployable ? 'DEPLOYABLE' : 'NOT DEPLOYABLE'}
+    </span>
+  );
+}
+
+function RoutingHintBadge({ hint }: { hint: string }) {
+  const colors = {
+    ALLOWED: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+    REVIEW_REQUIRED: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+    BLOCKED: 'bg-red-500/20 text-red-400 border-red-500/30',
+  }[hint] ?? 'bg-neutral-500/20 text-neutral-400 border-neutral-500/30';
+
+  return (
+    <span className={clsx('px-2 py-0.5 rounded text-[10px] font-mono uppercase border', colors)}>
+      {hint}
+    </span>
+  );
+}
 
 export function CertificatesPage() {
   const navigate = useNavigate();
@@ -94,6 +134,19 @@ export function CertificatesPage() {
                   {cert.verification_tier}
                 </div>
               </div>
+            </div>
+
+            {cert.routing_hint && (
+              <div className="mt-3 flex items-center gap-2">
+                <RoutingHintBadge hint={cert.routing_hint} />
+              </div>
+            )}
+
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              {cert.coherence_gate_status && (
+                <GateStatusBadge status={cert.coherence_gate_status} />
+              )}
+              <DeployableBadge deployable={cert.is_deployable} />
             </div>
 
             <div className="mt-3 pt-3 border-t border-terminal-border">

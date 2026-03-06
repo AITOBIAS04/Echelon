@@ -40,6 +40,8 @@ export interface EvidenceItem {
   content_type: string;
   source_description: string;
   references: string[];
+  source_id?: string;
+  query_determinism?: string;
 }
 
 export interface RedactionEvent {
@@ -239,4 +241,5 @@ export interface InvestigationDetail {
   claims: ClaimGraphSummary;
   counter_signals: CounterSignalFeedResponse;
   drift: DriftFeedResponse;
+  has_legal_review_requirement?: boolean;
 }

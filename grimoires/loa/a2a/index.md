@@ -77,3 +77,14 @@
 | Sprint 3 | sprint-39 | COMPLETED | [reviewer.md](sprint-39/reviewer.md) | [engineer-feedback.md](sprint-39/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-39/auditor-sprint-feedback.md) |
 | Sprint 4 | sprint-40 | COMPLETED | [reviewer.md](sprint-40/reviewer.md) | [engineer-feedback.md](sprint-40/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-40/auditor-sprint-feedback.md) |
 | Sprint 5 | sprint-41 | COMPLETED | [reviewer.md](sprint-41/reviewer.md) | [engineer-feedback.md](sprint-41/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-41/auditor-sprint-feedback.md) |
+
+## Cycle-017: Policy Surface
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 0 | sprint-42 | COMPLETED | -- | -- | -- |
+| Sprint 1 | sprint-43 | COMPLETED | [reviewer.md](sprint-43/reviewer.md) | [engineer-feedback.md](sprint-43/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-43/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-44 | COMPLETED | [reviewer.md](sprint-44/reviewer.md) | [engineer-feedback.md](sprint-44/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-44/auditor-sprint-feedback.md) |
+| Sprint 3 | sprint-45 | COMPLETED | [reviewer.md](sprint-45/reviewer.md) | [engineer-feedback.md](sprint-45/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-45/auditor-sprint-feedback.md) |
+| Sprint 4 | sprint-46 | COMPLETED | [reviewer.md](sprint-46/reviewer.md) | [engineer-feedback.md](sprint-46/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-46/auditor-sprint-feedback.md) |
+| Sprint 5 | sprint-47 | COMPLETED | [reviewer.md](sprint-47/reviewer.md) | [engineer-feedback.md](sprint-47/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-47/auditor-sprint-feedback.md) |

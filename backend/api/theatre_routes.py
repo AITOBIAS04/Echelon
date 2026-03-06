@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,6 +42,7 @@ from backend.schemas.theatre import (
 from backend.dependencies import get_current_user, get_db
 from backend.auth.jwt import TokenData
 from backend.services.theatre_bridge import run_theatre_task, THEATRE_ENGINE_AVAILABLE
+from backend.services.coherence_gate_evaluator import CoherenceGateEvaluator
 
 logger = logging.getLogger(__name__)
 
@@ -564,6 +566,7 @@ async def list_certificates(
     db: AsyncSession = Depends(get_db),
     construct_id: Optional[str] = Query(None),
     verification_tier: Optional[str] = Query(None),
+    routing_hint: Optional[str] = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
@@ -577,6 +580,9 @@ async def list_certificates(
     if verification_tier:
         query = query.where(TheatreCertificate.verification_tier == verification_tier)
         count_query = count_query.where(TheatreCertificate.verification_tier == verification_tier)
+    if routing_hint:
+        query = query.where(TheatreCertificate.routing_hint == routing_hint.upper())
+        count_query = count_query.where(TheatreCertificate.routing_hint == routing_hint.upper())
 
     query = query.order_by(TheatreCertificate.issued_at.desc()).offset(offset).limit(limit)
 
@@ -592,6 +598,100 @@ async def list_certificates(
         limit=limit,
         offset=offset,
     )
+
+
+# ============================================
+# GATE ENDPOINTS (on certificates router)
+# ============================================
+
+
+class GateResolveRequest(BaseModel):
+    """Request body for POST /api/v1/certificates/{id}/gate/resolve."""
+
+    status: str  # PASSED or FAILED
+
+
+@certificates_router.get("/{certificate_id}/gate")
+async def get_gate_status(
+    certificate_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get coherence gate status and audit trail for a certificate."""
+    cert = await db.get(TheatreCertificate, certificate_id)
+    if cert is None:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+
+    # Load audit events for this certificate's gate
+    result = await db.execute(
+        select(TheatreAuditEvent)
+        .where(
+            TheatreAuditEvent.theatre_id == cert.theatre_id,
+            TheatreAuditEvent.event_type.in_([
+                "COHERENCE_GATE_OPENED",
+                "COHERENCE_GATE_RESOLVED",
+            ]),
+        )
+        .order_by(TheatreAuditEvent.created_at)
+    )
+    audit_events = result.scalars().all()
+
+    return {
+        "certificate_id": certificate_id,
+        "coherence_review_required": cert.coherence_review_required,
+        "coherence_gate_status": cert.coherence_gate_status,
+        "coherence_reviewed_at": cert.coherence_reviewed_at,
+        "coherence_reviewer_id": cert.coherence_reviewer_id,
+        "audit_trail": [
+            {
+                "event_type": e.event_type,
+                "detail_json": e.detail_json,
+                "created_at": e.created_at,
+            }
+            for e in audit_events
+        ],
+    }
+
+
+@certificates_router.post("/{certificate_id}/gate/resolve")
+async def resolve_gate(
+    certificate_id: str,
+    body: GateResolveRequest,
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Resolve a coherence gate (PASSED or FAILED). Auth required."""
+    if body.status not in ("PASSED", "FAILED"):
+        raise HTTPException(
+            status_code=422,
+            detail="status must be PASSED or FAILED",
+        )
+
+    cert = await db.get(TheatreCertificate, certificate_id)
+    if cert is None:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+
+    if cert.coherence_gate_status != "PENDING":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot resolve gate in status '{cert.coherence_gate_status}'. Must be PENDING.",
+        )
+
+    evaluator = CoherenceGateEvaluator()
+    await evaluator.resolve_gate(
+        session=db,
+        certificate_id=certificate_id,
+        status=body.status,
+        reviewer_id=user.user_id,
+    )
+    await db.commit()
+    await db.refresh(cert)
+
+    return {
+        "certificate_id": certificate_id,
+        "coherence_gate_status": cert.coherence_gate_status,
+        "coherence_reviewed_at": cert.coherence_reviewed_at,
+        "coherence_reviewer_id": cert.coherence_reviewer_id,
+    }
 
 
 # ============================================

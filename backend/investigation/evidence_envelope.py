@@ -43,6 +43,8 @@ class EvidenceEnvelope:
         content_type: str,
         source_description: str,
         references: list[str] | None = None,
+        source_id: str = "",
+        query_determinism: str = "",
     ) -> EvidenceItem:
         """Append an evidence item. Sequential ID, SHA-256 content hash."""
         self._counter += 1
@@ -57,6 +59,8 @@ class EvidenceEnvelope:
             content_type=content_type,
             source_description=source_description,
             references=references or [],
+            source_id=source_id,
+            query_determinism=query_determinism,
         )
         self._items.append(item)
         return item

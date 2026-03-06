@@ -144,6 +144,11 @@ class Timeline(Base):
     fork_divergence: Mapped[float] = mapped_column(Float, default=0.0)
     last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # ── Cycle-017: TAO Flow ──
+    net_inflow_24h: Mapped[float] = mapped_column(Float, default=0.0)
+    net_inflow_7d: Mapped[float] = mapped_column(Float, default=0.0)
+    flow_updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     # Status
     has_active_paradox: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -650,6 +655,20 @@ class TheatreCertificate(Base):
     ground_truth_source: Mapped[str] = mapped_column(String(100))
     execution_path: Mapped[str] = mapped_column(String(10))
 
+    # ── Cycle-017: Policy Surface ──
+    routing_hint: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, index=True)
+    review_reason_code: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True)
+    coherence_review_required: Mapped[bool] = mapped_column(
+        Boolean, default=False)
+    coherence_gate_status: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True)
+    coherence_reviewed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True)
+    coherence_reviewer_id: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True)
+
     # Relationships
     theatre: Mapped[Optional["Theatre"]] = relationship(back_populates="certificate")
     episode_scores: Mapped[List["TheatreEpisodeScore"]] = relationship(
@@ -660,6 +679,7 @@ class TheatreCertificate(Base):
         Index("ix_theatre_certs_construct_created", "construct_id", "issued_at"),
         Index("ix_theatre_certs_tier", "verification_tier"),
         Index("ix_theatre_certs_template", "template_id"),
+        Index("ix_theatre_certs_routing_hint", "routing_hint"),
     )
 
 

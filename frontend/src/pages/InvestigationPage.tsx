@@ -7,7 +7,7 @@
 
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, FileText, GitBranch, AlertTriangle, TrendingDown } from 'lucide-react';
+import { Search, FileText, GitBranch, AlertTriangle, TrendingDown, ShieldAlert } from 'lucide-react';
 import {
   useInvestigationList,
   useInvestigationDetail,
@@ -131,6 +131,16 @@ function OverviewTab({ investigation }: { investigation: NonNullable<ReturnType<
           <dd className="font-mono text-terminal-text">{investigation.stop_condition}</dd>
         </dl>
       </div>
+
+      {/* Legal review warning */}
+      {investigation.has_legal_review_requirement && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center gap-2">
+          <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+          <span className="text-xs text-amber-400">
+            This investigation contains evidence from sources requiring legal review.
+          </span>
+        </div>
+      )}
 
       {/* Counts */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

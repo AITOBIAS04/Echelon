@@ -31,6 +31,8 @@ class EvidenceSubmitRequest(BaseModel):
     provenance_class: str  # ProvenanceClass value
     content_type: str = "text/plain"
     source_description: str = ""
+    source_id: str = ""  # OSINT registry source_id for policy enforcement
+    receipt_body: str = ""  # Receipt content when receipt_body_required
     references: list[str] = Field(default_factory=list)
 
 
@@ -67,6 +69,8 @@ class EvidenceItemResponse(BaseModel):
     content_type: str
     source_description: str
     references: list[str] = Field(default_factory=list)
+    source_id: str = ""
+    query_determinism: str = ""
 
 
 class RedactionEventResponse(BaseModel):
@@ -185,6 +189,7 @@ class InvestigationDetailResponse(BaseModel):
     claims: ClaimGraphResponse
     counter_signals: CounterSignalFeedResponse
     drift: DriftFeedResponse
+    has_legal_review_requirement: bool = False
 
 
 class CertificateResponse(BaseModel):

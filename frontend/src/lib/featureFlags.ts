@@ -15,11 +15,8 @@
 // ── Flag definitions ────────────────────────────────────────────────────
 
 export type FeatureFlag =
-  | 'CYCLE_017_DEPLOYABILITY_ROUTING'   // routing_hint, review_reason_code on certificates
-  | 'CYCLE_017_TAO_FLOW'               // net_inflow_24h/7d on timelines, feed ranking
-  | 'CYCLE_017_REGISTRY_SCHEMA'        // query_determinism, receipt_body_required, requires_legal_review
-  | 'CYCLE_017_COHERENCE_GATES'        // post-routing policy
-  | 'WEBSOCKET_REALTIME';              // live WS updates (ship after REST is solid)
+  | 'CYCLE_017_TAO_FLOW'               // net_inflow_24h/7d on timelines — retained: gates staged Alpamayo behaviour
+  | 'WEBSOCKET_REALTIME';              // live WS updates — retained: generic realtime gate for shared channel hook
 
 // ── Env var mapping ─────────────────────────────────────────────────────
 
@@ -87,10 +84,7 @@ export function setFlagOverride(flag: FeatureFlag, value: boolean | null): void 
  */
 export function getAllFlags(): Record<FeatureFlag, boolean> {
   const flags: FeatureFlag[] = [
-    'CYCLE_017_DEPLOYABILITY_ROUTING',
     'CYCLE_017_TAO_FLOW',
-    'CYCLE_017_REGISTRY_SCHEMA',
-    'CYCLE_017_COHERENCE_GATES',
     'WEBSOCKET_REALTIME',
   ];
 

@@ -29,6 +29,22 @@ function ProvenanceBadge({ provenance }: { provenance: string }) {
   );
 }
 
+const DETERMINISM_COLORS: Record<string, string> = {
+  pure_id_lookup: 'bg-emerald-500/20 text-emerald-400',
+  search_endpoint: 'bg-amber-500/20 text-amber-400',
+  bulk_export: 'bg-red-500/20 text-red-400',
+};
+
+function QueryDeterminismBadge({ determinism }: { determinism: string }) {
+  const color = DETERMINISM_COLORS[determinism] ?? 'bg-zinc-500/20 text-zinc-400';
+  const label = determinism.replace(/_/g, ' ');
+  return (
+    <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase ${color}`}>
+      {label}
+    </span>
+  );
+}
+
 function EvidenceItemCard({ item, isRedacted }: { item: EvidenceItem; isRedacted: boolean }) {
   return (
     <div className={`bg-terminal-surface rounded-lg p-3 border ${
@@ -38,6 +54,9 @@ function EvidenceItemCard({ item, isRedacted }: { item: EvidenceItem; isRedacted
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs text-terminal-text">{item.evidence_id}</span>
           <ProvenanceBadge provenance={item.provenance_class} />
+          {item.query_determinism && (
+            <QueryDeterminismBadge determinism={item.query_determinism} />
+          )}
           {isRedacted && (
             <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-red-500/20 text-red-400">
               REDACTED

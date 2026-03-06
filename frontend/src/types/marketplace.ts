@@ -107,6 +107,8 @@ export interface Market {
   tradesCount: number;
   agentLearnings: number;
   tags?: string[];
+  net_inflow_24h?: number;
+  net_inflow_7d?: number;
 }
 
 export interface Intercept {

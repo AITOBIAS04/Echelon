@@ -1,417 +1,690 @@
-# SDD — Cycle-016: Results Surface
+# SDD — Cycle-017: Policy Surface
 
-**Cycle:** cycle-016
-**Date:** 5 March 2026
+**Cycle:** cycle-017
+**Date:** 6 March 2026
 **PRD:** grimoires/loa/prd.md
-**Design input:** `echelon_cycle_016.md`, `Echelon_Butterfly_Entropy_Coherence_Review_v1.md` (v1.2.1)
+**Design input:** `cycle017.ts` (type stubs), `featureFlags.ts`, `HANDOFF_MATRIX_ALEXANDER.md`
 
 ---
 
 ## 1. Architecture Overview
 
-Cycle-016 spans two layers: (0) a backend engine coherence lock that unifies stability scale and flap contracts across all runtime paths, and (1–5) a full production frontend that replaces the mock presentation layer with real API-wired views.
-
-### 1.1 Sprint-0: Engine Coherence Lock (COMPLETE)
-
-Sprint-0 resolved the three-implementation problem identified in the coherence review. The codebase had three overlapping Butterfly/Entropy implementations (`engines/`, `mechanics/`, `worker/tasks/`) that diverged in scale, constants, and flap coverage. Sprint-0 unified them:
+Cycle 017 adds a **policy layer** between raw results (certificates, scores, trades) and deployment decisions. The layer spans four new backend services, a schema migration, and frontend integration behind feature flags.
 
 ```
-┌─────────────────────────┐
-│  engines/ (spec layer)  │ ← 0–1 scale, full enum, FlapDirection
-│  ButterflyEngine        │    compute_fork_divergence(), LogicGapReading
-│  EntropyEngine          │    Pattern A: decay_multiplier only
-└─────────┬───────────────┘
-          │ contract parity
-┌─────────▼───────────────┐
-│  worker/tasks/ (runtime) │ ← 0–1 scale, FlapDirection.value, SYSTEM entity
-│  agent_tick.py           │    5 strategies: uniform(0.01,0.03) not (1.0,3.0)
-│  entropy.py              │    timeline.decay_multiplier, anchor skip
-│  paradox.py              │    decay_multiplier write only, DETONATION type
-│  market_sync.py          │    MIRROR_TRADE, is_anchor=True, MAX_ACTIVE_MARKETS=10
-│  genesis.py              │    FORK_SPAWN type, 0–1 templates, SYSTEM agent
-│  kalshi_sync.py          │    0–1 clamp, FlapDirection enum
-└─────────┬───────────────┘
-          │ _as_percent() at API boundary
-┌─────────▼───────────────┐
-│  mechanics/ (API layer)  │ ← 0–100 for frontend consumption
-│  butterfly_engine.py     │    _as_percent() static method on serialisation
-└─────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                   POLICY SURFACE (017)                   │
+│                                                          │
+│  ┌────────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │ Routing        │  │ TAO Flow     │  │ Coherence    │ │
+│  │ Evaluator      │  │ Aggregator   │  │ Gate         │ │
+│  │                │  │              │  │ Evaluator    │ │
+│  │ certificate →  │  │ wing_flaps → │  │ certificate →│ │
+│  │ routing_hint   │  │ net_inflow   │  │ gate_status  │ │
+│  └───────┬────────┘  └──────┬───────┘  └──────┬───────┘ │
+│          │                   │                  │         │
+│  ┌───────▼───────────────────▼──────────────────▼───────┐│
+│  │              Registry Schema Expansion                ││
+│  │  query_determinism, receipt_body_required,             ││
+│  │  requires_legal_review                                ││
+│  └───────┬───────────────────┬──────────────────┬───────┘│
+│          │                   │                  │         │
+└──────────┼───────────────────┼──────────────────┼────────┘
+           │                   │                  │
+    ┌──────▼──────┐    ┌──────▼──────┐    ┌──────▼──────┐
+    │ Certificate │    │  Timeline   │    │   Audit     │
+    │   Model     │    │   Model     │    │   Events    │
+    │ (extended)  │    │ (extended)  │    │ (gate log)  │
+    └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
-**Key data contracts:**
+### 1.1 Data Flow
 
-- **Stability:** `0.0–1.0` in DB and all runtime code. `_as_percent()` × 100 at API serialisation boundary.
-- **Direction:** `FlapDirection.STABILISE.value | DESTABILISE.value | NEUTRAL.value` — no bare string literals.
-- **Decay:** Paradox writes `decay_multiplier` on Timeline. Entropy reads `base_rate × decay_multiplier` once. No hardcoded `2.0`.
-- **Anchor model:** `is_anchor=True` for Polymarket timelines. `anchor_timeline_id` FK for forks. Anchors don't decay (entropy filter: `Timeline.is_anchor == False`).
-- **WingFlapType:** 17 values total (7 original + 10 new 016 types). All synced between `engines/butterfly.py`, `database/models.py`, and `schemas/butterfly_schemas.py`.
-
-### 1.2 Sprints 1–5: Frontend Architecture
-
-Frontend stack: React 19 + Vite 7 + Tailwind + TanStack Query (React Query v5).
+**Routing evaluation** hooks into the existing certificate pipeline:
 
 ```
-frontend/src/
-├── api/              ← API clients (replace mock generators)
-├── components/
-│   ├── investigation/ ← NEW: 20+ components for investigation views
-│   ├── convergence/   ← NEW: convergence map
-│   ├── agents/        ← Enhanced: performance analytics
-│   ├── layout/        ← Modified: navigation redesign
-│   └── ...            ← Existing components (updated for real data)
-├── hooks/            ← TanStack Query hooks (replace mock stores)
-├── pages/            ← Page components (wired to real APIs)
-├── types/            ← TypeScript types (aligned to Pydantic schemas)
-└── router.tsx        ← Updated routes
+Theatre resolves
+  → CertificatePipeline.issue()
+    → RoutingEvaluator.evaluate(certificate) → routing_hint, review_reason_code
+      → certificate.routing_hint = result
+      → TheatreAuditEvent(ROUTING_DECISION)
+        → WS broadcast: ROUTING_DECISION
 ```
 
-Data flow for API wiring pattern:
+**TAO flow aggregation** runs on the game loop:
 
 ```
-Backend (Pydantic schema)
-  → FastAPI endpoint (JSON response)
-    → frontend/src/api/ (fetch client)
-      → frontend/src/hooks/ (TanStack Query hook with cache key)
-        → frontend/src/pages/ (page component)
-          → frontend/src/components/ (rendered UI)
+Game loop tick (60s cadence)
+  → TaoFlowAggregator.compute_all()
+    → SELECT SUM(volume_usd) FROM wing_flaps WHERE type='TRADE' AND timestamp > now-24h
+      → timeline.net_inflow_24h = result
+      → timeline.net_inflow_7d = result_7d
+        → WS broadcast: TAO_FLOW_ALERT (if threshold crossed)
 ```
 
-WebSocket integration (Sprint 5):
+**Coherence gates** fire after routing:
 
 ```
-Backend WS event (wing_flap | price_update | paradox_spawn | investigation_event)
-  → frontend/src/hooks/useWebSocket.ts
-    → identify query keys
-      → queryClient.invalidateQueries()
-        → auto-refetch via TanStack Query
+Certificate receives routing_hint
+  → CoherenceGateEvaluator.evaluate(certificate)
+    → if requires_coherence_review(routing_hint, inquiry_class):
+        certificate.coherence_review_required = True
+        certificate.coherence_gate_status = PENDING
+        → TheatreAuditEvent(COHERENCE_GATE_OPENED)
+          → WS broadcast: COHERENCE_GATE_TRANSITION
 ```
 
 ---
 
-## 2. Sprint-0 — Engine Coherence Lock (COMPLETE)
+## 2. Sprint 0 — Schema Foundation + Migration
 
-### 2.1 Models Layer
+### 2.1 Model Extensions
 
 **Modified:** `backend/database/models.py`
 
-```python
-class FlapDirection(str, enum.Enum):
-    STABILISE = "STABILISE"
-    DESTABILISE = "DESTABILISE"
-    NEUTRAL = "NEUTRAL"
-
-class WingFlapType(str, enum.Enum):
-    # 7 original + 10 new
-    TRADE = "TRADE"
-    SHIELD = "SHIELD"
-    SABOTAGE = "SABOTAGE"
-    RIPPLE = "RIPPLE"
-    PARADOX = "PARADOX"
-    FOUNDER_YIELD = "FOUNDER_YIELD"
-    ENTROPY = "ENTROPY"
-    MIRROR_SYNC = "MIRROR_SYNC"
-    MIRROR_TRADE = "MIRROR_TRADE"
-    EVIDENCE = "EVIDENCE"
-    CLAIM = "CLAIM"
-    COUNTER_SIGNAL = "COUNTER_SIGNAL"
-    CORROBORATION = "CORROBORATION"
-    DETONATION = "DETONATION"
-    FORK_SPAWN = "FORK_SPAWN"
-    STOP_CONDITION = "STOP_CONDITION"
-    CERTIFICATE = "CERTIFICATE"
-```
-
-Timeline anchor/fork fields:
+TheatreCertificate additions:
 
 ```python
-# Timeline model additions
-is_anchor: Mapped[bool] = mapped_column(Boolean, default=False)
-anchor_timeline_id: Mapped[Optional[str]] = mapped_column(
-    String(50), ForeignKey("timelines.id"), nullable=True)
-fork_divergence: Mapped[float] = mapped_column(Float, default=0.0)
-last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+# Deployability Routing (Sprint 1)
+routing_hint: Mapped[Optional[str]] = mapped_column(
+    String(20), nullable=True, index=True,
+    comment="ALLOWED | REVIEW_REQUIRED | BLOCKED"
+)
+review_reason_code: Mapped[Optional[str]] = mapped_column(
+    String(100), nullable=True,
+    comment="Machine-readable reason for routing decision"
+)
+
+# Coherence Gates (Sprint 4)
+coherence_review_required: Mapped[bool] = mapped_column(
+    Boolean, default=False,
+    comment="Whether certificate requires coherence review before deployment"
+)
+coherence_gate_status: Mapped[Optional[str]] = mapped_column(
+    String(20), nullable=True,
+    comment="PENDING | PASSED | FAILED"
+)
+coherence_reviewed_at: Mapped[Optional[datetime]] = mapped_column(
+    DateTime, nullable=True,
+    comment="When coherence review was completed"
+)
+coherence_reviewer_id: Mapped[Optional[str]] = mapped_column(
+    String(50), nullable=True,
+    comment="Who reviewed (user_id or SYSTEM)"
+)
 ```
 
-### 2.2 Migration
+Timeline additions:
 
-**New:** `backend/alembic/versions/c016_engine_coherence.py`
+```python
+# TAO Flow Metrics (Sprint 2)
+net_inflow_24h: Mapped[float] = mapped_column(
+    Float, default=0.0,
+    comment="Net capital inflow over last 24 hours"
+)
+net_inflow_7d: Mapped[float] = mapped_column(
+    Float, default=0.0,
+    comment="Net capital inflow over last 7 days"
+)
+flow_updated_at: Mapped[Optional[datetime]] = mapped_column(
+    DateTime, nullable=True,
+    comment="Last TAO flow aggregation timestamp"
+)
+```
+
+### 2.2 Registry Schema Extension
+
+Registry/source metadata fields. These extend the existing typed OSINT source registry at `backend/osint/models/registry.py`. May also be surfaced on `EvidenceItem` or a new `SourceRegistryEntry` DB table if persistence beyond the JSON-backed registry is needed:
+
+```python
+# Registry Schema (Sprint 3)
+query_determinism: Mapped[Optional[str]] = mapped_column(
+    String(30), nullable=True,
+    comment="pure_id_lookup | search_endpoint | bulk_export"
+)
+receipt_body_required: Mapped[bool] = mapped_column(
+    Boolean, default=False,
+    comment="Whether evidence submission requires a receipt body"
+)
+requires_legal_review: Mapped[bool] = mapped_column(
+    Boolean, default=False,
+    comment="Whether evidence from this source requires legal review"
+)
+```
+
+### 2.3 Migration
+
+**New:** `backend/alembic/versions/c017_policy_surface.py`
 
 Dialect-safe migration:
-1. Extends WingFlapType enum (PostgreSQL: `ALTER TYPE ... ADD VALUE`, SQLite: no-op)
-2. Adds anchor/fork columns to timelines
-3. Normalises stability/surface_tension/osint_alignment: `SET col = col / 100.0 WHERE col > 1.0`
-4. Migrates direction data: `UPDATE wing_flaps SET direction = 'STABILISE' WHERE direction = 'ANCHOR'`
 
-### 2.3 Pattern A Decay Fix
+1. Add routing columns to `theatre_certificates` (nullable)
+2. Add coherence columns to `theatre_certificates` (nullable, boolean defaults)
+3. Add TAO flow columns to `timelines` (float defaults 0.0)
+4. If DB persistence path: add `source_registry` table. Otherwise skip (fields live in existing OSINT registry).
+5. Create index on `theatre_certificates.routing_hint`
 
-**Before (buggy):**
-```
-paradox.py: timeline.decay_rate_per_hour = base * (severity + 1)  ← MUTATES rate
-             timeline.decay_multiplier = severity + 1
-entropy.py: effective = timeline.decay_rate_per_hour * 2.0         ← hardcoded 2×
-Result: base × (sev+1) × 2.0 = double-application
-```
+### 2.4 Pydantic Schema Extensions
 
-**After (fixed):**
-```
-paradox.py: timeline.decay_multiplier = severity + 1               ← ONLY writes multiplier
-entropy.py: effective = base_rate × timeline.decay_multiplier      ← reads multiplier, applies once
-Result: base × (sev+1) = correct single-application
-```
-
-### 2.4 Shared SYSTEM Entity
-
-**New:** `backend/worker/tasks/_system_entity.py`
+**Modified:** `backend/schemas/theatre.py`
 
 ```python
-async def ensure_system_entities(session: AsyncSession) -> tuple[User, Agent]:
-    """Returns (system_user, system_agent), creating if absent."""
+class TheatreCertificateResponse(BaseModel):
+    # ... existing fields ...
+
+    # Cycle 017: Deployability Routing
+    routing_hint: Optional[str] = None  # ALLOWED | REVIEW_REQUIRED | BLOCKED
+    review_reason_code: Optional[str] = None
+
+    # Cycle 017: Coherence Gates
+    coherence_review_required: bool = False
+    coherence_gate_status: Optional[str] = None  # PENDING | PASSED | FAILED
+    coherence_reviewed_at: Optional[datetime] = None
 ```
 
-Eliminates ~30 lines of identical boilerplate in entropy.py, paradox.py, market_sync.py. Note: `kalshi_sync.py` still duplicates this boilerplate (cleanup deferred).
+**Modified:** `backend/schemas/butterfly_schemas.py` (or timeline response schema)
 
-### 2.5 Scale Conversion Reference
+```python
+class TimelineResponse(BaseModel):
+    # ... existing fields ...
 
-| Context | Old | New |
-|---------|-----|-----|
-| `_shark_strategy` delta | `size / 10000` (~0.1–0.15) | `size / 1_000_000` (~0.001–0.002) |
-| `_spy_strategy` delta | `uniform(1.0, 3.0)` | `uniform(0.01, 0.03)` |
-| `_diplomat_strategy` delta | `uniform(3.0, 8.0)` | `uniform(0.03, 0.08)` |
-| `_saboteur_strategy` delta | `-uniform(5.0, 12.0)` | `-uniform(0.05, 0.12)` |
-| `_whale_strategy` threshold | `osint_alignment > 50` | `> 0.5` |
-| `_whale_strategy` delta | `size / 5000` (~2–10) | `size / 1_000_000` (~0.01–0.05) |
-| Genesis base_stability | `45.0–82.0` | `0.45–0.82` |
-| Genesis surface_tension | `uniform(40, 70)` | `uniform(0.40, 0.70)` |
-| Genesis osint_alignment | `price_yes * 100` | `price_yes` (already 0–1) |
-| Genesis gravity_score | `uniform(50, 80)` | `uniform(0.50, 0.80)` |
-| Genesis decay_rate | `1.0` | `0.01` |
-| Genesis flap_type | `"GENESIS"` (invalid) | `WingFlapType.FORK_SPAWN` |
-| Genesis Timeline.status | `"ACTIVE"` (no such column) | `is_active=True` |
-| Kalshi stability cap | `min(5.0)` | `min(0.05)` |
-| Kalshi clamp | `max(0, min(100, ...))` | `max(0.0, min(1.0, ...))` |
-| Market sync delta cap | `5.0` | `0.05` |
-
----
-
-## 3. Sprint 1 — Mock Purge + Real API Wiring
-
-### 3.1 TypeScript Type Alignment
-
-**Files:** `frontend/src/types/*.ts`
-
-Rewrite all type files to match backend Pydantic schemas. Key alignments:
-- `types/portfolio.ts` → `UserPosition`, `PortfolioSummary` from `backend/schemas/user_schemas.py`
-- `types/agents.ts` → `Agent` from `backend/database/models.py`
-- `types/marketplace.ts` → Timeline schema from `backend/schemas/butterfly_schemas.py`
-- `types/breach.ts` → `Paradox` from `backend/schemas/paradox_schemas.py`
-- New: `types/investigation.ts` — all investigation toolset response types
-- New: `types/theatre.ts` — `TheatreResponse`, `TheatreCertificateResponse`
-
-### 3.2 Portfolio Wiring
-
-Replace `usePortfolio.ts` mock with TanStack Query calling:
-- `GET /api/v1/user/positions` — individual positions
-- `GET /api/v1/user/portfolio/summary` — aggregate P&L
-
-Field mapping: `unrealizedPnL` → `unrealised_pnl_usd` (camelCase→snake_case in response transform)
-
-### 3.3 Marketplace Wiring
-
-**The relationship:** Polymarket = base reality. Echelon mirrors markets as `TL_PM_*` timelines, then forks.
-
-Backend tasks:
-- Verify `MarketSyncTask.tick()` runs on 10s cadence
-- Add `GET /api/v1/timelines/trending` — returns timelines sorted by volume
-
-Frontend: Replace mock market generator with TanStack Query fetching timelines with `TL_PM_*` prefix.
-
-### 3.4 Agents Wiring
-
-Remove `USE_MOCKS=true` default in `backend/api/agents_routes.py`. Frontend hook fetches from `GET /api/v1/agents/`. Display: archetype, P&L, win rate, sanity, is_alive. Accept that genealogy/lineage is out of scope.
-
-### 3.5 Paradox/Breach + Watchlist Wiring
-
-Replace `useDemoBreaches()` with TanStack Query calling `/api/v1/paradoxes/active`. Replace watchlist mock with `/api/v1/user/watchlist`.
-
----
-
-## 4. Sprint 2 — Investigation Dashboard + Certificate Explorer
-
-### 4.1 Investigation API Routes
-
-**New:** `backend/api/investigation_routes.py`
-
-```
-GET  /api/v1/investigations/                       — list active investigations
-GET  /api/v1/investigations/{id}                   — investigation detail
-GET  /api/v1/investigations/{id}/evidence          — evidence envelope manifest
-GET  /api/v1/investigations/{id}/claims            — claim graph + status summary
-GET  /api/v1/investigations/{id}/counter-signals   — counter-signal feed
-GET  /api/v1/investigations/{id}/drift             — drift events
-GET  /api/v1/investigations/{id}/certificate       — investigation certificate
-GET  /api/v1/investigations/{id}/scanner           — latest DeltaBrief
-POST /api/v1/investigations/                       — create investigation
-POST /api/v1/investigations/{id}/evidence          — submit evidence item
-POST /api/v1/investigations/{id}/claims            — register claim
-```
-
-**New:** `backend/schemas/investigation.py` — Pydantic request/response models
-
-All endpoints delegate to existing `backend/investigation/` service layer from cycle-014c. Routes are thin wrappers.
-
-### 4.2 Investigation Dashboard Component Tree
-
-```
-InvestigationPage.tsx
-├── InvestigationHeader (routing hint badge, inquiry question, dates)
-├── TabNavigation (Overview | Evidence | Claims | Signals | Drift)
-├── EvidenceEnvelopePanel.tsx
-│   ├── EnvelopeHashDisplay
-│   ├── ProvenanceSummaryBar
-│   └── EvidenceItemCard.tsx × N
-│       └── ProvenanceBadge.tsx
-├── ClaimGraphPanel.tsx
-│   ├── MerkleRootDisplay
-│   ├── ClaimStatusSummary
-│   └── ClaimNodeCard.tsx × N
-│       ├── ClaimStatusBadge.tsx
-│       └── EvidenceRefLinks
-├── CounterSignalPanel.tsx
-├── DeltaBriefPanel.tsx
-├── DriftEventsPanel.tsx
-├── EntityProfilePanel.tsx
-└── InvestigationCertificateView.tsx
-    ├── CertificateFieldGroup.tsx × 8
-    └── RoutingHintBadge.tsx
-```
-
-### 4.3 Design Tokens (Investigation)
-
-```css
-/* Provenance class badges */
---provenance-public-primary: #4ADE80;    /* emerald */
---provenance-public-secondary: #3B82F6;  /* blue */
---provenance-private-leak: #F59E0B;      /* amber */
---provenance-analyst-derived: #8B5CF6;   /* purple */
---provenance-third-party: #6B7280;       /* grey */
-
-/* Claim status badges */
---claim-supported: #4ADE80;
---claim-partially: #FACC15;
---claim-unconfirmed: #6B7280;
---claim-contradicted: #FB7185;
-
-/* Routing/anchoring */
---routing-allowed: #4ADE80;
---routing-review: #F59E0B;
---anchor-unanchored: #6B7280;
---anchor-anchored: #4ADE80;
+    # Cycle 017: TAO Flow
+    net_inflow_24h: float = 0.0
+    net_inflow_7d: float = 0.0
+    flow_updated_at: Optional[datetime] = None
 ```
 
 ---
 
-## 5. Sprint 3 — OpsBoard + Analytics + RLMF
+## 3. Sprint 1 — Deployability Routing
 
-### 5.1 OpsBoard Aggregation
+### 3.1 RoutingEvaluator Service
 
-The OpsBoard is rebuilt as a pure aggregation dashboard — no new backend endpoints. Consumes:
+**New:** `backend/services/routing_evaluator.py`
 
-| Widget | Source Endpoint |
-|--------|----------------|
-| Active Theatres count | `GET /api/v1/theatres` filtered by state |
-| Active Paradoxes count | `GET /api/v1/paradoxes/active` |
-| Active Investigations count | `GET /api/v1/investigations/` |
-| Agent count | `GET /api/v1/agents/` |
-| Recent Wing Flaps | `GET /api/v1/butterfly/wing-flaps/recent` |
-| Timeline Health | `GET /api/v1/butterfly/timelines/health` |
+```python
+from enum import Enum
+from typing import Optional
+from dataclasses import dataclass
 
-Layout: 4 summary cards + activity feed + quick-access panels.
+class RoutingHint(str, Enum):
+    ALLOWED = "ALLOWED"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
+    BLOCKED = "BLOCKED"
 
-### 5.2 Analytics from Real Data
+@dataclass
+class RoutingDecision:
+    hint: RoutingHint
+    reason_code: Optional[str]
+    rule_name: str  # which rule triggered
 
-Analytics v1 renders what exists:
-- Theatre history → resolved theatres with scores from `/api/v1/theatres` + `/api/v1/certificates`
-- Agent leaderboard → from `/api/v1/agents/` sorted by P&L
-- OSINT timeline → from `/api/v1/osint/signals`
-- "Coming Soon" placeholders for features needing new endpoints (heatmap, correlation matrix, depth chart)
+@dataclass
+class RoutingPolicy:
+    """Configurable policy rules for routing evaluation."""
+    # Score thresholds
+    block_below_score: float = 0.3
+    review_below_score: float = 0.6
 
-### 5.3 RLMF Export Viewer
+    # Inquiry class overrides
+    always_review_inquiry_classes: list[str] = field(
+        default_factory=lambda: ["INVESTIGATIVE", "SCRUTINY"]
+    )
 
-Redesign from demo to viewer: RLMF export status per Theatre, export manifest (format, record count, schema version), sample records, download link.
+    # Verification tier rules
+    block_tiers: list[str] = field(
+        default_factory=lambda: ["REJECTED"]
+    )
+    review_tiers: list[str] = field(
+        default_factory=lambda: ["DRAFT", "CONTESTED"]
+    )
+
+class RoutingEvaluator:
+    """Evaluates deployability routing for theatre certificates."""
+
+    def __init__(self, policy: Optional[RoutingPolicy] = None):
+        self.policy = policy or RoutingPolicy()
+
+    def evaluate(self, certificate) -> RoutingDecision:
+        """
+        Evaluate routing hint for a certificate.
+        Rules are evaluated in priority order (first match wins):
+        1. Blocked tiers → BLOCKED
+        2. Score below block threshold → BLOCKED
+        3. Review tiers → REVIEW_REQUIRED
+        4. Score below review threshold → REVIEW_REQUIRED
+        5. Always-review inquiry classes → REVIEW_REQUIRED
+        6. Default → ALLOWED
+        """
+        ...
+```
+
+### 3.2 Certificate Pipeline Integration
+
+**Modified:** `backend/services/certificate_pipeline.py`
+
+After certificate scoring, before persistence:
+
+```python
+from backend.services.routing_evaluator import RoutingEvaluator
+
+evaluator = RoutingEvaluator()
+decision = evaluator.evaluate(certificate)
+certificate.routing_hint = decision.hint.value
+certificate.review_reason_code = decision.reason_code
+
+# Audit
+audit_event = TheatreAuditEvent(
+    theatre_id=certificate.theatre_id,
+    event_type="ROUTING_DECISION",
+    detail_json={
+        "routing_hint": decision.hint.value,
+        "reason_code": decision.reason_code,
+        "rule_name": decision.rule_name,
+    }
+)
+```
+
+### 3.3 API Extensions
+
+**Modified:** `backend/api/theatre_routes.py`
+
+- `GET /api/v1/certificates` — add `routing_hint` query parameter for filtering
+- `GET /api/v1/theatres/{id}/certificate` — response already includes new fields via schema extension
+- Responses include `routing_hint` and `review_reason_code` when present
+
+### 3.4 Frontend Integration
+
+Behind `CYCLE_017_DEPLOYABILITY_ROUTING` flag:
+
+- `RoutingHintBadge` component (already exists from Cycle 016 investigation cert view)
+- Certificate explorer card shows routing hint badge
+- Certificate detail page shows review reason when REVIEW_REQUIRED
 
 ---
 
-## 6. Sprint 4 — Investigation Lifecycle + Navigation
+## 4. Sprint 2 — TAO Flow Metrics
 
-### 6.1 Investigation Creation Wizard
+### 4.1 TaoFlowAggregator Service
 
-5-step wizard: inquiry question → template selection → domain filters (9 categories) → stop condition config → review & commit.
+**New:** `backend/services/tao_flow_aggregator.py`
 
-Stop condition types: OUTCOME_RESOLUTION, EVIDENCE_THRESHOLD, SPONSOR_DEFINED.
+```python
+from datetime import datetime, timedelta
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 
-Immutability warning on commit step — once committed, stop conditions cannot be changed.
+class TaoFlowAggregator:
+    """Computes time-windowed net capital inflow for timelines."""
 
-### 6.2 Navigation Structure
+    async def compute_for_timeline(
+        self,
+        session: AsyncSession,
+        timeline_id: str,
+        now: Optional[datetime] = None,
+    ) -> tuple[float, float]:
+        """
+        Returns (net_inflow_24h, net_inflow_7d).
 
+        Net inflow = sum of trade amounts where:
+        - Wing flaps of type TRADE or MIRROR_TRADE
+        - Positive volume_usd = buy (inflow), negative = sell (outflow)
+        - Windowed by timestamp
+        """
+        now = now or datetime.utcnow()
+
+        # 24h window
+        inflow_24h = await self._windowed_sum(
+            session, timeline_id, now - timedelta(hours=24), now
+        )
+
+        # 7d window
+        inflow_7d = await self._windowed_sum(
+            session, timeline_id, now - timedelta(days=7), now
+        )
+
+        return (inflow_24h, inflow_7d)
+
+    async def compute_all(self, session: AsyncSession) -> int:
+        """
+        Compute TAO flow for all active timelines.
+        Called from game loop on 60s cadence.
+        Returns count of timelines updated.
+        """
+        ...
+
+    async def _windowed_sum(
+        self,
+        session: AsyncSession,
+        timeline_id: str,
+        start: datetime,
+        end: datetime,
+    ) -> float:
+        """SUM(volume_usd) from trade-type wing flaps in time window."""
+        stmt = (
+            select(func.coalesce(func.sum(WingFlap.volume_usd), 0.0))
+            .where(
+                WingFlap.timeline_id == timeline_id,
+                WingFlap.flap_type.in_(["TRADE", "MIRROR_TRADE"]),
+                WingFlap.timestamp >= start,
+                WingFlap.timestamp <= end,
+            )
+        )
+        result = await session.execute(stmt)
+        return float(result.scalar_one())
 ```
-Dashboard (was OpsBoard/Home)
-Marketplace
-Investigations
-  └─ Active Investigations
-  └─ Signal Feed
-  └─ Create Investigation
-Theatres (list + detail)
-Analytics (was Blackbox)
-Agents
-Portfolio
-Certificates
-  └─ Calibration Certificates
-  └─ Investigation Certificates
-RLMF Exports
+
+### 4.2 Game Loop Integration
+
+**Modified:** `backend/worker/game_loop.py`
+
+Add TAO flow aggregation at 60s cadence alongside existing evidence (120s) and divergence (60s) stubs:
+
+```python
+# TAO flow aggregation (60s cadence)
+if tick_count % 12 == 0:  # every 60s at 5s tick rate
+    aggregator = TaoFlowAggregator()
+    updated_count = await aggregator.compute_all(session)
 ```
 
-Remove: `/vrf` from main nav (move to info page), `/agents/export` (fold into RLMF).
+### 4.3 WingFlap Amount Field
+
+**Confirmed:** The `WingFlap` model has a `volume_usd` field (not `amount`). This field captures the trade size for TRADE and MIRROR_TRADE flaps. No migration needed for this field — it already exists on the model.
+
+### 4.4 Frontend Integration
+
+Behind `CYCLE_017_TAO_FLOW` flag:
+
+- TAO flow badge on theatre/timeline cards showing net_inflow_24h
+- Colour coding: green (positive), red (negative), grey (zero)
+- Tooltip with 7d figure
+- Uses existing `TaoFlowFields` type from `cycle017.ts`
 
 ---
 
-## 7. Sprint 5 — Convergence Map + WebSocket + Polish
+## 5. Sprint 3 — Registry Schema Expansion
 
-### 7.1 Convergence Map
+### 5.1 Source Registry Model
 
-2D grid: 1° × 1° cells. Colour gradient: grey (no activity) → amber (moderate convergence) → red (high convergence). Click for detail: event types, sources, matched theatres.
+An existing typed JSON-backed OSINT source registry lives at `backend/osint/models/registry.py`. This already structures source metadata with typed entries. Sprint 3 extends this registry with policy fields.
 
-Data source: `ConvergenceDetector` service from existing backend.
+**Default path:** Extend the typed entries in `backend/osint/models/registry.py` with `query_determinism`, `receipt_body_required`, and `requires_legal_review` fields. This keeps source metadata co-located and avoids a new migration.
 
-### 7.2 WebSocket Cache Invalidation
+**Fallback (only if Sprint 3 needs DB persistence):**
 
-Pattern:
+```python
+class SourceRegistryEntry(Base):
+    __tablename__ = "source_registry"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    source_name: Mapped[str] = mapped_column(String(255))
+    source_type: Mapped[str] = mapped_column(String(50))
+
+    # Cycle 017 fields
+    query_determinism: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True,
+        comment="pure_id_lookup | search_endpoint | bulk_export"
+    )
+    receipt_body_required: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+    requires_legal_review: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )
+```
+
+### 5.2 Evidence Submission Enforcement
+
+**Modified:** `backend/investigation/evidence_envelope.py`
+
+When `receipt_body_required=True` on the source:
+
+```python
+def submit_evidence(self, evidence_item, source_entry=None):
+    if source_entry and source_entry.receipt_body_required:
+        if not evidence_item.receipt_body:
+            raise ValueError(
+                f"Source '{source_entry.source_name}' requires receipt_body "
+                f"on evidence submission"
+            )
+```
+
+### 5.3 Legal Review Flag
+
+When `requires_legal_review=True` on any evidence source within an investigation, the investigation detail API response includes a `has_legal_review_requirement: true` flag. The frontend surfaces this as a warning badge.
+
+---
+
+## 6. Sprint 4 — Coherence Gates
+
+### 6.1 CoherenceGateEvaluator Service
+
+**New:** `backend/services/coherence_gate_evaluator.py`
+
+```python
+class GateStatus(str, Enum):
+    PENDING = "PENDING"
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+
+class CoherenceGateEvaluator:
+    """
+    Evaluates whether a certificate requires coherence review
+    and manages the gate lifecycle.
+    """
+
+    def should_require_review(self, certificate) -> bool:
+        """
+        Determine if this certificate needs coherence review.
+        Rules:
+        - REVIEW_REQUIRED routing hint → always requires review
+        - INVESTIGATIVE inquiry class with score < 0.8 → requires review
+        - CONTESTED verification tier → requires review
+        """
+        ...
+
+    def open_gate(self, certificate, session) -> None:
+        """Set gate to PENDING, log audit event."""
+        certificate.coherence_review_required = True
+        certificate.coherence_gate_status = GateStatus.PENDING.value
+        # Log TheatreAuditEvent(COHERENCE_GATE_OPENED)
+
+    def resolve_gate(
+        self, certificate, status: GateStatus,
+        reviewer_id: str, session
+    ) -> None:
+        """
+        Resolve gate to PASSED or FAILED.
+        Logs audit event with reviewer context.
+        """
+        certificate.coherence_gate_status = status.value
+        certificate.coherence_reviewed_at = datetime.utcnow()
+        certificate.coherence_reviewer_id = reviewer_id
+        # Log TheatreAuditEvent(COHERENCE_GATE_RESOLVED)
+```
+
+### 6.2 Gate Lifecycle
+
+```
+Certificate issued
+  → RoutingEvaluator.evaluate() → routing_hint
+  → CoherenceGateEvaluator.should_require_review()
+    → if True:
+        open_gate() → status = PENDING
+        → WS: COHERENCE_GATE_TRANSITION(PENDING)
+    → Manual review via API:
+        resolve_gate(PASSED) or resolve_gate(FAILED)
+        → WS: COHERENCE_GATE_TRANSITION(PASSED|FAILED)
+```
+
+### 6.3 Deployment Guard
+
+Any system that reads certificates for deployment (e.g., external consumers) should check:
+
+```python
+def is_deployable(certificate) -> bool:
+    if certificate.routing_hint == "BLOCKED":
+        return False
+    if certificate.coherence_review_required and \
+       certificate.coherence_gate_status != "PASSED":
+        return False
+    return True
+```
+
+This is exposed as a computed field on the API response:
+
+```python
+class TheatreCertificateResponse(BaseModel):
+    # ... existing + new fields ...
+    is_deployable: bool  # computed from routing_hint + gate_status
+```
+
+### 6.4 API Endpoints
+
+**New:** `POST /api/v1/certificates/{id}/gate/resolve`
+
+Auth: `Depends(get_current_user)` — reviewer identity captured from `user.user_id` on the `TokenData` dependency.
+
+```json
+{
+  "status": "PASSED",  // or "FAILED"
+  "reviewer_notes": "Optional review notes"
+}
+```
+
+**New:** `GET /api/v1/certificates/{id}/gate`
+
+Returns gate status, audit trail, and deployment eligibility.
+
+---
+
+## 7. Sprint 5 — WebSocket Policy Events + Frontend Integration
+
+### 7.1 New WebSocket Event Types
+
+**Modified:** `backend/websockets/realtime_manager.py`
+
+```python
+async def broadcast_routing_decision(self, certificate_id: str, decision: dict):
+    """Broadcast routing decision for a certificate."""
+    await self.broadcast_global("ROUTING_DECISION", {
+        "certificate_id": certificate_id,
+        **decision
+    })
+    await self.broadcast_to_channel(
+        f"theatre:{decision['theatre_id']}",
+        "ROUTING_DECISION",
+        decision
+    )
+
+async def broadcast_coherence_gate_transition(
+    self, certificate_id: str, transition: dict
+):
+    """Broadcast coherence gate status change."""
+    await self.broadcast_global("COHERENCE_GATE_TRANSITION", {
+        "certificate_id": certificate_id,
+        **transition
+    })
+
+async def broadcast_tao_flow_alert(
+    self, timeline_id: str, alert: dict
+):
+    """Broadcast when TAO flow crosses a threshold."""
+    await self.broadcast_to_channel(
+        f"timeline:{timeline_id}",
+        "TAO_FLOW_ALERT",
+        alert
+    )
+```
+
+### 7.2 Frontend Feature Flag Removal
+
+Sprint 5 removes the three 017-scoped flags. Two flags with broader scope are retained:
+
+| Flag | Action |
+|------|--------|
+| `CYCLE_017_DEPLOYABILITY_ROUTING` | **Remove** — render routing fields natively |
+| `CYCLE_017_REGISTRY_SCHEMA` | **Remove** — render registry badges natively |
+| `CYCLE_017_COHERENCE_GATES` | **Remove** — render gate status natively |
+| `CYCLE_017_TAO_FLOW` | **Retain if still gating staged Alpamayo behaviour** beyond pure flow metrics; remove only if its sole remaining consumer is TAO flow badges |
+| `WEBSOCKET_REALTIME` | **Retain** — generic realtime gate used by the shared channel hook (`useRealtimeChannel`), not a disposable 017-only shim |
+
+### 7.3 Frontend Component Changes
+
+**Certificate Explorer (`CertificatesPage.tsx`):**
+- Add routing hint badge column
+- Add coherence gate status column
+- Add "deployable" indicator
+- Filter by routing_hint
+
+**Theatre/Timeline Cards (`MarketplacePage.tsx`, `WorldMonitorPage.tsx`):**
+- Add TAO flow badge (net_inflow_24h)
+- Colour: green/red/grey
+
+**Investigation Detail (`InvestigationPage.tsx`):**
+- Registry schema badges on evidence sources
+- Legal review warning badge
+- Receipt requirement indicator
+
+**Certificate Detail (new component or extension):**
+- Full routing decision display with reason code
+- Gate status timeline (PENDING → PASSED/FAILED)
+- Deployment eligibility summary
+
+### 7.4 Type Migration
+
+**Delete:** `frontend/src/types/cycle017.ts`
+
+**Extend:**
+- `frontend/src/types/theatre.ts` — add routing, coherence, flow fields to existing types
+- `frontend/src/types/index.ts` — add RoutingHint, GateStatus type unions
+- `frontend/src/types/investigation.ts` — add registry schema fields
+
+### 7.5 WS Cache Invalidation Extensions
+
+**Modified:** `frontend/src/hooks/useWebSocket.ts`
+
+Add handlers for new event types:
+
 ```typescript
-// useWebSocket.ts
-ws.onmessage = (event) => {
-  const { type, payload } = JSON.parse(event.data);
-  switch (type) {
-    case 'wing_flap':
-      queryClient.invalidateQueries({ queryKey: ['timelines', 'health'] });
-      break;
-    case 'price_update':
-      queryClient.invalidateQueries({ queryKey: ['timelines', payload.id] });
-      break;
-    case 'paradox_spawn':
-      queryClient.invalidateQueries({ queryKey: ['paradoxes'] });
-      break;
-    case 'investigation_event':
-      queryClient.invalidateQueries({ queryKey: ['investigations', payload.id] });
-      break;
-  }
-};
+case 'ROUTING_DECISION':
+  queryClient.invalidateQueries({ queryKey: ['certificates'] });
+  queryClient.invalidateQueries({ queryKey: ['theatre', data.theatre_id] });
+  break;
+
+case 'COHERENCE_GATE_TRANSITION':
+  queryClient.invalidateQueries({ queryKey: ['certificates', data.certificate_id] });
+  queryClient.invalidateQueries({ queryKey: ['gate', data.certificate_id] });
+  break;
+
+case 'TAO_FLOW_ALERT':
+  queryClient.invalidateQueries({ queryKey: ['timelines'] });
+  queryClient.invalidateQueries({ queryKey: ['timeline', data.timeline_id] });
+  break;
 ```
 
-### 7.3 Polish Checklist
+---
 
-- Responsive breakpoints (stack on narrow viewports)
-- Loading skeletons (Tailwind animation tokens)
-- Empty states for all panels
-- Error states with retry buttons
-- Consistent `terminal-*` token usage
-- Keyboard navigation for tab panels
-- Zero remaining mock data imports (final grep audit)
+## 8. Testing Strategy
+
+### Unit Tests (per service)
+
+| Service | Tests | Focus |
+|---------|-------|-------|
+| RoutingEvaluator | 4 | Score thresholds, inquiry class rules, tier rules, default |
+| TaoFlowAggregator | 3 | 24h window, 7d window, zero trades |
+| CoherenceGateEvaluator | 3 | Gate open, resolve PASSED, resolve FAILED |
+| Registry enforcement | 2 | Receipt required, legal review flag |
+
+### Integration Tests
+
+| Test | Focus |
+|------|-------|
+| Certificate issuance → routing hint | End-to-end pipeline |
+| Game loop → flow aggregation | Async cadence |
+| Gate lifecycle → audit trail | State machine |
+| WS routing event → cache invalidation | Real-time |
+| E2E: theatre → certificate → routing → gate → verify `is_deployable` | Full lifecycle |
+
+### Regression
+
+All existing 1060+ tests must pass before and after each sprint.

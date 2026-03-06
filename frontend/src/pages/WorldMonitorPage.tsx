@@ -10,6 +10,31 @@ import { clsx } from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import { useWorldMonitor } from '../hooks/useWorldMonitor';
 import { EmptyState } from '../components/empty-states/EmptyState';
+import { isEnabled } from '../lib/featureFlags';
+
+function FlowBadge({ value }: { value: number }) {
+  const colors =
+    value > 0
+      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+      : value < 0
+        ? 'bg-red-500/20 text-red-400 border-red-500/30'
+        : 'bg-neutral-500/20 text-neutral-400 border-neutral-500/30';
+  const sign = value > 0 ? '+' : '';
+  const formatted = Math.abs(value) >= 1000
+    ? `${sign}$${(value / 1000).toFixed(1)}k`
+    : `${sign}$${value.toFixed(0)}`;
+  return (
+    <span
+      className={clsx(
+        'px-2 py-0.5 rounded text-[10px] font-mono border',
+        colors,
+      )}
+      title={`24h: ${sign}$${value.toLocaleString()}`}
+    >
+      {formatted}
+    </span>
+  );
+}
 
 export function WorldMonitorPage() {
   const navigate = useNavigate();
@@ -104,11 +129,16 @@ export function WorldMonitorPage() {
                 <span className="text-sm font-semibold text-terminal-text truncate">
                   {tl.name}
                 </span>
-                {tl.has_active_paradox && (
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-status-paradox/10 text-status-paradox border border-status-paradox/20">
-                    Paradox
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {isEnabled('CYCLE_017_TAO_FLOW') && tl.net_inflow_24h != null && (
+                    <FlowBadge value={tl.net_inflow_24h} />
+                  )}
+                  {tl.has_active_paradox && (
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-status-paradox/10 text-status-paradox border border-status-paradox/20">
+                      Paradox
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div>
