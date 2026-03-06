@@ -261,12 +261,31 @@ class TheatreCertificateResponse(BaseModel):
     theatre_resolved_at: datetime
     ground_truth_source: str
     execution_path: str
+
+    # ── Cycle-017: Policy Surface ──
+    routing_hint: Optional[str] = None
+    review_reason_code: Optional[str] = None
+    coherence_review_required: bool = False
+    coherence_gate_status: Optional[str] = None
+    coherence_reviewed_at: Optional[datetime] = None
+    is_deployable: bool = True
+
     model_config = ConfigDict(from_attributes=True)
 
     @model_validator(mode="after")
     def coalesce_inquiry_class(self) -> "TheatreCertificateResponse":
         if self.inquiry_class is None:
             self.inquiry_class = "COUNTERFACTUAL"
+        return self
+
+    @model_validator(mode="after")
+    def compute_is_deployable(self) -> "TheatreCertificateResponse":
+        if self.routing_hint == "BLOCKED":
+            self.is_deployable = False
+        elif self.coherence_review_required and self.coherence_gate_status != "PASSED":
+            self.is_deployable = False
+        else:
+            self.is_deployable = True
         return self
 
 
@@ -281,7 +300,23 @@ class TheatreCertificateSummaryResponse(BaseModel):
     replay_count: int
     execution_path: str
     issued_at: datetime
+
+    # ── Cycle-017: Policy Surface ──
+    routing_hint: Optional[str] = None
+    coherence_gate_status: Optional[str] = None
+    is_deployable: bool = True
+
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def compute_is_deployable(self) -> "TheatreCertificateSummaryResponse":
+        if self.routing_hint == "BLOCKED":
+            self.is_deployable = False
+        elif self.coherence_gate_status is not None and self.coherence_gate_status != "PASSED":
+            self.is_deployable = False
+        else:
+            self.is_deployable = True
+        return self
 
 
 class CertificateListResponse(BaseModel):

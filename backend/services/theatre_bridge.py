@@ -20,6 +20,9 @@ from backend.database.models import (
     TheatreEpisodeScore,
     TheatreAuditEvent,
 )
+from backend.services.coherence_gate_evaluator import CoherenceGateEvaluator
+from backend.services.routing_evaluator import RoutingEvaluator
+from backend.websockets.realtime_manager import manager as ws_manager
 
 logger = logging.getLogger(__name__)
 
@@ -247,10 +250,30 @@ async def run_theatre_task(theatre_id: str) -> None:
                 execution_path=template_json.get("execution_path", "replay"),
             )
 
+            # Routing evaluation — compute routing hint
+            evaluator = RoutingEvaluator()
+            decision = evaluator.evaluate(
+                composite_score=replay_result.composite_score,
+                verification_tier=tier,
+                inquiry_class=inquiry_class,
+            )
+            db_cert.routing_hint = decision.hint.value
+            db_cert.review_reason_code = decision.reason_code
+
             # Persist certificate and episode scores
             async with get_session() as session:
                 session.add(db_cert)
                 await session.flush()
+
+                # Coherence gate evaluation — wire into production path
+                gate_evaluator = CoherenceGateEvaluator()
+                if gate_evaluator.should_require_review(
+                    routing_hint=decision.hint.value,
+                    inquiry_class=inquiry_class,
+                    composite_score=replay_result.composite_score,
+                    verification_tier=tier,
+                ):
+                    await gate_evaluator.open_gate(session, cert_id)
 
                 # Persist episode scores
                 for ep in replay_result.episode_results:
@@ -282,6 +305,31 @@ async def run_theatre_task(theatre_id: str) -> None:
                     },
                 )
                 session.add(audit_event)
+
+                # Routing decision audit event
+                routing_audit = TheatreAuditEvent(
+                    id=str(uuid.uuid4()),
+                    theatre_id=theatre_id,
+                    event_type="ROUTING_DECISION",
+                    detail_json={
+                        "certificate_id": cert_id,
+                        "routing_hint": decision.hint.value,
+                        "reason_code": decision.reason_code,
+                        "rule_name": decision.rule_name,
+                    },
+                )
+                session.add(routing_audit)
+
+            # Broadcast routing decision via WebSocket (fire-and-forget, after DB commit)
+            try:
+                await ws_manager.broadcast_routing_decision(cert_id, {
+                    "theatre_id": theatre_id,
+                    "routing_hint": decision.hint.value,
+                    "reason_code": decision.reason_code,
+                    "rule_name": decision.rule_name,
+                }, theatre_id=theatre_id)
+            except Exception:
+                logger.debug("WS broadcast_routing_decision failed (no clients?)")
 
         # Transition to RESOLVED (with or without certificate)
         await _transition_theatre_state(

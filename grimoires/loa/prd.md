@@ -1,266 +1,271 @@
-# PRD — Cycle-016: Results Surface
+# PRD — Cycle-017: Policy Surface
 
-**Cycle:** cycle-016
-**Date:** 5 March 2026
-**Predecessor:** cycle-014c (Investigation Toolset), cycle-015 (Live Collectors), cycle-013 (Agent Runtime), cycle-012 (Sponsored Theatres), cycle-010a (LMSR)
-**Sprints:** 6 total (0–5); Sprint-0 complete, Sprints 1–5 ahead
-**Design input:** `echelon_cycle_016.md`, `Echelon_Butterfly_Entropy_Coherence_Review_v1.md` (v1.2.1)
-**Baseline:** ≥1009 passed (post-014c), 15 skipped, 13 pre-existing collection errors
+**Cycle:** cycle-017
+**Date:** 6 March 2026
+**Predecessor:** cycle-016 (Results Surface), cycle-014c (Investigation Toolset), cycle-015 (Live Collectors), cycle-013 (Agent Runtime), cycle-012 (Sponsored Theatres), cycle-010a (LMSR)
+**Sprints:** 6 total (0–5)
+**Design input:** `HANDOFF_MATRIX_ALEXANDER.md`, `cycle017.ts` (frontend type stubs), `featureFlags.ts`
+**Baseline:** ≥1060 passed (post-016 target), 8 pre-existing async heartbeat failures
 
 ---
 
 ## 1. Problem Statement
 
-Every backend cycle since 010a has shipped runtime models, services, and tests — but the frontend was built as a **presentation mockup** before most backend systems existed. The audit reveals:
+Cycle 016 delivered the Results Surface — the core frontend views now render from real backend data, investigations are end-to-end, and the bulk of the mock presentation layer is retired. Several surfaces remain honestly staged: Create Theatre's blank path and Alpamayo shell are deferred, Scenario Packs is an empty-state shell with no backend, and agent deployment is a staged modal backed by mock theatres with a disabled deploy button (see handoff matrix §3). But the platform's **policy layer** doesn't exist yet:
 
-- **Only 2 of 13 routes are properly wired** (Verification + Theatre)
-- **11 routes use hardcoded mock data** or demo stores that never call real APIs
-- **Backend endpoints exist but are ignored** by the frontend (portfolio, paradox, marketplace)
-- **Some frontend components have no backend at all** (OpsBoard, RLMF, VRF, Analytics/Blackbox)
-- **TypeScript types don't match Pydantic schemas** (field names, types, missing fields)
-- **The investigation toolset (014c) has zero frontend representation**
-- **Engine coherence gaps** — three parallel Butterfly/Entropy implementations diverge in stability scale (0–100 vs 0–1), decay constants, and flap type coverage
+- **Certificates have no routing intelligence.** A certificate says "this theatre scored 0.73" but nothing about whether that result is deployable, review-required, or blocked. The `routing_hint` field exists as a frontend type stub but has no backend computation.
+- **No flow metrics.** Theatre and timeline cards show static state but not capital flow — net inflow over 24h/7d (`TAO Flow`) is stubbed in `cycle017.ts` but has no backend aggregation.
+- **Registry metadata is incomplete.** Source queries used by investigations lack determinism classification, receipt body requirements, and legal review flags — all critical for audit trails.
+- **No coherence gates.** Post-routing policy evaluation (did this certificate pass coherence review before deployment?) is entirely absent. The `CoherenceGateFields` stub exists but nothing computes or persists gate status.
+- **WebSocket is fire-and-forget.** The real-time infrastructure from Cycle 016 broadcasts events but doesn't broadcast policy state changes — routing decisions, gate transitions, flow threshold alerts.
 
-This cycle does three things: (0) lock engine coherence so the backend emits sane values, (1) reconcile the mock frontend with the real backend, and (2) build the new investigation views that 014c enables.
+This cycle adds the **policy surface**: the intelligence that sits between raw results (certificates, scores, trades) and deployment decisions (can this be used? should it be reviewed? is it blocked?).
 
-> Sources: echelon_cycle_016.md:1-22, Echelon_Butterfly_Entropy_Coherence_Review_v1.md:§1-§2
+> Sources: cycle017.ts type stubs, featureFlags.ts flag definitions, HANDOFF_MATRIX_ALEXANDER.md §3–§4
 
 ## 2. Objective
 
-### Sprint-0: Engine Coherence Lock (COMPLETE)
+### Sprint 0: Schema Foundation + Migration
 
-Resolve all coherence gaps identified in `Echelon_Butterfly_Entropy_Coherence_Review_v1.md` so that the backend emits correct 0–1 stability values, canonical flap directions, and consistent decay behaviour before any frontend wiring begins. Gates A–G acceptance criteria defined in the coherence review.
+Extend backend models with all Cycle 017 fields. Create the database migration. No runtime logic yet — just the schema layer so that all subsequent sprints can write to real columns.
 
-### Sprints 1–5: Results Surface
+### Sprint 1: Deployability Routing
 
-Build the production frontend — reconcile mock/presentation layer with real backend, wire all existing views to live APIs, build new investigation toolset views, redesign navigation. React 19 + Vite 7 + Tailwind stack preserved; kree8.studio visual identity applied.
+Build the routing evaluation engine. When a theatre certificate is issued, compute a `routing_hint` (ALLOWED / REVIEW_REQUIRED / BLOCKED) based on configurable policy rules. Persist the hint on the certificate. Expose via API.
+
+### Sprint 2: TAO Flow Metrics
+
+Build time-windowed capital flow aggregation. Compute `net_inflow_24h` and `net_inflow_7d` for timelines from wing flap trade data. Expose on timeline and theatre responses. Surface in the frontend on theatre/timeline cards.
+
+### Sprint 3: Registry Schema Expansion
+
+Extend the existing OSINT source registry (`backend/osint/models/registry.py`) with `query_determinism`, `receipt_body_required`, and `requires_legal_review`. Update the investigation toolset to enforce receipt requirements and flag legal review needs. Surface in investigation detail views. Only introduce a new DB table if persistence beyond the current JSON-backed registry is needed.
+
+### Sprint 4: Coherence Gates
+
+Build the post-routing coherence gate system. After a certificate receives a routing hint, it may require a coherence review before deployment. Track gate status (PENDING → PASSED / FAILED). Integrate with the certificate pipeline and expose via API + WS.
+
+### Sprint 5: WebSocket Policy Events + Frontend Integration + Polish
+
+Extend the WebSocket event system with policy-layer events. Wire all Cycle 017 fields into the frontend behind feature flags. Remove the three 017-scoped flags (`DEPLOYABILITY_ROUTING`, `REGISTRY_SCHEMA`, `COHERENCE_GATES`); retain `CYCLE_017_TAO_FLOW` if it still gates staged Alpamayo behaviour and `WEBSOCKET_REALTIME` as a generic realtime gate. Polish and test.
 
 ## 3. Success Criteria
 
-### SC-0: Engine Coherence Lock (COMPLETE ✓)
+### SC-0: Schema Foundation
 
-| Gate | Description | Status |
-|------|-------------|--------|
-| A | Enum parity: `engines/butterfly.py` and `models.py` WingFlapType enums identical | ✓ |
-| B | 0–1 stability storage everywhere: DB default 0.5, all worker tasks use 0–1 clamps, API boundary via `_as_percent()` | ✓ |
-| C | FlapDirection enum: STABILISE, DESTABILISE, NEUTRAL — all backend writers (worker/tasks + admin_routes) use `FlapDirection.*.value`, no bare string literals | ✓ |
-| D | LogicGapReading dataclass: structured input for EntropyEngine.tick() with backwards compat | ✓ |
-| E | Pattern A decay fix: paradox writes `decay_multiplier` only, entropy applies once | ✓ |
-| F | Fork divergence: `compute_fork_divergence()` method on ButterflyEngine | ✓ |
-| G | Anchor/fork model: `is_anchor`, `anchor_timeline_id`, `fork_divergence` on Timeline | ✓ |
+1. All Cycle 017 fields present as columns in the database
+2. Migration is dialect-safe (PostgreSQL + SQLite)
+3. All existing tests still pass (zero regressions)
+4. Pydantic response schemas extended with new fields (optional, nullable)
 
-### SC-1: Mock Purge + API Wiring
+### SC-1: Deployability Routing
 
-1. Portfolio page wired to `/api/v1/user/positions` + `/api/v1/user/portfolio/summary`
-2. Marketplace wired to Polymarket-backed timelines via `/api/v1/timelines/`
-3. Agents page wired to `/api/v1/agents/` with real data (no USE_MOCKS)
-4. Paradox/Breach wired to `/api/v1/paradoxes/active`
-5. Watchlist wired to `/api/v1/user/watchlist`
-6. TypeScript types aligned to backend Pydantic schemas
+1. `RoutingEvaluator` service computes routing_hint for any `TheatreCertificate`
+2. Routing hint persisted on certificate at issuance time
+3. `TheatreCertificateResponse` includes `routing_hint` and `review_reason_code`
+4. `GET /api/v1/theatres/{id}/certificate` returns routing fields
+5. `GET /api/v1/certificates?routing_hint=REVIEW_REQUIRED` — filter by routing status
+6. Policy rules are configurable (score thresholds, inquiry class rules, tier rules)
+7. 8+ tests covering routing evaluation logic
 
-### SC-2: Investigation Dashboard + Certificate Explorer
+### SC-2: TAO Flow Metrics
 
-1. `investigation_routes.py` — 11 REST endpoints (list, detail, evidence, claims, counter-signals, drift, certificate, scanner, create, submit evidence, register claim)
-2. Investigation dashboard with tabbed layout (Overview | Evidence | Claims | Signals | Drift)
-3. Evidence Envelope viewer with provenance badges and hash display
-4. Claim Graph viewer with status badges, confidence, evidence refs
-5. Investigation Certificate explorer (30+ fields grouped)
-6. Counter-signal, DeltaBrief, drift, and entity profile panels
+1. `TaoFlowAggregator` service computes 24h/7d net inflow from wing flap trade data
+2. Aggregation runs on game loop cadence (configurable, default 60s)
+3. `net_inflow_24h` and `net_inflow_7d` persisted on Timeline
+4. Timeline and Theatre API responses include flow fields
+5. Frontend theatre/timeline cards show flow badges when flag enabled
+6. 6+ tests covering flow computation edge cases
 
-### SC-3: OpsBoard + Analytics + RLMF
+### SC-3: Registry Schema Expansion
 
-1. OpsBoard rebuilt as aggregation dashboard from real endpoints (theatres, paradoxes, investigations, flaps, timeline health)
-2. Analytics page built from real Theatre/market data (agent leaderboard, theatre history, OSINT timeline)
-3. RLMF page redesigned as export viewer
-4. VRF page converted to documentation/roadmap page
+1. Source metadata model extended with `query_determinism`, `receipt_body_required`, `requires_legal_review`
+2. Investigation evidence submission enforces `receipt_body_required` when set
+3. Legal review flag surfaced in investigation detail views
+4. 4+ tests covering registry schema enforcement
 
-### SC-4: Investigation Lifecycle Console + Navigation
+### SC-4: Coherence Gates
 
-1. Multi-step investigation creation wizard (inquiry → template → domain filters → stop condition → commit)
-2. Investigation progress tracker with stop condition progress
-3. Navigation redesigned: Dashboard, Marketplace, Investigations, Theatres, Analytics, Agents, Portfolio, Certificates, RLMF Exports
-4. Signal feed migrated from inquiry console to main app
+1. `CoherenceGateEvaluator` service evaluates gate conditions
+2. Gate status (PENDING / PASSED / FAILED) persisted on certificate
+3. Gate transitions are auditable (TheatreAuditEvent)
+4. Certificates with `coherence_review_required=true` cannot be deployed until gate PASSED
+5. `GET /api/v1/certificates/{id}/gate` — gate status endpoint
+6. 6+ tests covering gate lifecycle
 
-### SC-5: Convergence Map + Agent Analytics + WebSocket + Polish
+### SC-5: WebSocket + Frontend + Polish
 
-1. 2D convergence map (1° × 1° cells, grey→amber→red)
-2. Agent performance analytics (trade history, archetype radar, genome viewer)
-3. WebSocket-driven TanStack Query cache invalidation
-4. Responsive layout, loading skeletons, empty states, error states
-5. Zero mock data in production code paths
+1. New WS event types: ROUTING_DECISION, COHERENCE_GATE_TRANSITION, TAO_FLOW_ALERT
+2. Three 017-scoped feature flags removed (`DEPLOYABILITY_ROUTING`, `REGISTRY_SCHEMA`, `COHERENCE_GATES`); `CYCLE_017_TAO_FLOW` and `WEBSOCKET_REALTIME` retained if still gating non-017 surfaces
+3. Certificate explorer shows routing hint badge + coherence gate status
+4. Timeline/theatre cards show TAO flow metrics
+5. Investigation detail shows registry schema fields
+6. Responsive, loading, empty, and error states for all new UI
+7. 4+ frontend tests
 
 ### SC-6: Test Gate
 
-1. ≥1009 passed (post-014c baseline maintained)
+1. ≥1060 passed (post-016 baseline maintained)
 2. Zero new test failures
-3. 50+ new tests across frontend and backend
-4. Post-016 expected: ≥1060 passed
+3. 40+ new tests across backend and frontend
+4. Post-017 expected: ≥1100 passed
 
 ## 4. Codebase Grounding
 
-### Sprint-0 Files Modified/Created (Engine Coherence Lock)
-
-| File | Change |
-|------|--------|
-| `backend/database/models.py` | Extended WingFlapType (10 new), added FlapDirection enum, 0.5 defaults, anchor/fork fields |
-| `backend/alembic/versions/c016_engine_coherence.py` | Migration: enum extension, anchor/fork columns, 0–100→0–1 normalisation, ANCHOR→STABILISE |
-| `backend/worker/tasks/_system_entity.py` | NEW: shared SYSTEM entity helper (eliminates ~30-line boilerplate × 3 files) |
-| `backend/worker/tasks/entropy.py` | Pattern A fix (uses `decay_multiplier`), anchor skip, 0–1 constants, FlapDirection |
-| `backend/worker/tasks/paradox.py` | Writes `decay_multiplier` only, DETONATION flap type, 0–1 thresholds |
-| `backend/worker/tasks/market_sync.py` | MIRROR_TRADE type, `is_anchor=True`, 0–1 scale, MAX_ACTIVE_MARKETS=10, `last_sync_at` on every sync |
-| `backend/worker/tasks/agent_tick.py` | All 5 strategies: 0–1 thresholds/clamps, FlapDirection enum values |
-| `backend/worker/tasks/genesis.py` | 0–1 templates, `is_active`, FORK_SPAWN type, SYSTEM agent, valid WingFlap fields |
-| `backend/worker/tasks/kalshi_sync.py` | 0–1 stability, FlapDirection enum |
-| `backend/engines/butterfly.py` | Enum sync, FlapDirection, auto-direction, `compute_fork_divergence()` |
-| `backend/engines/entropy.py` | LogicGapReading dataclass, backwards-compat `tick()` |
-| `backend/worker/game_loop.py` | Evidence (120s) and divergence (60s) cadence stubs |
-| `backend/schemas/butterfly_schemas.py` | Extended enums, anchor/fork fields, STABILISE/NEUTRAL |
-| `backend/mechanics/butterfly_engine.py` | `_as_percent()` API boundary, direction enums |
-| `backend/engines/tests/test_coherence_016.py` | NEW: 22 tests covering Gates A–G |
-| `backend/api/admin_routes.py` | 0–1 scale, FlapDirection, WingFlapType enums, valid WingFlap fields |
-| `backend/scripts/seed_database.py` | ANCHOR → STABILISE |
-
-### Existing Infrastructure (Sprint 1+ Dependencies)
+### Existing Infrastructure (017 Dependencies)
 
 | Component | Location | Relevance |
 |-----------|----------|-----------|
-| Polymarket Client | `backend/integrations/polymarket_client.py` | Market auto-discovery, `get_trending_markets()` |
-| MarketSyncTask | `backend/worker/tasks/market_sync.py` | Creates `TL_PM_*` timelines, syncs prices |
-| Investigation Toolset | `backend/investigation/` | 8 tools, services, 67+ tests |
-| Theatre State Machine | `theatre/engine/state_machine.py` | DRAFT → COMMITTED → ACTIVE → SETTLING → RESOLVED → ARCHIVED |
-| Certificate Pipeline | `backend/services/certificate_pipeline.py` | CalibrationCertificate + InvestigationCertificate |
-| LMSR Market Engine | `backend/market/` | Investigation markets |
-| Agent Runtime | `backend/worker/tasks/agent_tick.py` | 6 archetypes, live at 5s cadence |
-| API Client | `frontend/src/api/client.ts` | Bearer auth, error handling, `localhost:8000` |
+| TheatreCertificate model | `backend/database/models.py` | Extend with routing_hint, coherence fields |
+| Timeline model | `backend/database/models.py` | Extend with TAO flow fields |
+| Certificate pipeline | `backend/services/certificate_pipeline.py` | Hook routing evaluation into issuance |
+| Theatre routes | `backend/api/theatre_routes.py` | Extend responses with 017 fields |
+| Investigation toolset | `backend/investigation/` | Enforce registry schema on evidence |
+| WebSocket manager | `backend/websockets/realtime_manager.py` | Add policy event broadcasts |
+| Feature flags | `frontend/src/lib/featureFlags.ts` | Gate 017 UI until backend ships |
+| Type stubs | `frontend/src/types/cycle017.ts` | Migrate to real types |
+| Handoff matrix | `output/HANDOFF_MATRIX_ALEXANDER.md` | Route + empty state contracts |
+| Game loop | `backend/worker/game_loop.py` | Add TAO flow aggregation cadence |
+| Audit events | `backend/database/models.py` (TheatreAuditEvent) | Track gate transitions |
+| Investigation routes | `backend/api/investigation_routes.py` | Extend with registry enforcement |
 
-### Frontend–Backend Alignment Audit
+### Frontend Type Stubs → Real Types
 
-**Working correctly (keep):** Verification (`verification_routes.py`), Theatre (`theatre_routes.py`), API Client
-
-**Mock frontend, real backend exists (wire up):** Portfolio, Marketplace, Agents, Paradox/Breach, Watchlist
-
-**Mock frontend, no backend (decide):** OpsBoard → Rebuild as aggregation. RLMF → Redesign as export viewer. VRF → Defer to docs. Analytics → Phase from real data. Exports Console → Stub from pipeline.
-
-**No frontend at all (new build):** Investigation Dashboard, Evidence Envelope Viewer, Claim Graph Viewer, Counter-Signal Feed, Signal Scanner/DeltaBrief, Entity Resolver View, Investigation Certificate, Commitment Monitor/Drift, Convergence Map
+| Stub Interface | Flag | Target Sprint |
+|---------------|------|---------------|
+| `DeployabilityRoutingFields` | `CYCLE_017_DEPLOYABILITY_ROUTING` | Sprint 1 |
+| `TaoFlowFields` | `CYCLE_017_TAO_FLOW` | Sprint 2 |
+| `RegistrySchemaFields` | `CYCLE_017_REGISTRY_SCHEMA` | Sprint 3 |
+| `CoherenceGateFields` | `CYCLE_017_COHERENCE_GATES` | Sprint 4 |
+| — | `WEBSOCKET_REALTIME` | Sprint 5 |
 
 ## 5. Sprint Breakdown
 
-### Sprint 0: Engine Coherence Lock ✓ COMPLETE
+### Sprint 0: Schema Foundation + Migration (4 tasks)
 
-Pre-work dependency resolved. All Gates A–G pass. 22 new tests. 213 passing (engines+schemas). Zero 0–100 leaks in live runtime paths.
-
-### Sprint 1: Mock Purge + Real API Wiring (7 tasks)
-
-Strip mock data, wire to real backend, fix TypeScript types. No new features — just make existing views truthful.
+Extend all models, create migration, extend Pydantic schemas. No runtime logic.
 
 | Task | Description | Tests |
 |------|-------------|-------|
-| 1.1 | TypeScript type alignment (audit + rewrite all type files) | — |
-| 1.2 | Portfolio page → real API | 1 |
-| 1.3 | Marketplace → Polymarket-backed timelines + trending endpoint | 1 |
-| 1.4 | Agents page → real API + backend enhancement | 1 |
-| 1.5 | Paradox/Breach → real API | 1 |
-| 1.6 | Watchlist → real API | — |
-| 1.7 | Type alignment regression snapshot test | 1 |
+| 0.1 | Model layer: add all 017 columns to TheatreCertificate, Timeline, source metadata | — |
+| 0.2 | Alembic migration (dialect-safe) | 2 |
+| 0.3 | Pydantic schema extensions (optional fields on existing responses) | 2 |
+| 0.4 | Regression test: verify all existing tests pass with new nullable columns | — |
 
-**Sprint 1 total:** 5 tests
+**Sprint 0 total:** 4 tests
 
-### Sprint 2: Investigation Dashboard + Certificate Explorer (7 tasks)
+### Sprint 1: Deployability Routing (5 tasks)
 
 | Task | Description | Tests |
 |------|-------------|-------|
-| 2.1 | Investigation API routes (backend, 11 endpoints) | 8 |
-| 2.2 | Investigation dashboard page (tabbed layout) | 1 |
-| 2.3 | Evidence Envelope viewer | 1 |
-| 2.4 | Claim Graph viewer | 1 |
-| 2.5 | Investigation Certificate explorer | 1 |
-| 2.6 | Counter-signal + DeltaBrief + drift + entity panels | 2 |
-| 2.7 | Sprint 2 integration tests | — |
+| 1.1 | `RoutingEvaluator` service with configurable policy rules | 4 |
+| 1.2 | Hook into certificate pipeline — compute routing_hint at issuance | 2 |
+| 1.3 | Extend theatre routes — filter certificates by routing_hint | 1 |
+| 1.4 | Frontend: routing hint badge on certificate explorer (behind flag) | 1 |
+| 1.5 | Sprint 1 integration test | — |
 
-**Sprint 2 total:** 14 tests
+**Sprint 1 total:** 8 tests
 
-### Sprint 3: OpsBoard Rebuild + Analytics + RLMF Redesign (5 tasks)
+### Sprint 2: TAO Flow Metrics (5 tasks)
 
 | Task | Description | Tests |
 |------|-------------|-------|
-| 3.1 | OpsBoard → aggregation dashboard | 1 |
-| 3.2 | Analytics → build from real data | 1 |
-| 3.3 | RLMF → export viewer | 1 |
-| 3.4 | VRF → documentation/roadmap page | — |
-| 3.5 | Sprint 3 mock purge audit | 1 |
+| 2.1 | `TaoFlowAggregator` service — windowed net inflow computation | 3 |
+| 2.2 | Game loop integration — run aggregation on cadence | 1 |
+| 2.3 | Extend Timeline + Theatre responses with flow fields | 1 |
+| 2.4 | Frontend: flow badges on theatre/timeline cards (behind flag) | 1 |
+| 2.5 | Sprint 2 edge case tests (zero trades, negative flow, boundary windows) | — |
+
+**Sprint 2 total:** 6 tests
+
+### Sprint 3: Registry Schema Expansion (4 tasks)
+
+| Task | Description | Tests |
+|------|-------------|-------|
+| 3.1 | Extend source metadata model with registry fields | 1 |
+| 3.2 | Enforce `receipt_body_required` on evidence submission | 2 |
+| 3.3 | Surface legal review flag in investigation detail API | 1 |
+| 3.4 | Frontend: registry badges in investigation detail view (behind flag) | — |
 
 **Sprint 3 total:** 4 tests
 
-### Sprint 4: Investigation Lifecycle Console + Navigation (5 tasks)
+### Sprint 4: Coherence Gates (5 tasks)
 
 | Task | Description | Tests |
 |------|-------------|-------|
-| 4.1 | Investigation creation wizard | 1 |
-| 4.2 | Investigation progress tracker | 1 |
-| 4.3 | Navigation redesign | 1 |
-| 4.4 | Signal feed migration | 1 |
-| 4.5 | Sprint 4 integration tests | — |
+| 4.1 | `CoherenceGateEvaluator` service — gate lifecycle | 3 |
+| 4.2 | Audit event logging for gate transitions | 1 |
+| 4.3 | Certificate deployment guard (block deploy if gate PENDING/FAILED) | 1 |
+| 4.4 | Gate status API endpoint | 1 |
+| 4.5 | Frontend: gate status badge on certificate explorer (behind flag) | — |
 
-**Sprint 4 total:** 4 tests
+**Sprint 4 total:** 6 tests
 
-### Sprint 5: Convergence Map + Agent Analytics + WebSocket + Polish (5 tasks)
+### Sprint 5: WebSocket Policy Events + Frontend Integration + Polish (6 tasks)
 
 | Task | Description | Tests |
 |------|-------------|-------|
-| 5.1 | Convergence map (2D grid) | 1 |
-| 5.2 | Agent performance analytics | 1 |
-| 5.3 | WebSocket cache invalidation | 1 |
-| 5.4 | Responsive layout + loading states + polish | — |
-| 5.5 | E2E test + final mock purge audit | 2 |
+| 5.1 | WS event types: ROUTING_DECISION, COHERENCE_GATE_TRANSITION, TAO_FLOW_ALERT | 2 |
+| 5.2 | Frontend: remove feature flags, wire all 017 fields natively | — |
+| 5.3 | Frontend: delete `cycle017.ts` stubs, extend real type files | — |
+| 5.4 | Frontend: responsive layout, loading, empty, error states for new UI | 2 |
+| 5.5 | E2E test: theatre → certificate → routing → gate → verify `is_deployable` | 1 |
+| 5.6 | Final audit: zero feature-flagged code in production paths | — |
 
 **Sprint 5 total:** 5 tests
 
-**Grand total:** 22 (Sprint-0) + 32 (Sprints 1–5) = 54 new tests. Post-016 expected: ≥1060 passed.
+**Grand total:** 4 + 8 + 6 + 4 + 6 + 5 = 33 new tests. Post-017 expected: ≥1100 passed.
 
 ## 6. Non-Functional Requirements
 
-### NFR-1: Scale Coherence
-All stability values stored on 0.0–1.0 scale internally. API boundary converts to 0–100 via `_as_percent()` for frontend consumption. No mixed-scale values anywhere in the pipeline.
+### NFR-1: Policy Auditability
 
-### NFR-2: Design Language
-kree8.studio visual identity: `terminal-bg: #030305`, `terminal-card: #10141A`, `glass-border: rgba(255,255,255,0.1)`. JetBrains Mono for data, Inter for prose. Signal colours: action `#3B82F6`, success `#10B981`, risk `#F59E0B`, danger `#EF4444`. New investigation tokens for provenance badges, claim status badges, routing hints, anchoring state.
+All policy decisions (routing hints, gate transitions) are logged as `TheatreAuditEvent` records with full context. No silent state changes.
 
-### NFR-3: Zero Mock Data
-Post-016, zero mock data constants remain in production frontend code paths. Every component renders from real API data or displays an honest empty/loading state.
+### NFR-2: Backwards Compatibility
 
-### NFR-4: Backward Compatibility
-Sprint-0 engine changes preserve all existing test contracts. Sprint 1+ frontend changes do not modify backend API contracts — only consume them correctly.
+All new fields are optional/nullable in API responses. Existing clients that don't read 017 fields continue to work unchanged. Feature flags gate the frontend until backend is stable.
+
+### NFR-3: Configurable Policy
+
+Routing rules and coherence gate conditions are configurable — not hardcoded. Policy parameters live in a config structure, not scattered across service code.
+
+### NFR-4: Performance
+
+TAO flow aggregation must not block the game loop. Windowed queries use indexed timestamp columns. Aggregation runs async on its own cadence.
+
+### NFR-5: Design Language
+
+All new UI follows the existing kree8.studio terminal aesthetic. Routing hint badges use existing `--routing-allowed` / `--routing-review` tokens from Cycle 016. Gate status badges extend the same colour vocabulary.
 
 ## 7. Out of Scope
 
-- 3D globe / Spatial Intelligence "God mode" (deferred — cost and complexity)
-- Real Chainlink VRF integration (page becomes informational)
-- Real-time collaborative investigation (multi-user editing)
-- Mobile native app (responsive web only)
-- Chain anchoring UI beyond status display
-- Agent breeding/genealogy UI (genome is read-only display)
-- $ECHELON token/wallet integration
-- Social trading / leaderboard features
-- Paid OSINT source activation from UI
-- Analytics features requiring new backend endpoints (heatmap, correlation matrix, depth chart) — show placeholders
-- `mechanics/butterfly_engine.py` full rewrite (deferred; `_as_percent()` boundary sufficient for now)
+- Multi-user policy approval workflows (e.g., 2-of-3 reviewers approve a gate)
+- Historical TAO flow charting (aggregation is point-in-time, not time-series)
+- Policy rule versioning or A/B testing
+- External policy engine integration (OPA, Cedar, etc.)
+- Automated gate resolution (gates are manually resolved in this cycle)
+- Chain anchoring for policy decisions
+- OKLCH colour migration (remains P3, not a blocker)
+- Investigation persistence to database (remains in-memory; separate cycle)
 
 ## 8. Dependencies
 
 | Dependency | Status | Impact |
 |------------|--------|--------|
-| Cycle-014c (Investigation Toolset) | ✓ Complete | 8 tools, services, models for investigation views |
-| Cycle-015 (Live Collectors) | ✓ Complete | WM + Companies House adapters for scanner/resolver |
-| Cycle-013 (Agent Runtime) | ✓ Complete | 6 archetypes in live game loop |
-| Cycle-012 (Sponsored Theatres) | ✓ Complete | Theatre creation/commitment lifecycle |
-| Cycle-010a (LMSR) | ✓ Complete | Market engine for all timelines |
-| Coherence Review v1.2.1 | ✓ Resolved (Sprint-0) | Gates A–G locked |
-| Polymarket Client | ✓ Exists | Auto-discovery, sync, trending |
+| Cycle-016 (Results Surface) | ✓ Complete | All frontend views wired to real APIs |
+| Certificate Pipeline | ✓ Exists | Hook point for routing evaluation |
+| WebSocket Manager | ✓ Exists | Extension point for policy events |
+| Game Loop | ✓ Exists | Extension point for flow aggregation |
+| TheatreAuditEvent model | ✓ Exists | Audit trail for gate transitions |
+| Feature Flag System | ✓ Exists | Gates for frontend integration |
+| Empty State System | ✓ Exists | All pages have appropriate empty states |
 
 ## 9. What This Unlocks
 
-- **Echelon's thesis becomes visible** — markets, evidence, claims, certificates, agents, all rendered from real data
-- **Mock presentation layer retired** — every view shows actual backend state
-- **Investigation workflow is end-to-end** — create inquiry → collect evidence → structure claims → monitor counter-signals → resolve → inspect certificate
-- **Foundation for demos** — the Results Surface is what you show to Soju, investors, early adopters
-- **Inquiry console retired** — separate Cloudflare app superseded
+- **Deployment intelligence** — certificates carry routing decisions, not just scores
+- **Capital flow visibility** — theatre cards show whether money is flowing in or out
+- **Audit-ready investigations** — registry metadata supports receipt and legal review requirements
+- **Gated deployment** — coherence gates prevent premature deployment of unchecked results
+- **Real-time policy awareness** — WS events notify the UI of routing decisions and gate transitions as they happen
+- **Feature flag cleanup** — the 5 Cycle 017 flags are removed, simplifying the codebase

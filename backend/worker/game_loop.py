@@ -23,6 +23,7 @@ from backend.worker.tasks.market_sync import MarketSyncTask
 from backend.worker.tasks.agent_tick import AgentTickTask
 from backend.worker.tasks.genesis import run_genesis_task
 from backend.worker.tasks.convergence_tick import convergence_tick
+from backend.services.tao_flow_aggregator import TaoFlowAggregator
 
 # Configure logging
 logging.basicConfig(
@@ -57,6 +58,7 @@ class GameLoop:
         self.paradox_task = ParadoxTask()
         self.market_task = MarketSyncTask()
         self.agent_task = AgentTickTask()
+        self.tao_flow_aggregator = TaoFlowAggregator()
 
         # Task intervals (in seconds)
         self.intervals = {
@@ -67,6 +69,7 @@ class GameLoop:
             'evidence': 120,     # OSINT convergence detection (heatmap)
             'divergence': 60,    # Fork divergence computation (stub)
             'genesis': 300,      # Phoenix protocol every 5 minutes
+            'tao_flow': 60,      # TAO flow aggregation every 60s
         }
 
         # Last run times (timezone-aware)
@@ -79,6 +82,7 @@ class GameLoop:
             'evidence': min_time,
             'divergence': min_time,
             'genesis': min_time,
+            'tao_flow': min_time,
         }
     
     async def start(self):
@@ -154,6 +158,10 @@ class GameLoop:
         if self._is_due('divergence', now):
             await self._run_task('divergence', self._divergence_stub, session)
 
+        # TAO flow aggregation (capital flow metrics)
+        if self._is_due('tao_flow', now):
+            await self._run_task('tao_flow', self._tao_flow_task, session)
+
         # Phoenix protocol (genesis)
         if self._is_due('genesis', now):
             await self._run_task('genesis', self._genesis_task, session)
@@ -179,6 +187,13 @@ class GameLoop:
             logger.error(f"[{task_name.upper():8}] Failed: {e}")
 
     # _evidence_stub removed — replaced by convergence_tick (016 remediation)
+
+    async def _tao_flow_task(self, session):
+        """TAO Flow — compute windowed capital flow for all active timelines."""
+        updated = await self.tao_flow_aggregator.compute_all(session)
+        if updated > 0:
+            return f"Updated {updated} timelines"
+        return None
 
     async def _divergence_stub(self, session):
         """Placeholder for fork divergence computation — wired in 016 Sprint-1."""

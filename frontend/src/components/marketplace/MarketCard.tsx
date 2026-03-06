@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Clock, AlertTriangle, ChevronRight, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import type { Market } from '../../types/marketplace';
+import { isEnabled } from '../../lib/featureFlags';
 import { useDemoEnabled, useDemoOutcome } from '../../demo/hooks';
 import { DemoBetModal } from '../../demo/DemoBetModal';
 import { demoActions } from '../../demo/actions';
@@ -262,6 +263,28 @@ export function MarketCard({ market, onClick, onBet }: MarketCardProps) {
               </div>
             </button>
           </div>
+
+          {/* Flow Badge (Cycle-017) */}
+          {isEnabled('CYCLE_017_TAO_FLOW') && market.net_inflow_24h != null && (
+            <div className="flex items-center gap-1.5 mb-2">
+              <span
+                className={clsx(
+                  'px-2 py-0.5 rounded text-[10px] font-mono border',
+                  market.net_inflow_24h > 0
+                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                    : market.net_inflow_24h < 0
+                      ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                      : 'bg-neutral-500/20 text-neutral-400 border-neutral-500/30',
+                )}
+                title={`24h: ${market.net_inflow_24h > 0 ? '+' : ''}$${market.net_inflow_24h.toLocaleString()}${market.net_inflow_7d != null ? ` / 7d: ${market.net_inflow_7d > 0 ? '+' : ''}$${market.net_inflow_7d.toLocaleString()}` : ''}`}
+              >
+                {market.net_inflow_24h > 0 ? '+' : ''}
+                {Math.abs(market.net_inflow_24h) >= 1000
+                  ? `$${(market.net_inflow_24h / 1000).toFixed(1)}k`
+                  : `$${market.net_inflow_24h.toFixed(0)}`}
+              </span>
+            </div>
+          )}
 
           {/* Footer Metrics */}
           <div className="grid grid-cols-3 gap-2 pt-3 border-t border-terminal-border">

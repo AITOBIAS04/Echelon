@@ -28,6 +28,9 @@ export interface UnifiedCertificate {
   execution_path?: string;
   theatre_id?: string;
   replay_count?: number;
+  routing_hint?: string | null;
+  coherence_gate_status?: string | null;
+  is_deployable?: boolean;
 }
 
 function mapTheatreCert(cert: TheatreCertificateSummaryResponse): UnifiedCertificate {
@@ -41,6 +44,9 @@ function mapTheatreCert(cert: TheatreCertificateSummaryResponse): UnifiedCertifi
     execution_path: cert.execution_path,
     theatre_id: cert.theatre_id,
     replay_count: cert.replay_count,
+    routing_hint: cert.routing_hint,
+    coherence_gate_status: cert.coherence_gate_status,
+    is_deployable: cert.is_deployable,
   };
 }
 

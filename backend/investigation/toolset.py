@@ -91,6 +91,8 @@ class InvestigationToolset:
         content_type: str,
         source_description: str,
         references: list[str] | None = None,
+        source_id: str = "",
+        query_determinism: str = "",
     ):
         """Submit evidence to the envelope."""
         return self._evidence_envelope.submit(
@@ -99,6 +101,8 @@ class InvestigationToolset:
             content_type=content_type,
             source_description=source_description,
             references=references,
+            source_id=source_id,
+            query_determinism=query_determinism,
         )
 
     # ---- Delegation: Claim Graph ----

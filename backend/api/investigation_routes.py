@@ -32,6 +32,7 @@ from backend.investigation.commitment_monitor import DriftImpact, DriftType
 from backend.investigation.counter_signals import InvestigationCounterSignalClass
 from backend.investigation.models import ProvenanceClass
 from backend.investigation.toolset import InvestigationConfig, InvestigationToolset
+from backend.osint.models.registry import RegistryLoader
 from backend.schemas.investigation_schemas import (
     CertificateResponse,
     ClaimCreateRequest,
@@ -59,6 +60,23 @@ router = APIRouter(prefix="/api/v1/investigations", tags=["Investigations"])
 # API contract (schemas) is stable and decoupled from storage mechanism.
 _investigations: dict[str, dict] = {}
 
+# Registry loader for policy enforcement (receipt_body_required, requires_legal_review).
+# Loaded lazily on first use to avoid import-time file I/O.
+_registry_loader: RegistryLoader | None = None
+
+
+def _get_registry() -> RegistryLoader:
+    """Get or create the singleton RegistryLoader."""
+    global _registry_loader
+    if _registry_loader is None:
+        import os
+        registry_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "osint", "sources.json",
+        )
+        _registry_loader = RegistryLoader(registry_path)
+    return _registry_loader
+
 
 def _get_investigation(investigation_id: str) -> dict:
     """Get investigation entry or raise 404."""
@@ -81,6 +99,8 @@ def _build_evidence_response(toolset: InvestigationToolset) -> EvidenceEnvelopeR
                 content_type=item.content_type,
                 source_description=item.source_description,
                 references=list(item.references),
+                source_id=item.source_id,
+                query_determinism=item.query_determinism,
             )
             for item in envelope.items
         ],
@@ -220,6 +240,7 @@ async def create_investigation(request: InvestigationCreateRequest):
         "status": "active",
         "created_at": now,
         "updated_at": now,
+        "source_ids": set(),  # Track source_ids for legal review flag
     }
     _investigations[investigation_id] = entry
 
@@ -231,6 +252,17 @@ async def get_investigation(investigation_id: str):
     """Get full investigation detail."""
     entry = _get_investigation(investigation_id)
     toolset: InvestigationToolset = entry["toolset"]
+
+    # Compute has_legal_review_requirement from source registry
+    has_legal_review = False
+    source_ids = entry.get("source_ids", set())
+    if source_ids:
+        registry = _get_registry()
+        for sid in source_ids:
+            source = registry.get_source(sid)
+            if source and source.requires_legal_review:
+                has_legal_review = True
+                break
 
     return InvestigationDetailResponse(
         id=investigation_id,
@@ -246,6 +278,7 @@ async def get_investigation(investigation_id: str):
         claims=_build_claims_response(toolset),
         counter_signals=_build_counter_signals_response(toolset),
         drift=_build_drift_response(toolset),
+        has_legal_review_requirement=has_legal_review,
     )
 
 
@@ -262,8 +295,26 @@ async def submit_evidence(investigation_id: str, request: EvidenceSubmitRequest)
     entry = _get_investigation(investigation_id)
     toolset: InvestigationToolset = entry["toolset"]
 
+    # Receipt enforcement: if source requires receipt_body, reject without it
+    if request.source_id:
+        registry = _get_registry()
+        source = registry.get_source(request.source_id)
+        if source and source.receipt_body_required and not request.receipt_body:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Source '{request.source_id}' requires receipt_body but none was provided",
+            )
+
     content = base64.b64decode(request.content_base64)
     provenance = ProvenanceClass(request.provenance_class)
+
+    # Look up query_determinism from registry if source_id provided
+    query_determinism = ""
+    if request.source_id:
+        registry = _get_registry()
+        source = registry.get_source(request.source_id)
+        if source and source.query_determinism:
+            query_determinism = source.query_determinism
 
     item = toolset.submit_evidence(
         content=content,
@@ -271,7 +322,11 @@ async def submit_evidence(investigation_id: str, request: EvidenceSubmitRequest)
         content_type=request.content_type,
         source_description=request.source_description,
         references=request.references,
+        source_id=request.source_id,
+        query_determinism=query_determinism,
     )
+    if request.source_id:
+        entry.setdefault("source_ids", set()).add(request.source_id)
     entry["updated_at"] = datetime.now(timezone.utc)
 
     return EvidenceItemResponse(
@@ -282,6 +337,8 @@ async def submit_evidence(investigation_id: str, request: EvidenceSubmitRequest)
         content_type=item.content_type,
         source_description=item.source_description,
         references=list(item.references),
+        source_id=item.source_id,
+        query_determinism=item.query_determinism,
     )
 
 

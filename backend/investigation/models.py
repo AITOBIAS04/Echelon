@@ -30,3 +30,5 @@ class EvidenceItem(BaseModel):
     content_type: str
     source_description: str
     references: list[str] = Field(default_factory=list)
+    source_id: str = ""
+    query_determinism: str = ""
