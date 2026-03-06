@@ -13,6 +13,7 @@ import {
   useBlackboxChart,
   useAgentLeaderboard,
 } from '../hooks/useBlackbox';
+import { EmptyState } from '../components/empty-states/EmptyState';
 import type { Timeframe } from '../types/blackbox';
 
 function ComingSoonPanel({ title }: { title: string }) {
@@ -31,6 +32,20 @@ export function BlackboxPage() {
 
   const { candles, currentPrice, indicators } = useBlackboxChart(timeframe);
   const { agents, searchQuery, setSearchQuery } = useAgentLeaderboard();
+
+  // SPARSE_DATA: not enough data for meaningful analytics
+  if (candles.length === 0 && agents.length === 0) {
+    return (
+      <div className="h-full w-full flex flex-col min-h-0 bg-terminal-bg text-terminal-text">
+        <div className="flex-1 p-6">
+          <EmptyState
+            type="SPARSE_DATA"
+            description="Analytics require trading activity across theatres. Data will populate here as agents trade and theatres generate price history."
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full w-full flex flex-col min-h-0 bg-terminal-bg text-terminal-text">

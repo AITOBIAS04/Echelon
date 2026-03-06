@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@rollup/rollup-linux-arm64-gnu": "^4.59.0",
     "@tanstack/react-query": "^5.90.12",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",

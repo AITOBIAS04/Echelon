@@ -26,6 +26,7 @@ import { DeployAgentModal } from './DeployAgentModal';
 import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { useAgentsUi } from '../../contexts/AgentsUiContext';
 import { LocalErrorBoundary } from '../common/LocalErrorBoundary';
+import { EmptyState } from '../empty-states/EmptyState';
 import { clsx } from 'clsx';
 import { getArchetypeTheme } from '../../theme/agentsTheme';
 
@@ -167,6 +168,24 @@ export function AgentRoster() {
     );
   }
 
+  if (agents.length === 0) {
+    return (
+      <EmptyState
+        type="ZERO_STATE"
+        icon={<User className="w-7 h-7" />}
+        title="No agents deployed"
+        description="Agents appear here once they are deployed to theatres. Deploy your first agent to begin trading."
+        actions={[
+          {
+            label: 'Deploy Agent',
+            onClick: () => setDeployModalOpen(true),
+            variant: 'primary',
+          },
+        ]}
+      />
+    );
+  }
+
   return (
     <div
       className="h-full flex flex-col"
@@ -219,7 +238,7 @@ const sanityPercent = (sanity / maxSanity) * 100;
                     )}
 
                     <Link
-                      to={`/agent/${agent.id}`}
+                      to={`/fleet/${agent.id}`}
                       className="block"
                     >
                       <div className="flex items-start justify-between mb-3 relative z-10">

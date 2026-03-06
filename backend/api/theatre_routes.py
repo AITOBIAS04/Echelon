@@ -29,6 +29,7 @@ from backend.schemas.theatre import (
     TheatreRunRequest,
     TheatreSettleRequest,
     TemplateResponse,
+    TemplateDetailResponse,
     TemplateListResponse,
     CommitmentReceiptResponse,
     TheatreResponse,
@@ -529,7 +530,7 @@ async def list_templates(
     )
 
 
-@templates_router.get("/{template_id}", response_model=TemplateResponse)
+@templates_router.get("/{template_id}", response_model=TemplateDetailResponse)
 async def get_template(
     template_id: str,
     db: AsyncSession = Depends(get_db),
@@ -538,7 +539,7 @@ async def get_template(
     template = await db.get(TheatreTemplate, template_id)
     if template is None:
         raise HTTPException(status_code=404, detail="Template not found")
-    return TemplateResponse.model_validate(template)
+    return TemplateDetailResponse.model_validate(template)
 
 
 # ============================================

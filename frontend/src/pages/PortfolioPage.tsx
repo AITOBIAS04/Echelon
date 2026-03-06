@@ -2,17 +2,20 @@
 // Portfolio overview with positions from real API
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp,
   AlertTriangle,
-  Activity,
   Filter,
   Loader2,
+  Briefcase,
 } from 'lucide-react';
 import { usePositions, usePortfolioSummary, useEquityChart, usePortfolioStatus } from '../hooks/usePortfolio';
+import { EmptyState } from '../components/empty-states/EmptyState';
 import type { ChartTimeframe, PositionTab } from '../types/portfolio';
 
 export function PortfolioPage() {
+  const navigate = useNavigate();
   const { positions, totals, isLoading, error } = usePositions();
   const { summary } = usePortfolioSummary();
   const { timeframe: chartTimeframe, setTimeframe: setChartTimeframe } = useEquityChart();
@@ -207,11 +210,19 @@ export function PortfolioPage() {
                         <span className="ml-2 text-xs text-terminal-text-muted">Loading positions...</span>
                       </div>
                     ) : positions.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center p-8">
-                        <Activity size={24} className="text-terminal-text-muted mb-2" />
-                        <span className="text-xs text-terminal-text-muted">No positions yet</span>
-                        <span className="text-[10px] text-terminal-text-muted mt-1">Trade on a timeline to see your positions here</span>
-                      </div>
+                      <EmptyState
+                        type="ZERO_STATE"
+                        icon={<Briefcase className="w-7 h-7" />}
+                        title="No open positions"
+                        description="Positions appear here once you trade on a theatre. Browse active theatres to get started."
+                        actions={[
+                          {
+                            label: 'Browse Theatres',
+                            onClick: () => navigate('/theatres'),
+                            variant: 'primary',
+                          },
+                        ]}
+                      />
                     ) : (
                       <table className="w-full border-collapse">
                         <thead>

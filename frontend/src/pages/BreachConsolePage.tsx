@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { AlertTriangle, Shield, UserPlus, Gavel } from "lucide-react";
 import { useParadoxes, type Paradox } from "../hooks/useBreaches";
+import { EmptyState } from "../components/empty-states/EmptyState";
 
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM";
 
@@ -133,9 +134,11 @@ export function BreachConsolePage() {
             })}
 
             {active.length === 0 && (
-              <div className="text-xs text-terminal-text-muted py-8 text-center">
-                No active paradoxes detected
-              </div>
+              <EmptyState
+                type="ALL_CLEAR"
+                description="No active contradictions. All paradox monitors are clear."
+                timestamp={new Date().toLocaleTimeString()}
+              />
             )}
           </div>
         </div>
