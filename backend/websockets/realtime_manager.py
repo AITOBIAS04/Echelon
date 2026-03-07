@@ -193,6 +193,39 @@ class ConnectionManager:
             alert,
         )
 
+    async def broadcast_scenario_run_status(self, pack_id: str, run_id: str, status: str, detail: dict | None = None):
+        """Broadcast scenario run status change (PENDING → RUNNING → COMPLETED)."""
+        payload = {
+            "pack_id": pack_id,
+            "run_id": run_id,
+            "status": status,
+            **(detail or {}),
+        }
+        await self.broadcast_global("SCENARIO_RUN_STATUS", payload)
+        await self.broadcast_to_channel(f"scenario_pack:{pack_id}", "SCENARIO_RUN_STATUS", payload)
+
+    async def broadcast_checkpoint_resolved(self, pack_id: str, run_id: str, checkpoint_id: str, result: dict):
+        """Broadcast checkpoint resolved during a scenario run."""
+        payload = {
+            "pack_id": pack_id,
+            "run_id": run_id,
+            "checkpoint_id": checkpoint_id,
+            **result,
+        }
+        await self.broadcast_global("CHECKPOINT_RESOLVED", payload)
+        await self.broadcast_to_channel(f"scenario_pack:{pack_id}", "CHECKPOINT_RESOLVED", payload)
+
+    async def broadcast_theatre_spawned(self, pack_id: str, run_id: str, theatre_id: str, checkpoint_id: str):
+        """Broadcast derived theatre created from checkpoint resolution."""
+        payload = {
+            "pack_id": pack_id,
+            "run_id": run_id,
+            "theatre_id": theatre_id,
+            "checkpoint_id": checkpoint_id,
+        }
+        await self.broadcast_global("THEATRE_SPAWNED", payload)
+        await self.broadcast_to_channel(f"scenario_pack:{pack_id}", "THEATRE_SPAWNED", payload)
+
     async def send_position_update(self, user_id: str, position: dict):
         """Send position update to specific user."""
         await self.send_to_user(user_id, "POSITION_UPDATE", position)
