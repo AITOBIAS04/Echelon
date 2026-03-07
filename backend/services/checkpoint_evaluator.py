@@ -154,6 +154,57 @@ def _seeded_rng(seed: int, checkpoint_id: str) -> random.Random:
     return random.Random(int(combined[:8], 16))
 
 
+# ── Trigger Condition Evaluation ──
+
+def _trigger_condition_met(
+    trigger_condition_json: dict | None,
+    agent_action: str,
+    state_vector: dict,
+) -> bool:
+    """Evaluate whether a checkpoint's trigger condition is met.
+
+    trigger_condition_json is evaluated against agent_action and state_vector.
+    Returns True if the checkpoint should activate, False to skip.
+
+    When trigger_condition_json is None, the checkpoint always activates (legacy).
+    """
+    if trigger_condition_json is None:
+        return True
+
+    tc_type = trigger_condition_json.get("type")
+
+    if tc_type == "BINARY_RISK_GATE":
+        # Activates when metric exceeds threshold
+        threshold = trigger_condition_json.get("threshold", 0.0)
+        metric = trigger_condition_json.get("metric", "")
+        value = _parse_action_value(agent_action, metric)
+        return value >= threshold
+
+    if tc_type == "RESOURCE_DEPLETION":
+        # Activates when resource level triggers depletion curve
+        resource = trigger_condition_json.get("resource", "")
+        value = state_vector.get(resource, _parse_action_value(agent_action, resource))
+        return value > 0  # Active as long as resource exists
+
+    if tc_type == "DETECTION_EVENT":
+        # Activates when detection probability is non-trivial
+        base_prob = trigger_condition_json.get("base_detection_probability", 0.0)
+        return base_prob > 0
+
+    if tc_type == "TIMING_BREACH":
+        # Activates when within deadline range
+        deadline = trigger_condition_json.get("deadline_sec", float("inf"))
+        return deadline < float("inf")
+
+    if tc_type == "MISSION_COMPLETION":
+        # Activates when there are required objectives to check
+        required = trigger_condition_json.get("required_objectives", [])
+        return len(required) > 0
+
+    # Unknown type: activate by default (safe fallback)
+    return True
+
+
 # ── Primitive Evaluator Functions ──
 
 def _parse_action_value(agent_action: str, field: str) -> float:
@@ -463,10 +514,20 @@ def validate_template_checkpoints(
         ).scalars().all()
 
         # Validate checkpoint config
-        # Use first branch's branch_rule_json for validation
+        # branch_rule_json is checkpoint-level evaluation logic. All branches of a
+        # checkpoint share the same rule (the evaluator returns a branch index).
+        # We validate using the first branch's rule and verify consistency.
         branch_rule = None
         if branches:
             branch_rule = branches[0].branch_rule_json
+            # Verify all branches share the same rule type
+            for br in branches[1:]:
+                if br.branch_rule_json is not None and branch_rule is not None:
+                    if br.branch_rule_json.get("type") != branch_rule.get("type"):
+                        all_errors.append(
+                            f"Checkpoint {cp.id} (seq {cp.sequence_num}): "
+                            f"inconsistent branch_rule_json types across branches"
+                        )
 
         errors = validate_checkpoint_config(
             cp.evaluator_type,
@@ -544,7 +605,17 @@ def evaluate_checkpoints(
         state_vector["checkpoint_id"] = current_checkpoint.id
         state_vector["sequence_num"] = current_checkpoint.sequence_num
 
-        # Schema-driven evaluation if branch_rule_json present
+        # Evaluate trigger_condition_json to determine if checkpoint activates
+        if not _trigger_condition_met(current_checkpoint.trigger_condition_json, agent_action, state_vector):
+            # Skip this checkpoint — advance to next in sequence
+            next_seq = current_checkpoint.sequence_num + 1
+            current_checkpoint = next(
+                (cp for cp in checkpoints if cp.sequence_num == next_seq), None
+            )
+            continue
+
+        # Schema-driven evaluation if branch_rule_json present on checkpoint's branches
+        # branch_rule_json is checkpoint-level logic stored on branches (shared across all)
         first_branch_rule = branches[0].branch_rule_json if branches else None
 
         if first_branch_rule is not None:

@@ -300,8 +300,41 @@ async def get_theatre(
     user: TokenData = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get theatre state and progress. Auth: owner only."""
+    """Get theatre state and progress. Auth: owner only.
+
+    Paradox risk is recomputed via orchestrator if stale or absent (Cycle 020).
+    Uses trigger_recompute for materiality detection + WS emission readiness.
+    """
     theatre = await _get_user_theatre(db, theatre_id, user.user_id)
+
+    # On-read paradox risk: recompute via orchestrator if absent or stale (>1h)
+    should_compute = theatre.paradox_risk_level is None
+    if not should_compute and theatre.paradox_risk_updated_at:
+        from datetime import timezone
+        age_seconds = (datetime.now(timezone.utc) - theatre.paradox_risk_updated_at).total_seconds()
+        should_compute = age_seconds > 3600  # stale after 1 hour
+
+    if should_compute:
+        from backend.services.paradox_risk_orchestrator import trigger_recompute
+        inquiry_class = getattr(theatre, "inquiry_class", None) or "COUNTERFACTUAL"
+        assessment = await trigger_recompute(
+            db, theatre_id, "evidence_freshness_threshold",
+            inquiry_class=inquiry_class,
+        )
+        if assessment and getattr(assessment, "_material", False):
+            # Material change detected — broadcast via WS if manager available
+            try:
+                from backend.websockets.realtime_manager import ws_manager
+                await ws_manager.broadcast_paradox_risk_changed(
+                    theatre_id,
+                    old_level=getattr(assessment, "_old_level", "UNKNOWN"),
+                    new_level=assessment.level,
+                    factors=assessment.factors,
+                )
+            except Exception:
+                pass  # WS broadcast is best-effort
+        await db.commit()
+
     return TheatreResponse.model_validate(theatre)
 
 

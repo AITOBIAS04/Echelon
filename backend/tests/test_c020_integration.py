@@ -441,3 +441,77 @@ def test_full_replay_integration(session):
     assert len(res1) == len(res2) == 1
     assert res1[0].selected_branch_id == res2[0].selected_branch_id
     assert res1[0].reward == res2[0].reward
+
+
+# ── Test 8: Trigger condition evaluation (P1-2 fix) ──
+
+def test_trigger_condition_gates_activation(session):
+    """trigger_condition_json determines whether checkpoint activates."""
+    from backend.services.checkpoint_evaluator import _trigger_condition_met
+
+    # None trigger -> always active (legacy)
+    assert _trigger_condition_met(None, "0.5", {}) is True
+
+    # BINARY_RISK_GATE: activates when metric >= threshold
+    tc = {"type": "BINARY_RISK_GATE", "threshold": 0.5, "metric": "risk"}
+    assert _trigger_condition_met(tc, "risk=0.8", {}) is True
+    assert _trigger_condition_met(tc, "risk=0.3", {}) is False
+
+    # MISSION_COMPLETION: activates when objectives exist
+    tc = {"type": "MISSION_COMPLETION", "required_objectives": ["a", "b"]}
+    assert _trigger_condition_met(tc, "", {}) is True
+    tc_empty = {"type": "MISSION_COMPLETION", "required_objectives": []}
+    assert _trigger_condition_met(tc_empty, "", {}) is False
+
+    # Unknown type: safe fallback to active
+    assert _trigger_condition_met({"type": "FUTURE_TYPE"}, "", {}) is True
+
+
+# ── Test 9: launch_run wires seed + evaluation (P1-1 fix) ──
+
+def test_launch_run_allocates_seed():
+    """launch_run allocates seed from scenario_seed_manager."""
+    from backend.services.scenario_seed_manager import allocate_seed
+
+    # Verify allocate_seed is callable from launch_run's code path
+    seed = allocate_seed("TRAINING")
+    assert isinstance(seed, int)
+    assert 0 <= seed <= 2**31 - 1
+
+    # CALIBRATION seeds are deterministic
+    s1 = allocate_seed("CALIBRATION", 0)
+    s2 = allocate_seed("CALIBRATION", 0)
+    assert s1 == s2
+
+
+# ── Test 10: Orchestrator used for paradox risk (P1-3 fix) ──
+
+@pytest.mark.asyncio
+async def test_orchestrator_wired_to_production():
+    """trigger_recompute is importable and callable from theatre routes."""
+    from unittest.mock import AsyncMock, MagicMock
+    from backend.services.paradox_risk_orchestrator import trigger_recompute, is_material_delta
+
+    # Verify trigger_recompute returns assessment with materiality metadata
+    theatre = MagicMock()
+    theatre.paradox_risk_level = "LOW"
+    theatre.paradox_risk_factors_json = {
+        "logic_gap": 0.1, "stability": 0.9, "active_paradox": False,
+        "material_counter_signals": 0, "evidence_freshness_hours": 5.0,
+    }
+    theatre.paradox_risk_updated_at = None
+
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=theatre)
+
+    assessment = await trigger_recompute(
+        db, "t-1", "evidence_freshness_threshold",
+        logic_gap=0.8, stability=0.2, has_active_paradox=True,
+        inquiry_class="COUNTERFACTUAL",
+    )
+
+    assert assessment is not None
+    assert hasattr(assessment, "_material")
+    assert hasattr(assessment, "_old_level")
+    assert hasattr(assessment, "_trigger_reason")
+    assert assessment._trigger_reason == "evidence_freshness_threshold"

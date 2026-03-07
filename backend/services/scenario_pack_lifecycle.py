@@ -126,11 +126,21 @@ async def commit_pack(session: AsyncSession, pack: ScenarioPack) -> ScenarioPack
 
 
 async def launch_run(session: AsyncSession, pack: ScenarioPack) -> ScenarioRun:
-    """Launch a run from a COMMITTED pack. Creates ScenarioRun, transitions to ACTIVE."""
+    """Launch a run from a COMMITTED pack.
+
+    1. Allocate seed via scenario_seed_manager
+    2. Create ScenarioRun with seed
+    3. Transition pack to ACTIVE
+    4. Evaluate checkpoints via checkpoint_evaluator (sync, run inside run_sync)
+    """
     if pack.state != "COMMITTED":
         raise ValueError(f"Cannot launch run for pack in state '{pack.state}'. Must be COMMITTED.")
 
+    from backend.services.scenario_seed_manager import allocate_seed
+
     now = datetime.now(timezone.utc)
+    seed = allocate_seed(pack.run_mode)
+
     pack.state = "ACTIVE"
     pack.updated_at = now
 
@@ -139,6 +149,7 @@ async def launch_run(session: AsyncSession, pack: ScenarioPack) -> ScenarioRun:
         pack_id=pack.id,
         status="PENDING",
         run_mode=pack.run_mode,
+        environment_seed=seed,
         current_checkpoint_seq=0,
         created_at=now,
     )
@@ -148,10 +159,29 @@ async def launch_run(session: AsyncSession, pack: ScenarioPack) -> ScenarioRun:
         id=str(uuid.uuid4()),
         pack_id=pack.id,
         event_type="PACK_RUN_STARTED",
-        detail_json={"run_id": run.id},
+        detail_json={"run_id": run.id, "seed": seed},
         created_at=now,
     )
     session.add(audit)
 
     await session.flush()
+
+    # Evaluate checkpoints synchronously via run_sync
+    # evaluate_checkpoints uses sync SQLAlchemy Session internally
+    from backend.services.checkpoint_evaluator import evaluate_checkpoints
+
+    def _evaluate(sync_session):
+        # Re-fetch run within sync session to avoid detached state
+        from sqlalchemy import select as sync_select
+        sync_run = sync_session.get(ScenarioRun, run.id)
+        if sync_run:
+            evaluate_checkpoints(sync_session, sync_run, seed=seed)
+
+    await session.run_sync(_evaluate)
+
+    logger.info(
+        "Launched run %s for pack %s (mode=%s, seed=%d)",
+        run.id, pack.id, pack.run_mode, seed,
+    )
+
     return run
