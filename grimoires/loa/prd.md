@@ -1,289 +1,348 @@
-# PRD — Cycle-018: Scenario Packs Engine
+# PRD — Cycle-020: Scenario Pack Evaluator v2 + Paradox Risk Orchestration
 
-**Cycle:** cycle-018
-**Date:** 6 March 2026
-**Predecessor:** cycle-017 (Policy Surface), cycle-016 (Results Surface), cycle-014c (Investigation Toolset), cycle-013 (Agent Runtime), cycle-010a (LMSR)
-**Sprints:** 6 total (0–5)
-**Design input:** `Echelon_Scenario_Packs_Library_v1.md` (Obsidian), `output/design_reference/echelon_scenario_packs_v1.html`, frontend theatre template JSON fixtures, `HANDOFF_MATRIX_ALEXANDER.md`
-**Baseline:** Post-017 test count (≥1100 passed)
+**Cycle:** cycle-020
+**Date:** 7 March 2026
+**Depends on:** Cycle-019 (Agent Deployment + Investigation Persistence + Paradox Risk), Cycle-018 (Scenario Packs Engine), Cycle-017 (Policy Surface)
+**Sprints:** 6 (0-5)
+**Builder:** Loa (backend/runtime only -- Alexander handles frontend scenario lifecycle UI)
 
 ---
 
 ## 1. Problem Statement
 
-The platform distinguishes two product concepts: **Theatre Templates** (market/certificate templates — inquiry class, resolution logic, evidence rules) and **Scenario Packs** (embodied RL engagement templates — objective vectors, checkpoint branching, saboteur decks, settlement rules, telemetry). Theatres resolve to one outcome via one contract. Scenario packs produce a tree of outcomes across multiple decision points.
+Two backend systems shipped in honest-but-staged posture need hardening before release:
 
-The frontend already has:
-- A `ScenarioPacksPage` shell at `/scenario-packs` with empty-state messaging and concept cards ("Branching Outcomes", "RLMF Telemetry", "Derived Theatres")
-- A design reference document (`echelon_scenario_packs_v1.html`) specifying branch map visualization, launch configuration, checkpoint structure
-- 4 theatre template JSON fixtures (`NEON_COURIER_V1.json`, `DISASTER_RESPONSE_V1.json`, `ORBITAL_SALVAGE_V1.json`, `BLACKSITE_HEIST_V1.json`) that already carry `forkPointSchema`, `objectiveVector`, `saboteurDeck`, `telemetrySpec`, and `settlementRules`
-- Mock launchpad and replay APIs with phase/category taxonomy and fork disclosure events
-- RLMF export infrastructure downstream
+### 1.1 Checkpoint Evaluator Is Hash-Based, Not Schema-Driven
 
-The backend has **nothing**:
-- No `ScenarioPack` or `Checkpoint` database models
-- No scenario pack API endpoints
-- No pack runner or checkpoint resolution logic
-- No derived theatre spawning mechanism
-- No scenario-to-RLMF telemetry pipeline
+Cycle-018 shipped the Scenario Packs engine with a checkpoint evaluator (`backend/services/checkpoint_evaluator.py`) that uses deterministic hash-based branch selection. The schema columns exist (`trigger_condition_json`, `branch_rule_json`, `evaluator_type`, `theatre_spawn_rule_json`, `reward_mapping_json`) but are STAGED -- the runtime ignores them and selects branches via `_deterministic_branch_index()`.
 
-The Scenario Packs Library v1 defines **18 scenario packs** across **9 template families** (NAV-UNC, SOC-NAV, MAN-FORCE, MARL-C3, 3D-INERT, LONG-HZN, PUZ-LOGIC, ADV-AIR, PREC-MAN) with a branching checkpoint model where each checkpoint is a decision point that branches the scenario into different outcome paths.
+This was acceptable for the initial shipping posture. It is not acceptable for release:
 
-This cycle builds the **Scenario Packs Engine**: the backend schema, template catalog, pack lifecycle, checkpoint resolution, derived theatre spawning, and RLMF telemetry hooks — then wires the frontend to real data.
+- `RUNNABLE` templates cannot claim schema-driven evaluation while using hash branching
+- Branch resolution depends only on checkpoint ID hash, not agent action, environment seed, or evaluator config
+- Theatre spawning uses `can_spawn_theatre` boolean only, ignoring `theatre_spawn_rule_json`
+- No environment randomness contract -- agents and environment share the same implicit randomness
 
-> Sources: Echelon_Scenario_Packs_Library_v1.md, echelon_scenario_packs_v1.html, frontend theatre template JSON fixtures, fork_manager.py
+### 1.2 Paradox Risk Is Passive, Not Orchestrated
 
-## 2. Objective
+Cycle-019 shipped paradox risk as a computed field on theatre detail reads. The `ParadoxRiskEvaluator` (`backend/services/paradox_risk_evaluator.py`) computes risk and `persist_risk_to_theatre()` saves it, but:
 
-### Sprint 0: Schema Foundation + Migration
+- Recomputation only happens on-read when the cached value is missing or stale (>1 hour)
+- No backend mutation triggers recalculation -- risk drifts silently between reads
+- `PARADOX_RISK_CHANGED` WebSocket event contract exists in `realtime_manager.py` but is never emitted from live mutation paths
+- No orchestrator service centralizes recalculation decisions
 
-Define all scenario pack models: `ScenarioPackTemplate`, `ScenarioPack`, `ScenarioCheckpoint`, `CheckpointBranch`, `ScenarioRun`, `RunCheckpointResult`, `ScenarioPackAuditEvent`. Create the Alembic migration. Extend Pydantic schemas. No runtime logic.
+> Source: echelon_cycle_020.md, codebase grounding (checkpoint_evaluator.py, paradox_risk_evaluator.py, theatre_spawner.py, scenario_seed_manager.py, models.py)
 
-### Sprint 1: Template Catalog + Seeding
+---
 
-Build template CRUD. Seed the 18 scenario packs from the library document as `ScenarioPackTemplate` records. List/detail API for the template catalog. Frontend: wire ScenarioPacksPage to real template data.
+## 2. Product Contracts
 
-### Sprint 2: Pack Lifecycle
+### 2.1 Scenario Packs Are Real Runtime Surfaces
 
-Pack creation from template, state machine (DRAFT → COMMITTED → ACTIVE → SETTLING → RESOLVED), commitment receipt generation. Mirrors the Theatre lifecycle pattern. Run configuration (run mode, agent assignment, simulation scale, objective profile).
+For `RUNNABLE` templates, the engine must execute the stored checkpoint graph as the source of truth:
 
-### Sprint 3: Checkpoint Resolution + Branching
+- No bespoke Python per pack
+- No hash-only branch selection pretending to be schema-driven
+- No agent-driven randomness
+- No hidden divergence between stored checkpoint config and runtime behavior
 
-Schema-driven checkpoint evaluation engine. Checkpoints are declarative — each defines trigger condition, decision window, evaluator type, branch rules, reward mapping, and optional theatre-spawn rule. The engine auto-evaluates using reusable evaluator primitives (BINARY_RISK_GATE, RESOURCE_DEPLETION, DETECTION_EVENT, TIMING_BREACH, MISSION_COMPLETION). Branch selection is deterministic given (agent action, checkpoint state, environment seed, evaluator config). Environment randomness is explicit and seed-driven. Branch probabilities tracked. Replay output for the full episode tree.
+### 2.2 Checkpoint Evaluation Contract
 
-### Sprint 4: Derived Theatre Spawning
+Every runnable checkpoint must be executable from stored configuration:
 
-Individual checkpoints within a scenario pack spawn separate theatres or sub-markets. The principle: "scenario packs can spawn theatres, theatres do not contain scenario packs." Spawned theatres are real Theatre records with a `spawned_from_checkpoint_id` provenance link.
+- `trigger_condition_json`
+- `decision_window_sec`
+- `evaluator_type`
+- `branch_rule_json`
+- `reward_mapping_json`
+- Optional `theatre_spawn_rule_json`
 
-### Sprint 5: RLMF Telemetry + Frontend Integration + Polish
+Branch resolution must be deterministic given: (agent action, checkpoint state, environment seed, evaluator config).
 
-Wire scenario run telemetry to RLMF export infrastructure. Frontend: branch map visualization, launch configuration panel, run status, checkpoint results. Polish and test.
+### 2.3 Environment Randomness Contract
 
-## 3. Success Criteria
+Agents provide actions, policies, and strategy. They do NOT provide randomness.
 
-### SC-0: Schema Foundation
+Randomness comes from the environment via explicit seeded RNG:
+- Event rolls
+- Hidden state variation
+- Saboteur deck draws
+- Bounded uncertainty / noise sampling
 
-1. All scenario pack models present as tables in the database
-2. Migration is dialect-safe (PostgreSQL + SQLite)
-3. All existing tests still pass (zero regressions)
-4. Pydantic response schemas extended for all new entities
-5. Template API includes `template_status` field (RUNNABLE | CATALOG_ONLY)
+Run modes:
+- `TRAINING`: stochastic, varying seeds
+- `EVALUATION`: controlled stochasticity from a fixed seed set (shares TRAINING code path with pinned seeds)
+- `CALIBRATION`: canonical seed set for comparability (shares TRAINING code path with canonical seeds)
+- `REPLAY`: exact recorded path, no fresh randomness
 
-### SC-1: Template Catalog
+`ScenarioSeedManager` already exists with `allocate_seed()` supporting all 4 modes. CALIBRATION_SEEDS = [42, 137, 256, 512, 1024]. EVALUATION_SEEDS = [7, 13, 23, 31, 47, 59, 67, 73, 89, 97].
 
-1. 4 JSON-fixture-backed templates seeded as RUNNABLE; 14 prose-only templates as CATALOG_ONLY
-2. `GET /api/v1/scenario-pack-templates` returns paginated list with family filter and template_status
-3. `GET /api/v1/scenario-pack-templates/{id}` returns full template with checkpoint schema and template_status
-4. Frontend ScenarioPacksPage renders real template cards from API, distinguishing RUNNABLE vs CATALOG_ONLY
-5. Template families (NAV-UNC, SOC-NAV, etc.) are filterable
+### 2.4 Paradox Risk Contract
 
-### SC-2: Pack Lifecycle
+Paradox risk is a live policy signal, not a static field.
 
-1. `POST /api/v1/scenario-packs` creates a pack from a RUNNABLE template (rejects CATALOG_ONLY with 409)
-2. State machine enforces valid transitions (DRAFT → COMMITTED → ACTIVE → SETTLING → RESOLVED)
-3. Commitment receipt generated at commit time
-4. Run configuration persisted: run_mode (TRAINING | EVALUATION | CALIBRATION | REPLAY), agent_assignment, simulation_scale, objective_profile
-5. `POST /api/v1/scenario-packs/{id}/run` starts an async run with environment_seed and run_mode on the ScenarioRun
+It must:
+- Recalculate from real theatre/investigation/paradox mutations
+- Persist the latest assessed state for efficient reads
+- Emit `PARADOX_RISK_CHANGED` only on material delta
+- Remain inquiry-class-aware
 
-### SC-3: Checkpoint Resolution
+Theatre language: `LOW`, `WATCH`, `HIGH`.
 
-1. CheckpointEvaluator service processes checkpoints in sequence order using declarative checkpoint schemas
-2. Built-in evaluator primitives: BINARY_RISK_GATE, RESOURCE_DEPLETION, DETECTION_EVENT, TIMING_BREACH, MISSION_COMPLETION
-3. Branch selection is deterministic given (agent action, checkpoint state, environment seed, evaluator config)
-4. Run modes define RNG semantics: TRAINING (stochastic varying seeds), EVALUATION (controlled stochasticity from fixed seed set), CALIBRATION (canonical seed set), REPLAY (exact recorded path)
-5. ScenarioSeedManager allocates seeds per run based on run_mode policy
-6. Agent decisions recorded per checkpoint with environment seed
-7. Branch probabilities computed across completed runnable runs
-8. Full episode tree reconstructable from checkpoint results
-9. Replay output for completed runs
+Explanations: Evidence weak, Counter-signals rising, Logic gap widening, Stale investigation, Paradox active.
 
-### SC-4: Derived Theatre Spawning
+---
 
-1. Checkpoints with `can_spawn_theatre=true` produce real Theatre records
-2. Spawned theatres carry `spawned_from_checkpoint_id` provenance with per-run uniqueness in construct_id
-3. construct_id format: `scenario_{pack_id}_run_{run_id}_cp_{checkpoint_id}`
-4. Spawned theatres follow normal theatre lifecycle (commit → run → settle → certificate)
-5. Parent pack tracks spawned theatre count and IDs
-6. API: `GET /api/v1/scenario-packs/{id}/derived-theatres` lists spawned theatres
+## 3. Functional Requirements
 
-### SC-5: RLMF Telemetry + Polish
+### FR-1: Schema-Driven Checkpoint Evaluation
 
-1. Scenario run telemetry (agent decisions, state vectors, rewards, fork counts, episode duration) available to RLMF export pipeline
-2. Frontend branch map renders checkpoint tree from API data
-3. Launch configuration panel submits to real API
-4. Run status updates via WebSocket
-5. All new UI has loading, empty, error states
+Replace hash-only branching with true evaluator-driven resolution.
 
-### SC-6: Test Gate
+`CheckpointEvaluator` must consume `trigger_condition_json`, `branch_rule_json`, `reward_mapping_json`, and `theatre_spawn_rule_json` from stored checkpoint configuration.
 
-1. Post-017 baseline maintained (≥1100 passed)
-2. Zero new test failures
-3. 40 new tests across backend and frontend
-4. Post-018 expected: ≥1140 passed
+Branch selection must evaluate checkpoint state + agent action + seed + primitive config. Invalid/malformed runnable checkpoint configs must fail fast with explicit error states. `CATALOG_ONLY` templates remain non-runnable.
 
-## 4. Codebase Grounding
+### FR-2: Five Evaluator Primitives
 
-### Existing Infrastructure (018 Dependencies)
+All 5 primitives ship as full set (4 runnable packs need all 5):
 
-| Component | Location | Relevance |
-|-----------|----------|-----------|
-| Theatre model + lifecycle | `backend/database/models.py`, `backend/api/theatre_routes.py` | Pattern template for pack lifecycle |
-| TheatreTemplate model | `backend/database/models.py` | Pattern for ScenarioPackTemplate |
-| Fork manager | `backend/fork_manager.py` | ForkType, ForkStatus, ForkPoint primitives |
-| Theatre template fixtures | `frontend/dist/theatres/*.json` | Data shape: objectiveVector, forkPointSchema, saboteurDeck |
-| ScenarioPacksPage | `frontend/src/pages/ScenarioPacksPage.tsx` | Empty shell, ready for API wiring |
-| Design reference | `output/design_reference/echelon_scenario_packs_v1.html` | Full UI spec for branch map, launch config |
-| Mock launchpad API | `frontend/src/api/launchpad.ts` | Phase/category taxonomy to replace with real API |
-| Mock replay API | `frontend/src/api/replay.ts` | Fork replay shape to align with checkpoint results |
-| RLMF export infrastructure | `frontend/src/api/exports.ts`, `frontend/src/pages/RLMFPage.tsx` | Downstream consumer of scenario telemetry |
-| WebSocket manager | `backend/websockets/realtime_manager.py` | Extension point for run status events |
-| Certificate pipeline | `backend/services/certificate_pipeline.py` | Spawned theatres use existing pipeline |
-| Game loop | `backend/worker/game_loop.py` | Extension point for checkpoint evaluation cadence |
+| Primitive | Purpose | Key Branch Logic |
+|-----------|---------|-----------------|
+| `BINARY_RISK_GATE` | Yes/no risk threshold | Action crosses configured threshold -> branch A, else branch B |
+| `RESOURCE_DEPLETION` | Resource management under constraint | Remaining resources vs depletion curve determine branch |
+| `DETECTION_EVENT` | Stealth/detection scenario | Detection probability from action + noise -> caught or safe |
+| `TIMING_BREACH` | Time-critical decisions | Action timing vs deadline + drift -> on-time or breach |
+| `MISSION_COMPLETION` | Multi-objective completion | Objective completion set vs required set -> success branches |
 
-### Template Fixture Data Shape (existing)
+Each primitive defines its own `trigger_condition_json` and `branch_rule_json` contract.
 
-The theatre template JSON fixtures already define the data shape for scenario packs:
+### FR-3: Environment RNG + Mode Semantics
 
-```json
-{
-  "meta": { "name", "id", "type", "episodeLengthSec", "forkPointsPerRunRange", "settlementLatencySec" },
-  "objectiveVector": [{ "component", "weight", "description" }],
-  "telemetrySpec": { "snapshotHz", "estimatedSnapshotsPerEpisode", "keyStateVectors" },
-  "forkPointSchema": [{ "trigger", "marketQuestion", "options", "decisionWindowSec" }],
-  "saboteurDeck": [{ "card", "price", "boundedEffect", "notes" }],
-  "settlementRules": { "oracle", "success", "failure", "paradoxRule" }
+Introduce explicit environment randomness separation.
+
+- `ScenarioSeedManager` (already exists) becomes the canonical seed allocator
+- Environment stochasticity uses seeded RNG from `ScenarioSeedManager`
+- Agent action selection is separate from environment randomness
+- TRAINING = random seeds, EVALUATION = pinned seed set (same code path), CALIBRATION = canonical seed set (same code path), REPLAY = recorded seed, no fresh randomness
+- Persist enough state to replay branch outcomes exactly
+
+### FR-4: Schema-Driven Theatre Spawning
+
+Replace `can_spawn_theatre` boolean with evaluation of `theatre_spawn_rule_json`.
+
+Spawn guards:
+- Branch outcome type
+- Minimum reward threshold
+- Checkpoint class
+- Run mode restrictions
+
+Persist spawn provenance with run-scoped uniqueness.
+
+### FR-5: Paradox Risk Orchestration
+
+Promote paradox risk from read-time calculation to live backend orchestration.
+
+Recalculate after:
+1. Paradox task updates theatre/timeline stability or active paradox state
+2. Material counter-signal ingestion
+3. Investigation evidence freshness crossing configured threshold bands
+4. Certificate/policy transitions that materially affect deployability interpretation
+
+New service: `ParadoxRiskOrchestrator` (`backend/services/paradox_risk_orchestrator.py`) to centralize recalculation + persistence + event gating.
+
+Keep on-read recompute as fallback only when missing/stale.
+
+### FR-6: WebSocket Event Emission
+
+Wire the release-ready runtime surfaces into live events:
+
+| Event Type | Trigger | Payload |
+|------------|---------|---------|
+| `CHECKPOINT_RESOLVED` | Checkpoint resolves from schema evaluation | pack_id, run_id, checkpoint_id, selected_branch_id, reward, seed |
+| `THEATRE_SPAWNED` | Derived theatre from checkpoint spawn rule | pack_id, run_id, checkpoint_id, theatre_id |
+| `PARADOX_RISK_CHANGED` | Material risk delta after orchestrated recompute | theatre_id, old_level, new_level, factors, reason |
+
+---
+
+## 4. Scope Summary
+
+| Area | What Ships | What Doesn't |
+|------|-----------|--------------|
+| Checkpoint Evaluator | Schema-driven evaluation, 5 primitives, branch rule contracts | New template families |
+| Environment RNG | Seed separation, mode semantics, replay determinism | New run modes beyond the 4 |
+| Theatre Spawning | Schema-driven spawn rules from `theatre_spawn_rule_json` | Rich spawn analytics |
+| Paradox Risk | Live orchestration, 4 trigger paths, material WS emission | Historical risk charting, new inquiry classes |
+| WebSocket | CHECKPOINT_RESOLVED, THEATRE_SPAWNED, PARADOX_RISK_CHANGED | Frontend event handling |
+| Frontend | Nothing (backend only) | All UI work deferred to Alexander |
+
+---
+
+## 5. Success Criteria
+
+### Sprint 0: Runtime Contract Tightening
+- [ ] All checkpoint schema fields verified present and typed consistently
+- [ ] Evaluator primitive set frozen: BINARY_RISK_GATE, RESOURCE_DEPLETION, DETECTION_EVENT, TIMING_BREACH, MISSION_COMPLETION
+- [ ] `branch_rule_json` contract defined per primitive
+- [ ] `trigger_condition_json` contract defined per primitive
+- [ ] `theatre_spawn_rule_json` contract defined
+- [ ] `PARADOX_RISK_CHANGED` materiality rule defined
+- [ ] Stale-cache policy for paradox risk persistence locked
+
+### Sprint 1: Schema-Driven Checkpoint Evaluation
+- [ ] `CheckpointEvaluator` consumes trigger_condition_json, branch_rule_json, reward_mapping_json, theatre_spawn_rule_json
+- [ ] Branch selection evaluates checkpoint state + agent action + seed + primitive config
+- [ ] Determinism holds for identical (run config, agent actions, seed, checkpoint graph)
+- [ ] Invalid/malformed runnable checkpoint configs fail fast with explicit error states
+- [ ] CATALOG_ONLY templates remain non-runnable
+
+### Sprint 2: Environment RNG + Mode Semantics
+- [ ] ScenarioSeedManager is canonical seed allocator for all run paths
+- [ ] Agent action selection separated from environment stochasticity
+- [ ] Saboteur draws, hidden state, uncertainty sampling use seeded RNG
+- [ ] Enough state persisted to replay branch outcomes exactly
+- [ ] Parity tests: repeated runs with same seed, varying seeds in training, canonical seeds in calibration, exact replay
+
+### Sprint 3: Derived Theatre Rules + Run Integrity
+- [ ] `can_spawn_theatre` boolean replaced with `theatre_spawn_rule_json` evaluation
+- [ ] Spawn guards: branch outcome type, minimum reward threshold, checkpoint class, run mode restrictions
+- [ ] Spawn provenance persisted with run-scoped uniqueness
+- [ ] Derived theatres scoped to originating pack/run lineage
+
+### Sprint 4: Paradox Risk Orchestration
+- [ ] `ParadoxRiskOrchestrator` service created
+- [ ] Risk recalculates after: paradox state change, material counter-signal, evidence freshness threshold, certificate/policy transition
+- [ ] Persisted risk snapshot on theatre updated
+- [ ] On-read recompute kept as fallback only
+- [ ] Material delta detection prevents event spam
+
+### Sprint 5: WebSocket Emission + Integration + E2E
+- [ ] `CHECKPOINT_RESOLVED` emitted on schema-driven evaluation
+- [ ] `THEATRE_SPAWNED` emitted on derived theatre creation
+- [ ] `PARADOX_RISK_CHANGED` emitted on material delta only
+- [ ] Integration: runnable template -> create pack -> commit -> run with fixed seed -> checkpoint resolves from schema -> derived theatre spawns when rule passes -> replay reproduces exact path
+- [ ] Integration: theatre/investigation mutation -> paradox risk updates -> material change emits WS event -> non-material recompute does not spam
+- [ ] Regression against Cycle-019 APIs and Cycle-018 template catalog
+
+---
+
+## 6. Codebase Grounding
+
+### Existing Infrastructure
+
+| Component | Location | Current State |
+|-----------|----------|---------------|
+| Checkpoint evaluator | `backend/services/checkpoint_evaluator.py` | Hash-based branching, STAGED schema fields |
+| ScenarioSeedManager | `backend/services/scenario_seed_manager.py` | Present, allocate_seed() with 4 modes |
+| Theatre spawner | `backend/services/theatre_spawner.py` | Uses `can_spawn_theatre` boolean only |
+| ParadoxRiskEvaluator | `backend/services/paradox_risk_evaluator.py` | 5 inquiry-class configs, on-read only |
+| ScenarioCheckpoint model | `backend/database/models.py` (line ~795) | trigger_condition_json, theatre_spawn_rule_json, evaluator_type present |
+| CheckpointBranch model | `backend/database/models.py` (line ~826) | branch_rule_json, outcome_type present |
+| ScenarioRun model | `backend/database/models.py` (line ~886) | environment_seed, run_mode present |
+| RunCheckpointResult model | `backend/database/models.py` (line ~918) | state_vector_json, spawned_theatre_id present |
+| WS broadcast_checkpoint_resolved | `backend/websockets/realtime_manager.py` (line ~207) | Exists, not wired from live paths |
+| WS broadcast_paradox_risk_changed | `backend/websockets/realtime_manager.py` (line ~252) | Exists, not wired from live paths |
+| Scenario pack routes | `backend/api/scenario_pack_routes.py` | Template catalog, pack lifecycle, run/replay endpoints |
+| Pack lifecycle service | `backend/services/scenario_pack_lifecycle.py` | Present |
+| Theatre model | `backend/database/models.py` | paradox_risk_level, paradox_risk_factors_json, paradox_risk_updated_at present |
+
+### EVALUATOR_PRIMITIVES (Already Defined)
+
+```python
+EVALUATOR_PRIMITIVES = {
+    "BINARY_RISK_GATE",
+    "RESOURCE_DEPLETION",
+    "DETECTION_EVENT",
+    "TIMING_BREACH",
+    "MISSION_COMPLETION",
 }
 ```
 
-`forkPointSchema` entries map directly to `ScenarioCheckpoint` records. `options` within each fork point map to `CheckpointBranch` records.
+---
 
-## 5. Sprint Breakdown
+## 7. New / Updated Backend Services
 
-### Sprint 0: Schema Foundation + Migration (4 tasks)
+| Service | File | Purpose |
+|---------|------|---------|
+| CheckpointEvaluator | `backend/services/checkpoint_evaluator.py` | Upgrade to true schema-driven checkpoint execution |
+| ScenarioRunStateBuilder | `backend/services/scenario_run_state_builder.py` | Normalize checkpoint state vector input for evaluators |
+| ParadoxRiskOrchestrator | `backend/services/paradox_risk_orchestrator.py` | Centralized recompute + persistence + event gating |
 
-| Task | Description | Tests |
-|------|-------------|-------|
-| 0.1 | Model layer: ScenarioPackTemplate, ScenarioPack, ScenarioCheckpoint, CheckpointBranch, ScenarioRun, RunCheckpointResult, ScenarioPackAuditEvent | — |
-| 0.2 | Alembic migration (dialect-safe, 7 new tables) | 2 |
-| 0.3 | Pydantic schemas for all new entities | 2 |
-| 0.4 | Regression test: existing tests pass with new tables | — |
+`ScenarioSeedManager` already exists and needs no structural changes.
 
-**Sprint 0 total:** 4 tests
+---
 
-### Sprint 1: Template Catalog + Seeding (5 tasks)
+## 8. API / Runtime Changes
 
-| Task | Description | Tests |
-|------|-------------|-------|
-| 1.1 | Template seeder — convert 18 library entries + 4 existing fixtures to ScenarioPackTemplate records | 2 |
-| 1.2 | `GET /api/v1/scenario-pack-templates` — paginated list with family filter | 2 |
-| 1.3 | `GET /api/v1/scenario-pack-templates/{id}` — detail with checkpoints, objective vector, saboteur deck | 1 |
-| 1.4 | Frontend: wire ScenarioPacksPage to template catalog API | 1 |
-| 1.5 | Sprint 1 integration test | — |
+### Scenario Packs
 
-**Sprint 1 total:** 6 tests
+- `POST /api/v1/scenario-packs` remains restricted to `RUNNABLE` templates
+- `POST /api/v1/scenario-packs/{id}/run` must fail if template checkpoint graph is not executable under v2 schema contract
+- `GET /api/v1/scenario-packs/{id}/runs/{run_id}/tree` must reflect rule-evaluated branches
+- `GET /api/v1/scenario-packs/{id}/runs/{run_id}/replay` must replay exact recorded path and environment outcomes
 
-### Sprint 2: Pack Lifecycle (5 tasks)
+### Theatre / Paradox Risk
 
-| Task | Description | Tests |
-|------|-------------|-------|
-| 2.1 | `POST /api/v1/scenario-packs` — create pack from RUNNABLE template (reject CATALOG_ONLY) with run configuration | 3 |
-| 2.2 | State machine: DRAFT → COMMITTED → ACTIVE → SETTLING → RESOLVED with transition validation | 3 |
-| 2.3 | Commitment receipt generation (mirrors theatre pattern) | 1 |
-| 2.4 | `POST /api/v1/scenario-packs/{id}/run` — async run launch | 2 |
-| 2.5 | Frontend: launch configuration panel wired to create + run API | 1 |
+- `GET /api/v1/theatres/{id}` returns paradox risk from persisted orchestrated state (on-read fallback only)
+- Theatre list/detail responses may expose freshness metadata for debugging
 
-**Sprint 2 total:** 10 tests
+---
 
-### Sprint 3: Checkpoint Resolution + Branching (5 tasks)
+## 9. WebSocket Event Additions
 
-| Task | Description | Tests |
-|------|-------------|-------|
-| 3.0 | ScenarioSeedManager — run seed allocation and mode-specific RNG policy | 1 |
-| 3.1 | CheckpointEvaluator service — schema-driven checkpoint automation, evaluator primitives, branch selection | 4 |
-| 3.2 | RunCheckpointResult recording + branch probability tracking | 2 |
-| 3.3 | Episode tree reconstruction — `GET /api/v1/scenario-packs/{id}/runs/{run_id}/tree` | 1 |
-| 3.4 | Replay output for completed runs | 1 |
+| Event Type | Trigger | Payload |
+|------------|---------|---------|
+| `CHECKPOINT_RESOLVED` | Checkpoint resolves from schema-driven evaluation | pack_id, run_id, checkpoint_id, selected_branch_id, reward, seed |
+| `THEATRE_SPAWNED` | Derived theatre created from checkpoint spawn rule | pack_id, run_id, checkpoint_id, theatre_id |
+| `PARADOX_RISK_CHANGED` | Material risk delta after orchestrated recompute | theatre_id, old_level, new_level, factors, reason |
 
-**Sprint 3 total:** 9 tests
+---
 
-### Sprint 4: Derived Theatre Spawning (4 tasks)
+## 10. Test Targets
 
-| Task | Description | Tests |
-|------|-------------|-------|
-| 4.1 | TheatreSpawner service — checkpoint → Theatre creation with provenance link | 3 |
-| 4.2 | Spawned theatre lifecycle (commit → run → settle → certificate via existing pipeline) | 1 |
-| 4.3 | `GET /api/v1/scenario-packs/{id}/derived-theatres` — list spawned theatres | 1 |
-| 4.4 | Parent pack tracks spawned theatre count, audit events for spawn | 1 |
+Release-hardening cycle, not small polish pass.
 
-**Sprint 4 total:** 6 tests
+| Sprint | Tests | Focus |
+|--------|-------|-------|
+| 0 | 4 | Schema contract verification, primitive definitions, JSON contracts |
+| 1 | 7 | Schema-driven evaluation, determinism, fail-fast, primitive branch logic |
+| 2 | 6 | Seed reproducibility, mode semantics, replay parity |
+| 3 | 5 | Spawn rule gating, provenance, mode restrictions |
+| 4 | 6 | Paradox risk triggers, materiality, orchestrator service |
+| 5 | 7 | WS emission, integration tests, regression |
 
-### Sprint 5: RLMF Telemetry + Frontend Integration + Polish (5 tasks)
+Target: ~35 new tests. Post-020 expected: existing baseline + 35.
 
-| Task | Description | Tests |
-|------|-------------|-------|
-| 5.1 | Scenario run telemetry → RLMF export pipeline integration | 1 |
-| 5.2 | WebSocket events: SCENARIO_RUN_STATUS, CHECKPOINT_RESOLVED, THEATRE_SPAWNED | 1 |
-| 5.3 | Frontend: branch map visualization from checkpoint/branch API data | 1 |
-| 5.4 | Frontend: run status, checkpoint results, derived theatre links | 1 |
-| 5.5 | E2E test: create pack → run → checkpoints resolve → theatre spawned → RLMF export available | 1 |
+---
 
-**Sprint 5 total:** 5 tests
+## 11. NFRs
 
-**Grand total:** 4 + 6 + 10 + 9 + 6 + 5 = 40 new tests. Post-018 expected: ≥1140 passed.
+1. **Determinism**: Identical (run config, agent actions, seed, checkpoint graph) must always produce identical branch outcomes.
+2. **Fail-fast**: Invalid/malformed runnable checkpoint configs must produce explicit error states, not silent fallbacks.
+3. **Performance**: Paradox risk recompute must not block API response paths. Orchestrator calls are fire-and-forget or background.
+4. **Backward compatibility**: CATALOG_ONLY templates unaffected. Existing pack lifecycle endpoints unchanged. Existing theatre API responses unchanged (additive only).
+5. **Material emission**: `PARADOX_RISK_CHANGED` emits only on material risk-level or material-factor delta, not every recompute.
+6. **Separation**: Environment randomness from `ScenarioSeedManager`, not agent-provided. Agent actions are deterministic inputs, not randomness sources.
 
-## 6. Non-Functional Requirements
+---
 
-### NFR-1: Separation of Concerns
+## 12. Release Decisions Frozen In This Cycle
 
-Scenario packs and theatres are distinct product concepts with separate models, routes, and schemas. Scenario packs can spawn theatres; theatres do not contain scenario packs. The `spawned_from_checkpoint_id` provenance link is the only cross-reference.
+1. `RUNNABLE` Scenario Pack templates must use true schema-driven evaluation.
+2. Hash-only branch selection is no longer an acceptable shipping posture for runnable templates.
+3. `CATALOG_ONLY` templates remain browseable but cannot run.
+4. Paradox risk recomputation must be event-driven from backend mutation paths, not only on theatre detail reads.
+5. `PARADOX_RISK_CHANGED` emits only on material risk-level or material-factor delta, not every recompute.
 
-### NFR-2: Template Data Integrity
+---
 
-The 18 seeded templates from the library document are immutable after seeding. User-created templates are mutable in DRAFT state only. Template JSON validation enforces the existing fixture shape (objectiveVector, forkPointSchema, saboteurDeck, telemetrySpec, settlementRules).
+## 13. Out of Scope
 
-### NFR-3: Backwards Compatibility
-
-All new entities are additive. Existing theatre, certificate, and investigation flows are unaffected. New tables, not columns on existing tables (except `spawned_from_checkpoint_id` on Theatre).
-
-### NFR-4: Checkpoint Ordering
-
-Checkpoints within a template have a `sequence_num` that defines evaluation order. The checkpoint evaluator processes them strictly in sequence — no parallel evaluation in this cycle.
-
-### NFR-5: Design Language
-
-All new UI follows the existing kree8.studio terminal aesthetic. Branch map visualization uses the checkpoint/branch colour vocabulary from the design reference (Start = purple, Checkpoint = orange, Success = green, Failure = red, Partial = dark orange).
-
-## 7. Out of Scope
-
-- Parallel checkpoint evaluation (sequential only in this cycle)
-- Real-time simulation rendering (checkpoint results are computed, not animated)
-- Custom saboteur deck editing (use template defaults)
-- Agent training loop integration (telemetry is export-ready, not consumed by agent runtime)
-- Scenario pack versioning (immutable templates after seeding)
-- Multi-user collaborative runs
-- Scenario pack marketplace / sharing
-- Alpamayo scenario pack suggestions (Alpamayo dual-direction architecture is a future cycle)
-- Formalising prose-only scenario packs into runnable checkpoint graphs beyond catalog seeding
-- Custom evaluator code per scenario pack beyond the v1 primitive set (BINARY_RISK_GATE, RESOURCE_DEPLETION, DETECTION_EVENT, TIMING_BREACH, MISSION_COMPLETION)
-
-## 8. Dependencies
-
-| Dependency | Status | Impact |
-|------------|--------|--------|
-| Cycle-017 (Policy Surface) | ✓ Complete | Certificate pipeline, routing, gates available for spawned theatres |
-| Theatre lifecycle | ✓ Exists | Pattern for pack lifecycle; spawned theatres use existing pipeline |
-| Fork manager | ✓ Exists | ForkType, ForkStatus primitives for branching logic |
-| WebSocket manager | ✓ Exists | Extension point for run status events |
-| RLMF export infrastructure | ✓ Exists | Downstream consumer of scenario telemetry |
-| ScenarioPacksPage | ✓ Exists | Empty shell ready for API wiring |
-| Design reference | ✓ Exists | Full UI spec for branch map, launch config |
-| Template fixtures | ✓ Exists | Data shape for objectiveVector, forkPointSchema, etc. |
-
-## 9. What This Unlocks
-
-- **Branching RL environments** — agents train against decision trees, not single-outcome markets
-- **Rich RLMF telemetry** — episode-level data with checkpoint decisions, branch probabilities, state vectors
-- **Derived theatres** — individual checkpoints can spawn real markets, connecting simulation to prediction
-- **Template catalog** — 18 curated scenario packs ready for agent training and engagement
-- **Scenario-to-export pipeline** — RLMF Exports page can reference scenario runs as data sources
-- **Foundation for Alpamayo** — dual-direction suggestions (theatre + scenario pack) become possible once the pack engine exists
+- Frontend Scenario Pack lifecycle UI beyond what Alexander is implementing
+- New Scenario Pack template families
+- Agent breeding / genealogy work
+- Rich visual family-tree or replay visualizer frontend work
+- New inquiry classes
+- Historical paradox-risk charting beyond current event/persistence needs
+- Any frontend work (Alexander brief handles UI)
