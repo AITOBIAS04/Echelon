@@ -629,7 +629,7 @@
           "local_id": "sprint-5",
           "global_id": 53,
           "label": "RLMF Telemetry + Frontend Integration + Polish",
-          "status": "pending",
+          "status": "completed",
           "tasks": 5
         }
       ]
