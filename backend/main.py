@@ -387,6 +387,16 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+# Include Scenario Pack routes (Cycle-018)
+try:
+    from backend.api.scenario_pack_routes import templates_router as scenario_templates_router
+    app.include_router(scenario_templates_router)
+    print("✅ Scenario Pack Templates router included")
+except Exception as e:
+    print(f"❌ Failed to include Scenario Pack Templates router: {e}")
+    import traceback
+    traceback.print_exc()
+
 # Initialize Butterfly and Paradox Engines (for USE_MOCKS mode)
 USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
 GAME_LOOP_ENABLED = os.getenv("ENABLE_GAME_LOOP", "true").lower() == "true"

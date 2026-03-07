@@ -1,0 +1,155 @@
+"""
+Scenario Pack API Routes — Template catalog and pack management endpoints.
+
+Sprint 1: Template catalog (list + detail).
+Sprint 2+: Pack lifecycle endpoints added later.
+"""
+
+import logging
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from backend.database.models import ScenarioPackTemplate, ScenarioCheckpoint
+from backend.schemas.scenario_packs import (
+    ScenarioPackTemplateResponse,
+    ScenarioPackTemplateSummaryResponse,
+    TemplateListResponse,
+)
+from backend.dependencies import get_db
+
+logger = logging.getLogger(__name__)
+
+templates_router = APIRouter(
+    prefix="/api/v1/scenario-pack-templates",
+    tags=["scenario-pack-templates"],
+)
+
+
+@templates_router.get("/", response_model=TemplateListResponse)
+async def list_templates(
+    family: Optional[str] = Query(None, description="Filter by template family (case-insensitive)"),
+    status: Optional[str] = Query(None, description="Filter by template_status (RUNNABLE or CATALOG_ONLY)"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    session: AsyncSession = Depends(get_db),
+):
+    """List scenario pack templates with optional family and status filters."""
+    query = select(ScenarioPackTemplate)
+    count_query = select(func.count()).select_from(ScenarioPackTemplate)
+
+    if family:
+        family_upper = family.upper()
+        query = query.where(ScenarioPackTemplate.family == family_upper)
+        count_query = count_query.where(ScenarioPackTemplate.family == family_upper)
+
+    if status:
+        status_upper = status.upper()
+        query = query.where(ScenarioPackTemplate.template_status == status_upper)
+        count_query = count_query.where(ScenarioPackTemplate.template_status == status_upper)
+
+    # Get total count
+    total_result = await session.execute(count_query)
+    total = total_result.scalar() or 0
+
+    # Get paginated results with checkpoint count
+    query = query.order_by(ScenarioPackTemplate.family, ScenarioPackTemplate.name)
+    query = query.offset(offset).limit(limit)
+    result = await session.execute(query)
+    templates = result.scalars().all()
+
+    # Build summaries with checkpoint counts
+    summaries = []
+    for t in templates:
+        cp_count_result = await session.execute(
+            select(func.count()).select_from(ScenarioCheckpoint)
+            .where(ScenarioCheckpoint.template_id == t.id)
+        )
+        cp_count = cp_count_result.scalar() or 0
+
+        summaries.append(ScenarioPackTemplateSummaryResponse(
+            id=t.id,
+            name=t.name,
+            family=t.family,
+            description=t.description,
+            template_status=t.template_status,
+            checkpoint_count=cp_count,
+            fork_points_min=t.fork_points_min,
+            fork_points_max=t.fork_points_max,
+            is_seeded=t.is_seeded,
+        ))
+
+    return TemplateListResponse(
+        templates=summaries,
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@templates_router.get("/{template_id}", response_model=ScenarioPackTemplateResponse)
+async def get_template(
+    template_id: str,
+    session: AsyncSession = Depends(get_db),
+):
+    """Get a single template with full detail including checkpoints."""
+    result = await session.execute(
+        select(ScenarioPackTemplate)
+        .options(selectinload(ScenarioPackTemplate.checkpoints))
+        .where(ScenarioPackTemplate.id == template_id)
+    )
+    template = result.scalar_one_or_none()
+
+    if not template:
+        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
+
+    # Build checkpoint responses
+    checkpoint_responses = []
+    for cp in template.checkpoints:
+        # Count branches for this checkpoint
+        branch_count_result = await session.execute(
+            select(func.count()).select_from(
+                select(ScenarioCheckpoint).where(ScenarioCheckpoint.id == cp.id).subquery()
+            )
+        )
+        from backend.database.models import CheckpointBranch
+        branch_count_result = await session.execute(
+            select(func.count()).select_from(CheckpointBranch)
+            .where(CheckpointBranch.checkpoint_id == cp.id)
+        )
+        branch_count = branch_count_result.scalar() or 0
+
+        from backend.schemas.scenario_packs import CheckpointResponse
+        checkpoint_responses.append(CheckpointResponse(
+            id=cp.id,
+            sequence_num=cp.sequence_num,
+            trigger=cp.trigger,
+            market_question=cp.market_question,
+            decision_window_sec=cp.decision_window_sec,
+            can_spawn_theatre=cp.can_spawn_theatre,
+            evaluator_type=cp.evaluator_type,
+            branch_count=branch_count,
+        ))
+
+    return ScenarioPackTemplateResponse(
+        id=template.id,
+        name=template.name,
+        description=template.description,
+        family=template.family,
+        fantasy=template.fantasy,
+        training_primitives=template.training_primitives,
+        template_status=template.template_status,
+        objective_vector=template.objective_vector_json or [],
+        fork_points=template.fork_point_schema_json or [],
+        saboteur_deck=template.saboteur_deck_json or [],
+        episode_length_sec=template.episode_length_sec,
+        fork_points_min=template.fork_points_min,
+        fork_points_max=template.fork_points_max,
+        is_seeded=template.is_seeded,
+        checkpoint_count=len(template.checkpoints),
+        checkpoints=checkpoint_responses,
+        created_at=template.created_at,
+    )
