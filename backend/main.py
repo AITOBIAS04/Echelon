@@ -390,8 +390,10 @@ except Exception as e:
 # Include Scenario Pack routes (Cycle-018)
 try:
     from backend.api.scenario_pack_routes import templates_router as scenario_templates_router
+    from backend.api.scenario_pack_routes import packs_router as scenario_packs_router
     app.include_router(scenario_templates_router)
-    print("✅ Scenario Pack Templates router included")
+    app.include_router(scenario_packs_router)
+    print("✅ Scenario Pack Templates + Packs routers included")
 except Exception as e:
     print(f"❌ Failed to include Scenario Pack Templates router: {e}")
     import traceback

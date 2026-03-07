@@ -2,24 +2,32 @@
 Scenario Pack API Routes — Template catalog and pack management endpoints.
 
 Sprint 1: Template catalog (list + detail).
-Sprint 2+: Pack lifecycle endpoints added later.
+Sprint 2: Pack lifecycle (create, commit, run).
 """
 
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.database.models import ScenarioPackTemplate, ScenarioCheckpoint
+from backend.database.models import (
+    ScenarioPackTemplate,
+    ScenarioCheckpoint,
+    ScenarioPack,
+)
 from backend.schemas.scenario_packs import (
     ScenarioPackTemplateResponse,
     ScenarioPackTemplateSummaryResponse,
     TemplateListResponse,
+    ScenarioPackCreate,
+    ScenarioPackResponse,
+    ScenarioRunResponse,
 )
-from backend.dependencies import get_db
+from backend.dependencies import get_db, get_current_user
+from backend.auth.jwt import TokenData
 
 logger = logging.getLogger(__name__)
 
@@ -153,3 +161,113 @@ async def get_template(
         checkpoints=checkpoint_responses,
         created_at=template.created_at,
     )
+
+
+# ── Pack Endpoints (Sprint 2) ──────────────────────────────────────────────
+
+packs_router = APIRouter(
+    prefix="/api/v1/scenario-packs",
+    tags=["scenario-packs"],
+)
+
+
+@packs_router.post("/", response_model=ScenarioPackResponse, status_code=201)
+async def create_pack(
+    body: ScenarioPackCreate,
+    user: TokenData = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Create a new scenario pack from a RUNNABLE template."""
+    from backend.services.scenario_pack_lifecycle import create_pack as _create_pack
+
+    try:
+        pack = await _create_pack(
+            session=session,
+            user_id=user.user_id,
+            template_id=body.template_id,
+            run_mode=body.run_mode,
+            agent_assignment=body.agent_assignment,
+            simulation_scale=body.simulation_scale,
+            objective_profile=body.objective_profile,
+            config_json=body.config_json,
+        )
+        await session.commit()
+        return pack
+    except LookupError:
+        raise HTTPException(status_code=404, detail=f"Template '{body.template_id}' not found")
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@packs_router.get("/{pack_id}", response_model=ScenarioPackResponse)
+async def get_pack(
+    pack_id: str,
+    user: TokenData = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Get a scenario pack (owner only)."""
+    result = await session.execute(
+        select(ScenarioPack).where(ScenarioPack.id == pack_id)
+    )
+    pack = result.scalar_one_or_none()
+
+    if not pack:
+        raise HTTPException(status_code=404, detail="Pack not found")
+    if pack.user_id != user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    return pack
+
+
+@packs_router.post("/{pack_id}/commit", response_model=ScenarioPackResponse)
+async def commit_pack(
+    pack_id: str,
+    user: TokenData = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Commit a pack (DRAFT → COMMITTED). Generates commitment hash."""
+    from backend.services.scenario_pack_lifecycle import commit_pack as _commit_pack
+
+    result = await session.execute(
+        select(ScenarioPack).where(ScenarioPack.id == pack_id)
+    )
+    pack = result.scalar_one_or_none()
+
+    if not pack:
+        raise HTTPException(status_code=404, detail="Pack not found")
+    if pack.user_id != user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    try:
+        pack = await _commit_pack(session, pack)
+        await session.commit()
+        return pack
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@packs_router.post("/{pack_id}/run", response_model=ScenarioRunResponse, status_code=202)
+async def run_pack(
+    pack_id: str,
+    user: TokenData = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Launch a run (COMMITTED → ACTIVE). Returns the created run."""
+    from backend.services.scenario_pack_lifecycle import launch_run
+
+    result = await session.execute(
+        select(ScenarioPack).where(ScenarioPack.id == pack_id)
+    )
+    pack = result.scalar_one_or_none()
+
+    if not pack:
+        raise HTTPException(status_code=404, detail="Pack not found")
+    if pack.user_id != user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    try:
+        run = await launch_run(session, pack)
+        await session.commit()
+        return run
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
