@@ -43,6 +43,7 @@ from backend.services.domain_filter_validator import (
     validate_evidence_source,
     validate_signal_source,
 )
+from backend.services.stop_condition_orchestrator import evaluate_after_mutation
 from backend.websockets.realtime_manager import manager as ws_manager
 from backend.schemas.investigation_schemas import (
     CertificateResponse,
@@ -452,6 +453,13 @@ async def submit_evidence(
         references=request.references,
     )
     await db.commit()
+
+    # Stop condition evaluation after evidence mutation (cycle-021)
+    inv = await repo.get(investigation_id)
+    if inv:
+        await evaluate_after_mutation(db, inv, trigger="evidence")
+        await db.commit()
+
     await _recompute_theatre_paradox_risk(
         db,
         theatre_id,
@@ -585,6 +593,13 @@ async def log_counter_signal(
         evidence_ref=request.evidence_ref,
     )
     await db.commit()
+
+    # Stop condition evaluation after counter-signal mutation (cycle-021)
+    inv = await repo.get(investigation_id)
+    if inv:
+        await evaluate_after_mutation(db, inv, trigger="counter_signal")
+        await db.commit()
+
     if request.material:
         summary = toolset.counter_signal_feed.get_summary()
         await _recompute_theatre_paradox_risk(
@@ -618,6 +633,34 @@ async def get_drift(
         raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
     toolset = _rebuild_toolset(inv)
     return _build_drift_response(toolset)
+
+
+@router.get("/{investigation_id}/readiness")
+async def get_readiness(
+    investigation_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return current stop condition evaluation status."""
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
+    return {
+        "investigation_id": inv.id,
+        "status": inv.status,
+        "stop_condition": inv.stop_condition,
+        "stop_condition_status": inv.stop_condition_status,
+        "stop_condition_reason": inv.stop_condition_reason,
+        "stop_condition_evaluated_at": (
+            inv.stop_condition_evaluated_at.isoformat()
+            if inv.stop_condition_evaluated_at else None
+        ),
+        "has_certificate": inv.certificate is not None,
+        "certificate_status": (
+            inv.certificate.certificate_status
+            if inv.certificate else None
+        ),
+    }
 
 
 @router.get("/{investigation_id}/certificate", response_model=CertificateResponse)
