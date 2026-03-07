@@ -95,4 +95,4 @@
 |--------|-----------|--------|----------|----------|---------|
 | Sprint 0 | sprint-66 | COMPLETED | [reviewer.md](sprint-66/reviewer.md) | [engineer-feedback.md](sprint-66/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-66/auditor-sprint-feedback.md) |
 | Sprint 1 | sprint-67 | COMPLETED | [reviewer.md](sprint-67/reviewer.md) | [engineer-feedback.md](sprint-67/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-67/auditor-sprint-feedback.md) |
-| Sprint 2 | sprint-68 | PENDING | — | — | — |
+| Sprint 2 | sprint-68 | COMPLETED | [reviewer.md](sprint-68/reviewer.md) | [engineer-feedback.md](sprint-68/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-68/auditor-sprint-feedback.md) |

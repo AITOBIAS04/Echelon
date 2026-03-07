@@ -228,6 +228,32 @@ class InvestigationRepository:
         await self.session.flush()
         return record
 
+    async def persist_certificate_as_ready(
+        self,
+        investigation_id: str,
+        certificate_hash: str,
+        certificate_json: dict,
+        routing_decision: str,
+        routing_reason: str = "",
+    ) -> InvestigationCertificateRecord:
+        """Persist certificate record in READY state.
+
+        Unlike persist_certificate(), does NOT set investigation to COMPLETED.
+        Does NOT set issued_at. Sets certificate_status='READY' and ready_at.
+        """
+        record = InvestigationCertificateRecord(
+            investigation_id=investigation_id,
+            certificate_hash=certificate_hash,
+            certificate_json=certificate_json,
+            routing_decision=routing_decision,
+            routing_reason=routing_reason,
+            certificate_status="READY",
+            ready_at=datetime.utcnow(),
+        )
+        self.session.add(record)
+        await self.session.flush()
+        return record
+
     async def _get_investigation(self, investigation_id: str) -> Optional[Investigation]:
         result = await self.session.execute(
             select(Investigation).where(Investigation.id == investigation_id)
