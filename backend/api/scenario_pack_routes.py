@@ -4,6 +4,7 @@ Scenario Pack API Routes — Template catalog and pack management endpoints.
 Sprint 1: Template catalog (list + detail).
 Sprint 2: Pack lifecycle (create, commit, run).
 Sprint 3: Checkpoint resolution, branch probabilities, episode tree, replay.
+Sprint 4: Derived theatre spawning.
 """
 
 import logging
@@ -19,6 +20,7 @@ from backend.database.models import (
     ScenarioCheckpoint,
     ScenarioPack,
     ScenarioRun,
+    Theatre,
 )
 from backend.schemas.scenario_packs import (
     ScenarioPackTemplateResponse,
@@ -31,6 +33,7 @@ from backend.schemas.scenario_packs import (
     EpisodeTreeResponse,
     EpisodeTreeNode,
     ForkReplayResponse,
+    DerivedTheatreResponse,
 )
 from backend.dependencies import get_db, get_current_user
 from backend.auth.jwt import TokenData
@@ -500,3 +503,53 @@ async def get_replay(
         disclosureEvents=disclosure_events,
         notes=f"Seed: {run.environment_seed}, Mode: {run.run_mode}",
     )
+
+
+# ── Sprint 4: Derived Theatres ───────────────────────────────────────────────
+
+@packs_router.get(
+    "/{pack_id}/derived-theatres",
+    response_model=list[DerivedTheatreResponse],
+)
+async def get_derived_theatres(
+    pack_id: str,
+    user: TokenData = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Get theatres derived from this pack's checkpoint resolutions."""
+    pack_result = await session.execute(
+        select(ScenarioPack).where(ScenarioPack.id == pack_id)
+    )
+    pack = pack_result.scalar_one_or_none()
+    if not pack:
+        raise HTTPException(status_code=404, detail="Pack not found")
+    if pack.user_id != user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Get checkpoint IDs for this pack's template
+    cp_ids = (await session.execute(
+        select(ScenarioCheckpoint.id)
+        .where(ScenarioCheckpoint.template_id == pack.template_id)
+    )).scalars().all()
+
+    if not cp_ids:
+        return []
+
+    # Get theatres spawned from these checkpoints
+    theatres = (await session.execute(
+        select(Theatre)
+        .where(Theatre.spawned_from_checkpoint_id.in_(cp_ids))
+        .order_by(Theatre.created_at)
+    )).scalars().all()
+
+    return [
+        DerivedTheatreResponse(
+            id=t.id,
+            construct_id=t.construct_id,
+            state=t.state,
+            spawned_from_checkpoint_id=t.spawned_from_checkpoint_id,
+            certificate_id=t.certificate_id,
+            created_at=t.created_at,
+        )
+        for t in theatres
+    ]
