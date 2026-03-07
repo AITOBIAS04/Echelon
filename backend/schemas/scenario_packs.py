@@ -222,3 +222,16 @@ class ForkReplayResponse(BaseModel):
     outcomeLabel: Optional[str] = None
     disclosureEvents: List[DisclosureEventResponse]
     notes: Optional[str] = None
+
+
+# ── Derived theatre response ──
+
+class DerivedTheatreResponse(BaseModel):
+    id: str
+    construct_id: str
+    state: str
+    spawned_from_checkpoint_id: Optional[str] = None
+    certificate_id: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

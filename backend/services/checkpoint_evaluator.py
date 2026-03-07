@@ -181,6 +181,11 @@ def evaluate_checkpoints(
         session.add(result)
         results.append(result)
 
+        # Spawn theatre if checkpoint allows it
+        if current_checkpoint.can_spawn_theatre:
+            from backend.services.theatre_spawner import spawn_theatre
+            spawn_theatre(session, current_checkpoint, pack, run, result)
+
         run.current_checkpoint_seq = current_checkpoint.sequence_num
         run.total_reward += reward
 
