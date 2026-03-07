@@ -1,22 +1,16 @@
 """Investigation API routes — REST endpoints for investigation lifecycle.
 
-Manages investigations via in-memory InvestigationToolset instances.
+Manages investigations via DB-backed InvestigationRepository with in-memory
+InvestigationToolset for runtime operations (hashing, certificate building).
 
-PERSISTENCE: DEFERRED (014c scope)
-    Investigations are stored in a process-local dict. State is lost on
-    restart. This is an explicit design choice matching ConvergenceDetector's
-    011-scope pattern — the investigation toolset (claim graph, evidence
-    envelope, counter-signal feed, commitment monitor) is a runtime object
-    graph not yet backed by a database model.
+Persistence: LIVE (Cycle 019)
+    Investigations are persisted to the database via InvestigationRepository.
+    The in-memory InvestigationToolset is rebuilt from DB records on access
+    for operations that need it (certificate building, hash computation).
+    Data survives server restart.
 
-    Full persistence requires:
-    - Database model (Investigation table)
-    - Serialisation of InvestigationToolset sub-objects
-    - Alembic migration
-    - Service-layer refactor of _investigations dict → repository
-
-    The REST API contract (request/response schemas) is stable and will
-    not change when persistence is added.
+    The REST API contract (request/response schemas) is stable and unchanged
+    from the original in-memory implementation.
 """
 
 from __future__ import annotations
@@ -25,14 +19,26 @@ import base64
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.database.models import (
+    Investigation,
+    InvestigationEvidenceItem,
+    InvestigationClaimNode,
+    InvestigationCounterSignal,
+    InvestigationDriftEvent,
+    InvestigationCertificateRecord,
+)
+from backend.database.repositories.investigation_repository import InvestigationRepository
+from backend.dependencies import get_db
 from backend.investigation.claim_graph import ClaimType
-from backend.investigation.commitment_monitor import DriftImpact, DriftType
+from backend.investigation.commitment_monitor import DriftType
 from backend.investigation.counter_signals import InvestigationCounterSignalClass
 from backend.investigation.models import ProvenanceClass
 from backend.investigation.toolset import InvestigationConfig, InvestigationToolset
 from backend.osint.models.registry import RegistryLoader
+from backend.websockets.realtime_manager import manager as ws_manager
 from backend.schemas.investigation_schemas import (
     CertificateResponse,
     ClaimCreateRequest,
@@ -55,11 +61,6 @@ from backend.schemas.investigation_schemas import (
 
 router = APIRouter(prefix="/api/v1/investigations", tags=["Investigations"])
 
-# In-memory investigation store (toolset instances keyed by investigation ID).
-# DEFERRED: Replace with database-backed repository when persistence is prioritised.
-# API contract (schemas) is stable and decoupled from storage mechanism.
-_investigations: dict[str, dict] = {}
-
 # Registry loader for policy enforcement (receipt_body_required, requires_legal_review).
 # Loaded lazily on first use to avoid import-time file I/O.
 _registry_loader: RegistryLoader | None = None
@@ -78,12 +79,78 @@ def _get_registry() -> RegistryLoader:
     return _registry_loader
 
 
-def _get_investigation(investigation_id: str) -> dict:
-    """Get investigation entry or raise 404."""
-    entry = _investigations.get(investigation_id)
-    if not entry:
-        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
-    return entry
+def _rebuild_toolset(inv: Investigation) -> InvestigationToolset:
+    """Rebuild an InvestigationToolset from persisted DB records.
+
+    Replays evidence submissions, claim registrations, counter-signals,
+    and drift events into a fresh toolset instance so that certificate
+    building and hash computation work correctly.
+    """
+    config = InvestigationConfig(
+        domain_filters=inv.domain_filters_json or [],
+        stop_condition=inv.stop_condition or "OUTCOME_RESOLUTION",
+        stop_config=inv.stop_config_json or {},
+    )
+    toolset = InvestigationToolset(
+        config=config,
+        theatre_id=inv.theatre_id,
+        construct_id=inv.construct_id,
+        inquiry_class=inv.inquiry_class,
+    )
+
+    # Replay evidence items
+    for item in (inv.evidence_items or []):
+        toolset.evidence_envelope.add_item_from_persisted(
+            evidence_id=item.id,
+            content_hash=item.content_hash,
+            provenance_class=ProvenanceClass(item.provenance_class),
+            submitted_at=item.submitted_at,
+            content_type=item.content_type,
+            source_description=item.source_description,
+            references=item.references_json or [],
+            source_id=item.source_id or "",
+            query_determinism=item.query_determinism or "",
+        )
+
+    # Replay claims
+    for node in (inv.claim_nodes or []):
+        toolset.claim_graph.add_claim_from_persisted(
+            claim_id=node.id,
+            claim_text=node.claim_text,
+            claim_type=ClaimType(node.claim_type),
+            evidence_refs=node.evidence_refs_json or [],
+            counter_signals=node.counter_signals_json or [],
+            status=node.status,
+            confidence=node.confidence,
+            independence_groups=node.independence_groups_json or [],
+        )
+
+    # Replay counter-signals
+    for sig in (inv.counter_signals or []):
+        signal_class = InvestigationCounterSignalClass(sig.signal_class)
+        toolset.counter_signal_feed.add_signal_from_persisted(
+            counter_signal_id=sig.id,
+            signal_class=signal_class,
+            detected_at=sig.detected_at,
+            evidence_ref=sig.evidence_ref,
+            material=sig.material,
+            resolution_impact=sig.resolution_impact or "",
+            detection_method=sig.detection_method or "human_submitted",
+        )
+
+    # Replay drift events
+    for evt in (inv.drift_events or []):
+        toolset.commitment_monitor.add_event_from_persisted(
+            drift_id=evt.id,
+            drift_type=DriftType(evt.drift_type),
+            detected_at=evt.detected_at,
+            original_value=evt.original_value or "",
+            new_value=evt.new_value or "",
+            evidence_ref=evt.evidence_ref,
+            impact_assessment=evt.impact_assessment or "non_material",
+        )
+
+    return toolset
 
 
 def _build_evidence_response(toolset: InvestigationToolset) -> EvidenceEnvelopeResponse:
@@ -180,22 +247,46 @@ def _build_drift_response(toolset: InvestigationToolset) -> DriftFeedResponse:
     )
 
 
-def _build_summary(investigation_id: str, entry: dict) -> InvestigationSummaryResponse:
-    """Build investigation summary from entry."""
-    toolset: InvestigationToolset = entry["toolset"]
+def _build_summary_from_db(inv: Investigation) -> InvestigationSummaryResponse:
+    """Build investigation summary from DB model."""
     return InvestigationSummaryResponse(
-        id=investigation_id,
-        theatre_id=entry["theatre_id"],
-        construct_id=entry["construct_id"],
-        inquiry_class=entry["inquiry_class"],
-        status=entry["status"],
-        evidence_count=len(toolset.evidence_envelope.items),
-        claim_count=len(toolset.claim_graph.claims),
-        counter_signal_count=len(toolset.counter_signal_feed.signals),
-        drift_event_count=len(toolset.commitment_monitor.events),
-        created_at=entry["created_at"],
-        updated_at=entry.get("updated_at", entry["created_at"]),
+        id=inv.id,
+        theatre_id=inv.theatre_id,
+        construct_id=inv.construct_id,
+        inquiry_class=inv.inquiry_class,
+        status=inv.status.lower(),
+        evidence_count=len(inv.evidence_items) if inv.evidence_items else 0,
+        claim_count=len(inv.claim_nodes) if inv.claim_nodes else 0,
+        counter_signal_count=len(inv.counter_signals) if inv.counter_signals else 0,
+        drift_event_count=len(inv.drift_events) if inv.drift_events else 0,
+        created_at=inv.created_at,
+        updated_at=inv.updated_at,
     )
+
+
+async def _recompute_theatre_paradox_risk(
+    db: AsyncSession,
+    theatre_id: str | None,
+    inquiry_class: str | None,
+    trigger_reason: str,
+    **overrides,
+) -> None:
+    """Best-effort paradox-risk recompute for live investigation mutations."""
+    if not theatre_id:
+        return
+
+    from backend.services.paradox_risk_orchestrator import trigger_recompute
+
+    assessment = await trigger_recompute(
+        db,
+        theatre_id,
+        trigger_reason,
+        inquiry_class=inquiry_class or "COUNTERFACTUAL",
+        emit_ws=True,
+        **overrides,
+    )
+    if assessment is not None:
+        await db.commit()
 
 
 # ============================================
@@ -204,58 +295,50 @@ def _build_summary(investigation_id: str, entry: dict) -> InvestigationSummaryRe
 
 
 @router.get("/", response_model=InvestigationListResponse)
-async def list_investigations():
+async def list_investigations(db: AsyncSession = Depends(get_db)):
     """List all active investigations."""
-    summaries = [
-        _build_summary(inv_id, entry)
-        for inv_id, entry in _investigations.items()
-    ]
+    repo = InvestigationRepository(db)
+    investigations = await repo.list_all()
+    summaries = [_build_summary_from_db(inv) for inv in investigations]
     return InvestigationListResponse(investigations=summaries, total=len(summaries))
 
 
 @router.post("/", response_model=InvestigationSummaryResponse, status_code=201)
-async def create_investigation(request: InvestigationCreateRequest):
+async def create_investigation(
+    request: InvestigationCreateRequest,
+    db: AsyncSession = Depends(get_db),
+):
     """Create a new investigation."""
-    investigation_id = f"INV-{uuid.uuid4().hex[:12]}"
-    now = datetime.now(timezone.utc)
-
-    config = InvestigationConfig(
+    repo = InvestigationRepository(db)
+    inv = await repo.create(
+        theatre_id=request.theatre_id,
+        construct_id=request.construct_id,
+        inquiry_class=request.inquiry_class,
         domain_filters=request.domain_filters,
         stop_condition=request.stop_condition,
         stop_config=request.stop_config,
     )
-
-    toolset = InvestigationToolset(
-        config=config,
-        theatre_id=request.theatre_id,
-        construct_id=request.construct_id,
-        inquiry_class=request.inquiry_class,
-    )
-
-    entry = {
-        "toolset": toolset,
-        "theatre_id": request.theatre_id,
-        "construct_id": request.construct_id,
-        "inquiry_class": request.inquiry_class,
-        "status": "active",
-        "created_at": now,
-        "updated_at": now,
-        "source_ids": set(),  # Track source_ids for legal review flag
-    }
-    _investigations[investigation_id] = entry
-
-    return _build_summary(investigation_id, entry)
+    await db.commit()
+    await db.refresh(inv)
+    return _build_summary_from_db(inv)
 
 
 @router.get("/{investigation_id}", response_model=InvestigationDetailResponse)
-async def get_investigation(investigation_id: str):
+async def get_investigation(
+    investigation_id: str,
+    db: AsyncSession = Depends(get_db),
+):
     """Get full investigation detail."""
-    entry = _get_investigation(investigation_id)
-    toolset: InvestigationToolset = entry["toolset"]
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
+
+    toolset = _rebuild_toolset(inv)
 
     # Compute has_legal_review_requirement from source registry
     has_legal_review = False
-    source_ids = entry.get("source_ids", set())
+    source_ids = {item.source_id for item in (inv.evidence_items or []) if item.source_id}
     if source_ids:
         registry = _get_registry()
         for sid in source_ids:
@@ -265,15 +348,15 @@ async def get_investigation(investigation_id: str):
                 break
 
     return InvestigationDetailResponse(
-        id=investigation_id,
-        theatre_id=entry["theatre_id"],
-        construct_id=entry["construct_id"],
-        inquiry_class=entry["inquiry_class"],
-        status=entry["status"],
-        stop_condition=toolset._config.stop_condition,
-        stop_config=toolset._config.stop_config,
-        created_at=entry["created_at"],
-        updated_at=entry.get("updated_at", entry["created_at"]),
+        id=inv.id,
+        theatre_id=inv.theatre_id,
+        construct_id=inv.construct_id,
+        inquiry_class=inv.inquiry_class,
+        status=inv.status.lower(),
+        stop_condition=inv.stop_condition,
+        stop_config=inv.stop_config_json,
+        created_at=inv.created_at,
+        updated_at=inv.updated_at,
         evidence=_build_evidence_response(toolset),
         claims=_build_claims_response(toolset),
         counter_signals=_build_counter_signals_response(toolset),
@@ -283,17 +366,30 @@ async def get_investigation(investigation_id: str):
 
 
 @router.get("/{investigation_id}/evidence", response_model=EvidenceEnvelopeResponse)
-async def get_evidence(investigation_id: str):
+async def get_evidence(
+    investigation_id: str,
+    db: AsyncSession = Depends(get_db),
+):
     """Get evidence envelope for an investigation."""
-    entry = _get_investigation(investigation_id)
-    return _build_evidence_response(entry["toolset"])
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
+    toolset = _rebuild_toolset(inv)
+    return _build_evidence_response(toolset)
 
 
 @router.post("/{investigation_id}/evidence", response_model=EvidenceItemResponse, status_code=201)
-async def submit_evidence(investigation_id: str, request: EvidenceSubmitRequest):
+async def submit_evidence(
+    investigation_id: str,
+    request: EvidenceSubmitRequest,
+    db: AsyncSession = Depends(get_db),
+):
     """Submit evidence to an investigation."""
-    entry = _get_investigation(investigation_id)
-    toolset: InvestigationToolset = entry["toolset"]
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
 
     # Receipt enforcement: if source requires receipt_body, reject without it
     if request.source_id:
@@ -316,6 +412,8 @@ async def submit_evidence(investigation_id: str, request: EvidenceSubmitRequest)
         if source and source.query_determinism:
             query_determinism = source.query_determinism
 
+    # Persist to DB AND feed to toolset for hash computation
+    toolset = _rebuild_toolset(inv)
     item = toolset.submit_evidence(
         content=content,
         provenance_class=provenance,
@@ -325,9 +423,28 @@ async def submit_evidence(investigation_id: str, request: EvidenceSubmitRequest)
         source_id=request.source_id,
         query_determinism=query_determinism,
     )
-    if request.source_id:
-        entry.setdefault("source_ids", set()).add(request.source_id)
-    entry["updated_at"] = datetime.now(timezone.utc)
+
+    # Persist DB record
+    theatre_id = inv.theatre_id
+    inquiry_class = inv.inquiry_class
+    await repo.submit_evidence(
+        investigation_id=investigation_id,
+        content=content,
+        provenance_class=request.provenance_class,
+        content_type=request.content_type,
+        source_description=request.source_description,
+        source_id=request.source_id or "",
+        query_determinism=query_determinism,
+        references=request.references,
+    )
+    await db.commit()
+    await _recompute_theatre_paradox_risk(
+        db,
+        theatre_id,
+        inquiry_class,
+        "evidence_submitted",
+        evidence_freshness_hours=0.0,
+    )
 
     return EvidenceItemResponse(
         evidence_id=item.evidence_id,
@@ -343,25 +460,47 @@ async def submit_evidence(investigation_id: str, request: EvidenceSubmitRequest)
 
 
 @router.get("/{investigation_id}/claims", response_model=ClaimGraphResponse)
-async def get_claims(investigation_id: str):
+async def get_claims(
+    investigation_id: str,
+    db: AsyncSession = Depends(get_db),
+):
     """Get claim graph for an investigation."""
-    entry = _get_investigation(investigation_id)
-    return _build_claims_response(entry["toolset"])
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
+    toolset = _rebuild_toolset(inv)
+    return _build_claims_response(toolset)
 
 
 @router.post("/{investigation_id}/claims", response_model=ClaimNodeResponse, status_code=201)
-async def register_claim(investigation_id: str, request: ClaimCreateRequest):
+async def register_claim(
+    investigation_id: str,
+    request: ClaimCreateRequest,
+    db: AsyncSession = Depends(get_db),
+):
     """Register a claim in the investigation's claim graph."""
-    entry = _get_investigation(investigation_id)
-    toolset: InvestigationToolset = entry["toolset"]
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
 
+    toolset = _rebuild_toolset(inv)
     claim_type = ClaimType(request.claim_type)
     node = toolset.register_claim(
         claim_text=request.claim_text,
         claim_type=claim_type,
         evidence_refs=request.evidence_refs,
     )
-    entry["updated_at"] = datetime.now(timezone.utc)
+
+    await repo.register_claim(
+        investigation_id=investigation_id,
+        claim_text=request.claim_text,
+        claim_type=request.claim_type,
+        evidence_refs=request.evidence_refs,
+        confidence=node.confidence,
+    )
+    await db.commit()
 
     return ClaimNodeResponse(
         claim_id=node.claim_id,
@@ -376,18 +515,32 @@ async def register_claim(investigation_id: str, request: ClaimCreateRequest):
 
 
 @router.get("/{investigation_id}/counter-signals", response_model=CounterSignalFeedResponse)
-async def get_counter_signals(investigation_id: str):
+async def get_counter_signals(
+    investigation_id: str,
+    db: AsyncSession = Depends(get_db),
+):
     """Get counter-signals for an investigation."""
-    entry = _get_investigation(investigation_id)
-    return _build_counter_signals_response(entry["toolset"])
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
+    toolset = _rebuild_toolset(inv)
+    return _build_counter_signals_response(toolset)
 
 
 @router.post("/{investigation_id}/counter-signals", response_model=CounterSignalResponse, status_code=201)
-async def log_counter_signal(investigation_id: str, request: CounterSignalCreateRequest):
+async def log_counter_signal(
+    investigation_id: str,
+    request: CounterSignalCreateRequest,
+    db: AsyncSession = Depends(get_db),
+):
     """Log a counter-signal for an investigation."""
-    entry = _get_investigation(investigation_id)
-    toolset: InvestigationToolset = entry["toolset"]
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
 
+    toolset = _rebuild_toolset(inv)
     signal_class = InvestigationCounterSignalClass(request.signal_class)
     signal = toolset.log_counter_signal(
         signal_class=signal_class,
@@ -396,7 +549,27 @@ async def log_counter_signal(investigation_id: str, request: CounterSignalCreate
         detection_method=request.detection_method,
         evidence_ref=request.evidence_ref,
     )
-    entry["updated_at"] = datetime.now(timezone.utc)
+
+    theatre_id = inv.theatre_id
+    inquiry_class = inv.inquiry_class
+    await repo.log_counter_signal(
+        investigation_id=investigation_id,
+        signal_class=request.signal_class,
+        material=request.material,
+        resolution_impact=request.resolution_impact,
+        detection_method=request.detection_method,
+        evidence_ref=request.evidence_ref,
+    )
+    await db.commit()
+    if request.material:
+        summary = toolset.counter_signal_feed.get_summary()
+        await _recompute_theatre_paradox_risk(
+            db,
+            theatre_id,
+            inquiry_class,
+            "material_counter_signal",
+            material_counter_signals=summary["material_contradictions"],
+        )
 
     return CounterSignalResponse(
         counter_signal_id=signal.counter_signal_id,
@@ -410,21 +583,61 @@ async def log_counter_signal(investigation_id: str, request: CounterSignalCreate
 
 
 @router.get("/{investigation_id}/drift", response_model=DriftFeedResponse)
-async def get_drift(investigation_id: str):
+async def get_drift(
+    investigation_id: str,
+    db: AsyncSession = Depends(get_db),
+):
     """Get drift events for an investigation."""
-    entry = _get_investigation(investigation_id)
-    return _build_drift_response(entry["toolset"])
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
+    toolset = _rebuild_toolset(inv)
+    return _build_drift_response(toolset)
 
 
 @router.get("/{investigation_id}/certificate", response_model=CertificateResponse)
-async def get_certificate(investigation_id: str):
+async def get_certificate(
+    investigation_id: str,
+    db: AsyncSession = Depends(get_db),
+):
     """Build and return the investigation certificate."""
-    entry = _get_investigation(investigation_id)
-    toolset: InvestigationToolset = entry["toolset"]
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
 
+    toolset = _rebuild_toolset(inv)
     cert = toolset.build_certificate()
-    entry["status"] = "completed"
-    entry["updated_at"] = datetime.now(timezone.utc)
+
+    # Persist certificate to DB
+    old_status = inv.status.lower()
+    await repo.persist_certificate(
+        investigation_id=investigation_id,
+        certificate_hash=cert.certificate_hash,
+        certificate_json={
+            "certificate_id": cert.certificate_id,
+            "theatre_id": cert.theatre_id,
+            "construct_id": cert.construct_id,
+        },
+        routing_decision=cert.routing_decision,
+        routing_reason=cert.routing_reason,
+    )
+    await db.commit()
+
+    await ws_manager.broadcast_investigation_status_changed(
+        investigation_id=investigation_id,
+        old_status=old_status,
+        new_status="completed",
+    )
+
+    # Investigation completion may affect paradox risk (evidence is now finalized)
+    await _recompute_theatre_paradox_risk(
+        db,
+        inv.theatre_id,
+        inv.inquiry_class,
+        "investigation_completed",
+    )
 
     return CertificateResponse(
         certificate_id=cert.certificate_id,

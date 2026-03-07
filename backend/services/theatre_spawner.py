@@ -12,6 +12,7 @@ When a checkpoint with can_spawn_theatre=True resolves:
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -53,7 +54,7 @@ def _ensure_spawned_template(session: Session) -> TheatreTemplate:
 
 
 def should_spawn(
-    spawn_rule: dict | None,
+    spawn_rule: Optional[dict],
     branch,
     reward: float,
     run_mode: str,
@@ -106,7 +107,7 @@ def spawn_theatre(
     pack: ScenarioPack,
     run: ScenarioRun,
     result: RunCheckpointResult,
-) -> Theatre | None:
+) -> Optional[Theatre]:
     """Spawn a derived theatre from a checkpoint resolution.
 
     When called via evaluate_checkpoints(), the caller uses should_spawn() first.

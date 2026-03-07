@@ -296,6 +296,108 @@ def test_branch_probabilities_sum_to_one(session):
             assert abs(total - 1.0) < 0.001, f"Probabilities for {cp_id} sum to {total}"
 
 
+def test_branch_probabilities_exclude_replay_runs(session):
+    """Replay copies must not count as fresh observations in branch analytics."""
+    _create_test_template_with_checkpoints(session, "prob_replay_template", num_checkpoints=1)
+    now = datetime.now(timezone.utc)
+
+    cp_id = "prob_replay_template_cp_1"
+    branch_a = "prob_replay_template_cp_1_br_0"
+    branch_b = "prob_replay_template_cp_1_br_1"
+
+    training_pack_a = ScenarioPack(
+        id=str(uuid.uuid4()),
+        user_id="test-user",
+        template_id="prob_replay_template",
+        state="ACTIVE",
+        run_mode="TRAINING",
+        created_at=now,
+        updated_at=now,
+    )
+    training_pack_b = ScenarioPack(
+        id=str(uuid.uuid4()),
+        user_id="test-user",
+        template_id="prob_replay_template",
+        state="ACTIVE",
+        run_mode="TRAINING",
+        created_at=now,
+        updated_at=now,
+    )
+    replay_pack = ScenarioPack(
+        id=str(uuid.uuid4()),
+        user_id="test-user",
+        template_id="prob_replay_template",
+        state="ACTIVE",
+        run_mode="REPLAY",
+        created_at=now,
+        updated_at=now,
+    )
+    session.add_all([training_pack_a, training_pack_b, replay_pack])
+    session.flush()
+
+    training_run_a = ScenarioRun(
+        id=str(uuid.uuid4()),
+        pack_id=training_pack_a.id,
+        status="COMPLETED",
+        run_mode="TRAINING",
+        created_at=now,
+    )
+    training_run_b = ScenarioRun(
+        id=str(uuid.uuid4()),
+        pack_id=training_pack_b.id,
+        status="COMPLETED",
+        run_mode="TRAINING",
+        created_at=now,
+    )
+    replay_run = ScenarioRun(
+        id=str(uuid.uuid4()),
+        pack_id=replay_pack.id,
+        status="COMPLETED",
+        run_mode="REPLAY",
+        created_at=now,
+    )
+    session.add_all([training_run_a, training_run_b, replay_run])
+    session.flush()
+
+    session.add_all([
+        RunCheckpointResult(
+            id=str(uuid.uuid4()),
+            run_id=training_run_a.id,
+            checkpoint_id=cp_id,
+            selected_branch_id=branch_a,
+            reward=1.0,
+            state_vector_json={},
+            resolved_at=now,
+        ),
+        RunCheckpointResult(
+            id=str(uuid.uuid4()),
+            run_id=training_run_b.id,
+            checkpoint_id=cp_id,
+            selected_branch_id=branch_b,
+            reward=1.0,
+            state_vector_json={},
+            resolved_at=now,
+        ),
+        RunCheckpointResult(
+            id=str(uuid.uuid4()),
+            run_id=replay_run.id,
+            checkpoint_id=cp_id,
+            selected_branch_id=branch_a,
+            reward=1.0,
+            state_vector_json={"replay_source_run_id": training_run_a.id},
+            resolved_at=now,
+        ),
+    ])
+    session.commit()
+
+    probs = compute_branch_probabilities(session, "prob_replay_template")
+
+    assert probs[cp_id] == {
+        branch_a: 0.5,
+        branch_b: 0.5,
+    }
+
+
 # ── Test 7: Branch probabilities null with zero runs ──
 
 def test_branch_probabilities_null_no_runs(session):

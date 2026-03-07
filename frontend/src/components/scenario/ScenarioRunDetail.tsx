@@ -171,7 +171,7 @@ export function ScenarioRunDetail({ packId, runId, totalCheckpoints }: ScenarioR
                   <span className="ml-2 text-terminal-text-muted">{t.state}</span>
                 </div>
                 <a
-                  href={`/theatres/${t.id}`}
+                  href={`/theatre/${t.id}`}
                   className="flex items-center gap-1 text-terminal-text-muted hover:text-terminal-text"
                 >
                   <ExternalLink className="w-3 h-3" />

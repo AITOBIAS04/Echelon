@@ -314,6 +314,47 @@ def test_fail_fast_invalid_config(session):
     assert len(errors) >= 2  # At least trigger + branch_rule errors
 
 
+def test_fail_fast_inconsistent_branch_rules(session):
+    """All branches must share the same runtime rule contract."""
+    _make_template(session)
+    cp = _make_checkpoint(
+        session,
+        "tpl-1",
+        1,
+        "BINARY_RISK_GATE",
+        {"type": "BINARY_RISK_GATE", "threshold": 0.5, "metric": "risk"},
+    )
+    _make_branch(
+        session,
+        cp.id,
+        "a",
+        "SUCCESS",
+        {
+            "type": "threshold_compare",
+            "field": "action_value",
+            "threshold": 0.5,
+            "above_branch_index": 0,
+            "below_branch_index": 1,
+        },
+    )
+    _make_branch(
+        session,
+        cp.id,
+        "b",
+        "FAILURE",
+        {
+            "type": "threshold_compare",
+            "field": "action_value",
+            "threshold": 0.7,
+            "above_branch_index": 0,
+            "below_branch_index": 1,
+        },
+    )
+
+    errors = validate_template_checkpoints(session, "tpl-1")
+    assert any("must match across branches" in error for error in errors)
+
+
 # ── Test 8: Seeded RNG determinism ──
 
 def test_seeded_rng_determinism():

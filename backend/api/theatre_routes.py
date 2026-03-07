@@ -317,22 +317,11 @@ async def get_theatre(
     if should_compute:
         from backend.services.paradox_risk_orchestrator import trigger_recompute
         inquiry_class = getattr(theatre, "inquiry_class", None) or "COUNTERFACTUAL"
-        assessment = await trigger_recompute(
+        await trigger_recompute(
             db, theatre_id, "evidence_freshness_threshold",
             inquiry_class=inquiry_class,
+            emit_ws=True,
         )
-        if assessment and getattr(assessment, "_material", False):
-            # Material change detected — broadcast via WS if manager available
-            try:
-                from backend.websockets.realtime_manager import ws_manager
-                await ws_manager.broadcast_paradox_risk_changed(
-                    theatre_id,
-                    old_level=getattr(assessment, "_old_level", "UNKNOWN"),
-                    new_level=assessment.level,
-                    factors=assessment.factors,
-                )
-            except Exception:
-                pass  # WS broadcast is best-effort
         await db.commit()
 
     return TheatreResponse.model_validate(theatre)

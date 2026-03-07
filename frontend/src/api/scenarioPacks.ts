@@ -62,4 +62,8 @@ export const scenarioPackApi = {
     const { data } = await apiClient.get(`/api/v1/scenario-pack-templates/${templateId}`);
     return data;
   },
+
+  // STAGED: Backend endpoints exist but frontend wiring is deferred.
+  // createPack, commitPack, startRun, getReplay, getDerivedTheatres
+  // are available at /api/v1/scenario-packs/* but not yet surfaced here.
 };
