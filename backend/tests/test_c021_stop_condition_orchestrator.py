@@ -93,7 +93,7 @@ def _add_supported_claim(session, inv_id, evidence_id="ev-1"):
         claim_text="Test claim",
         claim_type="fact",
         evidence_refs_json=[evidence_id],
-        status="SUPPORTED",
+        status="supported",
         confidence=0.9,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
@@ -106,7 +106,7 @@ def _add_drift_event(session, inv_id, impact="material"):
     drift = InvestigationDriftEvent(
         id=f"dr-{uuid.uuid4().hex[:8]}",
         investigation_id=inv_id,
-        drift_type="MARKET_RULE_CHANGE",
+        drift_type="market_rule_change",
         detected_at=datetime.now(timezone.utc),
         original_value="old",
         new_value="new",
@@ -204,7 +204,7 @@ async def test_drift_trigger_includes_drift_in_reason(session):
 
 @pytest.mark.asyncio
 async def test_skips_completed_investigation(session):
-    """Returns early for COMPLETED/CERTIFICATE_READY investigations."""
+    """Returns early for COMPLETED investigations."""
     inv = _make_investigation(session, status="COMPLETED")
 
     mock_session = AsyncMock()
@@ -216,6 +216,46 @@ async def test_skips_completed_investigation(session):
     assert result.ready is True
     assert result.reason == "already_ready_or_completed"
     mock_session.flush.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_certificate_ready_rebuilds_routing_before_issuance(session):
+    """CERTIFICATE_READY investigations still reevaluate and can force review."""
+    inv = _make_investigation(
+        session,
+        status="CERTIFICATE_READY",
+        stop_condition="EVIDENCE_THRESHOLD",
+        stop_config={"min_supported_claims": 1},
+        stop_condition_status="READY",
+    )
+    _add_evidence(session, inv.id)
+    _add_supported_claim(session, inv.id)
+    _add_drift_event(session, inv.id, impact="material")
+
+    cert = InvestigationCertificateRecord(
+        investigation_id=inv.id,
+        certificate_hash="a" * 64,
+        certificate_json={"certificate_id": "old"},
+        routing_decision="ALLOWED",
+        routing_reason="all_checks_passed",
+        certificate_status="READY",
+        ready_at=datetime.now(timezone.utc),
+    )
+    inv.certificate = cert
+    session.add(cert)
+    session.flush()
+
+    mock_session = AsyncMock()
+    mock_session.flush = AsyncMock()
+
+    with patch("backend.services.stop_condition_orchestrator.ws_manager") as mock_ws:
+        mock_ws.broadcast_global = AsyncMock()
+        result = await evaluate_after_mutation(mock_session, inv, trigger="drift")
+
+    assert result.drift_material is True
+    assert cert.routing_decision == "REVIEW_REQUIRED"
+    assert cert.routing_reason == "drift_event_material"
+    mock_session.flush.assert_called_once()
 
 
 @pytest.mark.asyncio

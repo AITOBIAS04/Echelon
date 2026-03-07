@@ -66,7 +66,7 @@ async def run_batch_anchor(
     session: AsyncSession,
     batch_timestamp: datetime | None = None,
 ) -> list[str]:
-    """Process all READY certificates in a single batch.
+    """Process READY certificates that reached the current batch boundary.
 
     1. Query all certificates with certificate_status = 'READY'
     2. Compute batch anchor hash (SHA-256 of sorted certificate hashes)
@@ -79,14 +79,20 @@ async def run_batch_anchor(
     Idempotent: if no READY certificates exist, returns empty list.
     """
     if batch_timestamp is None:
-        batch_timestamp = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc)
+        batch_timestamp = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     # 1. Query READY certificates
     result = await session.execute(
         select(InvestigationCertificateRecord)
         .where(InvestigationCertificateRecord.certificate_status == CERT_STATUS_READY)
     )
-    ready_certs = list(result.scalars().all())
+    ready_certs = [
+        cert
+        for cert in result.scalars().all()
+        if not isinstance(getattr(cert, "ready_at", None), datetime)
+        or cert.ready_at <= batch_timestamp
+    ]
 
     if not ready_certs:
         return []

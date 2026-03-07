@@ -1220,7 +1220,7 @@ class InvestigationCertificateRecord(Base):
         String(20), comment="ALLOWED | REVIEW_REQUIRED"
     )
     routing_reason: Mapped[str] = mapped_column(String(50), default="")
-    issued_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    issued_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Certificate lifecycle (cycle-021)
     certificate_status: Mapped[str] = mapped_column(

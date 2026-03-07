@@ -160,6 +160,31 @@ async def test_batch_anchor_idempotent():
 
 
 @pytest.mark.asyncio
+async def test_batch_anchor_skips_same_day_ready_certs_until_next_boundary():
+    """Default batch only issues certs ready by the current 00:00 UTC boundary."""
+    now = datetime.now(timezone.utc)
+    cert = _make_certificate(
+        status=CERT_STATUS_READY,
+        ready_at=now,
+    )
+
+    mock_session = AsyncMock()
+
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = [cert]
+    mock_session.execute = AsyncMock(return_value=mock_result)
+
+    with patch("backend.services.certificate_lifecycle_service.ws_manager") as mock_ws:
+        mock_ws.broadcast_global = AsyncMock()
+        issued_ids = await run_batch_anchor(mock_session)
+
+    assert issued_ids == []
+    assert cert.certificate_status == CERT_STATUS_READY
+    assert cert.issued_at is None
+    mock_ws.broadcast_global.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_batch_anchor_sets_completed():
     """Investigation status = COMPLETED after ISSUED."""
     cert = _make_certificate(status=CERT_STATUS_READY)
