@@ -1,16 +1,23 @@
 """
-Checkpoint Evaluator v2 — Schema-driven checkpoint resolution.
+Checkpoint Evaluator v2 — Primitive-driven checkpoint resolution.
 
 Processes checkpoints in sequence_num order. At each checkpoint:
-1. Dispatch to primitive evaluator based on evaluator_type
-2. Evaluate branch_rule_json with agent action, seed, and state vector
+1. Evaluate trigger_condition_json (field/operator/threshold) to gate activation
+2. Dispatch to primitive evaluator based on evaluator_type + branch_rule_json
 3. Compute reward from reward_mapping_json + objective vector weights
 4. Evaluate theatre_spawn_rule_json for derived theatre spawning
 5. Create RunCheckpointResult with full state vector
 6. Advance to next checkpoint via branch.next_checkpoint_id
 
-v2 (Cycle 020): Schema-driven evaluation replaces hash-based branching.
-All 5 evaluator primitives implemented. Environment RNG via seeded random.Random.
+Trigger gating: trigger_condition_json supports field/operator/threshold evaluation
+against run state_vector. Templates without field/operator/threshold activate
+unconditionally (backward compatible). Unsupported operators fail at runtime.
+
+REPLAY mode: replay_recorded_path() copies persisted RunCheckpointResults from a
+source run verbatim. No evaluator dispatch or branch selection occurs.
+
+Legacy: checkpoints without branch_rule_json fall back to hash-based branch
+selection. This path exists for backward compatibility only.
 """
 
 import hashlib
@@ -20,11 +27,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.database.models import (
     ScenarioCheckpoint,
+    ScenarioPack,
     ScenarioRun,
     CheckpointBranch,
     RunCheckpointResult,
@@ -77,8 +85,8 @@ SPAWN_RULE_OPTIONAL_FIELDS = {"outcome_types", "min_reward", "checkpoint_classes
 
 def validate_checkpoint_config(
     evaluator_type: str,
-    trigger_condition_json: dict | None,
-    branch_rule_json: dict | None,
+    trigger_condition_json: Optional[dict],
+    branch_rule_json: Optional[dict],
 ) -> list[str]:
     """Validate a checkpoint's config against its evaluator_type.
 
@@ -90,31 +98,114 @@ def validate_checkpoint_config(
         errors.append(f"Unknown evaluator_type: {evaluator_type}")
         return errors
 
+    errors.extend(validate_trigger_condition_json(evaluator_type, trigger_condition_json))
+    errors.extend(validate_branch_rule_json(evaluator_type, branch_rule_json))
+
+    return errors
+
+
+def validate_trigger_condition_json(
+    evaluator_type: str,
+    trigger_condition_json: Optional[dict],
+) -> list[str]:
+    """Validate trigger_condition_json for a primitive.
+
+    Validates two layers:
+    1. Primitive contract fields (type, metric/resource/etc.) for schema completeness
+    2. Runtime trigger contract (field/operator/threshold) if present
+    """
+    if evaluator_type not in EVALUATOR_PRIMITIVES:
+        return [f"Unknown evaluator_type: {evaluator_type}"]
+
     contract = PRIMITIVE_CONTRACTS[evaluator_type]
-
     if trigger_condition_json is None:
-        errors.append(f"{evaluator_type}: trigger_condition_json is required")
-    else:
-        missing = contract["trigger_fields"] - set(trigger_condition_json.keys())
-        if missing:
-            errors.append(f"{evaluator_type}: trigger_condition_json missing fields: {missing}")
+        return [f"{evaluator_type}: trigger_condition_json is required"]
 
-    if branch_rule_json is None:
-        errors.append(f"{evaluator_type}: branch_rule_json is required")
-    else:
-        missing = contract["branch_rule_fields"] - set(branch_rule_json.keys())
-        if missing:
-            errors.append(f"{evaluator_type}: branch_rule_json missing fields: {missing}")
-        if branch_rule_json.get("type") != contract["branch_rule_type"]:
+    errors: list[str] = []
+
+    # Validate primitive schema fields
+    missing = contract["trigger_fields"] - set(trigger_condition_json.keys())
+    if missing:
+        errors.append(f"{evaluator_type}: trigger_condition_json missing fields: {missing}")
+
+    # Validate runtime trigger contract if field/operator/threshold are present
+    has_field = "field" in trigger_condition_json
+    has_operator = "operator" in trigger_condition_json
+    has_threshold = "threshold" in trigger_condition_json
+
+    if has_field or has_operator:
+        # field or operator signals runtime trigger contract intent;
+        # threshold alone is a primitive contract field (e.g. BINARY_RISK_GATE)
+        if not (has_field and has_operator and has_threshold):
+            present = [k for k in ("field", "operator", "threshold") if k in trigger_condition_json]
+            missing_trigger = [k for k in ("field", "operator", "threshold") if k not in trigger_condition_json]
             errors.append(
-                f"{evaluator_type}: branch_rule_json.type must be "
-                f"'{contract['branch_rule_type']}', got '{branch_rule_json.get('type')}'"
+                f"{evaluator_type}: trigger contract has {present} but missing {missing_trigger}. "
+                "All three (field, operator, threshold) are required for runtime gating."
+            )
+        elif trigger_condition_json["operator"] not in TRIGGER_OPERATORS:
+            errors.append(
+                f"{evaluator_type}: unsupported trigger operator '{trigger_condition_json['operator']}'. "
+                f"Supported: {sorted(TRIGGER_OPERATORS.keys())}"
             )
 
     return errors
 
 
-def validate_spawn_rule(spawn_rule_json: dict | None) -> list[str]:
+def validate_branch_rule_json(
+    evaluator_type: str,
+    branch_rule_json: Optional[dict],
+) -> list[str]:
+    """Validate branch_rule_json for a primitive."""
+    if evaluator_type not in EVALUATOR_PRIMITIVES:
+        return [f"Unknown evaluator_type: {evaluator_type}"]
+
+    contract = PRIMITIVE_CONTRACTS[evaluator_type]
+    if branch_rule_json is None:
+        return [f"{evaluator_type}: branch_rule_json is required"]
+
+    errors: list[str] = []
+    missing = contract["branch_rule_fields"] - set(branch_rule_json.keys())
+    if missing:
+        errors.append(f"{evaluator_type}: branch_rule_json missing fields: {missing}")
+    if branch_rule_json.get("type") != contract["branch_rule_type"]:
+        errors.append(
+            f"{evaluator_type}: branch_rule_json.type must be "
+            f"'{contract['branch_rule_type']}', got '{branch_rule_json.get('type')}'"
+        )
+
+    return errors
+
+
+def validate_branch_rule_set(
+    evaluator_type: str,
+    branches: list[CheckpointBranch],
+) -> list[str]:
+    """Validate every branch rule and require a shared evaluator contract."""
+    errors: list[str] = []
+    if not branches:
+        return ["checkpoint must define at least one branch"]
+
+    shared_rule = None
+    for branch in branches:
+        branch_errors = validate_branch_rule_json(evaluator_type, branch.branch_rule_json)
+        for error in branch_errors:
+            errors.append(f"Branch {branch.id}: {error}")
+
+        if branch.branch_rule_json is None:
+            continue
+
+        if shared_rule is None:
+            shared_rule = branch.branch_rule_json
+        elif branch.branch_rule_json != shared_rule:
+            errors.append(
+                "branch_rule_json must match across branches for schema-driven evaluation"
+            )
+
+    return errors
+
+
+def validate_spawn_rule(spawn_rule_json: Optional[dict]) -> list[str]:
     """Validate a theatre_spawn_rule_json config."""
     if spawn_rule_json is None:
         return []
@@ -156,52 +247,88 @@ def _seeded_rng(seed: int, checkpoint_id: str) -> random.Random:
 
 # ── Trigger Condition Evaluation ──
 
+# Supported trigger operators for field/operator/value evaluation
+TRIGGER_OPERATORS = {
+    "gte": lambda v, t: v >= t,
+    "gt": lambda v, t: v > t,
+    "lte": lambda v, t: v <= t,
+    "lt": lambda v, t: v < t,
+    "eq": lambda v, t: v == t,
+    "ne": lambda v, t: v != t,
+}
+
+
+def _resolve_trigger_value(
+    field: str,
+    agent_action: str,
+    state_vector: dict,
+) -> float:
+    """Resolve a trigger field value from state_vector first, then agent_action.
+
+    state_vector is the authoritative source. agent_action is fallback for
+    fields not yet accumulated in state.
+    """
+    if field in state_vector:
+        try:
+            return float(state_vector[field])
+        except (TypeError, ValueError):
+            pass
+    return _parse_action_value(agent_action, field)
+
+
 def _trigger_condition_met(
-    trigger_condition_json: dict | None,
+    trigger_condition_json: Optional[dict],
     agent_action: str,
     state_vector: dict,
 ) -> bool:
     """Evaluate whether a checkpoint's trigger condition is met.
 
-    trigger_condition_json is evaluated against agent_action and state_vector.
-    Returns True if the checkpoint should activate, False to skip.
+    Supports two trigger contract forms:
 
-    When trigger_condition_json is None, the checkpoint always activates (legacy).
+    1. field/operator/threshold — general purpose:
+       {"type": "...", "field": "risk", "operator": "gte", "threshold": 0.5, ...}
+       Evaluates: state_vector[field] <operator> threshold
+
+    2. "always" — unconditional activation:
+       {"type": "always"} or trigger_condition_json is None
+
+    The "type" field is retained for schema compatibility with evaluator primitives
+    but does NOT select primitive-specific logic. Only the field/operator/threshold
+    triple drives gating. Extra fields (metric, resource, etc.) are ignored at
+    trigger evaluation time — they exist for template documentation only.
+
+    Returns True if the checkpoint should activate, False to skip.
+    Raises ValueError for unsupported operators (fail-fast at runtime).
     """
     if trigger_condition_json is None:
         return True
 
-    tc_type = trigger_condition_json.get("type")
+    tc_type = trigger_condition_json.get("type", "")
 
-    if tc_type == "BINARY_RISK_GATE":
-        # Activates when metric exceeds threshold
-        threshold = trigger_condition_json.get("threshold", 0.0)
-        metric = trigger_condition_json.get("metric", "")
-        value = _parse_action_value(agent_action, metric)
-        return value >= threshold
+    # Explicit always-activate
+    if tc_type == "always":
+        return True
 
-    if tc_type == "RESOURCE_DEPLETION":
-        # Activates when resource level triggers depletion curve
-        resource = trigger_condition_json.get("resource", "")
-        value = state_vector.get(resource, _parse_action_value(agent_action, resource))
-        return value > 0  # Active as long as resource exists
+    # field/operator/threshold evaluation
+    field = trigger_condition_json.get("field")
+    operator = trigger_condition_json.get("operator")
+    threshold = trigger_condition_json.get("threshold")
 
-    if tc_type == "DETECTION_EVENT":
-        # Activates when detection probability is non-trivial
-        base_prob = trigger_condition_json.get("base_detection_probability", 0.0)
-        return base_prob > 0
+    if field is not None and operator is not None and threshold is not None:
+        op_fn = TRIGGER_OPERATORS.get(operator)
+        if op_fn is None:
+            raise ValueError(
+                f"Unsupported trigger operator '{operator}'. "
+                f"Supported: {sorted(TRIGGER_OPERATORS.keys())}"
+            )
+        value = _resolve_trigger_value(field, agent_action, state_vector)
+        return op_fn(value, float(threshold))
 
-    if tc_type == "TIMING_BREACH":
-        # Activates when within deadline range
-        deadline = trigger_condition_json.get("deadline_sec", float("inf"))
-        return deadline < float("inf")
-
-    if tc_type == "MISSION_COMPLETION":
-        # Activates when there are required objectives to check
-        required = trigger_condition_json.get("required_objectives", [])
-        return len(required) > 0
-
-    # Unknown type: activate by default (safe fallback)
+    # Legacy fallback: if trigger_condition_json has a recognized type but no
+    # field/operator/threshold, activate unconditionally. This preserves backward
+    # compatibility for templates that define trigger_condition_json with only
+    # primitive-specific metadata fields (type, metric, resource, etc.) that were
+    # never intended as runtime gates.
     return True
 
 
@@ -513,28 +640,15 @@ def validate_template_checkpoints(
             .where(CheckpointBranch.checkpoint_id == cp.id)
         ).scalars().all()
 
-        # Validate checkpoint config
-        # branch_rule_json is checkpoint-level evaluation logic. All branches of a
-        # checkpoint share the same rule (the evaluator returns a branch index).
-        # We validate using the first branch's rule and verify consistency.
-        branch_rule = None
-        if branches:
-            branch_rule = branches[0].branch_rule_json
-            # Verify all branches share the same rule type
-            for br in branches[1:]:
-                if br.branch_rule_json is not None and branch_rule is not None:
-                    if br.branch_rule_json.get("type") != branch_rule.get("type"):
-                        all_errors.append(
-                            f"Checkpoint {cp.id} (seq {cp.sequence_num}): "
-                            f"inconsistent branch_rule_json types across branches"
-                        )
-
-        errors = validate_checkpoint_config(
+        errors = validate_trigger_condition_json(
             cp.evaluator_type,
             cp.trigger_condition_json,
-            branch_rule,
         )
         for e in errors:
+            all_errors.append(f"Checkpoint {cp.id} (seq {cp.sequence_num}): {e}")
+
+        branch_errors = validate_branch_rule_set(cp.evaluator_type, branches)
+        for e in branch_errors:
             all_errors.append(f"Checkpoint {cp.id} (seq {cp.sequence_num}): {e}")
 
         # Validate spawn rule if present
@@ -550,11 +664,16 @@ def evaluate_checkpoints(
     run: ScenarioRun,
     seed: int,
     agent_actions: Optional[dict[str, str]] = None,
+    ws_events: Optional[list] = None,
 ) -> list[RunCheckpointResult]:
-    """Evaluate all checkpoints for a run using schema-driven evaluation.
+    """Evaluate all checkpoints for a run.
 
     Uses primitive evaluators when branch_rule_json is present,
     falls back to legacy hash-based selection otherwise.
+
+    ws_events: if provided, checkpoint resolution and theatre spawn events are
+    appended as dicts for the caller to emit asynchronously after run_sync returns.
+    This avoids calling async WS broadcast from sync context.
     """
     if agent_actions is None:
         agent_actions = {}
@@ -614,16 +733,29 @@ def evaluate_checkpoints(
             )
             continue
 
-        # Schema-driven evaluation if branch_rule_json present on checkpoint's branches
-        # branch_rule_json is checkpoint-level logic stored on branches (shared across all)
-        first_branch_rule = branches[0].branch_rule_json if branches else None
+        has_schema_rules = any(branch.branch_rule_json is not None for branch in branches)
 
-        if first_branch_rule is not None:
+        if has_schema_rules:
+            branch_errors = validate_branch_rule_set(
+                current_checkpoint.evaluator_type,
+                branches,
+            )
+            if branch_errors:
+                logger.error(
+                    "Checkpoint %s has invalid schema branch config: %s",
+                    current_checkpoint.id,
+                    "; ".join(branch_errors),
+                )
+                run.status = "FAILED"
+                run.completed_at = datetime.now(timezone.utc)
+                session.flush()
+                return results
+
             try:
                 selected_branch, eval_detail = select_branch(
                     evaluator_type=current_checkpoint.evaluator_type,
                     branches=branches,
-                    branch_rule_json=first_branch_rule,
+                    branch_rule_json=branches[0].branch_rule_json,
                     agent_action=agent_action,
                     seed=seed,
                     state_vector=state_vector,
@@ -673,6 +805,19 @@ def evaluate_checkpoints(
         session.add(result)
         results.append(result)
 
+        # Collect WS event for checkpoint resolution
+        if ws_events is not None:
+            ws_events.append({
+                "type": "CHECKPOINT_RESOLVED",
+                "pack_id": pack.id,
+                "run_id": run.id,
+                "checkpoint_id": current_checkpoint.id,
+                "selected_branch_id": selected_branch.id,
+                "outcome_type": selected_branch.outcome_type,
+                "reward": reward,
+                "sequence_num": current_checkpoint.sequence_num,
+            })
+
         # Spawn theatre via rule evaluation or legacy boolean
         from backend.services.theatre_spawner import should_spawn, spawn_theatre
         if should_spawn(
@@ -682,7 +827,15 @@ def evaluate_checkpoints(
             run.run_mode,
             current_checkpoint,
         ):
-            spawn_theatre(session, current_checkpoint, pack, run, result)
+            spawned = spawn_theatre(session, current_checkpoint, pack, run, result)
+            if spawned and ws_events is not None:
+                ws_events.append({
+                    "type": "THEATRE_SPAWNED",
+                    "pack_id": pack.id,
+                    "run_id": run.id,
+                    "theatre_id": spawned.id,
+                    "checkpoint_id": current_checkpoint.id,
+                })
 
         # Update state vector for next checkpoint
         state_vector["cumulative_reward"] = round(state_vector["cumulative_reward"] + reward, 4)
@@ -705,11 +858,118 @@ def evaluate_checkpoints(
     return results
 
 
+def replay_recorded_path(
+    session: Session,
+    run: ScenarioRun,
+    source_run_id: str,
+) -> list[RunCheckpointResult]:
+    """Replay a completed run by copying its recorded checkpoint results.
+
+    Creates new RunCheckpointResult records on `run` that mirror the source run's
+    branch selections, rewards, and state vectors exactly. No evaluator dispatch
+    or branch selection occurs — the recorded path is restored verbatim.
+
+    Integrity checks:
+    - Source run must exist and be COMPLETED with persisted results
+    - Source run must belong to the same user (via pack.user_id)
+    - Source run must use the same template (via pack.template_id)
+
+    Theatre provenance: replay does NOT copy spawned_theatre_id. Replayed results
+    record the source theatre reference in state_vector_json metadata only. This
+    prevents replay packs from claiming they spawned theatres that belong to the
+    source run.
+
+    Raises ValueError if any integrity condition fails.
+    """
+    source_run = session.get(ScenarioRun, source_run_id)
+    if source_run is None:
+        raise ValueError(f"Source run '{source_run_id}' not found for replay")
+    if source_run.status != "COMPLETED":
+        raise ValueError(
+            f"Source run '{source_run_id}' is {source_run.status}, not COMPLETED. "
+            "Only completed runs can be replayed."
+        )
+
+    # Integrity: same user, same template
+    replay_pack = session.get(ScenarioPack, run.pack_id)
+    source_pack = session.get(ScenarioPack, source_run.pack_id)
+    if not replay_pack or not source_pack:
+        raise ValueError("Could not resolve packs for replay integrity check")
+    if replay_pack.user_id != source_pack.user_id:
+        raise ValueError(
+            f"Replay integrity: source run belongs to user '{source_pack.user_id}', "
+            f"but replay pack belongs to user '{replay_pack.user_id}'. "
+            "Replay source must be owned by the same user."
+        )
+    if replay_pack.template_id != source_pack.template_id:
+        raise ValueError(
+            f"Replay integrity: source run uses template '{source_pack.template_id}', "
+            f"but replay pack uses template '{replay_pack.template_id}'. "
+            "Replay source must use the same template."
+        )
+
+    source_results = session.execute(
+        select(RunCheckpointResult)
+        .where(RunCheckpointResult.run_id == source_run_id)
+        .order_by(RunCheckpointResult.resolved_at)
+    ).scalars().all()
+
+    if not source_results:
+        raise ValueError(f"Source run '{source_run_id}' has no checkpoint results to replay")
+
+    run.status = "RUNNING"
+    run.started_at = datetime.now(timezone.utc)
+    run.environment_seed = source_run.environment_seed
+
+    results = []
+    for src in source_results:
+        # Build state vector with replay provenance metadata
+        sv = {
+            **(src.state_vector_json or {}),
+            "replay_source_run_id": source_run_id,
+            "replay_source_result_id": src.id,
+        }
+        # Record source theatre reference in metadata only — do NOT set
+        # spawned_theatre_id on replay results (prevents provenance corruption)
+        if src.spawned_theatre_id:
+            sv["replay_source_spawned_theatre_id"] = src.spawned_theatre_id
+
+        result = RunCheckpointResult(
+            id=str(uuid.uuid4()),
+            run_id=run.id,
+            checkpoint_id=src.checkpoint_id,
+            selected_branch_id=src.selected_branch_id,
+            agent_decision_json=src.agent_decision_json,
+            reward=src.reward,
+            state_vector_json=sv,
+            resolved_at=datetime.now(timezone.utc),
+        )
+        session.add(result)
+        results.append(result)
+
+        run.current_checkpoint_seq = max(
+            run.current_checkpoint_seq,
+            (src.state_vector_json or {}).get("sequence_num", 0),
+        )
+        run.total_reward += src.reward
+
+    run.status = "COMPLETED"
+    run.completed_at = datetime.now(timezone.utc)
+    run.total_reward = round(run.total_reward, 4)
+    session.flush()
+
+    logger.info(
+        "Replayed run %s from source %s (%d results copied)",
+        run.id, source_run_id, len(results),
+    )
+    return results
+
+
 def compute_branch_probabilities(
     session: Session,
     template_id: str,
 ) -> dict[str, dict[str, float]]:
-    """Compute branch selection probabilities from completed runs."""
+    """Compute branch selection probabilities from fresh completed runs only."""
     checkpoints = session.execute(
         select(ScenarioCheckpoint)
         .where(ScenarioCheckpoint.template_id == template_id)
@@ -721,23 +981,29 @@ def compute_branch_probabilities(
     probabilities: dict[str, dict[str, float]] = {}
 
     for cp in checkpoints:
-        results = session.execute(
-            select(RunCheckpointResult)
-            .where(RunCheckpointResult.checkpoint_id == cp.id)
-        ).scalars().all()
+        branch_rows = session.execute(
+            select(
+                RunCheckpointResult.selected_branch_id,
+                func.count(RunCheckpointResult.id),
+            )
+            .join(ScenarioRun, RunCheckpointResult.run_id == ScenarioRun.id)
+            .where(
+                RunCheckpointResult.checkpoint_id == cp.id,
+                ScenarioRun.status == "COMPLETED",
+                ScenarioRun.run_mode != "REPLAY",
+            )
+            .group_by(RunCheckpointResult.selected_branch_id)
+        ).all()
 
-        if not results:
+        if not branch_rows:
             probabilities[cp.id] = None
             continue
 
-        branch_counts: dict[str, int] = {}
-        total = len(results)
-        for r in results:
-            branch_counts[r.selected_branch_id] = branch_counts.get(r.selected_branch_id, 0) + 1
+        total = sum(count for _, count in branch_rows)
 
         probabilities[cp.id] = {
             branch_id: round(count / total, 4)
-            for branch_id, count in branch_counts.items()
+            for branch_id, count in branch_rows
         }
 
     return probabilities

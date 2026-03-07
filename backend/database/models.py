@@ -901,6 +901,10 @@ class ScenarioRun(Base):
     telemetry_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     episode_duration_sec: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     total_reward: Mapped[float] = mapped_column(Float, default=0.0)
+    source_run_id: Mapped[Optional[str]] = mapped_column(
+        String(50), ForeignKey("scenario_runs.id"), nullable=True,
+        comment="For REPLAY mode: the source run whose recorded path is replayed"
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships

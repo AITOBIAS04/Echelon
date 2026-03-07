@@ -20,6 +20,7 @@ from backend.database.models import (
     ScenarioCheckpoint,
     ScenarioPack,
     ScenarioRun,
+    RunCheckpointResult,
     Theatre,
 )
 from backend.schemas.scenario_packs import (
@@ -292,7 +293,7 @@ async def get_branch_probabilities(
     template_id: str,
     session: AsyncSession = Depends(get_db),
 ):
-    """Get branch selection probabilities computed from completed runs."""
+    """Get branch selection probabilities computed from fresh completed runs."""
     result = await session.execute(
         select(ScenarioPackTemplate).where(ScenarioPackTemplate.id == template_id)
     )
@@ -301,34 +302,9 @@ async def get_branch_probabilities(
         raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
 
     from backend.services.checkpoint_evaluator import compute_branch_probabilities
-    # compute_branch_probabilities uses sync Session, but data is queryable
-    # We run the query inline for async compatibility
-    from backend.database.models import RunCheckpointResult
-    checkpoints = (await session.execute(
-        select(ScenarioCheckpoint)
-        .where(ScenarioCheckpoint.template_id == template_id)
-    )).scalars().all()
-
-    probabilities: dict = {}
-    for cp in checkpoints:
-        results = (await session.execute(
-            select(RunCheckpointResult)
-            .where(RunCheckpointResult.checkpoint_id == cp.id)
-        )).scalars().all()
-
-        if not results:
-            probabilities[cp.id] = None
-            continue
-
-        branch_counts: dict[str, int] = {}
-        total = len(results)
-        for r in results:
-            branch_counts[r.selected_branch_id] = branch_counts.get(r.selected_branch_id, 0) + 1
-
-        probabilities[cp.id] = {
-            bid: round(count / total, 4)
-            for bid, count in branch_counts.items()
-        }
+    probabilities = await session.run_sync(
+        lambda sync_session: compute_branch_probabilities(sync_session, template_id)
+    )
 
     return BranchProbabilitiesResponse(
         template_id=template_id,
@@ -526,19 +502,23 @@ async def get_derived_theatres(
     if pack.user_id != user.user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    # Get checkpoint IDs for this pack's template
-    cp_ids = (await session.execute(
-        select(ScenarioCheckpoint.id)
-        .where(ScenarioCheckpoint.template_id == pack.template_id)
+    # Scope through RunCheckpointResult → ScenarioRun to ensure theatres
+    # belong to runs of THIS pack, not just any pack sharing the same template.
+    spawned_theatre_ids = (await session.execute(
+        select(RunCheckpointResult.spawned_theatre_id)
+        .join(ScenarioRun, RunCheckpointResult.run_id == ScenarioRun.id)
+        .where(
+            ScenarioRun.pack_id == pack_id,
+            RunCheckpointResult.spawned_theatre_id.isnot(None),
+        )
     )).scalars().all()
 
-    if not cp_ids:
+    if not spawned_theatre_ids:
         return []
 
-    # Get theatres spawned from these checkpoints
     theatres = (await session.execute(
         select(Theatre)
-        .where(Theatre.spawned_from_checkpoint_id.in_(cp_ids))
+        .where(Theatre.id.in_(spawned_theatre_ids))
         .order_by(Theatre.created_at)
     )).scalars().all()
 

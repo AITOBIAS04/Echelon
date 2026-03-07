@@ -5,7 +5,11 @@ Policies:
 - TRAINING: random seed per run (stochastic, varying)
 - EVALUATION: controlled stochasticity from a fixed seed set
 - CALIBRATION: canonical seed set for cross-run comparability
-- REPLAY: exact recorded seed from previous run
+
+REPLAY mode does NOT use this module. REPLAY uses replay_recorded_path() in
+checkpoint_evaluator.py to copy persisted results from a source run verbatim.
+The seed is preserved as metadata on the replay run but is not used for
+branch selection.
 """
 
 import random

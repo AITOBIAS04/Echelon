@@ -249,7 +249,14 @@ class ConnectionManager:
         await self.broadcast_to_channel(f"theatre:{theatre_id}", "AGENT_WITHDRAWN", payload)
         await self.broadcast_to_channel(f"agent:{agent_id}", "AGENT_WITHDRAWN", payload)
 
-    async def broadcast_paradox_risk_changed(self, theatre_id: str, old_level: str, new_level: str, factors: dict):
+    async def broadcast_paradox_risk_changed(
+        self,
+        theatre_id: str,
+        old_level: str,
+        new_level: str,
+        factors: dict,
+        reason: str | None = None,
+    ):
         """Broadcast paradox risk level change."""
         payload = {
             "theatre_id": theatre_id,
@@ -257,6 +264,8 @@ class ConnectionManager:
             "new_level": new_level,
             "factors": factors,
         }
+        if reason is not None:
+            payload["reason"] = reason
         await self.broadcast_global("PARADOX_RISK_CHANGED", payload)
         await self.broadcast_to_channel(f"theatre:{theatre_id}", "PARADOX_RISK_CHANGED", payload)
 
@@ -367,6 +376,5 @@ async def websocket_endpoint(websocket: WebSocket):
     
     except WebSocketDisconnect:
         manager.disconnect(connection_id)
-
 
 
