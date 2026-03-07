@@ -1,8 +1,9 @@
 /**
  * ScenarioPacksPage — Scenario Packs browser (Alpamayo Studio).
  *
- * Branching scenario environments for RLMF and agent learning.
- * Separate product surface from Theatre Templates / Create Theatre.
+ * Wired to GET /api/v1/scenario-pack-templates for real catalog data.
+ * Shows template cards with family badge, checkpoint count, fork range,
+ * and RUNNABLE vs CATALOG_ONLY status.
  *
  * PRODUCT DISTINCTION:
  *   - Theatre Templates = live market contracts (Create Theatre flow)
@@ -10,21 +11,67 @@
  *   - Alpamayo = recommendation + scenario-construction intelligence
  *   - RLMF Exports = downstream data products
  *
- * VOCABULARY: Scenario Pack, Checkpoint, Branch, Outcome Path, Replay,
- *   Telemetry, Derived Theatre, Training Use.
- * NEVER: Theatre Template, Inquiry Class, Resolution Pattern.
- *
- * No backend endpoint exists yet. This page shows the catalog structure
- * with empty state. Feature-flagged for Cycle 017+.
- *
  * DESIGN REF: output/design_reference/echelon_scenario_packs_v1.html
  */
 
-import { Boxes, GitBranch, BarChart3, Play } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Boxes, GitBranch, BarChart3, Play, Loader2 } from 'lucide-react';
 import { EmptyState } from '../components/empty-states/EmptyState';
+import {
+  scenarioPackApi,
+  type ScenarioPackTemplateSummary,
+} from '../api/scenarioPacks';
+
+const FAMILY_LABELS: Record<string, string> = {
+  NAV_UNC: 'Navigation',
+  SOC_NAV: 'Social',
+  MAN_FORCE: 'Manual Force',
+  MARL_C3: 'Multi-Agent',
+  '3D_INERT': '3D Inertial',
+  LONG_HZN: 'Long Horizon',
+  PUZ_LOGIC: 'Puzzle',
+  ADV_AIR: 'Adversarial',
+  PREC_MAN: 'Precision',
+};
 
 export function ScenarioPacksPage() {
-  // No backend — show the page chrome with empty catalog
+  const [templates, setTemplates] = useState<ScenarioPackTemplateSummary[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [familyFilter, setFamilyFilter] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    scenarioPackApi
+      .listTemplates({
+        family: familyFilter ?? undefined,
+        limit: 50,
+      })
+      .then((res) => {
+        if (!cancelled) {
+          setTemplates(res.templates);
+          setTotal(res.total);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err.message || 'Failed to load templates');
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [familyFilter]);
+
+  // Get unique families for filter tabs
+  const families = Object.keys(FAMILY_LABELS);
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-5">
@@ -41,13 +88,22 @@ export function ScenarioPacksPage() {
         </div>
       </div>
 
-      {/* Stats bar (skeleton) */}
+      {/* Stats bar */}
       <div className="flex gap-4 p-3 bg-terminal-surface border border-terminal-border rounded-lg flex-wrap">
         {[
-          { label: 'Total Packs', value: '—' },
-          { label: 'Active Runs', value: '—' },
-          { label: 'Total Branches', value: '—' },
-          { label: 'Checkpoints', value: '—' },
+          { label: 'Templates', value: loading ? '...' : String(total) },
+          {
+            label: 'Runnable',
+            value: loading
+              ? '...'
+              : String(templates.filter((t) => t.template_status === 'RUNNABLE').length),
+          },
+          {
+            label: 'Catalog Only',
+            value: loading
+              ? '...'
+              : String(templates.filter((t) => t.template_status === 'CATALOG_ONLY').length),
+          },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -63,68 +119,106 @@ export function ScenarioPacksPage() {
         ))}
       </div>
 
-      {/* Filter bar (disabled skeleton) */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-0.5 bg-terminal-panel rounded-lg p-0.5 border border-terminal-border">
-          {['All', 'Ready', 'Running', 'Draft'].map((tab, i) => (
-            <span
-              key={tab}
-              className={`px-3 py-1 rounded-md text-xs font-medium ${
-                i === 0
-                  ? 'bg-terminal-surface text-terminal-text shadow-sm'
-                  : 'text-terminal-text-muted'
-              }`}
+      {/* Family filter tabs */}
+      <div className="flex items-center gap-1 flex-wrap">
+        <button
+          onClick={() => setFamilyFilter(null)}
+          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+            familyFilter === null
+              ? 'bg-terminal-surface text-terminal-text shadow-sm border border-terminal-border'
+              : 'text-terminal-text-muted hover:text-terminal-text'
+          }`}
+        >
+          All
+        </button>
+        {families.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFamilyFilter(f)}
+            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+              familyFilter === f
+                ? 'bg-terminal-surface text-terminal-text shadow-sm border border-terminal-border'
+                : 'text-terminal-text-muted hover:text-terminal-text'
+            }`}
+          >
+            {FAMILY_LABELS[f] || f}
+          </button>
+        ))}
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 text-terminal-text-muted animate-spin" />
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && !loading && (
+        <div className="p-4 bg-status-failure/10 border border-status-failure/30 rounded-lg text-xs text-status-failure">
+          {error}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && !error && templates.length === 0 && (
+        <EmptyState
+          type="ZERO_STATE"
+          icon={<Boxes className="w-7 h-7" />}
+          title="No scenario packs yet"
+          description="Scenario packs are branching environments for agent training and RLMF telemetry. Seed the template catalog to get started."
+          actions={[]}
+        />
+      )}
+
+      {/* Template grid */}
+      {!loading && !error && templates.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {templates.map((t) => (
+            <div
+              key={t.id}
+              className="bg-terminal-surface border border-terminal-border rounded-lg p-4 hover:border-terminal-text/20 transition-colors"
             >
-              {tab}
-            </span>
+              {/* Header */}
+              <div className="flex items-start justify-between mb-2">
+                <div className="text-sm font-semibold text-terminal-text">{t.name}</div>
+                <span
+                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
+                    t.template_status === 'RUNNABLE'
+                      ? 'bg-status-success/15 text-status-success'
+                      : 'bg-terminal-panel text-terminal-text-muted'
+                  }`}
+                >
+                  {t.template_status}
+                </span>
+              </div>
+
+              {/* Family badge */}
+              <div className="text-[10px] font-mono text-terminal-text-muted mb-2">
+                {FAMILY_LABELS[t.family] || t.family} ({t.family})
+              </div>
+
+              {/* Description */}
+              {t.description && (
+                <div className="text-[11px] text-terminal-text-secondary mb-3 line-clamp-2">
+                  {t.description}
+                </div>
+              )}
+
+              {/* Stats row */}
+              <div className="flex items-center gap-3 text-[10px] text-terminal-text-muted">
+                <span className="flex items-center gap-1">
+                  <GitBranch className="w-3 h-3" />
+                  {t.checkpoint_count} checkpoints
+                </span>
+                <span>
+                  {t.fork_points_min}–{t.fork_points_max} forks
+                </span>
+              </div>
+            </div>
           ))}
         </div>
-      </div>
-
-      {/* Empty catalog */}
-      <EmptyState
-        type="ZERO_STATE"
-        icon={<Boxes className="w-7 h-7" />}
-        title="No scenario packs yet"
-        description="Scenario packs are branching environments for agent training and RLMF telemetry. Each pack contains checkpoints, outcome branches, and replay data that agents use to learn from simulated market conditions."
-        actions={[
-          {
-            label: 'Browse Starter Packs',
-            onClick: () => {
-              // Wire to scenario packs catalog when backend exists
-            },
-            variant: 'primary',
-          },
-        ]}
-      />
-
-      {/* Concept cards — what scenario packs contain */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-        <div className="bg-terminal-surface border border-terminal-border rounded-lg p-4">
-          <GitBranch className="w-5 h-5 text-status-paradox mb-2" />
-          <div className="text-xs font-semibold text-terminal-text mb-1">Branching Outcomes</div>
-          <div className="text-[11px] text-terminal-text-muted leading-relaxed">
-            Each pack defines forking outcome paths. Agents explore branches to learn how
-            different market conditions resolve.
-          </div>
-        </div>
-        <div className="bg-terminal-surface border border-terminal-border rounded-lg p-4">
-          <BarChart3 className="w-5 h-5 text-status-info mb-2" />
-          <div className="text-xs font-semibold text-terminal-text mb-1">RLMF Telemetry</div>
-          <div className="text-[11px] text-terminal-text-muted leading-relaxed">
-            Training data from scenario runs feeds into RLMF exports. Replay data captures
-            agent decisions at each checkpoint.
-          </div>
-        </div>
-        <div className="bg-terminal-surface border border-terminal-border rounded-lg p-4">
-          <Play className="w-5 h-5 text-status-success mb-2" />
-          <div className="text-xs font-semibold text-terminal-text mb-1">Derived Theatres</div>
-          <div className="text-[11px] text-terminal-text-muted leading-relaxed">
-            High-performing scenarios can be promoted to live theatre templates for
-            real market deployment.
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
