@@ -3,6 +3,7 @@ Scenario Pack API Routes — Template catalog and pack management endpoints.
 
 Sprint 1: Template catalog (list + detail).
 Sprint 2: Pack lifecycle (create, commit, run).
+Sprint 3: Checkpoint resolution, branch probabilities, episode tree, replay.
 """
 
 import logging
@@ -17,6 +18,7 @@ from backend.database.models import (
     ScenarioPackTemplate,
     ScenarioCheckpoint,
     ScenarioPack,
+    ScenarioRun,
 )
 from backend.schemas.scenario_packs import (
     ScenarioPackTemplateResponse,
@@ -25,6 +27,10 @@ from backend.schemas.scenario_packs import (
     ScenarioPackCreate,
     ScenarioPackResponse,
     ScenarioRunResponse,
+    BranchProbabilitiesResponse,
+    EpisodeTreeResponse,
+    EpisodeTreeNode,
+    ForkReplayResponse,
 )
 from backend.dependencies import get_db, get_current_user
 from backend.auth.jwt import TokenData
@@ -271,3 +277,226 @@ async def run_pack(
         return run
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
+
+
+# ── Sprint 3: Branch Probabilities ──────────────────────────────────────────
+
+@templates_router.get(
+    "/{template_id}/branch-probabilities",
+    response_model=BranchProbabilitiesResponse,
+)
+async def get_branch_probabilities(
+    template_id: str,
+    session: AsyncSession = Depends(get_db),
+):
+    """Get branch selection probabilities computed from completed runs."""
+    result = await session.execute(
+        select(ScenarioPackTemplate).where(ScenarioPackTemplate.id == template_id)
+    )
+    template = result.scalar_one_or_none()
+    if not template:
+        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
+
+    from backend.services.checkpoint_evaluator import compute_branch_probabilities
+    # compute_branch_probabilities uses sync Session, but data is queryable
+    # We run the query inline for async compatibility
+    from backend.database.models import RunCheckpointResult
+    checkpoints = (await session.execute(
+        select(ScenarioCheckpoint)
+        .where(ScenarioCheckpoint.template_id == template_id)
+    )).scalars().all()
+
+    probabilities: dict = {}
+    for cp in checkpoints:
+        results = (await session.execute(
+            select(RunCheckpointResult)
+            .where(RunCheckpointResult.checkpoint_id == cp.id)
+        )).scalars().all()
+
+        if not results:
+            probabilities[cp.id] = None
+            continue
+
+        branch_counts: dict[str, int] = {}
+        total = len(results)
+        for r in results:
+            branch_counts[r.selected_branch_id] = branch_counts.get(r.selected_branch_id, 0) + 1
+
+        probabilities[cp.id] = {
+            bid: round(count / total, 4)
+            for bid, count in branch_counts.items()
+        }
+
+    return BranchProbabilitiesResponse(
+        template_id=template_id,
+        probabilities=probabilities,
+    )
+
+
+# ── Sprint 3: Episode Tree ──────────────────────────────────────────────────
+
+@packs_router.get(
+    "/{pack_id}/runs/{run_id}/tree",
+    response_model=EpisodeTreeResponse,
+)
+async def get_episode_tree(
+    pack_id: str,
+    run_id: str,
+    user: TokenData = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Get the episode tree for a completed run."""
+    pack_result = await session.execute(
+        select(ScenarioPack).where(ScenarioPack.id == pack_id)
+    )
+    pack = pack_result.scalar_one_or_none()
+    if not pack:
+        raise HTTPException(status_code=404, detail="Pack not found")
+    if pack.user_id != user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    run_result = await session.execute(
+        select(ScenarioRun).where(
+            ScenarioRun.id == run_id,
+            ScenarioRun.pack_id == pack_id,
+        )
+    )
+    run = run_result.scalar_one_or_none()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    template_result = await session.execute(
+        select(ScenarioPackTemplate).where(ScenarioPackTemplate.id == pack.template_id)
+    )
+    template = template_result.scalar_one_or_none()
+
+    from backend.database.models import RunCheckpointResult, CheckpointBranch
+    cp_results = (await session.execute(
+        select(RunCheckpointResult)
+        .where(RunCheckpointResult.run_id == run_id)
+        .order_by(RunCheckpointResult.resolved_at)
+    )).scalars().all()
+
+    nodes = []
+    for cr in cp_results:
+        cp = (await session.execute(
+            select(ScenarioCheckpoint).where(ScenarioCheckpoint.id == cr.checkpoint_id)
+        )).scalar_one_or_none()
+        br = (await session.execute(
+            select(CheckpointBranch).where(CheckpointBranch.id == cr.selected_branch_id)
+        )).scalar_one_or_none()
+
+        if cp and br:
+            nodes.append(EpisodeTreeNode(
+                checkpoint_id=cp.id,
+                sequence_num=cp.sequence_num,
+                trigger=cp.trigger,
+                market_question=cp.market_question,
+                selected_branch=br.label,
+                outcome_type=br.outcome_type,
+                reward=cr.reward,
+                spawned_theatre_id=cr.spawned_theatre_id,
+            ))
+
+    return EpisodeTreeResponse(
+        run_id=run.id,
+        pack_id=pack.id,
+        template_name=template.name if template else "Unknown",
+        status=run.status,
+        nodes=nodes,
+        total_reward=run.total_reward,
+        episode_duration_sec=run.episode_duration_sec,
+    )
+
+
+# ── Sprint 3: Replay Output ─────────────────────────────────────────────────
+
+@packs_router.get(
+    "/{pack_id}/runs/{run_id}/replay",
+    response_model=ForkReplayResponse,
+)
+async def get_replay(
+    pack_id: str,
+    run_id: str,
+    user: TokenData = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+):
+    """Get ForkReplay-compatible output for a run."""
+    pack_result = await session.execute(
+        select(ScenarioPack).where(ScenarioPack.id == pack_id)
+    )
+    pack = pack_result.scalar_one_or_none()
+    if not pack:
+        raise HTTPException(status_code=404, detail="Pack not found")
+    if pack.user_id != user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    run_result = await session.execute(
+        select(ScenarioRun).where(
+            ScenarioRun.id == run_id,
+            ScenarioRun.pack_id == pack_id,
+        )
+    )
+    run = run_result.scalar_one_or_none()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    template_result = await session.execute(
+        select(ScenarioPackTemplate).where(ScenarioPackTemplate.id == pack.template_id)
+    )
+    template = template_result.scalar_one_or_none()
+
+    from backend.database.models import RunCheckpointResult, CheckpointBranch
+    cp_results = (await session.execute(
+        select(RunCheckpointResult)
+        .where(RunCheckpointResult.run_id == run_id)
+        .order_by(RunCheckpointResult.resolved_at)
+    )).scalars().all()
+
+    disclosure_events = []
+    options = []
+    time_offset = 0
+
+    for cr in cp_results:
+        cp = (await session.execute(
+            select(ScenarioCheckpoint).where(ScenarioCheckpoint.id == cr.checkpoint_id)
+        )).scalar_one_or_none()
+        br = (await session.execute(
+            select(CheckpointBranch).where(CheckpointBranch.id == cr.selected_branch_id)
+        )).scalar_one_or_none()
+
+        if not cp or not br:
+            continue
+
+        disclosure_events.append({
+            "tMs": time_offset,
+            "type": "evidence_flip",
+            "label": f"Checkpoint {cp.sequence_num}: {br.label}",
+        })
+
+        options.append({
+            "label": br.label,
+            "pricePath": [
+                {"tMs": time_offset, "price": 0.5},
+                {"tMs": time_offset + cp.decision_window_sec * 1000,
+                 "price": 1.0 if cr.reward > 0 else 0.0},
+            ],
+        })
+
+        time_offset += cp.decision_window_sec * 1000
+
+    opened_at = run.started_at.isoformat() if run.started_at else run.created_at.isoformat()
+    settled_at = run.completed_at.isoformat() if run.completed_at else None
+
+    return ForkReplayResponse(
+        timelineId=f"scenario_{pack.id}",
+        forkId=run.id,
+        forkQuestion=template.name if template else "Scenario Run",
+        options=options,
+        openedAt=opened_at,
+        settledAt=settled_at,
+        chosenOption=options[-1]["label"] if options else None,
+        outcomeLabel=f"Total reward: {run.total_reward}",
+        disclosureEvents=disclosure_events,
+        notes=f"Seed: {run.environment_seed}, Mode: {run.run_mode}",
+    )

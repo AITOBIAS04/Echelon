@@ -608,14 +608,14 @@
           "local_id": "sprint-2",
           "global_id": 50,
           "label": "Pack Lifecycle",
-          "status": "pending",
+          "status": "completed",
           "tasks": 5
         },
         {
           "local_id": "sprint-3",
           "global_id": 51,
           "label": "Checkpoint Resolution + Branching",
-          "status": "pending",
+          "status": "completed",
           "tasks": 5
         },
         {
