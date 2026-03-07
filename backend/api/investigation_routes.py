@@ -44,6 +44,7 @@ from backend.services.domain_filter_validator import (
     validate_signal_source,
 )
 from backend.services.stop_condition_orchestrator import evaluate_after_mutation
+from backend.services.certificate_lifecycle_service import transition_to_ready, run_batch_anchor
 from backend.websockets.realtime_manager import manager as ws_manager
 from backend.schemas.investigation_schemas import (
     CertificateResponse,
@@ -663,23 +664,72 @@ async def get_readiness(
     }
 
 
-@router.get("/{investigation_id}/certificate", response_model=CertificateResponse)
+@router.post("/certificates/anchor-batch")
+async def anchor_batch(db: AsyncSession = Depends(get_db)):
+    """Process all READY certificates in a batch anchor.
+
+    Transitions READY -> ANCHORED -> ISSUED atomically.
+    Idempotent: second call is a no-op if no READY certificates exist.
+    """
+    issued_ids = await run_batch_anchor(db)
+    await db.commit()
+    return {
+        "issued_count": len(issued_ids),
+        "issued_certificate_ids": issued_ids,
+    }
+
+
+@router.get("/{investigation_id}/certificate")
 async def get_certificate(
     investigation_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """Build and return the investigation certificate."""
+    """Return current certificate state (READY/ANCHORED/ISSUED) without building."""
     repo = InvestigationRepository(db)
     inv = await repo.get(investigation_id)
     if not inv:
         raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
+    if not inv.certificate:
+        raise HTTPException(status_code=404, detail="No certificate exists. Use POST .../certificate/build.")
+    cert = inv.certificate
+    return {
+        "certificate_id": cert.id,
+        "investigation_id": cert.investigation_id,
+        "certificate_status": cert.certificate_status,
+        "certificate_hash": cert.certificate_hash,
+        "routing_decision": cert.routing_decision,
+        "routing_reason": cert.routing_reason,
+        "ready_at": cert.ready_at.isoformat() if cert.ready_at else None,
+        "anchored_at": cert.anchored_at.isoformat() if cert.anchored_at else None,
+        "issued_at": cert.issued_at.isoformat() if cert.issued_at else None,
+        "batch_anchor_hash": cert.batch_anchor_hash,
+        "certificate_json": cert.certificate_json,
+    }
 
+
+@router.post("/{investigation_id}/certificate/build", status_code=201)
+async def build_certificate(
+    investigation_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Build certificate and transition to READY.
+
+    Prerequisites: Investigation must be ACTIVE with stop conditions satisfied.
+    Result: Certificate persisted with status=READY, investigation=CERTIFICATE_READY.
+    """
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
+    if inv.certificate:
+        raise HTTPException(status_code=409, detail="Certificate already exists")
+
+    # Rebuild toolset and build certificate (existing logic)
     toolset = _rebuild_toolset(inv)
     cert = toolset.build_certificate()
 
-    # Persist certificate to DB
-    old_status = inv.status.lower()
-    await repo.persist_certificate(
+    # Persist certificate record in READY state (does NOT set COMPLETED)
+    cert_record = await repo.persist_certificate_as_ready(
         investigation_id=investigation_id,
         certificate_hash=cert.certificate_hash,
         certificate_json={
@@ -690,51 +740,23 @@ async def get_certificate(
         routing_decision=cert.routing_decision,
         routing_reason=cert.routing_reason,
     )
+
+    # Transition to READY via lifecycle service
+    await transition_to_ready(db, cert_record, inv)
     await db.commit()
 
-    await ws_manager.broadcast_investigation_status_changed(
-        investigation_id=investigation_id,
-        old_status=old_status,
-        new_status="completed",
-    )
-
-    # Investigation completion may affect paradox risk (evidence is now finalized)
+    # Trigger paradox-risk recompute
     await _recompute_theatre_paradox_risk(
         db,
         inv.theatre_id,
         inv.inquiry_class,
-        "investigation_completed",
+        "certificate_ready",
     )
 
-    return CertificateResponse(
-        certificate_id=cert.certificate_id,
-        theatre_id=cert.theatre_id,
-        construct_id=cert.construct_id,
-        inquiry_class=cert.inquiry_class,
-        stop_condition=cert.stop_condition,
-        stop_config=cert.stop_config,
-        investigation_started_at=cert.investigation_started_at,
-        investigation_completed_at=cert.investigation_completed_at,
-        evidence_item_count=cert.evidence_item_count,
-        evidence_redaction_count=cert.evidence_redaction_count,
-        evidence_envelope_hash=cert.evidence_envelope_hash,
-        provenance_summary=cert.provenance_summary,
-        claim_count=cert.claim_count,
-        claim_status_summary=cert.claim_status_summary,
-        claim_graph_root_hash=cert.claim_graph_root_hash,
-        counter_signals_checked=cert.counter_signals_checked,
-        counter_signals_gaps=cert.counter_signals_gaps,
-        counter_signals_material=cert.counter_signals_material,
-        counter_signal_detail=cert.counter_signal_detail,
-        drift_event_count=cert.drift_event_count,
-        has_material_drift=cert.has_material_drift,
-        drift_events=cert.drift_events,
-        routing_decision=cert.routing_decision,
-        routing_reason=cert.routing_reason,
-        certificate_hash=cert.certificate_hash,
-        anchoring_status=cert.anchoring_status,
-        anchoring_tx_hash=cert.anchoring_tx_hash,
-        issued_at=cert.issued_at,
-        methodology_version=cert.methodology_version,
-        toolset_version=cert.toolset_version,
-    )
+    return {
+        "certificate_id": cert_record.id,
+        "certificate_status": cert_record.certificate_status,
+        "certificate_hash": cert_record.certificate_hash,
+        "ready_at": cert_record.ready_at.isoformat() if cert_record.ready_at else None,
+        "routing_decision": cert_record.routing_decision,
+    }

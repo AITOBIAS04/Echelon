@@ -269,6 +269,41 @@ class ConnectionManager:
         await self.broadcast_global("PARADOX_RISK_CHANGED", payload)
         await self.broadcast_to_channel(f"theatre:{theatre_id}", "PARADOX_RISK_CHANGED", payload)
 
+    async def broadcast_investigation_stop_condition_met(
+        self, investigation_id: str, reason: str, trigger: str, drift_material: bool = False,
+    ):
+        """Broadcast investigation stop condition met (NOT_READY -> READY)."""
+        payload = {
+            "investigation_id": investigation_id,
+            "reason": reason,
+            "trigger": trigger,
+            "drift_material": drift_material,
+        }
+        await self.broadcast_global("INVESTIGATION_STOP_CONDITION_MET", payload)
+
+    async def broadcast_investigation_certificate_ready(
+        self, investigation_id: str, certificate_id: str, ready_at: str,
+    ):
+        """Broadcast investigation certificate transitioned to READY."""
+        payload = {
+            "investigation_id": investigation_id,
+            "certificate_id": certificate_id,
+            "ready_at": ready_at,
+        }
+        await self.broadcast_global("INVESTIGATION_CERTIFICATE_READY", payload)
+
+    async def broadcast_investigation_certificate_issued(
+        self, investigation_id: str, certificate_id: str, issued_at: str, batch_anchor_hash: str,
+    ):
+        """Broadcast investigation certificate issued via batch anchor."""
+        payload = {
+            "investigation_id": investigation_id,
+            "certificate_id": certificate_id,
+            "issued_at": issued_at,
+            "batch_anchor_hash": batch_anchor_hash,
+        }
+        await self.broadcast_global("INVESTIGATION_CERTIFICATE_ISSUED", payload)
+
     async def broadcast_investigation_status_changed(self, investigation_id: str, old_status: str, new_status: str):
         """Broadcast investigation status change."""
         payload = {
