@@ -573,6 +573,19 @@ class Theatre(Base):
         String(50), ForeignKey("scenario_checkpoints.id"), nullable=True
     )
 
+    # Paradox risk surface (cycle-019)
+    paradox_risk_level: Mapped[Optional[str]] = mapped_column(
+        String(10), nullable=True,
+        comment="LOW | WATCH | HIGH"
+    )
+    paradox_risk_factors_json: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True,
+        comment="logic_gap, stability, counter_signals_material, evidence_freshness_hours, active_paradox"
+    )
+    paradox_risk_updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
+
     # Execution tracking
     progress: Mapped[int] = mapped_column(Integer, default=0)
     total_episodes: Mapped[int] = mapped_column(Integer, default=0)
@@ -950,4 +963,254 @@ class ScenarioPackAuditEvent(Base):
     __table_args__ = (
         Index("ix_scenario_pack_audit_pack_created", "pack_id", "created_at"),
     )
+
+
+# ============================================
+# AGENT DEPLOYMENT (Cycle 019)
+# ============================================
+
+class AgentDeployment(Base):
+    """Agent-to-theatre deployment with strategy profile."""
+    __tablename__ = "agent_deployments"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    agent_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("agents.id"), index=True
+    )
+    theatre_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), index=True
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), default="ACTIVE", index=True,
+        comment="ACTIVE | PAUSED | WITHDRAWN"
+    )
+    strategy_profile: Mapped[str] = mapped_column(
+        String(20), default="BALANCED",
+        comment="BALANCED | AGGRESSIVE | DEFENSIVE"
+    )
+    deployed_by: Mapped[str] = mapped_column(String(50), index=True)
+    deployed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    paused_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    withdrawn_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Snapshot of theatre state at deployment time
+    routing_hint_snapshot: Mapped[Optional[str]] = mapped_column(
+        String(30), nullable=True,
+        comment="ALLOWED | REVIEW_REQUIRED | BLOCKED at deploy time"
+    )
+    coherence_gate_status_snapshot: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True,
+        comment="PENDING | PASSED | FAILED at deploy time"
+    )
+
+    config_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    agent: Mapped["Agent"] = relationship()
+    theatre: Mapped["Theatre"] = relationship()
+    audit_events: Mapped[List["DeploymentAuditEvent"]] = relationship(
+        back_populates="deployment"
+    )
+
+    __table_args__ = (
+        Index("ix_agent_deployments_active", "agent_id", "theatre_id", "status"),
+    )
+
+
+class DeploymentAuditEvent(Base):
+    """Audit trail for agent deployment lifecycle events."""
+    __tablename__ = "deployment_audit_events"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    deployment_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("agent_deployments.id"), index=True
+    )
+    event_type: Mapped[str] = mapped_column(
+        String(50), index=True,
+        comment="DEPLOYED | STRATEGY_CHANGED | PAUSED | RESUMED | WITHDRAWN"
+    )
+    detail_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    deployment: Mapped["AgentDeployment"] = relationship(back_populates="audit_events")
+
+
+# ============================================
+# INVESTIGATION PERSISTENCE (Cycle 019)
+# ============================================
+
+class Investigation(Base):
+    """Persisted investigation record — replaces in-memory dict."""
+    __tablename__ = "investigations"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    theatre_id: Mapped[str] = mapped_column(String(50), default="", index=True)
+    construct_id: Mapped[str] = mapped_column(String(100), default="")
+    inquiry_class: Mapped[str] = mapped_column(
+        String(30), default="INVESTIGATIVE",
+        comment="COUNTERFACTUAL | INVESTIGATIVE | INSPECTION | SURVEY | SCRUTINY"
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), default="ACTIVE", index=True,
+        comment="ACTIVE | COMPLETED"
+    )
+    domain_filters_json: Mapped[list] = mapped_column(JSON, default=list)
+    stop_condition: Mapped[str] = mapped_column(
+        String(30), default="OUTCOME_RESOLUTION",
+        comment="OUTCOME_RESOLUTION | EVIDENCE_THRESHOLD | SPONSOR_DEFINED"
+    )
+    stop_config_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    created_by: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    evidence_items: Mapped[List["InvestigationEvidenceItem"]] = relationship(
+        back_populates="investigation", order_by="InvestigationEvidenceItem.submitted_at"
+    )
+    claim_nodes: Mapped[List["InvestigationClaimNode"]] = relationship(
+        back_populates="investigation"
+    )
+    counter_signals: Mapped[List["InvestigationCounterSignal"]] = relationship(
+        back_populates="investigation", order_by="InvestigationCounterSignal.detected_at"
+    )
+    drift_events: Mapped[List["InvestigationDriftEvent"]] = relationship(
+        back_populates="investigation", order_by="InvestigationDriftEvent.detected_at"
+    )
+    certificate: Mapped[Optional["InvestigationCertificateRecord"]] = relationship(
+        back_populates="investigation", uselist=False
+    )
+
+
+
+class InvestigationEvidenceItem(Base):
+    """Persisted evidence item for an investigation."""
+    __tablename__ = "investigation_evidence_items"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    investigation_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("investigations.id"), index=True
+    )
+    content_hash: Mapped[str] = mapped_column(String(64))
+    provenance_class: Mapped[str] = mapped_column(
+        String(30),
+        comment="public_primary | public_secondary | private_leak | analyst_derived | third_party_tool_output"
+    )
+    content_type: Mapped[str] = mapped_column(String(50), default="text/plain")
+    source_description: Mapped[str] = mapped_column(Text, default="")
+    source_id: Mapped[str] = mapped_column(String(100), default="")
+    query_determinism: Mapped[str] = mapped_column(String(30), default="")
+    references_json: Mapped[list] = mapped_column(JSON, default=list)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    investigation: Mapped["Investigation"] = relationship(back_populates="evidence_items")
+
+
+class InvestigationClaimNode(Base):
+    """Persisted claim node for an investigation."""
+    __tablename__ = "investigation_claim_nodes"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    investigation_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("investigations.id"), index=True
+    )
+    claim_text: Mapped[str] = mapped_column(Text)
+    claim_type: Mapped[str] = mapped_column(
+        String(20), comment="fact | causal | attribution"
+    )
+    evidence_refs_json: Mapped[list] = mapped_column(JSON, default=list)
+    counter_signals_json: Mapped[list] = mapped_column(JSON, default=list)
+    status: Mapped[str] = mapped_column(
+        String(30), default="UNCONFIRMED",
+        comment="SUPPORTED | PARTIALLY_SUPPORTED | UNCONFIRMED | CONTRADICTED"
+    )
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    independence_groups_json: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    investigation: Mapped["Investigation"] = relationship(back_populates="claim_nodes")
+
+
+class InvestigationCounterSignal(Base):
+    """Persisted counter-signal for an investigation."""
+    __tablename__ = "investigation_counter_signals"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    investigation_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("investigations.id"), index=True
+    )
+    signal_class: Mapped[str] = mapped_column(
+        String(50),
+        comment="11 classes: OFFICIAL_DENIAL through WITNESS_SOURCE_RECANTATION"
+    )
+    detected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    evidence_ref: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    material: Mapped[bool] = mapped_column(Boolean, default=False)
+    resolution_impact: Mapped[str] = mapped_column(Text, default="")
+    detection_method: Mapped[str] = mapped_column(
+        String(30), default="human_submitted",
+        comment="automated_osint | paradox_engine | human_submitted"
+    )
+
+    # Relationships
+    investigation: Mapped["Investigation"] = relationship(back_populates="counter_signals")
+
+
+class InvestigationDriftEvent(Base):
+    """Persisted drift event for an investigation."""
+    __tablename__ = "investigation_drift_events"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    investigation_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("investigations.id"), index=True
+    )
+    drift_type: Mapped[str] = mapped_column(
+        String(30),
+        comment="ENTITY_RESTRUCTURE | CONTRACT_AMENDMENT | MARKET_RULE_CHANGE | REGULATORY_STATUS_CHANGE | JURISDICTION_CHANGE"
+    )
+    detected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    original_value: Mapped[str] = mapped_column(Text, default="")
+    new_value: Mapped[str] = mapped_column(Text, default="")
+    evidence_ref: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    impact_assessment: Mapped[str] = mapped_column(
+        String(20), default="non_material",
+        comment="material | non_material"
+    )
+
+    # Relationships
+    investigation: Mapped["Investigation"] = relationship(back_populates="drift_events")
+
+
+class InvestigationCertificateRecord(Base):
+    """Persisted certificate record for an investigation (1:1)."""
+    __tablename__ = "investigation_certificates"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    investigation_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("investigations.id"), unique=True, index=True
+    )
+    certificate_hash: Mapped[str] = mapped_column(String(64))
+    certificate_json: Mapped[dict] = mapped_column(JSON)
+    routing_decision: Mapped[str] = mapped_column(
+        String(20), comment="ALLOWED | REVIEW_REQUIRED"
+    )
+    routing_reason: Mapped[str] = mapped_column(String(50), default="")
+    issued_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    investigation: Mapped["Investigation"] = relationship(back_populates="certificate")
 
