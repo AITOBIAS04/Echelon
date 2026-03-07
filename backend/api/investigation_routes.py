@@ -54,6 +54,7 @@ from backend.schemas.investigation_schemas import (
     CounterSignalCreateRequest,
     CounterSignalFeedResponse,
     CounterSignalResponse,
+    DriftCreateRequest,
     DriftEventResponse,
     DriftFeedResponse,
     EvidenceEnvelopeResponse,
@@ -564,11 +565,19 @@ async def log_counter_signal(
         raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
 
     # Domain filter enforcement (cycle-021)
+    # Resolve evidence item's source_id — evidence_ref is an internal record ID,
+    # not a source group identifier.
+    resolved_source = ""
+    if request.evidence_ref and inv.evidence_items:
+        for item in inv.evidence_items:
+            if item.id == request.evidence_ref:
+                resolved_source = item.source_id or ""
+                break
     try:
         validate_signal_source(
             domain_filters_json=inv.domain_filters_json or [],
             detection_method=request.detection_method or "human_submitted",
-            source_ref=request.evidence_ref or "",
+            source_ref=resolved_source,
         )
     except DomainFilterViolation as exc:
         raise HTTPException(status_code=422, detail=str(exc))
@@ -634,6 +643,45 @@ async def get_drift(
         raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
     toolset = _rebuild_toolset(inv)
     return _build_drift_response(toolset)
+
+
+@router.post("/{investigation_id}/drift", response_model=DriftEventResponse, status_code=201)
+async def log_drift(
+    investigation_id: str,
+    request: DriftCreateRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Log a drift event and trigger stop-condition evaluation."""
+    repo = InvestigationRepository(db)
+    inv = await repo.get(investigation_id)
+    if not inv:
+        raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
+
+    event = await repo.log_drift(
+        investigation_id=investigation_id,
+        drift_type=request.drift_type,
+        original_value=request.original_value,
+        new_value=request.new_value,
+        impact_assessment=request.impact_assessment,
+        evidence_ref=request.evidence_ref,
+    )
+    await db.commit()
+
+    # Trigger stop-condition evaluation after drift mutation
+    inv = await repo.get(investigation_id)
+    if inv:
+        await evaluate_after_mutation(db, inv, trigger="drift")
+        await db.commit()
+
+    return DriftEventResponse(
+        drift_id=event.id,
+        drift_type=event.drift_type,
+        detected_at=event.detected_at,
+        original_value=event.original_value or "",
+        new_value=event.new_value or "",
+        evidence_ref=event.evidence_ref,
+        impact_assessment=event.impact_assessment or "non_material",
+    )
 
 
 @router.get("/{investigation_id}/readiness")
@@ -723,6 +771,11 @@ async def build_certificate(
         raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
     if inv.certificate:
         raise HTTPException(status_code=409, detail="Certificate already exists")
+    if inv.stop_condition_status != "READY":
+        raise HTTPException(
+            status_code=409,
+            detail=f"Stop conditions not satisfied (status={inv.stop_condition_status})",
+        )
 
     # Rebuild toolset and build certificate (existing logic)
     toolset = _rebuild_toolset(inv)

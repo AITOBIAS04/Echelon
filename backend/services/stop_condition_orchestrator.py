@@ -60,29 +60,38 @@ def _rebuild_toolset_from_investigation(inv: Investigation) -> InvestigationTool
             query_determinism=item.query_determinism or "",
         )
 
-    for claim in (inv.claim_nodes or []):
-        toolset.claim_graph.register_claim(
-            claim_text=claim.claim_text,
-            claim_type=ClaimType(claim.claim_type),
-            evidence_refs=claim.evidence_refs_json or [],
+    for node in (inv.claim_nodes or []):
+        toolset.claim_graph.add_claim_from_persisted(
+            claim_id=node.id,
+            claim_text=node.claim_text,
+            claim_type=ClaimType(node.claim_type),
+            evidence_refs=node.evidence_refs_json or [],
+            counter_signals=node.counter_signals_json or [],
+            status=node.status,
+            confidence=node.confidence,
+            independence_groups=node.independence_groups_json or [],
         )
 
     for sig in (inv.counter_signals or []):
-        toolset.counter_signal_feed.log_signal(
+        toolset.counter_signal_feed.add_signal_from_persisted(
+            counter_signal_id=sig.id,
             signal_class=InvestigationCounterSignalClass(sig.signal_class),
+            detected_at=sig.detected_at,
+            evidence_ref=sig.evidence_ref,
             material=sig.material,
             resolution_impact=sig.resolution_impact or "",
             detection_method=sig.detection_method or "human_submitted",
-            evidence_ref=sig.evidence_ref,
         )
 
-    for drift in (inv.drift_events or []):
-        toolset.commitment_monitor.log_drift_event(
-            drift_type=DriftType(drift.drift_type),
-            original_value=drift.original_value or "",
-            new_value=drift.new_value or "",
-            evidence_ref=drift.evidence_ref,
-            impact_assessment=drift.impact_assessment or "non_material",
+    for evt in (inv.drift_events or []):
+        toolset.commitment_monitor.add_event_from_persisted(
+            drift_id=evt.id,
+            drift_type=DriftType(evt.drift_type),
+            detected_at=evt.detected_at,
+            original_value=evt.original_value or "",
+            new_value=evt.new_value or "",
+            evidence_ref=evt.evidence_ref,
+            impact_assessment=evt.impact_assessment or "non_material",
         )
 
     return toolset
@@ -105,7 +114,7 @@ async def evaluate_after_mutation(
     Returns:
         StopConditionResult with ready/not-ready + reason.
     """
-    if investigation.status in ("COMPLETED", "CERTIFICATE_READY"):
+    if investigation.status == "COMPLETED":
         return StopConditionResult(
             ready=True,
             reason="already_ready_or_completed",
@@ -136,6 +145,25 @@ async def evaluate_after_mutation(
     investigation.stop_condition_status = "READY" if ready else "NOT_READY"
     investigation.stop_condition_reason = reason
     investigation.stop_condition_evaluated_at = datetime.now(timezone.utc)
+
+    # READY certificates remain mutable until batch issuance: refresh the
+    # pre-issued artifact so new drift/counter-signals can force review.
+    certificate = investigation.certificate
+    if (
+        certificate is not None
+        and investigation.status == "CERTIFICATE_READY"
+        and certificate.certificate_status == "READY"
+    ):
+        rebuilt_certificate = toolset.build_certificate()
+        certificate.certificate_hash = rebuilt_certificate.certificate_hash
+        certificate.routing_decision = rebuilt_certificate.routing_decision
+        certificate.routing_reason = rebuilt_certificate.routing_reason
+        certificate.certificate_json = {
+            "certificate_id": rebuilt_certificate.certificate_id,
+            "theatre_id": rebuilt_certificate.theatre_id,
+            "construct_id": rebuilt_certificate.construct_id,
+        }
+
     await session.flush()
 
     if ready and old_status != "READY":

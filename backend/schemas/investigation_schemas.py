@@ -54,6 +54,16 @@ class CounterSignalCreateRequest(BaseModel):
     evidence_ref: Optional[str] = None
 
 
+class DriftCreateRequest(BaseModel):
+    """Request to log a drift event."""
+
+    drift_type: str  # DriftType value
+    original_value: str = ""
+    new_value: str = ""
+    impact_assessment: str = "non_material"
+    evidence_ref: Optional[str] = None
+
+
 # ============================================
 # RESPONSE SCHEMAS
 # ============================================

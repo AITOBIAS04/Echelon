@@ -56,8 +56,19 @@ def upgrade() -> None:
             ),
         )
 
-    # --- investigation_certificates: 4 new columns ---
+    # --- investigation_certificates: issued_at nullability fix ---
     cert_cols = [c["name"] for c in inspector.get_columns("investigation_certificates")]
+
+    if "issued_at" in cert_cols:
+        with op.batch_alter_table("investigation_certificates") as batch_op:
+            batch_op.alter_column(
+                "issued_at",
+                existing_type=sa.DateTime,
+                nullable=True,
+                server_default=None,
+            )
+
+    # --- investigation_certificates: 4 new columns ---
 
     if "certificate_status" not in cert_cols:
         op.add_column(
