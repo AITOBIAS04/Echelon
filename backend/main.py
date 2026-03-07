@@ -399,6 +399,16 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+# Include Agent Deployment routes (Cycle-019)
+try:
+    from backend.api.agent_deployment_routes import router as deployment_router
+    app.include_router(deployment_router)
+    print("✅ Agent Deployment router included")
+except Exception as e:
+    print(f"❌ Failed to include Agent Deployment router: {e}")
+    import traceback
+    traceback.print_exc()
+
 # Initialize Butterfly and Paradox Engines (for USE_MOCKS mode)
 USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
 GAME_LOOP_ENABLED = os.getenv("ENABLE_GAME_LOOP", "true").lower() == "true"

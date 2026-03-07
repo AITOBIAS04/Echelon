@@ -656,7 +656,7 @@
           "local_id": "sprint-1",
           "global_id": 55,
           "label": "Agent Deployment Service + API",
-          "status": "pending",
+          "status": "completed",
           "tasks": 5
         },
         {
