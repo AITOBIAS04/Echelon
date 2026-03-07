@@ -226,6 +226,49 @@ class ConnectionManager:
         await self.broadcast_global("THEATRE_SPAWNED", payload)
         await self.broadcast_to_channel(f"scenario_pack:{pack_id}", "THEATRE_SPAWNED", payload)
 
+    async def broadcast_agent_deployed(self, agent_id: str, theatre_id: str, strategy_profile: str, deployed_by: str):
+        """Broadcast agent deployment event."""
+        payload = {
+            "agent_id": agent_id,
+            "theatre_id": theatre_id,
+            "strategy_profile": strategy_profile,
+            "deployed_by": deployed_by,
+        }
+        await self.broadcast_global("AGENT_DEPLOYED", payload)
+        await self.broadcast_to_channel(f"theatre:{theatre_id}", "AGENT_DEPLOYED", payload)
+        await self.broadcast_to_channel(f"agent:{agent_id}", "AGENT_DEPLOYED", payload)
+
+    async def broadcast_agent_withdrawn(self, agent_id: str, theatre_id: str, withdrawn_by: str):
+        """Broadcast agent withdrawal event."""
+        payload = {
+            "agent_id": agent_id,
+            "theatre_id": theatre_id,
+            "withdrawn_by": withdrawn_by,
+        }
+        await self.broadcast_global("AGENT_WITHDRAWN", payload)
+        await self.broadcast_to_channel(f"theatre:{theatre_id}", "AGENT_WITHDRAWN", payload)
+        await self.broadcast_to_channel(f"agent:{agent_id}", "AGENT_WITHDRAWN", payload)
+
+    async def broadcast_paradox_risk_changed(self, theatre_id: str, old_level: str, new_level: str, factors: dict):
+        """Broadcast paradox risk level change."""
+        payload = {
+            "theatre_id": theatre_id,
+            "old_level": old_level,
+            "new_level": new_level,
+            "factors": factors,
+        }
+        await self.broadcast_global("PARADOX_RISK_CHANGED", payload)
+        await self.broadcast_to_channel(f"theatre:{theatre_id}", "PARADOX_RISK_CHANGED", payload)
+
+    async def broadcast_investigation_status_changed(self, investigation_id: str, old_status: str, new_status: str):
+        """Broadcast investigation status change."""
+        payload = {
+            "investigation_id": investigation_id,
+            "old_status": old_status,
+            "new_status": new_status,
+        }
+        await self.broadcast_global("INVESTIGATION_STATUS_CHANGED", payload)
+
     async def send_position_update(self, user_id: str, position: dict):
         """Send position update to specific user."""
         await self.send_to_user(user_id, "POSITION_UPDATE", position)

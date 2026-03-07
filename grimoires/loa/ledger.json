@@ -684,7 +684,7 @@
           "local_id": "sprint-5",
           "global_id": 59,
           "label": "WebSocket Events + Integration + E2E",
-          "status": "pending",
+          "status": "completed",
           "tasks": 5
         }
       ]
