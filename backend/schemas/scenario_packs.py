@@ -184,3 +184,41 @@ class EpisodeTreeResponse(BaseModel):
     nodes: List[EpisodeTreeNode]
     total_reward: float
     episode_duration_sec: Optional[float] = None
+
+
+# ── Branch probabilities ──
+
+class BranchProbabilitiesResponse(BaseModel):
+    template_id: str
+    probabilities: dict[str, Optional[dict[str, float]]]
+
+
+# ── Replay response (matches ForkReplay shape) ──
+
+class DisclosureEventResponse(BaseModel):
+    tMs: int
+    type: str
+    label: str
+
+
+class ForkOptionPricePathResponse(BaseModel):
+    tMs: int
+    price: float
+
+
+class ReplayForkOptionResponse(BaseModel):
+    label: str
+    pricePath: List[ForkOptionPricePathResponse]
+
+
+class ForkReplayResponse(BaseModel):
+    timelineId: str
+    forkId: str
+    forkQuestion: str
+    options: List[ReplayForkOptionResponse]
+    openedAt: str
+    settledAt: Optional[str] = None
+    chosenOption: Optional[str] = None
+    outcomeLabel: Optional[str] = None
+    disclosureEvents: List[DisclosureEventResponse]
+    notes: Optional[str] = None
