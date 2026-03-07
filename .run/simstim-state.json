@@ -1,12 +1,11 @@
 {
-  "simstim_id": "simstim-20260305-cycle-014c",
+  "simstim_id": "simstim-20260307-cycle-018",
   "schema_version": 1,
-  "state": "JACKED_OUT",
-  "phase": "complete",
+  "state": "RUNNING",
+  "phase": "planning",
   "timestamps": {
-    "started": "2026-03-05T00:00:00Z",
-    "last_activity": "2026-03-05T15:00:00Z",
-    "completed": "2026-03-05T15:00:00Z"
+    "started": "2026-03-07T00:00:00Z",
+    "last_activity": "2026-03-07T00:30:00Z"
   },
   "phases": {
     "preflight": "completed",
@@ -15,15 +14,16 @@
     "architecture": "completed",
     "flatline_sdd": "skipped",
     "planning": "completed",
-    "flatline_sprint": "skipped",
+    "flatline_sprint": "pending",
     "flatline_beads": "skipped",
-    "implementation": "completed",
-    "complete": "completed"
+    "implementation": "pending",
+    "complete": "pending"
   },
   "artifacts": {
     "prd": {"path": "grimoires/loa/prd.md"},
     "sdd": {"path": "grimoires/loa/sdd.md"},
     "sprint_plan": {"path": "grimoires/loa/sprint.md"}
   },
-  "context": "Cycle-014c: Investigation Toolset Implementation"
+  "context": "Cycle-018: Scenario Packs Engine",
+  "notes": "PRD/SDD/Sprint revised from existing _018 artifacts to align with echelon_cycle_018.md context doc. Key changes: RUNNABLE vs CATALOG_ONLY, schema-driven checkpoint automation, evaluator primitives, ScenarioSeedManager, run_mode defaults fixed to TRAINING, template_status on response schemas, TEMPLATE_FAMILIES dict fixed."
 }

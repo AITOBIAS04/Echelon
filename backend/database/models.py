@@ -568,6 +568,11 @@ class Theatre(Base):
     stop_condition: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
     stop_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
+    # Scenario pack provenance (cycle-018)
+    spawned_from_checkpoint_id: Mapped[Optional[str]] = mapped_column(
+        String(50), ForeignKey("scenario_checkpoints.id"), nullable=True
+    )
+
     # Execution tracking
     progress: Mapped[int] = mapped_column(Integer, default=0)
     total_episodes: Mapped[int] = mapped_column(Integer, default=0)
@@ -725,5 +730,224 @@ class TheatreAuditEvent(Base):
 
     __table_args__ = (
         Index("ix_theatre_audit_theatre_created", "theatre_id", "created_at"),
+    )
+
+
+# ============================================
+# SCENARIO PACK MODELS (Cycle-018)
+# ============================================
+
+class ScenarioPackTemplate(Base):
+    """Immutable template definition for a scenario pack."""
+    __tablename__ = "scenario_pack_templates"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    family: Mapped[str] = mapped_column(String(20))
+    fantasy: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    training_primitives: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # JSON blobs matching existing theatre fixture shape
+    objective_vector_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    fork_point_schema_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    saboteur_deck_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    telemetry_spec_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    settlement_rules_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # Meta
+    episode_length_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    fork_points_min: Mapped[int] = mapped_column(Integer, default=1)
+    fork_points_max: Mapped[int] = mapped_column(Integer, default=10)
+    settlement_latency_sec: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    template_status: Mapped[str] = mapped_column(
+        String(20), default="CATALOG_ONLY",
+    )
+    is_seeded: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    packs: Mapped[List["ScenarioPack"]] = relationship(back_populates="template")
+    checkpoints: Mapped[List["ScenarioCheckpoint"]] = relationship(
+        back_populates="template", order_by="ScenarioCheckpoint.sequence_num"
+    )
+
+    __table_args__ = (
+        Index("ix_scenario_pack_templates_family", "family"),
+        Index("ix_scenario_pack_templates_status", "template_status"),
+    )
+
+
+class ScenarioCheckpoint(Base):
+    """A decision point within a scenario pack template."""
+    __tablename__ = "scenario_checkpoints"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    template_id: Mapped[str] = mapped_column(
+        String(100), ForeignKey("scenario_pack_templates.id"), index=True
+    )
+    sequence_num: Mapped[int] = mapped_column(Integer)
+    trigger: Mapped[str] = mapped_column(String(255))
+    trigger_condition_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    market_question: Mapped[str] = mapped_column(Text)
+    decision_window_sec: Mapped[int] = mapped_column(Integer, default=30)
+    can_spawn_theatre: Mapped[bool] = mapped_column(Boolean, default=False)
+    evaluator_type: Mapped[str] = mapped_column(String(30), default="BINARY_RISK_GATE")
+    theatre_spawn_rule_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    reward_mapping_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    template: Mapped["ScenarioPackTemplate"] = relationship(back_populates="checkpoints")
+    branches: Mapped[List["CheckpointBranch"]] = relationship(
+        back_populates="checkpoint",
+        foreign_keys="CheckpointBranch.checkpoint_id"
+    )
+
+    __table_args__ = (
+        Index("ix_scenario_checkpoints_template_seq", "template_id", "sequence_num"),
+    )
+
+
+class CheckpointBranch(Base):
+    """An outcome path from a checkpoint."""
+    __tablename__ = "checkpoint_branches"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    checkpoint_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("scenario_checkpoints.id"), index=True
+    )
+    label: Mapped[str] = mapped_column(String(255))
+    branch_rule_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    outcome_type: Mapped[str] = mapped_column(String(20))
+    reward_mapping_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    next_checkpoint_id: Mapped[Optional[str]] = mapped_column(
+        String(50), ForeignKey("scenario_checkpoints.id"), nullable=True
+    )
+
+    # Relationships
+    checkpoint: Mapped["ScenarioCheckpoint"] = relationship(
+        back_populates="branches", foreign_keys=[checkpoint_id]
+    )
+
+
+class ScenarioPack(Base):
+    """A user-created instance of a scenario pack from a template."""
+    __tablename__ = "scenario_packs"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    user_id: Mapped[str] = mapped_column(String(50), index=True)
+    template_id: Mapped[str] = mapped_column(
+        String(100), ForeignKey("scenario_pack_templates.id"), index=True
+    )
+    state: Mapped[str] = mapped_column(String(20), default="DRAFT", index=True)
+    commitment_hash: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    committed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Run configuration
+    run_mode: Mapped[str] = mapped_column(String(30), default="TRAINING")
+    agent_assignment: Mapped[str] = mapped_column(String(50), default="auto_assign")
+    simulation_scale: Mapped[str] = mapped_column(String(20), default="single_1x")
+    objective_profile: Mapped[str] = mapped_column(String(50), default="pack_default")
+    config_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    # Relationships
+    template: Mapped["ScenarioPackTemplate"] = relationship(back_populates="packs")
+    runs: Mapped[List["ScenarioRun"]] = relationship(back_populates="pack")
+    audit_events: Mapped[List["ScenarioPackAuditEvent"]] = relationship(back_populates="pack")
+
+    __table_args__ = (
+        Index("ix_scenario_packs_user", "user_id"),
+        Index("ix_scenario_packs_template", "template_id"),
+    )
+
+
+class ScenarioRun(Base):
+    """A single execution of a scenario pack through checkpoints."""
+    __tablename__ = "scenario_runs"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    pack_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("scenario_packs.id"), index=True
+    )
+    agent_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")
+    environment_seed: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    run_mode: Mapped[str] = mapped_column(String(20), default="TRAINING")
+    current_checkpoint_seq: Mapped[int] = mapped_column(Integer, default=0)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    telemetry_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    episode_duration_sec: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_reward: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    pack: Mapped["ScenarioPack"] = relationship(back_populates="runs")
+    checkpoint_results: Mapped[List["RunCheckpointResult"]] = relationship(
+        back_populates="run", order_by="RunCheckpointResult.resolved_at"
+    )
+
+    __table_args__ = (
+        Index("ix_scenario_runs_pack", "pack_id"),
+        Index("ix_scenario_runs_status", "status"),
+    )
+
+
+class RunCheckpointResult(Base):
+    """The outcome at a specific checkpoint during a run."""
+    __tablename__ = "run_checkpoint_results"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    run_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("scenario_runs.id"), index=True
+    )
+    checkpoint_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("scenario_checkpoints.id")
+    )
+    selected_branch_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("checkpoint_branches.id")
+    )
+    agent_decision_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    reward: Mapped[float] = mapped_column(Float, default=0.0)
+    state_vector_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    spawned_theatre_id: Mapped[Optional[str]] = mapped_column(
+        String(50), ForeignKey("theatres.id"), nullable=True
+    )
+    resolved_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    run: Mapped["ScenarioRun"] = relationship(back_populates="checkpoint_results")
+
+    __table_args__ = (
+        Index("ix_run_checkpoint_results_run", "run_id"),
+    )
+
+
+class ScenarioPackAuditEvent(Base):
+    """Audit trail for scenario pack lifecycle events."""
+    __tablename__ = "scenario_pack_audit_events"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    pack_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("scenario_packs.id"), index=True
+    )
+    event_type: Mapped[str] = mapped_column(String(50), index=True)
+    detail_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    pack: Mapped["ScenarioPack"] = relationship(back_populates="audit_events")
+
+    __table_args__ = (
+        Index("ix_scenario_pack_audit_pack_created", "pack_id", "created_at"),
     )
 
