@@ -88,3 +88,11 @@
 | Sprint 3 | sprint-45 | COMPLETED | [reviewer.md](sprint-45/reviewer.md) | [engineer-feedback.md](sprint-45/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-45/auditor-sprint-feedback.md) |
 | Sprint 4 | sprint-46 | COMPLETED | [reviewer.md](sprint-46/reviewer.md) | [engineer-feedback.md](sprint-46/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-46/auditor-sprint-feedback.md) |
 | Sprint 5 | sprint-47 | COMPLETED | [reviewer.md](sprint-47/reviewer.md) | [engineer-feedback.md](sprint-47/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-47/auditor-sprint-feedback.md) |
+
+## Cycle-021: Investigation Certificate Lifecycle + Domain Filter Enforcement
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 0 | sprint-66 | COMPLETED | [reviewer.md](sprint-66/reviewer.md) | [engineer-feedback.md](sprint-66/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-66/auditor-sprint-feedback.md) |
+| Sprint 1 | sprint-67 | PENDING | — | — | — |
+| Sprint 2 | sprint-68 | PENDING | — | — | — |

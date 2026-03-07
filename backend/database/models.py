@@ -1061,7 +1061,7 @@ class Investigation(Base):
     )
     status: Mapped[str] = mapped_column(
         String(20), default="ACTIVE", index=True,
-        comment="ACTIVE | COMPLETED"
+        comment="ACTIVE | CERTIFICATE_READY | COMPLETED"
     )
     domain_filters_json: Mapped[list] = mapped_column(JSON, default=list)
     stop_condition: Mapped[str] = mapped_column(
@@ -1076,6 +1076,13 @@ class Investigation(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Stop condition evaluation (cycle-021)
+    stop_condition_status: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, comment="NOT_READY | READY"
+    )
+    stop_condition_reason: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    stop_condition_evaluated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Relationships
     evidence_items: Mapped[List["InvestigationEvidenceItem"]] = relationship(
@@ -1214,6 +1221,14 @@ class InvestigationCertificateRecord(Base):
     )
     routing_reason: Mapped[str] = mapped_column(String(50), default="")
     issued_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Certificate lifecycle (cycle-021)
+    certificate_status: Mapped[str] = mapped_column(
+        String(20), default="READY", comment="READY | ANCHORED | ISSUED"
+    )
+    ready_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    anchored_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    batch_anchor_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
 
     # Relationships
     investigation: Mapped["Investigation"] = relationship(back_populates="certificate")

@@ -38,6 +38,11 @@ from backend.investigation.counter_signals import InvestigationCounterSignalClas
 from backend.investigation.models import ProvenanceClass
 from backend.investigation.toolset import InvestigationConfig, InvestigationToolset
 from backend.osint.models.registry import RegistryLoader
+from backend.services.domain_filter_validator import (
+    DomainFilterViolation,
+    validate_evidence_source,
+    validate_signal_source,
+)
 from backend.websockets.realtime_manager import manager as ws_manager
 from backend.schemas.investigation_schemas import (
     CertificateResponse,
@@ -401,6 +406,15 @@ async def submit_evidence(
                 detail=f"Source '{request.source_id}' requires receipt_body but none was provided",
             )
 
+    # Domain filter enforcement (cycle-021)
+    try:
+        validate_evidence_source(
+            domain_filters_json=inv.domain_filters_json or [],
+            source_id=request.source_id or "",
+        )
+    except DomainFilterViolation as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
     content = base64.b64decode(request.content_base64)
     provenance = ProvenanceClass(request.provenance_class)
 
@@ -539,6 +553,16 @@ async def log_counter_signal(
     inv = await repo.get(investigation_id)
     if not inv:
         raise HTTPException(status_code=404, detail=f"Investigation {investigation_id} not found")
+
+    # Domain filter enforcement (cycle-021)
+    try:
+        validate_signal_source(
+            domain_filters_json=inv.domain_filters_json or [],
+            detection_method=request.detection_method or "human_submitted",
+            source_ref=request.evidence_ref or "",
+        )
+    except DomainFilterViolation as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
     toolset = _rebuild_toolset(inv)
     signal_class = InvestigationCounterSignalClass(request.signal_class)
