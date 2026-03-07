@@ -694,8 +694,10 @@
     {
       "cycle_id": "cycle-020",
       "label": "Scenario Pack Evaluator v2 + Paradox Risk Orchestration",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-07T14:00:00Z",
+      "archived": "2026-03-07T18:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-07-scenario-pack-evaluator-v2-paradox-risk-orchestration",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -743,11 +745,43 @@
           "tasks": 7
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-021",
+      "label": "Investigation Certificate Lifecycle + Domain Filter Enforcement",
+      "status": "active",
+      "created_at": "2026-03-07T18:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 66,
+          "label": "Foundation — Migration + Domain Filter Enforcement",
+          "status": "completed",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 67,
+          "label": "Automated Stop Condition Evaluation",
+          "status": "pending",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 68,
+          "label": "Certificate Lifecycle + Batch Anchor",
+          "status": "pending",
+          "tasks": 5
+        }
+      ]
     }
   ],
-  "active_cycle": "cycle-020",
+  "active_cycle": "cycle-021",
   "active_bugfix": null,
-  "global_sprint_counter": 65,
+  "global_sprint_counter": 68,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }
