@@ -1,638 +1,346 @@
-# Sprint Plan — Cycle-018: Scenario Packs Engine
+# Sprint Plan — Cycle-020: Scenario Pack Evaluator v2 + Paradox Risk Orchestration
 
-**Cycle:** cycle-018
-**Date:** 6 March 2026
-**PRD:** grimoires/loa/prd_018.md
-**SDD:** grimoires/loa/sdd_018.md
-**Sprints:** 6 (0–5)
-**Baseline:** Post-017 (≥1100 passed)
-
----
-
-## Sprint 0: Schema Foundation + Migration
-
-Define all 7 new tables and extend Theatre with provenance column. No runtime logic.
-
-### Task 0.1: Model Layer — All Scenario Pack Models
-
-**Files modified:**
-- `backend/database/models.py` — add 7 new model classes + extend Theatre
-
-**New models:**
-1. `ScenarioPackTemplate` — immutable template definition (id, name, family, template_status: RUNNABLE | CATALOG_ONLY, JSON blobs for objective_vector, fork_points, saboteurs, telemetry, settlement)
-2. `ScenarioCheckpoint` — decision point within a template (template_id FK, sequence_num, trigger, trigger_condition_json, market_question, decision_window_sec, can_spawn_theatre, evaluator_type, theatre_spawn_rule_json)
-3. `CheckpointBranch` — outcome path from checkpoint (checkpoint_id FK, label, branch_rule_json, outcome_type, reward_mapping_json, next_checkpoint_id)
-4. `ScenarioPack` — user instance (user_id, template_id FK, state, run config fields, commitment_hash)
-5. `ScenarioRun` — execution instance (pack_id FK, agent_id, status, environment_seed, run_mode: TRAINING | EVALUATION | CALIBRATION | REPLAY, telemetry_json)
-6. `RunCheckpointResult` — outcome at checkpoint during run (run_id FK, checkpoint_id FK, branch_id FK, reward, spawned_theatre_id)
-7. `ScenarioPackAuditEvent` — audit trail (pack_id FK, event_type, detail_json)
-
-**Theatre extension:**
-- Add `spawned_from_checkpoint_id` (nullable FK → scenario_checkpoints.id)
-
-**Acceptance Criteria:**
-- [ ] All 7 new models defined with correct relationships (back_populates)
-- [ ] Theatre model has spawned_from_checkpoint_id column
-- [ ] All FKs and indexes defined
-- [ ] Existing model tests pass unchanged
-
-### Task 0.2: Alembic Migration
-
-**New file:** `backend/alembic/versions/c018_scenario_packs.py`
-
-Dialect-safe migration creating 7 tables + 1 column:
-
-1. Create `scenario_pack_templates` (PK: id String(100))
-2. Create `scenario_checkpoints` (FK → templates)
-3. Create `checkpoint_branches` (FK → checkpoints, self-FK → checkpoints for next_checkpoint_id)
-4. Create `scenario_packs` (FK → templates)
-5. Create `scenario_runs` (FK → packs)
-6. Create `run_checkpoint_results` (FK → runs, checkpoints, branches, theatres)
-7. Create `scenario_pack_audit_events` (FK → packs)
-8. Add `spawned_from_checkpoint_id` to `theatres`
-9. Create indexes: `ix_scenario_packs_state`, `ix_scenario_packs_template_id`, `ix_scenario_pack_templates_family`, `ix_scenario_runs_pack_id`, `ix_scenario_checkpoints_template_id`
-
-2 tests:
-1. Upgrade/downgrade round-trip
-2. Verify all tables and columns exist after upgrade
-
-**Acceptance Criteria:**
-- [ ] Migration runs clean on PostgreSQL
-- [ ] Migration runs clean on SQLite (dialect-safe)
-- [ ] Downgrade removes all new tables/columns
-- [ ] Both tests pass
-
-### Task 0.3: Pydantic Schema Extensions
-
-**New file:** `backend/schemas/scenario_packs.py`
-
-Schema classes:
-- `ObjectiveVectorComponent`, `ForkPointSchema`, `SaboteurCard` — nested components
-- `ScenarioPackTemplateResponse`, `ScenarioPackTemplateSummaryResponse`, `TemplateListResponse`
-- `ScenarioPackCreate`, `ScenarioPackResponse`
-- `ScenarioRunResponse`
-- `CheckpointResultResponse`
-- `EpisodeTreeNode`, `EpisodeTreeResponse`
-
-2 tests:
-1. Template response serialises from model with computed checkpoint_count
-2. Pack create validates template_id exists
-
-**Acceptance Criteria:**
-- [ ] All schemas use ConfigDict(from_attributes=True) for model conversion
-- [ ] Computed fields (checkpoint_count) work via model_validator
-- [ ] Both tests pass
-
-### Task 0.4: Regression Check
-
-Run full test suite. Confirm zero regressions from new tables.
-
-**Acceptance Criteria:**
-- [ ] All existing ≥1100 tests pass
-- [ ] No new failures
-
-### Sprint 0 Summary Target
-
-- **4 tests**
-- **2 new files, 1 modified**
-- All scenario pack tables exist and are queryable
-- Zero regressions
+**Cycle:** cycle-020
+**Date:** 7 March 2026
+**PRD:** grimoires/loa/prd.md
+**SDD:** grimoires/loa/sdd.md
+**Sprints:** 6 (0-5)
+**Builder:** Loa (single developer, backend/runtime only)
 
 ---
 
-## Sprint 1: Template Catalog + Seeding
+## Sprint 0: Runtime Contract Tightening
 
-Seed the 18 scenario packs from the library. Build template catalog API. Wire frontend.
+**Goal:** Freeze the runtime contract and align models/services/tests before deeper implementation.
 
-### Task 1.1: Template Seeder Service
+### Tasks
 
-**New file:** `backend/services/scenario_template_seeder.py`
-
-Seed all 18 templates from `Echelon_Scenario_Packs_Library_v1.md`:
-
-| Family | Templates |
-|--------|-----------|
-| NAV_UNC | Neon Courier, Midnight Exchange, Runway Intercept, Last Mile Hospital |
-| SOC_NAV | Velvet Rope |
-| MAN_FORCE | Skybridge Assembly, High-Rise Steel |
-| MARL_C3 | Disaster Response, Cooling Plant, Reactor Protocol, Heist Echelon, Blacksite Heist |
-| 3D_INERT | Orbital Salvage, Orbital Docking Court |
-| LONG_HZN | Icebreaker Convoy |
-| PUZ_LOGIC | Escape Room |
-| ADV_AIR | Dogfight Echelon |
-| PREC_MAN | Cleanroom Microsurgery |
-
-For 4 templates with existing JSON fixtures (Neon Courier, Disaster Response, Orbital Salvage, Blacksite Heist): read `forkPointSchema` → create `ScenarioCheckpoint` + `CheckpointBranch` records from the structured JSON. Mark these as `template_status=RUNNABLE`.
-
-For 14 templates without fixtures: create checkpoints from `Fork points` description and branches from listed options. Mark these as `template_status=CATALOG_ONLY`.
-
-All seeded templates get `is_seeded=True`.
-
-2 tests:
-1. Seed all 18 → verify count and families
-2. Re-seed is idempotent (no duplicates)
-
+#### Task 0.1: Verify Schema Fields Present and Typed
+**Description:** Confirm that all checkpoint schema columns required by v2 runtime are present and correctly typed in the ORM models: `trigger_condition_json`, `branch_rule_json`, `evaluator_type`, `theatre_spawn_rule_json`, `reward_mapping_json` on ScenarioCheckpoint; `branch_rule_json`, `outcome_type` on CheckpointBranch.
 **Acceptance Criteria:**
-- [ ] 18 templates created with correct families
-- [ ] 4 JSON-fixture templates marked template_status=RUNNABLE with structured checkpoints from JSON
-- [ ] 14 prose-only templates marked template_status=CATALOG_ONLY with checkpoints from library descriptions
-- [ ] Idempotent re-seed
-- [ ] Both tests pass
+- All columns verified present in `backend/database/models.py`
+- Test that creates a checkpoint with all JSON fields and reads them back
+**File(s):** `backend/database/models.py`, `backend/tests/test_c020_contracts.py`
 
-### Task 1.2: Template List API
-
-**New file:** `backend/api/scenario_pack_routes.py`
-
-```python
-GET /api/v1/scenario-pack-templates?family=NAV_UNC&limit=20&offset=0
-```
-
-Returns `TemplateListResponse` with paginated summaries. Family filter is case-insensitive.
-
-2 tests:
-1. List all templates → 18 returned
-2. Filter by family NAV_UNC → 4 returned
-
+#### Task 0.2: Define Primitive JSON Contracts
+**Description:** Create a contract definition module that specifies the expected JSON schema for each of the 5 evaluator primitives' `trigger_condition_json` and `branch_rule_json`. Include a validation function that checks a checkpoint's config against its evaluator_type.
 **Acceptance Criteria:**
-- [ ] Pagination works (limit/offset)
-- [ ] Family filter returns correct subset
-- [ ] Both tests pass
+- Contract definitions for all 5 primitives (BINARY_RISK_GATE, RESOURCE_DEPLETION, DETECTION_EVENT, TIMING_BREACH, MISSION_COMPLETION)
+- `validate_checkpoint_config(evaluator_type, trigger_json, branch_rule_json)` function returns errors or None
+- Test for valid and invalid configs per primitive
+**File(s):** `backend/services/checkpoint_evaluator.py`, `backend/tests/test_c020_contracts.py`
 
-### Task 1.3: Template Detail API
-
-```python
-GET /api/v1/scenario-pack-templates/{template_id}
-```
-
-Returns `ScenarioPackTemplateResponse` with full objective_vector, fork_points, saboteur_deck, and computed checkpoint_count.
-
-1 test:
-1. Get Neon Courier template → all fields present, checkpoint_count matches
-
+#### Task 0.3: Define Spawn Rule Contract
+**Description:** Define the `theatre_spawn_rule_json` contract: `outcome_types`, `min_reward`, `checkpoint_classes`, `run_modes`. Add validation function.
 **Acceptance Criteria:**
-- [ ] Full template returned with all JSON blobs
-- [ ] checkpoint_count computed from related checkpoints
-- [ ] Test passes
+- Spawn rule JSON contract documented in code
+- `validate_spawn_rule(spawn_rule_json)` function
+- Test for valid/invalid spawn rules
+**File(s):** `backend/services/theatre_spawner.py`, `backend/tests/test_c020_contracts.py`
 
-### Task 1.4: Frontend — Wire ScenarioPacksPage to Catalog API
-
-**Files modified:**
-- `frontend/src/pages/ScenarioPacksPage.tsx` — replace empty shell with template grid
-- New or existing hook for template catalog API call
-
-Replace the concept cards and empty state with a real template grid from `/api/v1/scenario-pack-templates`. Each card shows: name, family badge, checkpoint count, fork range, episode length.
-
-1 test:
-1. Template cards render from API data with correct family badges
-
+#### Task 0.4: Define Paradox Risk Materiality Rule
+**Description:** Define when a paradox risk change is "material" enough to emit a WebSocket event. Material = level changed OR active_paradox flipped OR material_counter_signals crossed 0->positive.
 **Acceptance Criteria:**
-- [ ] Cards render from real API data
-- [ ] Family filter tabs work
-- [ ] Loading/error states present
-- [ ] Test passes
-
-### Sprint 1 Summary Target
-
-- **6 tests**
-- **2 new files, 1 modified**
-- 18 templates seeded, catalog API serves them, frontend renders cards
+- `_is_material_delta(old_level, new_level, old_factors, new_factors)` function
+- Test cases for material and non-material deltas
+**File(s):** `backend/services/paradox_risk_orchestrator.py`, `backend/tests/test_c020_contracts.py`
 
 ---
 
-## Sprint 2: Pack Lifecycle
+## Sprint 1: Schema-Driven Checkpoint Evaluation
 
-Create, commit, and run packs. State machine with run configuration.
+**Goal:** Replace hash-based branching with true evaluator-driven resolution using 5 primitives.
 
-### Task 2.1: Create Pack API
+### Tasks
 
-```python
-POST /api/v1/scenario-packs
-```
-
-Creates `ScenarioPack` in DRAFT state from a RUNNABLE template_id. Rejects CATALOG_ONLY templates with 409 (or 422). Persists run configuration (run_mode, agent_assignment, simulation_scale, objective_profile). Auth required.
-
-3 tests:
-1. Create pack from RUNNABLE template → DRAFT state, correct template association
-2. Create with invalid template_id → 404
-3. Create from CATALOG_ONLY template → 409 rejection
-
+#### Task 1.1: Implement Primitive Evaluator Functions
+**Description:** Implement 5 evaluator functions that each take `(branch_rule_json, agent_action, seed, state_vector)` and return `(branch_index, evaluation_detail)`. Each follows its SDD-defined contract.
 **Acceptance Criteria:**
-- [ ] Pack created in DRAFT with run config from RUNNABLE template
-- [ ] CATALOG_ONLY template rejected with 409
-- [ ] ScenarioPackAuditEvent(PACK_CREATED) logged
-- [ ] All 3 tests pass
+- `evaluate_binary_risk_gate()` — threshold comparison
+- `evaluate_resource_depletion()` — bracket mapping
+- `evaluate_detection_event()` — probability gate with seeded noise
+- `evaluate_timing_breach()` — deadline comparison with seeded drift
+- `evaluate_mission_completion()` — objective set evaluation
+- Each function deterministic for same inputs
+**File(s):** `backend/services/checkpoint_evaluator.py`
 
-### Task 2.2: State Machine Transitions
-
-**New file:** `backend/services/scenario_pack_lifecycle.py`
-
-Valid transitions: DRAFT → COMMITTED, COMMITTED → ACTIVE, ACTIVE → SETTLING, SETTLING → RESOLVED.
-
-Endpoints:
-- `POST /api/v1/scenario-packs/{id}/commit` (DRAFT → COMMITTED)
-- State transitions via lifecycle service (ACTIVE, SETTLING, RESOLVED are automatic)
-
-3 tests:
-1. Commit: DRAFT → COMMITTED with commitment_hash
-2. Invalid transition: ACTIVE → COMMITTED → 409 Conflict
-3. Get pack shows correct state after each transition
-
+#### Task 1.2: Implement select_branch() Dispatch
+**Description:** Create the `select_branch()` function that dispatches to the appropriate primitive evaluator based on `evaluator_type`. Replace `_deterministic_branch_index()` calls in `evaluate_checkpoints()`.
 **Acceptance Criteria:**
-- [ ] Only valid transitions succeed
-- [ ] Invalid transitions return 409
-- [ ] Audit events logged for each transition
-- [ ] All 3 tests pass
+- `select_branch()` dispatches to correct primitive
+- `evaluate_checkpoints()` uses `select_branch()` instead of hash-based index
+- Unknown evaluator_type raises ValueError
+- Branch index out of range raises ValueError
+**File(s):** `backend/services/checkpoint_evaluator.py`
 
-### Task 2.3: Commitment Receipt
-
-**Files modified:**
-- `backend/services/scenario_pack_lifecycle.py` — generate commitment hash at commit time
-
-Mirror theatre pattern: hash template_id + config + timestamp.
-
-1 test:
-1. Commit generates deterministic hash from pack contents
-
+#### Task 1.3: Implement Seeded RNG Helper
+**Description:** Create `_seeded_rng(seed, checkpoint_id)` that combines run seed with checkpoint ID for per-checkpoint determinism. Used by DETECTION_EVENT and TIMING_BREACH.
 **Acceptance Criteria:**
-- [ ] commitment_hash populated at commit
-- [ ] committed_at timestamp set
-- [ ] Test passes
+- Same seed + same checkpoint = same RNG output
+- Different checkpoints produce different noise
+- Noise is bounded within configured amplitude/range
+**File(s):** `backend/services/checkpoint_evaluator.py`
 
-### Task 2.4: Run Launch API
-
-```python
-POST /api/v1/scenario-packs/{id}/run
-```
-
-Transitions COMMITTED → ACTIVE, creates `ScenarioRun` in PENDING status. Returns run_id. Actual checkpoint evaluation happens async.
-
-2 tests:
-1. Launch run → ScenarioRun created, pack state ACTIVE
-2. Launch on non-COMMITTED pack → 409
-
+#### Task 1.4: Add Fail-Fast Validation on Run Start
+**Description:** Before running checkpoints, validate that all checkpoints in the template have valid evaluator configs. Return 422 if any checkpoint has missing/malformed config.
 **Acceptance Criteria:**
-- [ ] Run created with correct associations
-- [ ] Pack transitions to ACTIVE
-- [ ] Audit event PACK_RUN_STARTED logged
-- [ ] Both tests pass
+- `POST /api/v1/scenario-packs/{id}/run` validates configs before starting
+- Missing `trigger_condition_json` or `branch_rule_json` on RUNNABLE template -> 422
+- CATALOG_ONLY templates exempt from validation
+- Clear error message identifying which checkpoint fails
+**File(s):** `backend/api/scenario_pack_routes.py`, `backend/services/checkpoint_evaluator.py`
 
-### Task 2.5: Frontend — Launch Configuration Panel
-
-**Files modified:**
-- `frontend/src/pages/ScenarioPacksPage.tsx` or new ScenarioPackDetailPage
-- Hook for pack create + run API calls
-
-Wire the launch config panel (Run Mode, Agent Assignment, Simulation Scale, Objective Profile dropdowns) to `POST /api/v1/scenario-packs` + `POST /api/v1/scenario-packs/{id}/run`.
-
-1 test:
-1. Launch Run button creates pack and starts run
-
+#### Task 1.5: Update Template Seeders
+**Description:** Update existing RUNNABLE template seeders to include valid `trigger_condition_json`, `branch_rule_json`, and optionally `theatre_spawn_rule_json` for their checkpoints.
 **Acceptance Criteria:**
-- [ ] Dropdowns submit correct config values
-- [ ] Launch Run creates pack + commits + starts run
-- [ ] Test passes
+- All RUNNABLE templates pass config validation
+- CATALOG_ONLY templates unchanged
+- Seeder creates checkpoints with valid JSON configs per primitive type
+**File(s):** `backend/services/scenario_pack_lifecycle.py` or seeder files
 
-### Sprint 2 Summary Target
+#### Task 1.6: Determinism Tests
+**Description:** Tests proving branch selection is deterministic for identical inputs and varies correctly for different inputs.
+**Acceptance Criteria:**
+- Same (evaluator_type, branch_rule, action, seed, state) -> same branch, every time
+- Different seeds -> potentially different branches
+- Different actions -> potentially different branches
+- All 5 primitives tested
+**File(s):** `backend/tests/test_c020_evaluation.py`
 
-- **10 tests**
-- **1 new file, 2 modified**
-- Pack lifecycle works: create → commit → run
-- CATALOG_ONLY templates rejected at pack creation
+#### Task 1.7: Fail-Fast Tests
+**Description:** Tests for malformed config rejection.
+**Acceptance Criteria:**
+- Missing required fields -> ValueError
+- Invalid evaluator_type -> ValueError
+- Branch index out of range -> ValueError
+- Empty branch list -> ValueError
+**File(s):** `backend/tests/test_c020_evaluation.py`
 
 ---
 
-## Sprint 3: Checkpoint Resolution + Branching
+## Sprint 2: Environment RNG + Mode Semantics
 
-Evaluate checkpoints sequentially. Record results. Build episode tree.
+**Goal:** Make randomness explicit and reproducible across run modes.
 
-### Task 3.0: ScenarioSeedManager Service
+### Tasks
 
-**New file:** `backend/services/scenario_seed_manager.py`
-
-Allocate environment seeds based on run_mode policy:
-- `TRAINING` = random seed per run (stochastic, varying)
-- `EVALUATION` = controlled stochasticity from a fixed seed set
-- `CALIBRATION` = canonical seed set (e.g., [42, 137, 256, 512, 1024]) for cross-run comparability
-- `REPLAY` = exact recorded seed from previous run, no fresh randomness
-
-1 test:
-1. Each run_mode produces correct seed behaviour (TRAINING varies, CALIBRATION uses canonical set, REPLAY reuses stored seed)
-
+#### Task 2.1: Implement ScenarioRunStateBuilder
+**Description:** Create `backend/services/scenario_run_state_builder.py` that builds a state vector from previous checkpoint results within a run. State vector contains cumulative_reward, completed_objectives, remaining_resources, elapsed_time_sec, previous_branch_outcomes.
 **Acceptance Criteria:**
-- [ ] Seed allocation deterministic for CALIBRATION and REPLAY modes
-- [ ] TRAINING mode produces distinct seeds across runs
-- [ ] Test passes
+- `build_state_vector(run, checkpoint, previous_results)` returns well-structured dict
+- Empty previous_results returns default state vector
+- Cumulative values correctly accumulated
+**File(s):** `backend/services/scenario_run_state_builder.py`
 
-### Task 3.1: CheckpointEvaluator Service
-
-**New files:** `backend/services/checkpoint_evaluator.py`
-
-Schema-driven checkpoint automation. Process checkpoints in `sequence_num` order using declarative checkpoint schemas. At each checkpoint:
-1. Evaluate trigger_condition_json against current run state
-2. Execute evaluator_type primitive (BINARY_RISK_GATE | RESOURCE_DEPLETION | DETECTION_EVENT | TIMING_BREACH | MISSION_COMPLETION)
-3. Select branch via branch_rule_json, deterministically given (agent action, checkpoint state, environment seed, evaluator config)
-4. Compute reward from reward_mapping_json + objective vector component weights
-5. If theatre_spawn_rule_json present + can_spawn_theatre, flag for Theatre Spawner (Sprint 4)
-6. Create RunCheckpointResult
-7. Advance to next checkpoint via `branch.next_checkpoint_id`
-
-4 tests:
-1. Sequential evaluation through 3 checkpoints with seed → 3 results in order, deterministic
-2. Branch selection based on agent decision + seed → correct branch chosen
-3. Reward computation from objective vector weights
-4. Run completes when no more checkpoints → status COMPLETED
-
+#### Task 2.2: Wire ScenarioSeedManager as Sole Seed Source
+**Description:** Ensure `evaluate_checkpoints()` uses `ScenarioSeedManager.allocate_seed()` as the sole source of environment seeds. Remove any other seed generation paths.
 **Acceptance Criteria:**
-- [ ] Checkpoints evaluated in sequence_num order
-- [ ] Branch selection is deterministic given (agent action, checkpoint state, environment seed, evaluator config)
-- [ ] evaluator_type field used in selection logic
-- [ ] trigger_condition_json, branch_rule_json, and reward_mapping_json are consumed by evaluator
-- [ ] Seed parameter accepted and stored in run
-- [ ] Rewards computed correctly
-- [ ] theatre_spawn_rule_json is available for spawn decisions
-- [ ] Run status transitions to COMPLETED when done
-- [ ] All 4 tests pass
+- `evaluate_checkpoints()` calls `allocate_seed(run_mode, run_index)`
+- TRAINING gets random seed
+- EVALUATION gets seed from pinned set
+- CALIBRATION gets canonical seed
+- REPLAY gets recorded seed from original run
+**File(s):** `backend/services/checkpoint_evaluator.py`, `backend/api/scenario_pack_routes.py`
 
-### Task 3.2: Result Recording + Branch Probabilities
-
-**Files modified:**
-- `backend/services/checkpoint_evaluator.py` — persist results
-- `backend/api/scenario_pack_routes.py` — branch probability endpoint
-
-```python
-GET /api/v1/scenario-pack-templates/{template_id}/branch-probabilities
-```
-
-Returns `{checkpoint_id: {branch_id: probability}}` computed from completed runs.
-
-2 tests:
-1. After 10 runs, branch probabilities sum to 1.0 per checkpoint
-2. With zero runs, all probabilities are null
-
+#### Task 2.3: Wire State Vector into Evaluation Loop
+**Description:** In `evaluate_checkpoints()`, build state vector from previous results before each checkpoint evaluation, and pass to `select_branch()`.
 **Acceptance Criteria:**
-- [ ] Results persisted with correct foreign keys
-- [ ] Branch probabilities computed from run history
-- [ ] Both tests pass
+- State vector built from accumulated results
+- State vector passed to primitive evaluators
+- `state_vector_json` on RunCheckpointResult contains full state vector (not minimal)
+**File(s):** `backend/services/checkpoint_evaluator.py`
 
-### Task 3.3: Episode Tree API
-
-```python
-GET /api/v1/scenario-packs/{pack_id}/runs/{run_id}/tree
-```
-
-Returns `EpisodeTreeResponse` — the full tree structure showing which checkpoints were visited, which branches were taken, rewards at each node, and any spawned theatres.
-
-1 test:
-1. Completed run → tree has correct node structure and rewards
-
+#### Task 2.4: Replay Path Validation
+**Description:** In REPLAY mode, verify that re-evaluation with recorded seed + recorded actions produces the same branch selections.
 **Acceptance Criteria:**
-- [ ] Tree structure matches checkpoint sequence
-- [ ] Selected branches and rewards present at each node
-- [ ] Test passes
+- REPLAY mode uses recorded seed (no fresh randomness)
+- Same seed + same actions -> same branch sequence
+- Test: run, then replay, compare results
+**File(s):** `backend/tests/test_c020_rng.py`
 
-### Task 3.4: Replay Output
-
-```python
-GET /api/v1/scenario-packs/{pack_id}/runs/{run_id}/replay
-```
-
-Returns a replay-compatible output (matching the existing `ForkReplay` shape from `frontend/src/types/replay.ts`) so the frontend replay components can render scenario results.
-
-1 test:
-1. Replay output includes checkpoint decisions as disclosure events
-
+#### Task 2.5: Seed Parity Tests
+**Description:** Cross-mode parity tests proving seed behavior.
 **Acceptance Criteria:**
-- [ ] Output matches ForkReplay shape
-- [ ] Checkpoint decisions map to disclosure events
-- [ ] Test passes
+- Same seed in TRAINING produces same result (repeated runs)
+- CALIBRATION seeds [42, 137, 256, 512, 1024] produce consistent results
+- EVALUATION seeds produce consistent results per index
+- Different seeds produce different results (statistical, not guaranteed per run)
+**File(s):** `backend/tests/test_c020_rng.py`
 
-### Sprint 3 Summary Target
-
-- **9 tests** (1 seed manager + 4 evaluator + 2 probabilities + 1 tree + 1 replay)
-- **2 new files, 1 modified**
-- Seeds allocated by mode; checkpoints resolve; branches selected; results recorded; tree reconstructable
+#### Task 2.6: REPLAY End-to-End Test
+**Description:** Full run then replay integration test.
+**Acceptance Criteria:**
+- Create pack, run with TRAINING mode, capture seed and results
+- Replay with recorded seed -> identical branch selections and rewards
+**File(s):** `backend/tests/test_c020_rng.py`
 
 ---
 
-## Sprint 4: Derived Theatre Spawning
+## Sprint 3: Derived Theatre Rules + Run Integrity
 
-Checkpoints spawn real theatres with provenance. Spawned theatres use the existing pipeline.
+**Goal:** Replace boolean spawning with schema-driven spawn rules.
 
-### Task 4.1: TheatreSpawner Service
+### Tasks
 
-**New file:** `backend/services/theatre_spawner.py`
-
-When a checkpoint with `can_spawn_theatre=True` resolves:
-1. Create a Theatre record with `spawned_from_checkpoint_id` set
-2. Use checkpoint's `market_question` as the theatre inquiry
-3. Generate `construct_id` as `scenario_{pack_id}_run_{run_id}_cp_{checkpoint_id}` (includes run_id for per-run uniqueness)
-4. Log `ScenarioPackAuditEvent(THEATRE_SPAWNED)`
-5. Store `spawned_theatre_id` on the RunCheckpointResult
-
-3 tests:
-1. Checkpoint with can_spawn_theatre=True → Theatre created with provenance link and run_id in construct_id
-2. Checkpoint with can_spawn_theatre=False → no theatre spawned
-3. Spawned theatre has correct construct_id (including run_id) and spawned_from_checkpoint_id
-
+#### Task 3.1: Implement should_spawn() Rule Evaluator
+**Description:** In `theatre_spawner.py`, implement `should_spawn()` that evaluates `theatre_spawn_rule_json` against branch outcome, reward, checkpoint class, and run mode.
 **Acceptance Criteria:**
-- [ ] Theatre created with correct provenance FK
-- [ ] construct_id includes run_id: scenario_{pack_id}_run_{run_id}_cp_{checkpoint_id}
-- [ ] Non-spawning checkpoints don't create theatres
-- [ ] Audit event logged with theatre_id, checkpoint_id
-- [ ] All 3 tests pass
+- `should_spawn(spawn_rule, branch, reward, run_mode, checkpoint)` returns bool
+- Evaluates outcome_types, min_reward, checkpoint_classes, run_modes from rule
+- All fields optional with sensible defaults
+**File(s):** `backend/services/theatre_spawner.py`
 
-### Task 4.2: Spawned Theatre Lifecycle
-
-**Files modified:**
-- `backend/services/theatre_spawner.py` — auto-commit spawned theatre
-
-Spawned theatres enter the existing theatre lifecycle:
-- Created in DRAFT → auto-committed → available for `/run`, `/settle`, `/certificate`
-- Uses existing `CertificatePipeline` (including 017 routing + gates)
-
-1 test:
-1. Spawned theatre → commit → run → settle → certificate issued with routing hint
-
+#### Task 3.2: Backward Compat Fallback
+**Description:** Maintain backward compatibility: `spawn_rule=None + can_spawn=True` -> spawn unconditionally. `spawn_rule=None + can_spawn=False` -> don't spawn.
 **Acceptance Criteria:**
-- [ ] Spawned theatre follows normal lifecycle
-- [ ] Certificate pipeline applies policy surface (017)
-- [ ] Test passes
+- Legacy templates with only `can_spawn_theatre=True` continue working
+- New templates with `theatre_spawn_rule_json` use rule evaluation
+- Test both paths
+**File(s):** `backend/services/theatre_spawner.py`
 
-### Task 4.3: Derived Theatre API
-
-```python
-GET /api/v1/scenario-packs/{pack_id}/derived-theatres
-```
-
-Returns list of theatres where `spawned_from_checkpoint_id` belongs to this pack's template checkpoints.
-
-1 test:
-1. Pack with 2 spawning checkpoints → 2 theatres listed
-
+#### Task 3.3: Wire Spawn Rule into evaluate_checkpoints
+**Description:** Replace the `if checkpoint.can_spawn_theatre:` check in `evaluate_checkpoints()` with the new `should_spawn()` evaluator.
 **Acceptance Criteria:**
-- [ ] Returns only theatres derived from this pack's checkpoints
-- [ ] Includes theatre state and certificate status
-- [ ] Test passes
+- `evaluate_checkpoints()` calls `should_spawn()` with spawn rule, branch, reward, run_mode
+- Spawn only occurs when rule passes
+- Backward compat preserved
+**File(s):** `backend/services/checkpoint_evaluator.py`
 
-### Task 4.4: Parent Pack Tracking + Audit Events
-
-**Files modified:**
-- `backend/services/checkpoint_evaluator.py` — call TheatreSpawner during evaluation
-- Audit events: THEATRE_SPAWNED with detail_json containing theatre_id, checkpoint_id, market_question
-
-1 test:
-1. Audit trail shows THEATRE_SPAWNED events with correct detail
-
+#### Task 3.4: Spawn Provenance with Run-Scoped Uniqueness
+**Description:** Ensure spawned theatres have unique `construct_id` scoped to the originating pack/run and that duplicate spawns for the same checkpoint in the same run are prevented.
 **Acceptance Criteria:**
-- [ ] Audit events have full context
-- [ ] Test passes
+- `construct_id` format: `scenario_{pack_id}_run_{run_id}_cp_{checkpoint_id}`
+- Duplicate spawn attempt for same run+checkpoint returns existing theatre
+- Derived theatres queryable by originating pack/run lineage
+**File(s):** `backend/services/theatre_spawner.py`
 
-### Sprint 4 Summary Target
-
-- **6 tests**
-- **1 new file, 2 modified**
-- Checkpoints spawn real theatres; provenance tracked; existing pipeline applies
+#### Task 3.5: Spawn Rule Tests
+**Description:** Tests for spawn rule evaluation.
+**Acceptance Criteria:**
+- Rule with outcome_types filter: only matching outcomes spawn
+- Rule with min_reward: below threshold doesn't spawn
+- Rule with run_modes: excluded modes don't spawn
+- Empty/null rule with can_spawn=True: spawns (backward compat)
+- Empty/null rule with can_spawn=False: doesn't spawn
+**File(s):** `backend/tests/test_c020_spawning.py`
 
 ---
 
-## Sprint 5: RLMF Telemetry + Frontend Integration + Polish
+## Sprint 4: Paradox Risk Orchestration
 
-Wire telemetry to exports. Frontend branch map + run status. E2E test.
+**Goal:** Promote paradox risk from on-read to event-driven orchestration.
 
-### Task 5.1: RLMF Telemetry Export Integration
+### Tasks
 
-**New file:** `backend/services/scenario_telemetry_exporter.py`
-
-Convert ScenarioRun + RunCheckpointResults into RLMF-compatible export records matching the existing `ExportFilter` shape:
-
-```python
-{
-    "episode_id": run.id,
-    "scenario_pack_id": run.pack_id,
-    "template_id": template.id,
-    "agent_id": run.agent_id,
-    "actions": [checkpoint decisions...],
-    "rewards": [per-checkpoint rewards...],
-    "state_features": {aggregated state vectors},
-    "fork_count": len(checkpoint_results),
-    "episode_duration_sec": run.episode_duration_sec,
-    "branch_path": [branch labels in order],
-    "spawned_theatre_ids": [theatre ids],
-}
-```
-
-1 test:
-1. Completed run → export record has correct shape and all fields
-
+#### Task 4.1: Create ParadoxRiskOrchestrator Service
+**Description:** Create `backend/services/paradox_risk_orchestrator.py` with `trigger_recompute(db, theatre_id, trigger_reason)` that loads theatre state, gathers factors, evaluates risk, persists, and conditionally emits WS event.
 **Acceptance Criteria:**
-- [ ] Export record matches RLMF training data shape
-- [ ] Test passes
+- `trigger_recompute()` loads theatre, gathers factors, evaluates, persists
+- Returns ParadoxRiskAssessment or None if theatre not found
+- Materiality check before WS emission
+**File(s):** `backend/services/paradox_risk_orchestrator.py`
 
-### Task 5.2: WebSocket Events
-
-**Files modified:**
-- `backend/websockets/realtime_manager.py` — 3 new broadcast methods
-
-New events:
-- `SCENARIO_RUN_STATUS` — run status change (PENDING → RUNNING → COMPLETED)
-- `CHECKPOINT_RESOLVED` — checkpoint resolved during a run
-- `THEATRE_SPAWNED` — derived theatre created from checkpoint
-
-Hook broadcasts into:
-- `checkpoint_evaluator.py` → CHECKPOINT_RESOLVED
-- `scenario_pack_lifecycle.py` → SCENARIO_RUN_STATUS
-- `theatre_spawner.py` → THEATRE_SPAWNED
-
-1 test:
-1. Run completion triggers SCENARIO_RUN_STATUS(COMPLETED) WS event
-
+#### Task 4.2: Implement Factor Gathering
+**Description:** `_gather_factors()` reads live theatre/investigation state to build evaluation inputs: logic_gap, stability, active_paradox, material_counter_signals, evidence_freshness_hours.
 **Acceptance Criteria:**
-- [ ] All 3 event types broadcast correctly
-- [ ] Test passes
+- Reads paradox state from theatre fields
+- Reads material counter-signal count from linked investigations
+- Reads evidence freshness from linked investigations
+- Returns dict compatible with `evaluate()` kwargs
+**File(s):** `backend/services/paradox_risk_orchestrator.py`
 
-### Task 5.3: Frontend — Branch Map Visualization
-
-**Files modified:**
-- `frontend/src/pages/ScenarioPacksPage.tsx` or new detail page component
-- New component: branch map tree renderer
-
-Render from `/runs/{id}/tree` API. Colour vocabulary:
-- Start: purple (#8B5CF6)
-- Checkpoint: orange (#F59E0B)
-- Success: green (#10B981)
-- Failure: red (#EF4444)
-- Partial: dark orange (#D97706)
-- Main path edges: purple
-- Success branches: green
-- Failure branches: red
-
-1 test:
-1. Branch map renders correct node count and colours from tree data
-
+#### Task 4.3: Wire Trigger Path 1 — Paradox State Change
+**Description:** After paradox task updates theatre state, call `orchestrator.trigger_recompute(theatre_id, "paradox_state_change")`.
 **Acceptance Criteria:**
-- [ ] Tree structure renders from API data
-- [ ] Correct colour vocabulary
-- [ ] Test passes
+- Paradox state mutation triggers recompute
+- Recompute is async / non-blocking to the mutation path
+**File(s):** `backend/worker/tasks/paradox.py`
 
-### Task 5.4: Frontend — Run Status + Checkpoint Results + Derived Theatres
-
-**Files modified:**
-- Frontend scenario pack detail components
-- WS subscription for SCENARIO_RUN_STATUS, CHECKPOINT_RESOLVED events
-
-Show:
-- Active run status with progress (checkpoint N of M)
-- Resolved checkpoint results with branch taken, reward
-- Derived theatre links (clickable to theatre detail page)
-
-1 test:
-1. Run status updates live via WS, checkpoint results display correctly
-
+#### Task 4.4: Wire Trigger Path 2 — Counter-Signal Ingestion
+**Description:** After material counter-signal is logged on an investigation linked to a theatre, trigger recompute.
 **Acceptance Criteria:**
-- [ ] Run progress visible
-- [ ] Checkpoint results display
-- [ ] Derived theatre links work
-- [ ] Test passes
+- Material counter-signal ingestion triggers recompute for linked theatre
+- Non-material counter-signals do not trigger recompute
+**File(s):** `backend/api/investigation_routes.py`
 
-### Task 5.5: E2E Test — Full Scenario Pack Lifecycle
-
-1 test:
-1. Create pack from Neon Courier template → commit → run → all checkpoints resolve → at least 1 theatre spawned → spawned theatre can be committed/run/settled → RLMF export record available
-
+#### Task 4.5: Wire Trigger Paths 3 & 4 — Evidence Freshness + Certificate
+**Description:** Wire evidence freshness threshold crossing and certificate/policy transitions as trigger paths.
 **Acceptance Criteria:**
-- [ ] Full lifecycle works end-to-end
-- [ ] All intermediate states correct
-- [ ] Test passes
+- Investigation evidence update that crosses freshness threshold triggers recompute
+- Certificate pipeline transition triggers recompute for linked theatre
+**File(s):** `backend/api/investigation_routes.py`, `backend/services/certificate_pipeline.py`
 
-### Sprint 5 Summary Target
-
-- **5 tests**
-- **2 new files, multiple modified**
-- RLMF telemetry wired; WS events live; branch map renders; E2E verified
+#### Task 4.6: Orchestrator Tests
+**Description:** Unit and integration tests for the orchestrator.
+**Acceptance Criteria:**
+- Material delta detected correctly (level change, paradox flip, counter-signal threshold)
+- Non-material delta: no WS event emitted
+- Factor gathering returns correct values from theatre/investigation state
+- Trigger from each of the 4 paths verified
+**File(s):** `backend/tests/test_c020_paradox_orchestrator.py`
 
 ---
 
-## Test Summary
+## Sprint 5: WebSocket Emission + Integration + E2E
 
-| Sprint | New Tests | Cumulative |
-|--------|-----------|------------|
-| 0 | 4 | 4 |
-| 1 | 6 | 10 |
-| 2 | 10 | 20 |
-| 3 | 9 | 29 |
-| 4 | 6 | 35 |
-| 5 | 5 | 40 |
+**Goal:** Wire WebSocket events and verify full integration paths.
 
-**Post-018 expected:** ≥1140 passed (1100 baseline + 40 new).
+### Tasks
 
----
+#### Task 5.1: Wire CHECKPOINT_RESOLVED Emission
+**Description:** In `evaluate_checkpoints()`, emit `broadcast_checkpoint_resolved` after each checkpoint evaluation.
+**Acceptance Criteria:**
+- WS event emitted with pack_id, run_id, checkpoint_id, selected_branch_id, reward, seed
+- Event uses existing `broadcast_checkpoint_resolved` method
+**File(s):** `backend/services/checkpoint_evaluator.py`
 
-## Risk Register
+#### Task 5.2: Wire THEATRE_SPAWNED Emission
+**Description:** In `spawn_theatre()`, emit `broadcast_theatre_spawned` after theatre creation.
+**Acceptance Criteria:**
+- WS event emitted with pack_id, run_id, checkpoint_id, theatre_id
+- Only emitted when theatre is actually spawned (not on skip)
+**File(s):** `backend/services/theatre_spawner.py`
 
-| Risk | Mitigation |
-|------|------------|
-| 18 templates need manual seeding from prose descriptions | 4 have structured JSON fixtures; remaining 14 use library doc fork points/options |
-| Checkpoint evaluation may be slow for complex trees | Sequential processing with async DB writes; index on run_id + checkpoint_id |
-| Theatre spawning creates cross-entity dependencies | spawned_from_checkpoint_id is the only cross-reference; spawned theatres are fully independent after creation |
-| ForkReplay shape may not perfectly match checkpoint results | Replay output adapter transforms checkpoint results to existing ForkReplay interface |
-| RLMF export shape may evolve | Telemetry exporter is a separate service; shape changes are isolated |
+#### Task 5.3: Wire PARADOX_RISK_CHANGED Emission
+**Description:** In `ParadoxRiskOrchestrator.trigger_recompute()`, emit `broadcast_paradox_risk_changed` on material delta.
+**Acceptance Criteria:**
+- WS event emitted with theatre_id, old_level, new_level, factors, reason
+- NOT emitted on non-material delta
+**File(s):** `backend/services/paradox_risk_orchestrator.py`
+
+#### Task 5.4: Scenario Pack Integration Test
+**Description:** Full integration: runnable template -> create pack -> run with fixed seed -> checkpoints resolve from schema -> derived theatre spawns when rule passes -> replay reproduces exact path.
+**Acceptance Criteria:**
+- Pack created from RUNNABLE template
+- Run executes with all checkpoints resolving via schema-driven evaluation
+- Correct branches selected per primitive logic
+- Derived theatre spawned when spawn rule passes
+- Replay with same seed produces identical results
+**File(s):** `backend/tests/test_c020_integration.py`
+
+#### Task 5.5: Paradox Risk Integration Test
+**Description:** Full integration: theatre/investigation mutation -> paradox risk updates -> material change emits WS event -> non-material recompute does not spam.
+**Acceptance Criteria:**
+- Counter-signal ingestion triggers recompute
+- Level change emits exactly 1 WS event
+- Same-level recompute emits 0 WS events
+**File(s):** `backend/tests/test_c020_integration.py`
+
+#### Task 5.6: Regression Verification
+**Description:** Verify Cycle-019 APIs and Cycle-018 template catalog behavior unchanged.
+**Acceptance Criteria:**
+- Existing investigation persistence tests pass
+- Existing agent deployment tests pass
+- Existing paradox risk read-path tests pass
+- CATALOG_ONLY templates unaffected
+- Existing pack lifecycle tests pass
+**File(s):** `backend/tests/test_c020_integration.py`
+
+#### Task 5.7: WebSocket Emission Tests
+**Description:** Unit tests for WS event emission behavior.
+**Acceptance Criteria:**
+- CHECKPOINT_RESOLVED emitted per checkpoint in a run
+- THEATRE_SPAWNED emitted only on actual spawn
+- PARADOX_RISK_CHANGED emitted only on material delta
+- All events have correct payload structure
+**File(s):** `backend/tests/test_c020_integration.py`

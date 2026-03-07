@@ -1,18 +1,21 @@
 """
-Checkpoint Evaluator — Schema-driven checkpoint automation.
+Checkpoint Evaluator v2 — Schema-driven checkpoint resolution.
 
 Processes checkpoints in sequence_num order. At each checkpoint:
-1. Evaluate trigger_condition_json against current run state
-2. Execute evaluator_type primitive
-3. Select branch via branch_rule_json, deterministically given (agent action, checkpoint state, seed, evaluator config)
-4. Compute reward from reward_mapping_json + objective vector weights
-5. Flag theatre_spawn_rule_json for Theatre Spawner (Sprint 4)
-6. Create RunCheckpointResult
-7. Advance to next checkpoint via branch.next_checkpoint_id
+1. Dispatch to primitive evaluator based on evaluator_type
+2. Evaluate branch_rule_json with agent action, seed, and state vector
+3. Compute reward from reward_mapping_json + objective vector weights
+4. Evaluate theatre_spawn_rule_json for derived theatre spawning
+5. Create RunCheckpointResult with full state vector
+6. Advance to next checkpoint via branch.next_checkpoint_id
+
+v2 (Cycle 020): Schema-driven evaluation replaces hash-based branching.
+All 5 evaluator primitives implemented. Environment RNG via seeded random.Random.
 """
 
 import hashlib
 import logging
+import random
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -39,6 +42,368 @@ EVALUATOR_PRIMITIVES = {
     "MISSION_COMPLETION",
 }
 
+# ── Primitive JSON Contracts ──
+
+PRIMITIVE_CONTRACTS = {
+    "BINARY_RISK_GATE": {
+        "trigger_fields": {"type", "threshold", "metric"},
+        "branch_rule_fields": {"type", "field", "threshold", "above_branch_index", "below_branch_index"},
+        "branch_rule_type": "threshold_compare",
+    },
+    "RESOURCE_DEPLETION": {
+        "trigger_fields": {"type", "resource", "depletion_curve"},
+        "branch_rule_fields": {"type", "brackets", "field"},
+        "branch_rule_type": "resource_bracket",
+    },
+    "DETECTION_EVENT": {
+        "trigger_fields": {"type", "base_detection_probability"},
+        "branch_rule_fields": {"type", "base_probability", "noise_amplitude", "detected_branch_index", "safe_branch_index"},
+        "branch_rule_type": "probability_gate",
+    },
+    "TIMING_BREACH": {
+        "trigger_fields": {"type", "deadline_sec", "drift_range"},
+        "branch_rule_fields": {"type", "deadline_sec", "drift_range", "on_time_branch_index", "breach_branch_index"},
+        "branch_rule_type": "deadline_compare",
+    },
+    "MISSION_COMPLETION": {
+        "trigger_fields": {"type", "required_objectives", "min_completion"},
+        "branch_rule_fields": {"type", "required", "min_completion", "success_branch_index", "partial_branch_index", "fail_branch_index"},
+        "branch_rule_type": "objective_set",
+    },
+}
+
+SPAWN_RULE_OPTIONAL_FIELDS = {"outcome_types", "min_reward", "checkpoint_classes", "run_modes"}
+
+
+def validate_checkpoint_config(
+    evaluator_type: str,
+    trigger_condition_json: dict | None,
+    branch_rule_json: dict | None,
+) -> list[str]:
+    """Validate a checkpoint's config against its evaluator_type.
+
+    Returns a list of error strings. Empty list = valid.
+    """
+    errors: list[str] = []
+
+    if evaluator_type not in EVALUATOR_PRIMITIVES:
+        errors.append(f"Unknown evaluator_type: {evaluator_type}")
+        return errors
+
+    contract = PRIMITIVE_CONTRACTS[evaluator_type]
+
+    if trigger_condition_json is None:
+        errors.append(f"{evaluator_type}: trigger_condition_json is required")
+    else:
+        missing = contract["trigger_fields"] - set(trigger_condition_json.keys())
+        if missing:
+            errors.append(f"{evaluator_type}: trigger_condition_json missing fields: {missing}")
+
+    if branch_rule_json is None:
+        errors.append(f"{evaluator_type}: branch_rule_json is required")
+    else:
+        missing = contract["branch_rule_fields"] - set(branch_rule_json.keys())
+        if missing:
+            errors.append(f"{evaluator_type}: branch_rule_json missing fields: {missing}")
+        if branch_rule_json.get("type") != contract["branch_rule_type"]:
+            errors.append(
+                f"{evaluator_type}: branch_rule_json.type must be "
+                f"'{contract['branch_rule_type']}', got '{branch_rule_json.get('type')}'"
+            )
+
+    return errors
+
+
+def validate_spawn_rule(spawn_rule_json: dict | None) -> list[str]:
+    """Validate a theatre_spawn_rule_json config."""
+    if spawn_rule_json is None:
+        return []
+
+    errors: list[str] = []
+
+    if not isinstance(spawn_rule_json, dict):
+        return ["theatre_spawn_rule_json must be a dict"]
+
+    if "outcome_types" in spawn_rule_json:
+        if not isinstance(spawn_rule_json["outcome_types"], list):
+            errors.append("spawn_rule: outcome_types must be a list")
+
+    if "min_reward" in spawn_rule_json:
+        if not isinstance(spawn_rule_json["min_reward"], (int, float)):
+            errors.append("spawn_rule: min_reward must be numeric")
+
+    if "checkpoint_classes" in spawn_rule_json:
+        if not isinstance(spawn_rule_json["checkpoint_classes"], list):
+            errors.append("spawn_rule: checkpoint_classes must be a list")
+
+    if "run_modes" in spawn_rule_json:
+        if not isinstance(spawn_rule_json["run_modes"], list):
+            errors.append("spawn_rule: run_modes must be a list")
+
+    return errors
+
+
+# ── Seeded RNG ──
+
+def _seeded_rng(seed: int, checkpoint_id: str) -> random.Random:
+    """Create checkpoint-scoped seeded RNG.
+
+    Combines run seed with checkpoint_id for per-checkpoint determinism.
+    """
+    combined = hashlib.sha256(f"{seed}|{checkpoint_id}".encode()).hexdigest()
+    return random.Random(int(combined[:8], 16))
+
+
+# ── Primitive Evaluator Functions ──
+
+def _parse_action_value(agent_action: str, field: str) -> float:
+    """Parse a numeric value from agent_action string.
+
+    agent_action is either a plain number string or a JSON-like "field=value" format.
+    """
+    try:
+        return float(agent_action)
+    except (ValueError, TypeError):
+        pass
+
+    # Try key=value parsing
+    for part in str(agent_action).split(","):
+        part = part.strip()
+        if "=" in part:
+            k, v = part.split("=", 1)
+            if k.strip() == field:
+                try:
+                    return float(v.strip())
+                except ValueError:
+                    pass
+
+    return 0.0
+
+
+def evaluate_binary_risk_gate(
+    branch_rule_json: dict,
+    agent_action: str,
+    seed: int,
+    state_vector: dict,
+) -> tuple[int, dict]:
+    """BINARY_RISK_GATE: threshold comparison.
+
+    action_value >= threshold -> above_branch_index, else below_branch_index.
+    """
+    field = branch_rule_json["field"]
+    threshold = float(branch_rule_json["threshold"])
+    above_idx = int(branch_rule_json["above_branch_index"])
+    below_idx = int(branch_rule_json["below_branch_index"])
+
+    action_value = _parse_action_value(agent_action, field)
+
+    if action_value >= threshold:
+        return above_idx, {"action_value": action_value, "threshold": threshold, "result": "above"}
+    else:
+        return below_idx, {"action_value": action_value, "threshold": threshold, "result": "below"}
+
+
+def evaluate_resource_depletion(
+    branch_rule_json: dict,
+    agent_action: str,
+    seed: int,
+    state_vector: dict,
+) -> tuple[int, dict]:
+    """RESOURCE_DEPLETION: bracket mapping.
+
+    remaining_fraction mapped to bracket -> corresponding branch_index.
+    """
+    field = branch_rule_json["field"]
+    brackets = branch_rule_json["brackets"]
+
+    value = _parse_action_value(agent_action, field)
+
+    # Also check state_vector for resource tracking
+    if field in state_vector:
+        value = float(state_vector[field])
+
+    for bracket in brackets:
+        if float(bracket["min"]) <= value < float(bracket["max"]):
+            return int(bracket["branch_index"]), {
+                "value": value, "bracket_min": bracket["min"], "bracket_max": bracket["max"]
+            }
+
+    # Fallback: last bracket (inclusive of max)
+    if brackets:
+        last = brackets[-1]
+        if value >= float(last["max"]):
+            return int(last["branch_index"]), {"value": value, "fallback": "last_bracket"}
+
+    return 0, {"value": value, "fallback": "default"}
+
+
+def evaluate_detection_event(
+    branch_rule_json: dict,
+    agent_action: str,
+    seed: int,
+    state_vector: dict,
+) -> tuple[int, dict]:
+    """DETECTION_EVENT: probability gate with seeded noise.
+
+    base_probability + noise(seed) > action_stealth_value -> detected, else safe.
+    """
+    base_prob = float(branch_rule_json["base_probability"])
+    noise_amp = float(branch_rule_json["noise_amplitude"])
+    detected_idx = int(branch_rule_json["detected_branch_index"])
+    safe_idx = int(branch_rule_json["safe_branch_index"])
+
+    # Get checkpoint_id from state_vector for RNG scoping
+    checkpoint_id = state_vector.get("checkpoint_id", "default")
+    rng = _seeded_rng(seed, checkpoint_id)
+    noise = rng.uniform(-noise_amp, noise_amp)
+
+    detection_threshold = base_prob + noise
+    stealth_value = _parse_action_value(agent_action, "stealth")
+
+    if detection_threshold > stealth_value:
+        return detected_idx, {
+            "detection_threshold": round(detection_threshold, 4),
+            "stealth_value": stealth_value,
+            "noise": round(noise, 4),
+            "result": "detected",
+        }
+    else:
+        return safe_idx, {
+            "detection_threshold": round(detection_threshold, 4),
+            "stealth_value": stealth_value,
+            "noise": round(noise, 4),
+            "result": "safe",
+        }
+
+
+def evaluate_timing_breach(
+    branch_rule_json: dict,
+    agent_action: str,
+    seed: int,
+    state_vector: dict,
+) -> tuple[int, dict]:
+    """TIMING_BREACH: deadline comparison with seeded drift.
+
+    action_time + drift(seed) <= deadline -> on-time, else breach.
+    """
+    deadline = float(branch_rule_json["deadline_sec"])
+    drift_range = float(branch_rule_json["drift_range"])
+    on_time_idx = int(branch_rule_json["on_time_branch_index"])
+    breach_idx = int(branch_rule_json["breach_branch_index"])
+
+    checkpoint_id = state_vector.get("checkpoint_id", "default")
+    rng = _seeded_rng(seed, checkpoint_id)
+    drift = rng.uniform(-drift_range, drift_range)
+
+    action_time = _parse_action_value(agent_action, "time")
+    effective_time = action_time + drift
+
+    if effective_time <= deadline:
+        return on_time_idx, {
+            "action_time": action_time,
+            "drift": round(drift, 4),
+            "effective_time": round(effective_time, 4),
+            "deadline": deadline,
+            "result": "on_time",
+        }
+    else:
+        return breach_idx, {
+            "action_time": action_time,
+            "drift": round(drift, 4),
+            "effective_time": round(effective_time, 4),
+            "deadline": deadline,
+            "result": "breach",
+        }
+
+
+def evaluate_mission_completion(
+    branch_rule_json: dict,
+    agent_action: str,
+    seed: int,
+    state_vector: dict,
+) -> tuple[int, dict]:
+    """MISSION_COMPLETION: objective set evaluation.
+
+    Count completed objectives from action. >= min -> success, > 0 -> partial, 0 -> fail.
+    """
+    required = branch_rule_json["required"]
+    min_completion = int(branch_rule_json["min_completion"])
+    success_idx = int(branch_rule_json["success_branch_index"])
+    partial_idx = int(branch_rule_json["partial_branch_index"])
+    fail_idx = int(branch_rule_json["fail_branch_index"])
+
+    # Parse completed objectives from agent_action
+    # Format: "obj_a,obj_b" or "objectives=obj_a,obj_b"
+    completed = set()
+    action_str = str(agent_action)
+    if "objectives=" in action_str:
+        _, objs = action_str.split("objectives=", 1)
+        completed = {o.strip() for o in objs.split(",") if o.strip()}
+    else:
+        completed = {o.strip() for o in action_str.split(",") if o.strip()}
+
+    # Also check state_vector for previously completed objectives
+    prev_completed = set(state_vector.get("completed_objectives", []))
+    all_completed = completed | prev_completed
+
+    matched = len(set(required) & all_completed)
+
+    if matched >= min_completion:
+        return success_idx, {"matched": matched, "required": len(required), "min": min_completion, "result": "success"}
+    elif matched > 0:
+        return partial_idx, {"matched": matched, "required": len(required), "min": min_completion, "result": "partial"}
+    else:
+        return fail_idx, {"matched": matched, "required": len(required), "min": min_completion, "result": "fail"}
+
+
+# ── Evaluator Dispatch ──
+
+PRIMITIVE_EVALUATORS = {
+    "BINARY_RISK_GATE": evaluate_binary_risk_gate,
+    "RESOURCE_DEPLETION": evaluate_resource_depletion,
+    "DETECTION_EVENT": evaluate_detection_event,
+    "TIMING_BREACH": evaluate_timing_breach,
+    "MISSION_COMPLETION": evaluate_mission_completion,
+}
+
+
+def select_branch(
+    evaluator_type: str,
+    branches: list[CheckpointBranch],
+    branch_rule_json: dict,
+    agent_action: str,
+    seed: int,
+    state_vector: dict,
+) -> tuple[CheckpointBranch, dict]:
+    """Select branch via primitive evaluator.
+
+    Returns (selected_branch, evaluation_detail).
+    Raises ValueError for unknown evaluator_type or malformed config.
+    """
+    if not branches:
+        raise ValueError("No branches available for checkpoint evaluation")
+
+    evaluator = PRIMITIVE_EVALUATORS.get(evaluator_type)
+    if evaluator is None:
+        raise ValueError(f"Unknown evaluator primitive: {evaluator_type}")
+
+    branch_index, detail = evaluator(
+        branch_rule_json=branch_rule_json,
+        agent_action=agent_action,
+        seed=seed,
+        state_vector=state_vector,
+    )
+
+    if branch_index < 0 or branch_index >= len(branches):
+        raise ValueError(
+            f"Evaluator {evaluator_type} returned branch_index {branch_index} "
+            f"but only {len(branches)} branches exist"
+        )
+
+    return branches[branch_index], detail
+
+
+# ── Legacy Hash Fallback ──
 
 def _deterministic_branch_index(
     checkpoint_id: str,
@@ -46,10 +411,7 @@ def _deterministic_branch_index(
     seed: int,
     evaluator_type: str,
 ) -> int:
-    """Compute a deterministic branch index from inputs.
-
-    Uses SHA-256 hash of concatenated inputs to produce a stable integer.
-    """
+    """Legacy hash-based branch index. Used only when branch_rule_json is missing."""
     data = f"{checkpoint_id}|{agent_action}|{seed}|{evaluator_type}"
     h = hashlib.sha256(data.encode()).hexdigest()
     return int(h[:8], 16)
@@ -61,24 +423,16 @@ def _compute_reward(
     checkpoint_reward_mapping: Optional[dict],
     objective_vector: Optional[list],
 ) -> float:
-    """Compute reward from mappings and objective vector weights.
-
-    Priority: branch reward_mapping > checkpoint reward_mapping > default.
-    Objective vector weights scale the base reward.
-    """
+    """Compute reward from mappings and objective vector weights."""
     base_reward = 0.0
 
-    # Get base reward from mappings
     mapping = branch_reward_mapping or checkpoint_reward_mapping
     if mapping:
         base_reward = mapping.get("base_reward", 0.0)
-
-        # Evaluator-specific multipliers
         multipliers = mapping.get("evaluator_multipliers", {})
         if evaluator_type in multipliers:
             base_reward *= multipliers[evaluator_type]
 
-    # Apply objective vector weight scaling if available
     if objective_vector:
         total_weight = sum(comp.get("weight", 0.0) for comp in objective_vector if isinstance(comp, dict))
         if total_weight > 0:
@@ -87,38 +441,71 @@ def _compute_reward(
     return round(base_reward, 4)
 
 
+def validate_template_checkpoints(
+    session: Session,
+    template_id: str,
+) -> list[str]:
+    """Validate all checkpoints in a template have valid evaluator configs.
+
+    Returns list of error strings. Empty = all valid.
+    """
+    checkpoints = session.execute(
+        select(ScenarioCheckpoint)
+        .where(ScenarioCheckpoint.template_id == template_id)
+    ).scalars().all()
+
+    all_errors: list[str] = []
+    for cp in checkpoints:
+        # Get branches for this checkpoint
+        branches = session.execute(
+            select(CheckpointBranch)
+            .where(CheckpointBranch.checkpoint_id == cp.id)
+        ).scalars().all()
+
+        # Validate checkpoint config
+        # Use first branch's branch_rule_json for validation
+        branch_rule = None
+        if branches:
+            branch_rule = branches[0].branch_rule_json
+
+        errors = validate_checkpoint_config(
+            cp.evaluator_type,
+            cp.trigger_condition_json,
+            branch_rule,
+        )
+        for e in errors:
+            all_errors.append(f"Checkpoint {cp.id} (seq {cp.sequence_num}): {e}")
+
+        # Validate spawn rule if present
+        spawn_errors = validate_spawn_rule(cp.theatre_spawn_rule_json)
+        for e in spawn_errors:
+            all_errors.append(f"Checkpoint {cp.id} (seq {cp.sequence_num}): {e}")
+
+    return all_errors
+
+
 def evaluate_checkpoints(
     session: Session,
     run: ScenarioRun,
     seed: int,
     agent_actions: Optional[dict[str, str]] = None,
 ) -> list[RunCheckpointResult]:
-    """Evaluate all checkpoints for a run sequentially.
+    """Evaluate all checkpoints for a run using schema-driven evaluation.
 
-    Args:
-        session: Database session.
-        run: The ScenarioRun to evaluate.
-        seed: Environment seed for deterministic branch selection.
-        agent_actions: Map of checkpoint_id → agent action string.
-                       If not provided, uses "default" for all.
-
-    Returns:
-        List of RunCheckpointResult records created.
+    Uses primitive evaluators when branch_rule_json is present,
+    falls back to legacy hash-based selection otherwise.
     """
     if agent_actions is None:
         agent_actions = {}
 
-    # Store seed on run
     run.environment_seed = seed
     run.status = "RUNNING"
     run.started_at = datetime.now(timezone.utc)
 
-    # Get template for objective vector
     pack = run.pack
     template = session.get(ScenarioPackTemplate, pack.template_id)
     objective_vector = template.objective_vector_json if template else None
 
-    # Get first checkpoint
     checkpoints = session.execute(
         select(ScenarioCheckpoint)
         .where(ScenarioCheckpoint.template_id == pack.template_id)
@@ -135,8 +522,14 @@ def evaluate_checkpoints(
     current_checkpoint = checkpoints[0]
     checkpoint_map = {cp.id: cp for cp in checkpoints}
 
+    # Accumulate state vector across checkpoints
+    state_vector = {
+        "cumulative_reward": 0.0,
+        "completed_objectives": [],
+        "previous_branch_outcomes": [],
+    }
+
     while current_checkpoint is not None:
-        # Get branches for this checkpoint
         branches = session.execute(
             select(CheckpointBranch)
             .where(CheckpointBranch.checkpoint_id == current_checkpoint.id)
@@ -145,17 +538,42 @@ def evaluate_checkpoints(
         if not branches:
             break
 
-        # Select branch deterministically
         agent_action = agent_actions.get(current_checkpoint.id, "default")
-        branch_idx = _deterministic_branch_index(
-            current_checkpoint.id,
-            agent_action,
-            seed,
-            current_checkpoint.evaluator_type,
-        )
-        selected_branch = branches[branch_idx % len(branches)]
 
-        # Compute reward
+        # Add checkpoint context to state_vector
+        state_vector["checkpoint_id"] = current_checkpoint.id
+        state_vector["sequence_num"] = current_checkpoint.sequence_num
+
+        # Schema-driven evaluation if branch_rule_json present
+        first_branch_rule = branches[0].branch_rule_json if branches else None
+
+        if first_branch_rule is not None:
+            try:
+                selected_branch, eval_detail = select_branch(
+                    evaluator_type=current_checkpoint.evaluator_type,
+                    branches=branches,
+                    branch_rule_json=first_branch_rule,
+                    agent_action=agent_action,
+                    seed=seed,
+                    state_vector=state_vector,
+                )
+            except ValueError as e:
+                logger.error("Checkpoint evaluation failed: %s", e)
+                run.status = "FAILED"
+                run.completed_at = datetime.now(timezone.utc)
+                session.flush()
+                return results
+        else:
+            # Legacy fallback: hash-based selection
+            branch_idx = _deterministic_branch_index(
+                current_checkpoint.id,
+                agent_action,
+                seed,
+                current_checkpoint.evaluator_type,
+            )
+            selected_branch = branches[branch_idx % len(branches)]
+            eval_detail = {"fallback": "hash_based"}
+
         reward = _compute_reward(
             current_checkpoint.evaluator_type,
             selected_branch.reward_mapping_json,
@@ -163,7 +581,14 @@ def evaluate_checkpoints(
             objective_vector,
         )
 
-        # Create result
+        # Build full state vector for persistence
+        result_state_vector = {
+            **state_vector,
+            "seed": seed,
+            "evaluator_type": current_checkpoint.evaluator_type,
+            "evaluation_detail": eval_detail,
+        }
+
         result = RunCheckpointResult(
             id=str(uuid.uuid4()),
             run_id=run.id,
@@ -171,20 +596,26 @@ def evaluate_checkpoints(
             selected_branch_id=selected_branch.id,
             agent_decision_json={"action": agent_action},
             reward=reward,
-            state_vector_json={
-                "seed": seed,
-                "evaluator_type": current_checkpoint.evaluator_type,
-                "sequence_num": current_checkpoint.sequence_num,
-            },
+            state_vector_json=result_state_vector,
             resolved_at=datetime.now(timezone.utc),
         )
         session.add(result)
         results.append(result)
 
-        # Spawn theatre if checkpoint allows it
-        if current_checkpoint.can_spawn_theatre:
-            from backend.services.theatre_spawner import spawn_theatre
+        # Spawn theatre via rule evaluation or legacy boolean
+        from backend.services.theatre_spawner import should_spawn, spawn_theatre
+        if should_spawn(
+            current_checkpoint.theatre_spawn_rule_json,
+            selected_branch,
+            reward,
+            run.run_mode,
+            current_checkpoint,
+        ):
             spawn_theatre(session, current_checkpoint, pack, run, result)
+
+        # Update state vector for next checkpoint
+        state_vector["cumulative_reward"] = round(state_vector["cumulative_reward"] + reward, 4)
+        state_vector["previous_branch_outcomes"].append(selected_branch.outcome_type)
 
         run.current_checkpoint_seq = current_checkpoint.sequence_num
         run.total_reward += reward
@@ -196,7 +627,6 @@ def evaluate_checkpoints(
         else:
             current_checkpoint = None
 
-    # Run complete
     run.status = "COMPLETED"
     run.completed_at = datetime.now(timezone.utc)
     session.flush()
@@ -208,11 +638,7 @@ def compute_branch_probabilities(
     session: Session,
     template_id: str,
 ) -> dict[str, dict[str, float]]:
-    """Compute branch selection probabilities from completed runs.
-
-    Returns: {checkpoint_id: {branch_id: probability}}
-    """
-    # Get all checkpoints for this template
+    """Compute branch selection probabilities from completed runs."""
     checkpoints = session.execute(
         select(ScenarioCheckpoint)
         .where(ScenarioCheckpoint.template_id == template_id)
@@ -224,7 +650,6 @@ def compute_branch_probabilities(
     probabilities: dict[str, dict[str, float]] = {}
 
     for cp in checkpoints:
-        # Get all results for this checkpoint
         results = session.execute(
             select(RunCheckpointResult)
             .where(RunCheckpointResult.checkpoint_id == cp.id)
@@ -234,13 +659,11 @@ def compute_branch_probabilities(
             probabilities[cp.id] = None
             continue
 
-        # Count branch selections
         branch_counts: dict[str, int] = {}
         total = len(results)
         for r in results:
             branch_counts[r.selected_branch_id] = branch_counts.get(r.selected_branch_id, 0) + 1
 
-        # Convert to probabilities
         probabilities[cp.id] = {
             branch_id: round(count / total, 4)
             for branch_id, count in branch_counts.items()
@@ -253,10 +676,7 @@ def build_episode_tree(
     session: Session,
     run: ScenarioRun,
 ) -> list[dict]:
-    """Build episode tree from run checkpoint results.
-
-    Returns list of tree nodes with checkpoint info, selected branch, reward.
-    """
+    """Build episode tree from run checkpoint results."""
     results = session.execute(
         select(RunCheckpointResult)
         .where(RunCheckpointResult.run_id == run.id)
@@ -289,10 +709,7 @@ def build_replay_output(
     session: Session,
     run: ScenarioRun,
 ) -> dict:
-    """Build ForkReplay-compatible output from run results.
-
-    Maps checkpoint decisions to disclosure events for frontend replay.
-    """
+    """Build ForkReplay-compatible output from run results."""
     results = session.execute(
         select(RunCheckpointResult)
         .where(RunCheckpointResult.run_id == run.id)
@@ -313,14 +730,12 @@ def build_replay_output(
         if not checkpoint or not branch:
             continue
 
-        # Map checkpoint decision to disclosure event
         disclosure_events.append({
             "tMs": time_offset,
             "type": "evidence_flip",
             "label": f"Checkpoint {checkpoint.sequence_num}: {branch.label}",
         })
 
-        # Add option with simulated price path
         options.append({
             "label": branch.label,
             "pricePath": [

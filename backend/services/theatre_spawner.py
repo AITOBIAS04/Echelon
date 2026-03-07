@@ -52,6 +52,54 @@ def _ensure_spawned_template(session: Session) -> TheatreTemplate:
     return template
 
 
+def should_spawn(
+    spawn_rule: dict | None,
+    branch,
+    reward: float,
+    run_mode: str,
+    checkpoint,
+) -> bool:
+    """Evaluate whether to spawn a theatre from this checkpoint resolution.
+
+    spawn_rule_json contract:
+    {
+        "outcome_types": ["SUCCESS", "PARTIAL_SUCCESS"],
+        "min_reward": 0.5,
+        "checkpoint_classes": ["CRITICAL"],
+        "run_modes": ["TRAINING", "EVALUATION"]
+    }
+
+    Fallback logic:
+    - spawn_rule set -> evaluate the rule
+    - spawn_rule None + can_spawn_theatre True -> spawn unconditionally (backward compat)
+    - spawn_rule None + can_spawn_theatre False -> don't spawn
+    """
+    if spawn_rule is not None:
+        # Evaluate spawn rule
+        if "outcome_types" in spawn_rule:
+            outcome_type = getattr(branch, "outcome_type", None)
+            if outcome_type not in spawn_rule["outcome_types"]:
+                return False
+
+        if "min_reward" in spawn_rule:
+            if reward < spawn_rule["min_reward"]:
+                return False
+
+        if "run_modes" in spawn_rule:
+            if run_mode not in spawn_rule["run_modes"]:
+                return False
+
+        if "checkpoint_classes" in spawn_rule:
+            cp_class = getattr(checkpoint, "evaluator_type", None)
+            if cp_class not in spawn_rule["checkpoint_classes"]:
+                return False
+
+        return True
+
+    # Legacy fallback: use can_spawn_theatre boolean
+    return getattr(checkpoint, "can_spawn_theatre", False)
+
+
 def spawn_theatre(
     session: Session,
     checkpoint: ScenarioCheckpoint,
@@ -61,11 +109,12 @@ def spawn_theatre(
 ) -> Theatre | None:
     """Spawn a derived theatre from a checkpoint resolution.
 
-    Only spawns if checkpoint.can_spawn_theatre is True.
+    When called via evaluate_checkpoints(), the caller uses should_spawn() first.
+    When called directly (legacy), checks can_spawn_theatre as guard.
 
     Returns the created Theatre or None if not spawnable.
     """
-    if not checkpoint.can_spawn_theatre:
+    if not checkpoint.can_spawn_theatre and not checkpoint.theatre_spawn_rule_json:
         return None
 
     # Ensure template exists

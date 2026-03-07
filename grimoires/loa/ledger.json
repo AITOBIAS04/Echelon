@@ -639,8 +639,10 @@
     {
       "cycle_id": "cycle-019",
       "label": "Agent Deployment + Investigation Persistence + Paradox Risk",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-07T12:00:00Z",
+      "archived": "2026-03-07T13:30:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-07-agent-deployment-investigation-paradox-risk",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -688,11 +690,64 @@
           "tasks": 5
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-020",
+      "label": "Scenario Pack Evaluator v2 + Paradox Risk Orchestration",
+      "status": "active",
+      "created_at": "2026-03-07T14:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 60,
+          "label": "Runtime Contract Tightening",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 61,
+          "label": "Schema-Driven Checkpoint Evaluation",
+          "status": "completed",
+          "tasks": 7
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 62,
+          "label": "Environment RNG + Mode Semantics",
+          "status": "completed",
+          "tasks": 6
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 63,
+          "label": "Derived Theatre Rules + Run Integrity",
+          "status": "completed",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-4",
+          "global_id": 64,
+          "label": "Paradox Risk Orchestration",
+          "status": "completed",
+          "tasks": 6
+        },
+        {
+          "local_id": "sprint-5",
+          "global_id": 65,
+          "label": "WebSocket Emission + Integration + E2E",
+          "status": "completed",
+          "tasks": 7
+        }
+      ]
     }
   ],
-  "active_cycle": "cycle-019",
+  "active_cycle": "cycle-020",
   "active_bugfix": null,
-  "global_sprint_counter": 59,
+  "global_sprint_counter": 65,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }
