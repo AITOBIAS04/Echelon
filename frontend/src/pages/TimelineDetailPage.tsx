@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MoreVertical, AlertTriangle } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ArrowLeft, MoreVertical, AlertTriangle, Rocket } from 'lucide-react';
 import { useTimelineDetail } from '../hooks/useTimelineDetail';
 import { HealthMetricsPanel } from '../components/timeline/HealthMetricsPanel';
 import { ParadoxPanel } from '../components/timeline/ParadoxPanel';
@@ -7,7 +8,7 @@ import { ForkTape } from '../components/timeline/ForkTape';
 import { SabotageHistoryPanel } from '../components/timeline/SabotageHistoryPanel';
 import { EvidenceLedger } from '../components/timeline/EvidenceLedger';
 import { ForkCountdownRibbon } from '../components/timeline/ForkCountdownRibbon';
-import { useMemo } from 'react';
+import { DeployAgentModal } from '../components/agents/DeployAgentModal';
 
 /**
  * Skeleton Loader Component
@@ -32,9 +33,11 @@ function SkeletonPanel({ className = '' }: { className?: string }) {
  * Assembles all timeline detail components in a responsive layout.
  */
 export function TimelineDetailPage() {
-  const { timelineId } = useParams<{ timelineId: string }>();
+  const { theatreId, timelineId } = useParams<{ theatreId?: string; timelineId?: string }>();
+  const resolvedId = theatreId ?? timelineId;
   const navigate = useNavigate();
-  const { data, isLoading, isError, error, refetch } = useTimelineDetail(timelineId);
+  const { data, isLoading, isError, error, refetch } = useTimelineDetail(resolvedId);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
 
   const handleExtract = () => {
     // TODO: Implement paradox extraction API call
@@ -121,9 +124,18 @@ export function TimelineDetailPage() {
               </h1>
             )}
           </div>
-          <button className="p-2 text-terminal-text-muted hover:text-terminal-text transition">
-            <MoreVertical className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setDeployModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded border border-echelon-cyan/50 text-echelon-cyan hover:bg-echelon-cyan/10 transition"
+            >
+              <Rocket className="w-3.5 h-3.5" />
+              Deploy Agent
+            </button>
+            <button className="p-2 text-terminal-text-muted hover:text-terminal-text transition">
+              <MoreVertical className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Error State */}
@@ -249,6 +261,12 @@ export function TimelineDetailPage() {
           </>
         )}
       </div>
+
+      <DeployAgentModal
+        open={deployModalOpen}
+        onClose={() => setDeployModalOpen(false)}
+        preselectedTheatreId={resolvedId}
+      />
     </div>
   );
 }

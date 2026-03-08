@@ -1,0 +1,15 @@
+{
+  "request": {
+    "episode_id": "PR-26",
+    "status": "TIMEOUT"
+  },
+  "response": {
+    "oracle_output": null,
+    "scores": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "reply_accuracy": 0.0
+    },
+    "composite": 0.0
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "request": {
+    "episode_id": "PR-32",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "summary": "This PR adds a commitment hash display with copy functionality, renames UI labels, replaces audit details scroll with a Bloomberg-style right-side drawer, adds delta-q breakdown to LMSR widget, includes a status strip, and adds 'Simulated feed' tooltips throughout the VRF terminal interface.",
+      "key_claims": [
+        "Added commitment hash pill with copy button functionality using constant COMMITMENT_HASH",
+        "Renamed 'Entropy Utilisation' to 'VRF Events (24h)' and 'Entropy Pricing' to 'Risk Fee Jitter'",
+        "Replaced audit details scroll behavior with a right-side drawer that opens when clicking audit details buttons",
+        "Added AuditDrawerData interface and drawerEntry state to manage drawer functionality",
+        "Added delta-q share breakdown line to LMSR demo widget showing price change, shares, and cost",
+        "Added status strip above audit trail showing system status and VRF metrics",
+        "Added 'Simulated feed' tooltips to various data elements including request IDs and block transactions",
+        "Added escape key handler to close drawer",
+        "Added hashCopied state with 2-second timeout for copy feedback",
+        "Removed scroll-to-audit functionality in favor of drawer opening"
+      ],
+      "follow_up_question": "What is the exact value of the COMMITMENT_HASH constant that was added in this PR?",
+      "follow_up_response": "Based on the diff content, the exact value of the `COMMITMENT_HASH` constant that was added is:\n\n```\n0x7a3f8b2c1d9e4f6a0b5c3d7e8f1a2b4c6d8e0f1a2b3c4d5e6f7a8b9c0d1ecb18\n```\n\nThis constant is defined on line 74 of the diff and is used to display a commitment hash pill with a copy button in the VRF terminal interface.",
+      "episode_id": "PR-32",
+      "metadata": {
+        "model": "claude-sonnet-4-20250514",
+        "latency_ms": 13714
+      }
+    },
+    "scores": {
+      "precision": 1.0,
+      "recall": 0.7,
+      "reply_accuracy": 1.0
+    },
+    "composite": 0.88
+  }
+}

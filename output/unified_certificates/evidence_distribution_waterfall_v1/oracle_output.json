@@ -1,0 +1,60 @@
+{
+  "bundle_hash": "",
+  "collection": {
+    "bundles": [],
+    "gaps": [],
+    "query_window_end": null,
+    "query_window_start": null,
+    "theatre_id": "product_replay_engine_v1",
+    "total_sources_attempted": 15,
+    "total_sources_failed": 0,
+    "total_sources_succeeded": 15
+  },
+  "composite_score": 0.9333333333333333,
+  "corroboration_results": [],
+  "counter_signal_results": [],
+  "counter_signals_checked": 0,
+  "counter_signals_found": 0,
+  "coverage_percentage": 0.0,
+  "criterion_scores": [
+    {
+      "criterion_id": "waterfall_arithmetic",
+      "detail": "waterfall_arithmetic: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "noi_pool_conservation",
+      "detail": "noi_pool_conservation: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "rounding_policy_compliance",
+      "detail": "rounding_policy_compliance: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "cap_table_consistency",
+      "detail": "cap_table_consistency: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "ledger_reconciliation",
+      "detail": "ledger_reconciliation: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    }
+  ],
+  "evaluated_at": "2026-01-01T00:00:00Z",
+  "gap_report": [],
+  "oracle_id": "replay_distribution_waterfall_v1",
+  "theatre_id": "product_replay_engine_v1"
+}

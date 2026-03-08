@@ -1,0 +1,35 @@
+{
+  "request": {
+    "episode_id": "PR-24",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "summary": "Adds a new terminal.overlay token for solid modal surfaces, standardizes z-index hierarchy across components (tooltips 100, drawers 200/210, modals 300/310, critical alerts 400/410, toasts 500), extracts shared Launchpad color constants to eliminate hardcoded values, and fixes AlertPanel backdrop transparency.",
+      "key_claims": [
+        "Added terminal.overlay color token (#121417) to tailwind.config.js for solid modal/drawer surfaces",
+        "Replaced bg-terminal-panel with bg-terminal-overlay on 9 overlay components including BreachesModal, ReplayDrawer, CompareSidebar, GhostForks, AlertPanel, and 3 each in MarketplacePage and BlackboxPage",
+        "Fixed AlertPanel backdrop from fully transparent to bg-black/40",
+        "Standardized z-index values: tooltips z-100, drawers z-200/210, modals z-300/310, critical alerts z-400/410, toasts z-500",
+        "Created constants/launchpad.ts file with PHASE_COLORS, CATEGORY_COLORS, and getQualityColor function as single source of truth",
+        "Replaced 11 hardcoded #22D3EE instances and 3 #9932CC instances in LaunchpadNewPage with echelon-cyan and status-paradox tokens",
+        "Updated CSS z-index values: .modal-backdrop from 9990 to 300, .modal-content from 9995 to 310",
+        "Added launch success toast via demoStore.pushToast on draft creation in LaunchpadNewPage",
+        "Updated LaunchCardMini, LaunchpadDetailPage, and LaunchpadRail to use unified PHASE_COLORS and CATEGORY_COLORS"
+      ],
+      "follow_up_question": "How many overlay components were changed from using `bg-terminal-panel` to `bg-terminal-overlay` according to the PR description?",
+      "follow_up_response": "According to the PR description, 9 overlay components were changed from using `bg-terminal-panel` to `bg-terminal-overlay`. The description lists them as:\n\n- BreachesModal\n- ReplayDrawer  \n- CompareSidebar\n- GhostForks\n- AlertPanel\n- MarketplacePage x3 (3 components within MarketplacePage)\n- BlackboxPage x3 (3 components within BlackboxPage)\n\nLooking at the diff, I can confirm these changes are visible in the code:\n- `BreachesModal.tsx`: `bg-terminal-panel` \u2192 `bg-terminal-overlay`\n- `ReplayDrawer.tsx`: `bg-terminal-panel` \u2192 `bg-terminal-overlay` \n- `CompareSidebar.tsx`: `bg-terminal-panel` \u2192 `bg-terminal-overlay`\n- `GhostForks.tsx`: `bg-terminal-panel` \u2192 `bg-terminal-overlay`\n- `AlertPanel.tsx`: `bg-terminal-panel` \u2192 `bg-terminal-overlay`\n- `MarketplacePage.tsx`: Multiple instances of `bg-terminal-panel` \u2192 `bg-terminal-overlay`\n- `BlackboxPage.tsx`: Multiple instances of `bg-terminal-panel` \u2192 `bg-terminal-overlay`\n\nSo the answer is **9 overlay components** were changed from `bg-terminal-panel` to `bg-terminal-overlay`.",
+      "episode_id": "PR-24",
+      "metadata": {
+        "model": "claude-sonnet-4-20250514",
+        "latency_ms": 17019
+      }
+    },
+    "scores": {
+      "precision": 1.0,
+      "recall": 0.9,
+      "reply_accuracy": 1.0
+    },
+    "composite": 0.9600000000000001
+  }
+}

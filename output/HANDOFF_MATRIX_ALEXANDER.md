@@ -97,6 +97,7 @@ These are the routes relevant to the current handoff. Older routes remain as red
 | Surface | Status | Notes |
 |--------|--------|-------|
 | Create Theatre | Partial but honest | Template path works against real template detail; blank path is explicitly deferred; Alpamayo remains staged shell |
+| Agent Deployment | Staged only | Fleet zero-state CTA opens `DeployAgentModal`, but the modal still uses mock theatre data and does not execute a real deployment |
 | Scenario Packs | Deferred | Empty-state/catalog shell only; no mock-rich page committed |
 | Certificates | Partial | Page exists and empty state is wired; broader certificate UX may still need review |
 | Routes / IA | Transitional but stable | Redirects are in place; `/theatre/:theatreId` remains current detail route |
@@ -109,9 +110,10 @@ These are the actual open decisions still relevant to Alexander's implementation
 |---|----------|----------------------|
 | 1 | Alpamayo path: keep staged shell or build full recommendation-backed flow now? | Keep staged shell until backend support exists |
 | 2 | Scenario Packs: build rich mock/stub catalog now or leave explicitly deferred? | Leave explicitly deferred |
-| 3 | Certificates: is the current empty-state page sufficient for handoff, or does the page need another design/integration pass? | Hand off current page, mark broader enhancements separately |
-| 4 | Route normalization: keep `/theatre/:theatreId` for now or normalize later to `/theatres/:theatreId`? | Keep current route; normalize later if desired |
-| 5 | Create Theatre editorial fields: keep visible as staged UI or hide until persistence support exists? | Keep visible with staged-state callouts |
+| 3 | Agent deployment: keep the current staged modal or implement a real deploy flow now? | Keep the current staged modal until backend deployability support exists |
+| 4 | Certificates: is the current empty-state page sufficient for handoff, or does the page need another design/integration pass? | Hand off current page, mark broader enhancements separately |
+| 5 | Route normalization: keep `/theatre/:theatreId` for now or normalize later to `/theatres/:theatreId`? | Keep current route; normalize later if desired |
+| 6 | Create Theatre editorial fields: keep visible as staged UI or hide until persistence support exists? | Keep visible with staged-state callouts |
 
 ---
 
@@ -176,3 +178,4 @@ Examples:
 3. Do not invent Cycle 017 behavior in the frontend. Prefer empty, sparse, or feature-flagged states with explicit copy.
 4. If a page is not yet wired, implement the empty-state contract first before adding richer mock structure.
 5. Treat the route list above as canonical for implementation. Redirect cleanup can happen later.
+6. Fleet's `Deploy Agent` CTA is not a real deployment backend flow yet. It currently opens a staged modal only.

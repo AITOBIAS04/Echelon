@@ -1,0 +1,1817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Dashboard / Mission Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   TASTE TOKENS v1.0
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER (locked) ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR (locked) ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.nav-badge.warn{background:oklch(0.540 0.150 85/0.10);color:oklch(0.430 0.130 85);border:1px solid oklch(0.540 0.150 85/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}
+.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN + DASHBOARD
+   ═══════════════════════════════════════════════════════════ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+
+/* ── Page header ── */
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-5)}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:2px}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-ghost:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.btn-sm{height:28px;padding:0 var(--space-3);font-size:11px;border-radius:var(--radius-sm)}
+.btn-danger{background:var(--status-danger);color:var(--text-inverse)}.btn-danger:hover{background:var(--red-400)}
+.btn-danger-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-danger-ghost:hover{color:var(--status-danger);background:var(--red-50)}
+
+/* ═══════════════════════════════════════════════════════════
+   NEEDS ATTENTION — operator triage strip (clickable filters)
+   Each item scrolls to and highlights its target panel.
+   ═══════════════════════════════════════════════════════════ */
+.attention-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+  font-size: 13px;
+  line-height: 20px;
+}
+.attention-strip.has-issues {
+  background: oklch(0.540 0.150 85 / 0.06);
+  border: 1px solid oklch(0.540 0.150 85 / 0.18);
+}
+.attention-strip.all-clear {
+  background: oklch(0.545 0.170 152 / 0.06);
+  border: 1px solid oklch(0.545 0.170 152 / 0.18);
+}
+.attention-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.attention-strip.has-issues .attention-icon { color: oklch(0.430 0.130 85); }
+.attention-strip.all-clear .attention-icon { color: var(--green-600); }
+.attention-label {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.attention-strip.has-issues .attention-label { color: oklch(0.430 0.130 85); }
+.attention-strip.all-clear .attention-label { color: var(--green-700); }
+.attention-items {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  flex: 1;
+}
+.attention-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background var(--duration-instant) ease, color var(--duration-instant) ease;
+}
+.attention-item:hover {
+  color: var(--text-primary);
+  background: oklch(0.540 0.150 85 / 0.08);
+}
+.attention-item .attn-count {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.attention-item.critical .attn-count { color: var(--status-danger); }
+.attention-item.critical:hover { background: oklch(0.545 0.185 25 / 0.08); }
+.attention-item.warning .attn-count { color: oklch(0.430 0.130 85); }
+.attention-item.warning:hover { background: oklch(0.540 0.150 85 / 0.10); }
+.attention-item.info .attn-count { color: var(--status-info); }
+.attention-item.info:hover { background: oklch(0.525 0.155 260 / 0.08); }
+.attention-sep {
+  color: var(--border-primary);
+  margin: 0 var(--space-1);
+  user-select: none;
+}
+.attention-strip.all-clear .attention-all-clear {
+  color: var(--green-700);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Highlight animation for scroll targets */
+@keyframes attention-highlight {
+  0% { box-shadow: 0 0 0 0 oklch(0.530 0.230 295 / 0.30); }
+  50% { box-shadow: 0 0 0 4px oklch(0.530 0.230 295 / 0.15); }
+  100% { box-shadow: 0 0 0 0 oklch(0.530 0.230 295 / 0); }
+}
+.attention-target-highlight {
+  animation: attention-highlight 1.2s ease-out;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   KPI CARDS — Pyth-style hero metrics
+   value + delta + time window + interpretation + threshold
+   ═══════════════════════════════════════════════════════════ */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.kpi {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  line-height: 16px;
+}
+.kpi-window {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-disabled);
+  background: var(--bg-sunken);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-secondary);
+}
+.kpi-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.kpi-value {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 36px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.kpi-unit {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.kpi-change {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.kpi-change.up { color: var(--green-600); }
+.kpi-change.down { color: var(--red-500); }
+.kpi-change.alert { color: var(--status-danger); }
+.kpi-change.flat { color: var(--text-muted); }
+
+.kpi-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-1);
+}
+.kpi-interp {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  position: relative;
+  cursor: default;
+}
+.kpi-interp.healthy { color: var(--green-700); background: var(--green-50); }
+.kpi-interp.watch { color: oklch(0.430 0.130 85); background: oklch(0.540 0.150 85/0.08); }
+.kpi-interp.critical { color: var(--status-danger); background: var(--red-50); }
+
+/* Threshold sublabel */
+.kpi-threshold {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-disabled);
+  margin-top: 1px;
+  letter-spacing: 0;
+}
+
+/* Tooltip for threshold details */
+.kpi-interp[data-threshold] {
+  cursor: help;
+}
+.kpi-interp[data-threshold]:hover::after {
+  content: attr(data-threshold);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-primary);
+  color: var(--text-inverse);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 10;
+  pointer-events: none;
+}
+.kpi-interp[data-threshold]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: var(--text-primary);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.kpi-spark {
+  height: 24px;
+  flex-shrink: 0;
+}
+.kpi-spark polyline {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Alert KPI variant (paradoxes) */
+.kpi.kpi-alert {
+  border-color: oklch(0.545 0.185 25 / 0.25);
+  background: var(--red-50);
+}
+.kpi.kpi-alert .kpi-value { color: var(--status-danger); }
+
+/* ═══════════════════════════════════════════════════════════
+   PARADOX ALERTS — promoted, full-width when active
+   With ownership, severity, and designed zero state
+   ═══════════════════════════════════════════════════════════ */
+.paradox-panel {
+  background: var(--bg-card);
+  border: 1px solid oklch(0.545 0.185 25 / 0.25);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: var(--space-5);
+  scroll-margin-top: calc(var(--header-height) + var(--space-4));
+}
+.paradox-panel.zero-state {
+  border-color: var(--border-primary);
+}
+.paradox-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-5);
+  background: var(--red-50);
+  border-bottom: 1px solid oklch(0.545 0.185 25 / 0.15);
+}
+.paradox-panel.zero-state .paradox-panel-header {
+  background: var(--green-50);
+  border-bottom: 1px solid oklch(0.545 0.170 152 / 0.15);
+}
+.paradox-panel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--status-danger);
+}
+.paradox-panel.zero-state .paradox-panel-title {
+  color: var(--green-700);
+}
+.paradox-panel-title .pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--status-danger);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+.paradox-panel.zero-state .paradox-panel-title .pulse {
+  background: var(--green-500);
+  animation: none;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.paradox-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+}
+.paradox-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-right: 1px solid var(--border-secondary);
+}
+.paradox-item:last-child { border-right: none; }
+
+.paradox-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.paradox-severity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.paradox-severity-badge.critical {
+  background: var(--red-50);
+  color: var(--status-danger);
+  border: 1px solid oklch(0.545 0.185 25 / 0.20);
+}
+.paradox-severity-badge.critical::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--status-danger);
+  box-shadow: 0 0 0 2px oklch(0.545 0.185 25 / 0.15);
+}
+.paradox-severity-badge.warning {
+  background: oklch(0.540 0.150 85 / 0.08);
+  color: oklch(0.430 0.130 85);
+  border: 1px solid oklch(0.540 0.150 85 / 0.20);
+}
+.paradox-severity-badge.warning::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--status-warning);
+}
+.paradox-severity-badge.low {
+  background: oklch(0.525 0.155 260 / 0.06);
+  color: var(--status-info);
+  border: 1px solid oklch(0.525 0.155 260 / 0.15);
+}
+.paradox-severity-badge.low::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--status-info);
+}
+.paradox-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 18px;
+  flex: 1;
+}
+
+/* Paradox meta row: owner + time */
+.paradox-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 11px;
+  line-height: 16px;
+}
+.paradox-owner {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.paradox-owner .owner-name {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.paradox-owner.unassigned .owner-name {
+  color: var(--orange-600);
+  font-style: italic;
+}
+.paradox-time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-disabled);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.paradox-detail {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 18px;
+}
+.paradox-detail .mono {
+  font-family: var(--font-mono); font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.paradox-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+/* Paradox zero state */
+.paradox-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-6);
+  text-align: center;
+}
+.paradox-empty-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--green-50);
+  border: 1px solid var(--green-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--green-600);
+  flex-shrink: 0;
+}
+.paradox-empty-text {
+  text-align: left;
+}
+.paradox-empty-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 20px;
+}
+.paradox-empty-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 18px;
+}
+.paradox-empty-stat {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-disabled);
+  margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   YOUR POSITIONS — collapsible, in right rail
+   ═══════════════════════════════════════════════════════════ */
+.positions-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+.positions-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.positions-panel-header:hover { background: var(--bg-hover); }
+.positions-panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.positions-chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--text-disabled);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.positions-panel.collapsed .positions-chevron {
+  transform: rotate(-90deg);
+}
+.positions-panel.collapsed .positions-body {
+  display: none;
+}
+.positions-body {
+  padding: var(--space-3) var(--space-4);
+}
+.positions-metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-1) 0;
+}
+.positions-metric-row + .positions-metric-row {
+  border-top: 1px solid var(--border-secondary);
+}
+.positions-metric-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.positions-metric-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.positions-metric-value.positive { color: var(--green-600); }
+.positions-metric-value.negative { color: var(--red-500); }
+.positions-footer {
+  padding: var(--space-2) var(--space-4) var(--space-3);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DASHBOARD GRID — 3-column layout
+   ═══════════════════════════════════════════════════════════ */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: var(--space-4);
+}
+
+/* ── Panel base ── */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-secondary);
+}
+.panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.panel-action {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--purple-600);
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: var(--font-sans);
+}
+.panel-action:hover { color: var(--purple-500); }
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TOP THEATRES — compact mini-list
+   ═══════════════════════════════════════════════════════════ */
+.theatre-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-secondary);
+  cursor: pointer;
+  transition: background var(--duration-instant) ease;
+}
+.theatre-row:last-child { border-bottom: none; }
+.theatre-row:hover { background: var(--bg-hover); }
+
+.theatre-rank {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.theatre-row:first-child .theatre-rank { color: var(--purple-600); }
+
+.theatre-info { flex: 1; min-width: 0; }
+.theatre-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 18px;
+}
+.theatre-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  line-height: 16px;
+}
+
+.theatre-prob {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  text-align: right;
+}
+.theatre-prob.yes { color: var(--green-600); }
+.theatre-prob.contested { color: var(--text-primary); }
+
+.theatre-vol {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  text-align: right;
+  min-width: 50px;
+}
+
+/* ── Category dot ── */
+.cat-dot {
+  width: 6px; height: 6px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+.cat-dot.binary { background: var(--purple-400); }
+.cat-dot.continuous { background: var(--status-info); }
+.cat-dot.temporal { background: var(--orange-500); }
+.cat-dot.ranking { background: var(--green-500); }
+.cat-dot.composite { background: var(--red-400); }
+
+/* ═══════════════════════════════════════════════════════════
+   AGENT FLEET — status overview + recent movements
+   ═══════════════════════════════════════════════════════════ */
+.fleet-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border-secondary);
+  border-bottom: 1px solid var(--border-secondary);
+}
+.fleet-stat {
+  background: var(--bg-card);
+  padding: var(--space-3) var(--space-4);
+  text-align: center;
+}
+.fleet-stat-val {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 28px;
+}
+.fleet-stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.fleet-stat-val.alive { color: var(--green-600); }
+.fleet-stat-val.idle { color: var(--orange-600); }
+
+/* ── Agent movement feed ── */
+.movement {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.movement:last-child { border-bottom: none; }
+
+.movement-time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-disabled);
+  font-variant-numeric: tabular-nums;
+  width: 40px;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+.movement-dot {
+  width: 6px; height: 6px;
+  border-radius: var(--radius-full);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.movement-dot.deploy { background: var(--green-500); }
+.movement-dot.trade { background: var(--purple-400); }
+.movement-dot.exit { background: var(--orange-500); }
+.movement-dot.alert { background: var(--status-danger); }
+
+.movement-text { color: var(--text-secondary); flex: 1; }
+.movement-text strong { color: var(--text-primary); font-weight: 600; }
+.movement-text .mono {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CERTIFICATES — recent list
+   ═══════════════════════════════════════════════════════════ */
+.cert-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border-secondary);
+  cursor: pointer;
+}
+.cert-item:last-child { border-bottom: none; }
+.cert-item:hover { background: var(--bg-hover); }
+
+.cert-icon {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.cert-icon.pass { background: var(--green-50); color: var(--green-600); border: 1px solid var(--green-200); }
+.cert-icon.fail { background: var(--red-50); color: var(--red-500); border: 1px solid var(--red-100); }
+
+.cert-info { flex: 1; min-width: 0; }
+.cert-name {
+  font-size: 12px; font-weight: 600; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 18px;
+}
+.cert-id {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.cert-date {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-disabled);
+  font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   QUICK ACTIONS
+   ═══════════════════════════════════════════════════════════ */
+.quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+.quick-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all var(--duration-instant) ease;
+  text-decoration: none;
+}
+.quick-action:hover {
+  border-color: var(--purple-200);
+  background: var(--purple-50);
+}
+.quick-action-icon {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+}
+.quick-action:hover .quick-action-icon {
+  background: var(--purple-100);
+  color: var(--purple-600);
+}
+.quick-action-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ACTIVITY FEED — recent platform events
+   ═══════════════════════════════════════════════════════════ */
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-dot {
+  width: 6px; height: 6px;
+  border-radius: var(--radius-full);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.activity-dot.trade { background: var(--purple-400); }
+.activity-dot.cert { background: var(--green-500); }
+.activity-dot.paradox { background: var(--status-danger); }
+.activity-dot.theatre { background: var(--status-info); }
+.activity-text { flex: 1; color: var(--text-secondary); }
+.activity-text strong { color: var(--text-primary); font-weight: 600; }
+.activity-text .mono { font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+.activity-time {
+  font-family: var(--font-mono); font-size: 10px; color: var(--text-disabled);
+  font-variant-numeric: tabular-nums; flex-shrink: 0; padding-top: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PLATFORM HEALTH — actionable service status
+   ═══════════════════════════════════════════════════════════ */
+.health-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) 0;
+}
+.health-row + .health-row {
+  border-top: 1px solid var(--border-secondary);
+}
+.health-name {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.health-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.health-status {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+.health-status.ok { color: var(--green-600); }
+.health-status.warn { color: var(--orange-600); }
+.health-status.error { color: var(--status-danger); }
+.health-link {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--purple-600);
+  text-decoration: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-instant) ease;
+}
+.health-row:hover .health-link { opacity: 1; }
+.health-row.has-issue .health-link { opacity: 1; }
+
+/* ═══════════════════════════════════════════════════════════
+   STATE TOGGLE — demo control for alert/zero states
+   ═══════════════════════════════════════════════════════════ */
+.state-toggle {
+  position: fixed;
+  bottom: var(--space-5);
+  right: var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  z-index: 100;
+  transition: all var(--duration-fast) ease;
+}
+.state-toggle:hover {
+  border-color: var(--purple-200);
+  color: var(--text-primary);
+}
+.state-toggle-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 1400px) {
+  .kpi-row { grid-template-columns: repeat(3, 1fr); }
+  .dash-grid { grid-template-columns: 1fr 1fr; }
+  .paradox-grid { grid-template-columns: 1fr; }
+  .paradox-item { border-right: none; border-bottom: 1px solid var(--border-secondary); }
+  .paradox-item:last-child { border-bottom: none; }
+}
+@media (max-width: 1024px) {
+  .sidebar{width:64px}
+  .sidebar .nav-item-label,.sidebar .nav-badge{display:none}
+  .sidebar .nav-group-label{font-size:0;padding:var(--space-2) var(--space-4)}
+  .sidebar .nav-group-label::after{content:'';display:block;width:16px;height:1px;background:var(--border-primary);margin:0 auto}
+  .sidebar .nav-item{padding:0;justify-content:center;margin:1px var(--space-1);width:calc(100% - var(--space-2))}
+  .main{margin-left:64px}
+  .header-search{display:none}
+  .kpi-row{grid-template-columns:repeat(3,1fr)}
+  .attention-items{flex-wrap:wrap}
+}
+@media (max-width: 768px) {
+  .sidebar{display:none}
+  .main{margin-left:0;padding:var(--space-4)}
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .dash-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <a href="#" class="header-logo"><div class="header-logo-mark">E</div><span class="header-logo-text">Echelon</span><span class="header-logo-version">v2</span></a>
+    <button class="sidebar-toggle"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4.5h12M3 9h12M3 13.5h12"/></svg></button>
+  </div>
+  <div class="header-center"><div class="header-search"><span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg></span><input type="text" placeholder="Search theatres, agents, investigations..."><span class="header-search-kbd">/</span></div></div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span>Base</div>
+    <button class="header-icon-btn" id="notif-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 12.73A6 6 0 0 0 15 9V7.5a6 6 0 1 0-12 0V9a6 6 0 0 0 1.27 3.73L3 15h12l-1.27-2.27z"/><path d="M7.5 15a1.5 1.5 0 0 0 3 0"/></svg><span class="header-badge" id="notif-badge">3</span></button>
+    <button class="wallet-btn"><div class="wallet-balance"><div class="wallet-balance-item"><span class="wallet-balance-label">ETH</span>2.45</div><span class="wallet-divider"></span><div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span>1,250</div></div><div class="wallet-avatar"></div></button>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group"><div class="nav-group-label">Command</div><a href="#" class="nav-item active"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg></span><span class="nav-item-label">Dashboard</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Markets</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14l4-5 3 3 5-7"/><path d="M11 5h3v3"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">5</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Intelligence</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge warn">2</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="14" height="14" rx="1"/><path d="M2 6h14M6 2v14M10 2v14M2 10h14"/></svg></span><span class="nav-item-label">Signal Map</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="3"/><circle cx="9" cy="9" r="1"/></svg></span><span class="nav-item-label">WorldMonitor</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Verification</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l2.5 2.5L13 6"/><circle cx="9" cy="9" r="7"/></svg></span><span class="nav-item-label">Verify</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="12" height="14" rx="1"/><path d="M7 6h4M7 9h4M7 12h2"/></svg></span><span class="nav-item-label">Certificates</span><span class="nav-badge warn">4</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Portfolio</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4z"/><path d="M2 7h14"/><path d="M12 11h2"/></svg></span><span class="nav-item-label">Positions</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Agents</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="6" r="3"/><path d="M3 15a6 6 0 0 1 12 0"/></svg></span><span class="nav-item-label">Fleet</span><span class="nav-badge live">12</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Operations</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert" id="sidebar-paradox-badge">3</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 14V4M7 14V8M11 14V6M15 14V2"/></svg></span><span class="nav-item-label">Analytics</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Data Products</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h10v2H4zM4 8h10v2H4zM4 12h10v2H4z"/></svg></span><span class="nav-item-label">RLMF Exports</span></a></div>
+  </div>
+  <div class="sidebar-footer"><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M14.5 9a5.5 5.5 0 0 0-.4-1.5l1.5-1.2-1-1.7-1.8.6A5.5 5.5 0 0 0 11.5 4l.2-1.9h-2L9.5 4a5.5 5.5 0 0 0-1.3 1.2l-1.8-.6-1 1.7 1.5 1.2A5.5 5.5 0 0 0 6.5 9a5.5 5.5 0 0 0 .4 1.5l-1.5 1.2 1 1.7 1.8-.6a5.5 5.5 0 0 0 1.3 1.2l-.2 1.9h2l.2-1.9a5.5 5.5 0 0 0 1.3-1.2l1.8.6 1-1.7-1.5-1.2A5.5 5.5 0 0 0 14.5 9z"/></svg></span><span class="nav-item-label">Settings</span></a></div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DASHBOARD / MISSION CONTROL
+     ═══════════════════════════════════════════════════════════ -->
+
+<main class="main">
+
+  <!-- Page header with context-sensitive CTA -->
+  <div class="page-header">
+    <div>
+      <div class="page-breadcrumb"><span>Command</span><span class="page-breadcrumb-sep">/</span><span class="page-breadcrumb-current">Dashboard</span></div>
+      <h1 class="page-title">Mission Control</h1>
+    </div>
+    <div id="header-ctas" style="display:flex;gap:var(--space-2)">
+      <button class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8z"/><path d="M8 4v4l2.5 1.5"/></svg>Live</button>
+      <!-- Alert state: Review Alerts is primary, Create Theatre is secondary -->
+      <button class="btn btn-secondary" id="cta-create"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>Create Theatre</button>
+      <button class="btn btn-danger" id="cta-review" onclick="scrollToPanel('paradox-panel')"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2L1.5 13h13L8 2z"/><path d="M8 6v3M8 11v.5"/></svg>Review Alerts <span style="font-family:var(--font-mono);font-size:11px;opacity:0.8">(3)</span></button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       NEEDS ATTENTION — clickable filter strip
+       Items scroll to and highlight their target panels.
+       ═══════════════════════════════════════════════════════ -->
+
+  <div class="attention-strip has-issues" id="attention-strip">
+    <div class="attention-icon">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L1.5 15h15L9 2z"/><path d="M9 7v3M9 12.5v.5"/></svg>
+    </div>
+    <span class="attention-label">Needs Attention</span>
+    <div class="attention-items" id="attention-items">
+      <a class="attention-item critical" onclick="scrollToPanel('paradox-panel')"><span class="attn-count">3</span> active paradoxes</a>
+      <span class="attention-sep">&middot;</span>
+      <a class="attention-item warning" onclick="scrollToPanel('investigations-target')"><span class="attn-count">2</span> stalled investigations</a>
+      <span class="attention-sep">&middot;</span>
+      <a class="attention-item warning" onclick="scrollToPanel('health-panel')"><span class="attn-count">1</span> degraded pipeline</a>
+      <span class="attention-sep">&middot;</span>
+      <a class="attention-item info" onclick="scrollToPanel('certs-panel')"><span class="attn-count">4</span> expiring certificates</a>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       KPI ROW — 6 hero metrics with threshold-backed labels
+       Stability: >=0.85 Healthy, 0.60-0.84 Watch, <0.60 Critical
+       Fleet: >=80% Healthy, 50-79% Watch, <50% Critical
+       ═══════════════════════════════════════════════════════ -->
+
+  <div class="kpi-row">
+
+    <div class="kpi">
+      <div class="kpi-top">
+        <span class="kpi-label">Active Theatres</span>
+        <span class="kpi-window">live</span>
+      </div>
+      <div class="kpi-value-row">
+        <span class="kpi-value">7</span>
+        <span class="kpi-change up">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 8V2M2.5 4.5L5 2l2.5 2.5"/></svg>
+          +2 / 7d
+        </span>
+      </div>
+      <div class="kpi-footer">
+        <span class="kpi-interp healthy" data-threshold="No threshold &mdash; count metric">Healthy</span>
+        <svg class="kpi-spark" width="80" viewBox="0 0 80 24"><polyline points="0,20 10,18 20,19 30,16 40,14 50,12 60,10 70,8 80,6" stroke="oklch(0.545 0.170 152)" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top">
+        <span class="kpi-label">24h Volume</span>
+        <span class="kpi-window">24h</span>
+      </div>
+      <div class="kpi-value-row">
+        <span class="kpi-value">48.2<span class="kpi-unit">K</span></span>
+        <span class="kpi-change up">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 8V2M2.5 4.5L5 2l2.5 2.5"/></svg>
+          +12%
+        </span>
+      </div>
+      <div class="kpi-footer">
+        <div>
+          <span class="kpi-interp healthy" data-threshold="7d avg: $38.1K &mdash; current is +26%">Above 7d avg</span>
+          <div class="kpi-threshold">7d avg $38.1K</div>
+        </div>
+        <svg class="kpi-spark" width="80" viewBox="0 0 80 24"><polyline points="0,22 10,20 20,18 30,19 40,16 50,14 60,12 70,10 80,8" stroke="oklch(0.545 0.170 152)" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top">
+        <span class="kpi-label">Avg Stability</span>
+        <span class="kpi-window">7d avg</span>
+      </div>
+      <div class="kpi-value-row">
+        <span class="kpi-value">0.94</span>
+        <span class="kpi-change up">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 8V2M2.5 4.5L5 2l2.5 2.5"/></svg>
+          +0.02
+        </span>
+      </div>
+      <div class="kpi-footer">
+        <div>
+          <span class="kpi-interp healthy" data-threshold="Healthy: &ge;0.85 | Watch: 0.60&ndash;0.84 | Critical: &lt;0.60">Healthy &ge; 0.85</span>
+          <div class="kpi-threshold">Watch 0.60 &middot; Crit 0.60</div>
+        </div>
+        <svg class="kpi-spark" width="80" viewBox="0 0 80 24"><polyline points="0,8 10,7 20,9 30,6 40,8 50,5 60,6 70,4 80,5" stroke="oklch(0.525 0.155 260)" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top">
+        <span class="kpi-label">Fleet Capacity</span>
+        <span class="kpi-window">now</span>
+      </div>
+      <div class="kpi-value-row">
+        <span class="kpi-value">81<span class="kpi-unit">%</span></span>
+        <span class="kpi-unit" style="font-size:12px">34 / 42</span>
+        <span class="kpi-change down">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 2v6M2.5 5.5L5 8l2.5-2.5"/></svg>
+          -2 / 1h
+        </span>
+      </div>
+      <div class="kpi-footer">
+        <div>
+          <span class="kpi-interp healthy" data-threshold="Healthy: &ge;80% | Watch: 50&ndash;79% | Critical: &lt;50%">Healthy &ge; 80%</span>
+          <div class="kpi-threshold">Watch 50% &middot; Crit 50%</div>
+        </div>
+        <svg class="kpi-spark" width="80" viewBox="0 0 80 24"><polyline points="0,10 10,8 20,10 30,6 40,8 50,6 60,8 70,10 80,12" stroke="oklch(0.530 0.230 295)" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+
+    <div class="kpi kpi-alert" id="kpi-paradox">
+      <div class="kpi-top">
+        <span class="kpi-label">Active Paradoxes</span>
+        <span class="kpi-window">live</span>
+      </div>
+      <div class="kpi-value-row">
+        <span class="kpi-value">3</span>
+        <span class="kpi-change alert">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 8V2M2.5 4.5L5 2l2.5 2.5"/></svg>
+          +1 / 24h
+        </span>
+      </div>
+      <div class="kpi-footer">
+        <span class="kpi-interp critical" data-threshold="Any active paradox = alert state">1 critical</span>
+      </div>
+    </div>
+
+    <div class="kpi">
+      <div class="kpi-top">
+        <span class="kpi-label">Certificates</span>
+        <span class="kpi-window">30d</span>
+      </div>
+      <div class="kpi-value-row">
+        <span class="kpi-value">28</span>
+        <span class="kpi-change up">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 8V2M2.5 4.5L5 2l2.5 2.5"/></svg>
+          +3 today
+        </span>
+      </div>
+      <div class="kpi-footer">
+        <div>
+          <span class="kpi-interp healthy" data-threshold="27 verified, 1 disputed &mdash; 96.4% pass">27 / 28 verified</span>
+          <div class="kpi-threshold">1 disputed</div>
+        </div>
+        <svg class="kpi-spark" width="80" viewBox="0 0 80 24"><polyline points="0,16 10,14 20,16 30,12 40,10 50,10 60,8 70,6 80,4" stroke="oklch(0.545 0.170 152)" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       PARADOX ALERTS — with ownership and designed zero state
+       ═══════════════════════════════════════════════════════ -->
+
+  <div class="paradox-panel" id="paradox-panel">
+    <div class="paradox-panel-header">
+      <div class="paradox-panel-title">
+        <span class="pulse"></span>
+        <span id="paradox-panel-count">3 Active Paradoxes</span>
+      </div>
+      <button class="panel-action">Paradox Console &rarr;</button>
+    </div>
+    <div class="paradox-grid" id="paradox-grid">
+
+      <div class="paradox-item">
+        <div class="paradox-top">
+          <span class="paradox-severity-badge critical">Critical</span>
+          <span class="paradox-title">Taiwan Strait: OSINT contradicts market price</span>
+        </div>
+        <div class="paradox-meta">
+          <span class="paradox-owner">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="4" r="2.5"/><path d="M2 11a4 4 0 0 1 8 0"/></svg>
+            <span class="owner-name">SHADOW</span>
+          </span>
+          <span class="paradox-time">Detected 14m ago</span>
+        </div>
+        <div class="paradox-detail">Market at <span class="mono">18&cent;</span> but signal density at <span class="mono">6.2</span> &mdash; expected &lt;4.0. Market may be mispriced.</div>
+        <div class="paradox-actions">
+          <button class="btn btn-sm btn-primary">Open</button>
+          <button class="btn btn-sm btn-secondary">Assign</button>
+          <button class="btn btn-sm btn-danger-ghost">Silence</button>
+        </div>
+      </div>
+
+      <div class="paradox-item">
+        <div class="paradox-top">
+          <span class="paradox-severity-badge warning">Warning</span>
+          <span class="paradox-title">Fed Rate: Agent consensus divergence</span>
+        </div>
+        <div class="paradox-meta">
+          <span class="paradox-owner unassigned">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="4" r="2.5"/><path d="M2 11a4 4 0 0 1 8 0"/></svg>
+            <span class="owner-name">Unassigned</span>
+          </span>
+          <span class="paradox-time">Detected 1h ago</span>
+        </div>
+        <div class="paradox-detail">SHARK agents bearish, DIPLOMAT agents bullish &mdash; <span class="mono">34&cent;</span> spread. Unusual archetype split.</div>
+        <div class="paradox-actions">
+          <button class="btn btn-sm btn-primary">Open</button>
+          <button class="btn btn-sm btn-secondary">Assign</button>
+          <button class="btn btn-sm btn-danger-ghost">Silence</button>
+        </div>
+      </div>
+
+      <div class="paradox-item">
+        <div class="paradox-top">
+          <span class="paradox-severity-badge low">Low</span>
+          <span class="paradox-title">SpaceX: Evidence staleness warning</span>
+        </div>
+        <div class="paradox-meta">
+          <span class="paradox-owner">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="4" r="2.5"/><path d="M2 11a4 4 0 0 1 8 0"/></svg>
+            <span class="owner-name">TITAN</span>
+          </span>
+          <span class="paradox-time">Detected 3h ago</span>
+        </div>
+        <div class="paradox-detail">No new evidence in <span class="mono">72h</span> &mdash; last source update expired. Market expiry in <span class="mono">6d</span>.</div>
+        <div class="paradox-actions">
+          <button class="btn btn-sm btn-primary">Open</button>
+          <button class="btn btn-sm btn-secondary">Assign</button>
+          <button class="btn btn-sm btn-danger-ghost">Silence</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Zero state (hidden by default, shown via toggle) -->
+    <div class="paradox-empty" id="paradox-empty" style="display:none">
+      <div class="paradox-empty-icon">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 10l3 3 5-5"/><circle cx="10" cy="10" r="8"/></svg>
+      </div>
+      <div class="paradox-empty-text">
+        <div class="paradox-empty-title">No active paradoxes</div>
+        <div class="paradox-empty-desc">All markets are consistent with their signal profiles. The Paradox Engine is monitoring 7 active theatres.</div>
+        <div class="paradox-empty-stat">Last paradox resolved 4d ago &middot; Avg resolution time: 2.3h</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       DASHBOARD GRID — 3-column panels
+       ═══════════════════════════════════════════════════════ -->
+
+  <div class="dash-grid">
+
+    <!-- COL 1: Top Theatres -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Top Theatres by Volume</span>
+        <button class="panel-action">View All &rarr;</button>
+      </div>
+      <div class="panel-body">
+        <div class="theatre-row">
+          <span class="theatre-rank">1</span>
+          <span class="cat-dot binary"></span>
+          <div class="theatre-info">
+            <div class="theatre-name">Fed rate cut — June FOMC</div>
+            <div class="theatre-meta">Binary &middot; 8 agents &middot; 14d left</div>
+          </div>
+          <span class="theatre-prob yes">67&cent;</span>
+          <span class="theatre-vol">$18.4K</span>
+        </div>
+        <div class="theatre-row">
+          <span class="theatre-rank">2</span>
+          <span class="cat-dot binary"></span>
+          <div class="theatre-info">
+            <div class="theatre-name">BTC exceeds $150K before July</div>
+            <div class="theatre-meta">Binary &middot; 6 agents &middot; 42d left</div>
+          </div>
+          <span class="theatre-prob contested">42&cent;</span>
+          <span class="theatre-vol">$12.8K</span>
+        </div>
+        <div class="theatre-row">
+          <span class="theatre-rank">3</span>
+          <span class="cat-dot binary"></span>
+          <div class="theatre-info">
+            <div class="theatre-name">Nvidia Q1 FY27 rev above $40B</div>
+            <div class="theatre-meta" style="color:var(--text-disabled)">Settled &middot; 11 agents</div>
+          </div>
+          <span class="theatre-prob" style="color:var(--green-600);font-size:11px">YES &#10003;</span>
+          <span class="theatre-vol">$9.8K</span>
+        </div>
+        <div class="theatre-row">
+          <span class="theatre-rank">4</span>
+          <span class="cat-dot continuous"></span>
+          <div class="theatre-info">
+            <div class="theatre-name">US CPI YoY — April 2026</div>
+            <div class="theatre-meta">Continuous &middot; 4 agents &middot; 28d</div>
+          </div>
+          <span class="theatre-prob contested">2.8%</span>
+          <span class="theatre-vol">$6.2K</span>
+        </div>
+        <div class="theatre-row">
+          <span class="theatre-rank">5</span>
+          <span class="cat-dot binary"></span>
+          <div class="theatre-info">
+            <div class="theatre-name">SpaceX orbital refueling by Aug</div>
+            <div class="theatre-meta" style="color:var(--orange-600)">Binary &middot; 5 agents &middot; 6d left</div>
+          </div>
+          <span class="theatre-prob contested">31&cent;</span>
+          <span class="theatre-vol">$4.6K</span>
+        </div>
+        <div class="theatre-row">
+          <span class="theatre-rank">6</span>
+          <span class="cat-dot temporal"></span>
+          <div class="theatre-info">
+            <div class="theatre-name">EU AI Act enforcement begins</div>
+            <div class="theatre-meta">Temporal &middot; 3 agents &middot; 90d</div>
+          </div>
+          <span class="theatre-prob contested">Q3</span>
+          <span class="theatre-vol">$3.9K</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- COL 2: Agent Fleet -->
+    <div class="panel" id="investigations-target" style="scroll-margin-top:calc(var(--header-height) + var(--space-4))">
+      <div class="panel-header">
+        <span class="panel-title">Agent Fleet</span>
+        <button class="panel-action">Fleet &rarr;</button>
+      </div>
+      <div class="panel-body">
+        <div class="fleet-stats">
+          <div class="fleet-stat">
+            <div class="fleet-stat-val alive">34</div>
+            <div class="fleet-stat-label">Alive</div>
+          </div>
+          <div class="fleet-stat">
+            <div class="fleet-stat-val">28</div>
+            <div class="fleet-stat-label">Deployed</div>
+          </div>
+          <div class="fleet-stat">
+            <div class="fleet-stat-val idle">6</div>
+            <div class="fleet-stat-label">Idle</div>
+          </div>
+        </div>
+
+        <div class="movement">
+          <span class="movement-time">2m</span>
+          <span class="movement-dot deploy"></span>
+          <span class="movement-text"><strong>CARDINAL</strong> deployed to <strong>Fed Rate Cut</strong> &mdash; bought <span class="mono">Yes @ 67&cent;</span></span>
+        </div>
+        <div class="movement">
+          <span class="movement-time">8m</span>
+          <span class="movement-dot trade"></span>
+          <span class="movement-text"><strong>VIPER</strong> sold <span class="mono">$420 No</span> on <strong>BTC $150K</strong></span>
+        </div>
+        <div class="movement">
+          <span class="movement-time">14m</span>
+          <span class="movement-dot alert"></span>
+          <span class="movement-text"><strong>SHADOW</strong> flagged paradox on <strong>Taiwan Strait</strong> &mdash; conflicting OSINT</span>
+        </div>
+        <div class="movement">
+          <span class="movement-time">21m</span>
+          <span class="movement-dot trade"></span>
+          <span class="movement-text"><strong>LEVIATHAN</strong> bought <span class="mono">$850 Yes @ 66&cent;</span> on <strong>Fed Rate Cut</strong></span>
+        </div>
+        <div class="movement">
+          <span class="movement-time">35m</span>
+          <span class="movement-dot exit"></span>
+          <span class="movement-text"><strong>TITAN</strong> exited <strong>SpaceX Refuel</strong> &mdash; position closed at <span class="mono">-$32</span></span>
+        </div>
+        <div class="movement">
+          <span class="movement-time">48m</span>
+          <span class="movement-dot deploy"></span>
+          <span class="movement-text"><strong>AMBASSADOR</strong> deployed to <strong>US CPI</strong> &mdash; targeting <span class="mono">P75 bracket</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- COL 3: Certs + Actions + Health + Positions (right rail) -->
+    <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+
+      <!-- Recent Certificates -->
+      <div class="panel" id="certs-panel" style="scroll-margin-top:calc(var(--header-height) + var(--space-4))">
+        <div class="panel-header">
+          <span class="panel-title">Recent Certificates</span>
+          <button class="panel-action">All Certs &rarr;</button>
+        </div>
+        <div class="panel-body">
+          <div class="cert-item">
+            <div class="cert-icon pass"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7l3 3 5-5"/></svg></div>
+            <div class="cert-info">
+              <div class="cert-name">Nvidia Q1 FY27 Revenue</div>
+              <div class="cert-id">#VRF-0847 &middot; Binary &middot; Mode 0</div>
+            </div>
+            <span class="cert-date">28 Feb</span>
+          </div>
+          <div class="cert-item">
+            <div class="cert-icon pass"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7l3 3 5-5"/></svg></div>
+            <div class="cert-info">
+              <div class="cert-name">ECB March Rate Decision</div>
+              <div class="cert-id">#VRF-0842 &middot; Binary &middot; Mode 0</div>
+            </div>
+            <span class="cert-date">27 Feb</span>
+          </div>
+          <div class="cert-item">
+            <div class="cert-icon pass"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7l3 3 5-5"/></svg></div>
+            <div class="cert-info">
+              <div class="cert-name">US Feb Non-Farm Payrolls</div>
+              <div class="cert-id">#VRF-0839 &middot; Continuous &middot; Mode 1</div>
+            </div>
+            <span class="cert-date">25 Feb</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Quick Actions</span>
+        </div>
+        <div class="quick-actions">
+          <a href="#" class="quick-action">
+            <div class="quick-action-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg></div>
+            <span class="quick-action-label">Create Theatre</span>
+          </a>
+          <a href="#" class="quick-action">
+            <div class="quick-action-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="6" r="3"/><path d="M3 14a5 5 0 0 1 10 0"/></svg></div>
+            <span class="quick-action-label">Deploy Agent</span>
+          </a>
+          <a href="#" class="quick-action">
+            <div class="quick-action-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 8l3 3 5-5"/><circle cx="8" cy="8" r="6.5"/></svg></div>
+            <span class="quick-action-label">Start Verification</span>
+          </a>
+          <a href="#" class="quick-action">
+            <div class="quick-action-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h8v2H4zM4 8h8v2H4zM4 12h8v2H4z"/></svg></div>
+            <span class="quick-action-label">RLMF Exports</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Platform Health -->
+      <div class="panel" id="health-panel" style="scroll-margin-top:calc(var(--header-height) + var(--space-4))">
+        <div class="panel-header">
+          <span class="panel-title">Platform Health</span>
+        </div>
+        <div class="panel-body" style="padding:var(--space-3) var(--space-4);display:flex;flex-direction:column">
+
+          <div class="health-row">
+            <span class="health-name">Butterfly Engine</span>
+            <div class="health-right">
+              <span class="health-status ok">Healthy</span>
+              <a href="#" class="health-link">View</a>
+            </div>
+          </div>
+          <div class="health-row">
+            <span class="health-name">OSINT Pipeline</span>
+            <div class="health-right">
+              <span class="health-status ok">Active</span>
+              <a href="#" class="health-link">View</a>
+            </div>
+          </div>
+          <div class="health-row">
+            <span class="health-name">Verification Service</span>
+            <div class="health-right">
+              <span class="health-status ok">Online</span>
+              <a href="#" class="health-link">View</a>
+            </div>
+          </div>
+          <div class="health-row">
+            <span class="health-name">Agent Scheduler</span>
+            <div class="health-right">
+              <span class="health-status ok">Running</span>
+              <a href="#" class="health-link">View</a>
+            </div>
+          </div>
+          <div class="health-row has-issue">
+            <span class="health-name">Collector Pipeline</span>
+            <div class="health-right">
+              <span class="health-status warn">11 stubs &mdash; degraded</span>
+              <a href="#" class="health-link">Investigate</a>
+            </div>
+          </div>
+          <div class="health-row">
+            <span class="health-name">Base Network</span>
+            <div class="health-right">
+              <span class="health-status ok">Block 14.2M</span>
+              <a href="#" class="health-link">Explorer</a>
+            </div>
+          </div>
+          <div class="health-row" style="padding-top:var(--space-3);margin-top:var(--space-1);border-top:1px solid var(--border-secondary)">
+            <span style="font-size:12px;color:var(--text-muted)">Last heartbeat</span>
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-disabled)">12s ago</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Your Positions (collapsible, bottom of right rail) -->
+      <div class="positions-panel" id="positions-panel">
+        <div class="positions-panel-header" onclick="togglePositions()">
+          <span class="positions-panel-title">
+            Your Positions
+            <span style="font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-disabled)">(5 open)</span>
+          </span>
+          <svg class="positions-chevron" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 5.5l3 3 3-3"/></svg>
+        </div>
+        <div class="positions-body">
+          <div class="positions-metric-row">
+            <span class="positions-metric-label">Portfolio Value</span>
+            <span class="positions-metric-value">$3,842 <span style="font-size:11px;font-weight:500;color:var(--text-muted)">USDC</span></span>
+          </div>
+          <div class="positions-metric-row">
+            <span class="positions-metric-label">Open Positions</span>
+            <span class="positions-metric-value">5</span>
+          </div>
+          <div class="positions-metric-row">
+            <span class="positions-metric-label">Unrealised P&amp;L</span>
+            <span class="positions-metric-value positive">+$284.60</span>
+          </div>
+        </div>
+        <div class="positions-footer">
+          <button class="btn btn-secondary btn-sm" style="width:100%">View Portfolio</button>
+        </div>
+      </div>
+
+    </div><!-- /col 3 -->
+
+    <!-- ROW 2, COL 1-2: Recent Activity Feed -->
+    <div class="panel" style="grid-column: span 2">
+      <div class="panel-header">
+        <span class="panel-title">Recent Activity</span>
+        <button class="panel-action">All Activity &rarr;</button>
+      </div>
+      <div class="panel-body">
+        <div class="activity-item">
+          <span class="activity-dot trade"></span>
+          <span class="activity-text"><strong>0x7a3F...8c2E</strong> bought <span class="mono">$200 Yes @ 67&cent;</span> on <strong>Fed Rate Cut</strong></span>
+          <span class="activity-time">1m ago</span>
+        </div>
+        <div class="activity-item">
+          <span class="activity-dot trade"></span>
+          <span class="activity-text"><strong>CARDINAL</strong> bought <span class="mono">$350 Yes @ 67&cent;</span> on <strong>Fed Rate Cut</strong></span>
+          <span class="activity-time">2m ago</span>
+        </div>
+        <div class="activity-item">
+          <span class="activity-dot paradox"></span>
+          <span class="activity-text">Paradox detected on <strong>Taiwan Strait</strong> &mdash; OSINT signal density exceeds threshold</span>
+          <span class="activity-time">14m ago</span>
+        </div>
+        <div class="activity-item">
+          <span class="activity-dot trade"></span>
+          <span class="activity-text"><strong>0xB2e1...4fA9</strong> sold <span class="mono">$180 No @ 58&cent;</span> on <strong>BTC $150K</strong></span>
+          <span class="activity-time">22m ago</span>
+        </div>
+        <div class="activity-item">
+          <span class="activity-dot cert"></span>
+          <span class="activity-text">Certificate <span class="mono">#VRF-0847</span> issued for <strong>Nvidia Q1 FY27</strong> &mdash; resolved YES at <span class="mono">$44.1B</span></span>
+          <span class="activity-time">4h ago</span>
+        </div>
+        <div class="activity-item">
+          <span class="activity-dot theatre"></span>
+          <span class="activity-text">Theatre <strong>EU AI Act Enforcement</strong> created from template <span class="mono">temporal_event_v2</span></span>
+          <span class="activity-time">6h ago</span>
+        </div>
+        <div class="activity-item">
+          <span class="activity-dot trade"></span>
+          <span class="activity-text"><strong>LEVIATHAN</strong> deployed <span class="mono">$2,400</span> across <span class="mono">3 theatres</span> &mdash; whale activity</span>
+          <span class="activity-time">8h ago</span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /dash-grid -->
+
+</main>
+
+<!-- State toggle: demo control to switch between alert/zero states -->
+<button class="state-toggle" id="state-toggle" onclick="toggleState()">
+  <span class="state-toggle-dot" id="toggle-dot" style="background:var(--status-danger)"></span>
+  <span id="toggle-label">Switch to Zero State</span>
+</button>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// INTERACTION: Attention strip scroll + highlight
+// ═══════════════════════════════════════════════════════════
+function scrollToPanel(targetId) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el.classList.remove('attention-target-highlight');
+  void el.offsetWidth; // force reflow
+  el.classList.add('attention-target-highlight');
+  setTimeout(() => el.classList.remove('attention-target-highlight'), 1500);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INTERACTION: Collapsible positions panel
+// ═══════════════════════════════════════════════════════════
+function togglePositions() {
+  const panel = document.getElementById('positions-panel');
+  panel.classList.toggle('collapsed');
+}
+
+// ═══════════════════════════════════════════════════════════
+// DEMO: Toggle between alert state and zero state
+// ═══════════════════════════════════════════════════════════
+let isAlertState = true;
+
+function toggleState() {
+  isAlertState = !isAlertState;
+  const strip = document.getElementById('attention-strip');
+  const items = document.getElementById('attention-items');
+  const paradoxPanel = document.getElementById('paradox-panel');
+  const paradoxGrid = document.getElementById('paradox-grid');
+  const paradoxEmpty = document.getElementById('paradox-empty');
+  const paradoxCount = document.getElementById('paradox-panel-count');
+  const ctaReview = document.getElementById('cta-review');
+  const ctaCreate = document.getElementById('cta-create');
+  const kpiParadox = document.getElementById('kpi-paradox');
+  const toggleDot = document.getElementById('toggle-dot');
+  const toggleLabel = document.getElementById('toggle-label');
+  const notifBadge = document.getElementById('notif-badge');
+  const sidebarBadge = document.getElementById('sidebar-paradox-badge');
+
+  if (isAlertState) {
+    // Restore alert state
+    strip.className = 'attention-strip has-issues';
+    strip.querySelector('.attention-icon').innerHTML = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L1.5 15h15L9 2z"/><path d="M9 7v3M9 12.5v.5"/></svg>';
+    strip.querySelector('.attention-label').textContent = 'Needs Attention';
+    items.innerHTML = '<a class="attention-item critical" onclick="scrollToPanel(\'paradox-panel\')"><span class="attn-count">3</span> active paradoxes</a><span class="attention-sep">&middot;</span><a class="attention-item warning" onclick="scrollToPanel(\'investigations-target\')"><span class="attn-count">2</span> stalled investigations</a><span class="attention-sep">&middot;</span><a class="attention-item warning" onclick="scrollToPanel(\'health-panel\')"><span class="attn-count">1</span> degraded pipeline</a><span class="attention-sep">&middot;</span><a class="attention-item info" onclick="scrollToPanel(\'certs-panel\')"><span class="attn-count">4</span> expiring certificates</a>';
+
+    paradoxPanel.classList.remove('zero-state');
+    paradoxGrid.style.display = '';
+    paradoxEmpty.style.display = 'none';
+    paradoxCount.textContent = '3 Active Paradoxes';
+
+    ctaReview.style.display = '';
+    ctaCreate.className = 'btn btn-secondary';
+
+    kpiParadox.className = 'kpi kpi-alert';
+    kpiParadox.querySelector('.kpi-value').textContent = '3';
+    kpiParadox.querySelector('.kpi-change').className = 'kpi-change alert';
+    kpiParadox.querySelector('.kpi-change').innerHTML = '<svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 8V2M2.5 4.5L5 2l2.5 2.5"/></svg>+1 / 24h';
+    kpiParadox.querySelector('.kpi-interp').className = 'kpi-interp critical';
+    kpiParadox.querySelector('.kpi-interp').textContent = '1 critical';
+
+    notifBadge.style.display = '';
+    notifBadge.textContent = '3';
+    sidebarBadge.style.display = '';
+
+    toggleDot.style.background = 'var(--status-danger)';
+    toggleLabel.textContent = 'Switch to Zero State';
+  } else {
+    // Zero state: all clear
+    strip.className = 'attention-strip all-clear';
+    strip.querySelector('.attention-icon').innerHTML = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l3 3 5-5"/><circle cx="9" cy="9" r="7"/></svg>';
+    strip.querySelector('.attention-label').textContent = 'All Clear';
+    items.innerHTML = '<span class="attention-all-clear"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.5 7l2.5 2.5 4.5-4.5"/></svg>All systems nominal &mdash; no action required</span>';
+
+    paradoxPanel.classList.add('zero-state');
+    paradoxGrid.style.display = 'none';
+    paradoxEmpty.style.display = '';
+    paradoxCount.textContent = 'Paradox Monitor';
+
+    ctaReview.style.display = 'none';
+    ctaCreate.className = 'btn btn-primary';
+
+    kpiParadox.className = 'kpi';
+    kpiParadox.querySelector('.kpi-value').textContent = '0';
+    kpiParadox.querySelector('.kpi-change').className = 'kpi-change flat';
+    kpiParadox.querySelector('.kpi-change').innerHTML = '&mdash; clear';
+    kpiParadox.querySelector('.kpi-interp').className = 'kpi-interp healthy';
+    kpiParadox.querySelector('.kpi-interp').textContent = 'Clear';
+
+    notifBadge.style.display = 'none';
+    sidebarBadge.style.display = 'none';
+
+    toggleDot.style.background = 'var(--green-500)';
+    toggleLabel.textContent = 'Switch to Alert State';
+  }
+}
+</script>
+
+</body>
+</html>

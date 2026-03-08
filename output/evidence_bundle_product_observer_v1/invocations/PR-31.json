@@ -1,0 +1,36 @@
+{
+  "request": {
+    "episode_id": "PR-31",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "summary": "Complete redesign of the VRF page from a generic randomness dashboard to an LMSR-native integrity terminal with four structured sections: Entropy Commitments (infrastructure SLO stats), Where VRF Is Applied (6 protocol application points), LMSR Integrity Coupling (anti-manipulation surfaces and cost calculation), and filterable Audit Trail.",
+      "key_claims": [
+        "Replaced generic VRF dashboard with audit-grade terminal aligned to System Bible v10",
+        "Added four main sections: Entropy Commitments, Where VRF Is Applied, LMSR Integrity Coupling, and Audit Trail",
+        "Removed fake NIST randomness score and order-book language",
+        "Added 6 VRF application points: commit-reveal window, circuit breaker, data validation, RLMF sampling, entropy pricing, and oracle failover",
+        "Implemented filterable audit trail with component and status filters",
+        "Added LMSR cost calculation widget demonstrating cost to move market prices",
+        "Integrated TopActionBarActionsContext for live updates and refresh functionality",
+        "Changed from 439 lines to 584 lines of code",
+        "Added anti-manipulation surfaces section explaining VRF protection mechanisms",
+        "Replaced VRF request history table with detailed audit trail showing derived effects"
+      ],
+      "follow_up_question": "What are the 6 specific protocol application points that VRF protects according to the INITIAL_APPLICATION_POINTS constant in the new code?",
+      "follow_up_response": "According to the `INITIAL_APPLICATION_POINTS` constant in the new code, the 6 specific protocol application points that VRF protects are:\n\n1. **Commit-Reveal Window** - Randomised execution window (30\u201360s) prevents timing attacks on sabotage actions.\n\n2. **Circuit Breaker Thresholds** - Randomised offset on base thresholds prevents threshold manipulation and predictable triggering.\n\n3. **Market Data Validation** - Random feed sampling selection prevents predictable validation gaming across OSINT sources.\n\n4. **RLMF Episode Sampling** - Verifiable random episode selection ensures unbiased training data for reinforcement learning.\n\n5. **Entropy Pricing** - Dynamic risk adjustment randomisation prevents entropy prediction gaming on fee schedules.\n\n6. **Oracle Failover** - Randomised failover provider selection prevents oracle targeting attacks in degraded modes.\n\nThese application points are defined with specific IDs (`commit-reveal`, `circuit-breaker`, `data-validation`, `rlmf-sampling`, `entropy-pricing`, `oracle-failover`) and each includes details about their last draw timestamp, request ID, and derived effects.",
+      "episode_id": "PR-31",
+      "metadata": {
+        "model": "claude-sonnet-4-20250514",
+        "latency_ms": 17980
+      }
+    },
+    "scores": {
+      "precision": 1.0,
+      "recall": 0.6,
+      "reply_accuracy": 1.0
+    },
+    "composite": 0.8400000000000001
+  }
+}

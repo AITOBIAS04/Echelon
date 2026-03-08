@@ -88,6 +88,43 @@ class ClaimGraph:
         self._claims.append(node)
         return node
 
+    def add_claim_from_persisted(
+        self,
+        claim_id: str,
+        claim_text: str,
+        claim_type: ClaimType,
+        evidence_refs: list[str],
+        counter_signals: list[str] | None = None,
+        status: str = "unconfirmed",
+        confidence: float = 0.0,
+        independence_groups: list[str] | None = None,
+    ) -> ClaimNode:
+        """Replay a persisted claim into the graph.
+
+        Unlike add_claim(), this accepts pre-existing IDs and state
+        rather than generating new ones. Used for toolset rebuild from DB.
+        """
+        node = ClaimNode(
+            claim_id=claim_id,
+            claim_text=claim_text,
+            claim_type=claim_type,
+            evidence_refs=evidence_refs,
+            counter_signals=counter_signals or [],
+            status=ClaimStatus(status),
+            confidence=confidence,
+            independence_groups=independence_groups or [],
+        )
+        self._claims.append(node)
+        try:
+            num = int(claim_id.lstrip("C")) if claim_id.startswith("C") and claim_id[1:].isdigit() else None
+        except (ValueError, IndexError):
+            num = None
+        if num is not None and num > self._counter:
+            self._counter = num
+        else:
+            self._counter += 1
+        return node
+
     def update_claim_status(
         self,
         claim_id: str,

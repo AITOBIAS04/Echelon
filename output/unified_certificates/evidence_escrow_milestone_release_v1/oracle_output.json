@@ -1,0 +1,60 @@
+{
+  "bundle_hash": "",
+  "collection": {
+    "bundles": [],
+    "gaps": [],
+    "query_window_end": null,
+    "query_window_start": null,
+    "theatre_id": "product_replay_engine_v1",
+    "total_sources_attempted": 11,
+    "total_sources_failed": 0,
+    "total_sources_succeeded": 11
+  },
+  "composite_score": 0.8590909090909091,
+  "corroboration_results": [],
+  "counter_signal_results": [],
+  "counter_signals_checked": 0,
+  "counter_signals_found": 0,
+  "coverage_percentage": 0.0,
+  "criterion_scores": [
+    {
+      "criterion_id": "required_evidence_present",
+      "detail": "required_evidence_present: 0.9091 across 11 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9090909090909091
+    },
+    {
+      "criterion_id": "signature_policy_satisfied",
+      "detail": "signature_policy_satisfied: 0.9091 across 11 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9090909090909091
+    },
+    {
+      "criterion_id": "validity_window_respected",
+      "detail": "validity_window_respected: 1.0000 across 11 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 1.0
+    },
+    {
+      "criterion_id": "release_amount_correct",
+      "detail": "release_amount_correct: 0.5455 across 11 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.5454545454545454
+    },
+    {
+      "criterion_id": "idempotency",
+      "detail": "idempotency: 1.0000 across 11 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 1.0
+    }
+  ],
+  "evaluated_at": "2026-01-01T00:00:00Z",
+  "gap_report": [],
+  "oracle_id": "replay_escrow_milestone_release_v1",
+  "theatre_id": "product_replay_engine_v1"
+}

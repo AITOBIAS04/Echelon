@@ -1,0 +1,72 @@
+{
+  "all_criteria_passed": true,
+  "certificate_id": "06d8c877-dcbe-4b8c-aa09-03c1a91fb56c",
+  "certificate_version": "1.0.0",
+  "commitment_hash": "4016bfee6b73dcaa62f043aeeb5402e5c1600779f26dd8e5fffb770d3e0078d1",
+  "composite_score": 0.9375,
+  "corroboration_met": false,
+  "counter_signals_checked": 0,
+  "counter_signals_found": 0,
+  "criterion_scores": [
+    {
+      "criterion_id": "state_transition_validity",
+      "detail": "state_transition_validity: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    },
+    {
+      "criterion_id": "ladder_redirection_arithmetic",
+      "detail": "ladder_redirection_arithmetic: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    },
+    {
+      "criterion_id": "reserve_fund_impact",
+      "detail": "reserve_fund_impact: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    },
+    {
+      "criterion_id": "distribution_adjustment",
+      "detail": "distribution_adjustment: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    },
+    {
+      "criterion_id": "grace_period_enforcement",
+      "detail": "grace_period_enforcement: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    },
+    {
+      "criterion_id": "ladder_balance_protection",
+      "detail": "ladder_balance_protection: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    }
+  ],
+  "distinct_upstream_count": 0,
+  "evidence_bundle_hash": "61396804857cd13a18077a978cd652c43a118a9d48c9d6eac8355cdadc4ac7a3",
+  "execution_path": "replay",
+  "inquiry_class": "INSPECTION",
+  "issued_at": "2026-03-01T20:33:48.852610Z",
+  "oracle_id": "replay_arrears_resolution_v1",
+  "pipeline_version": "0.7.0",
+  "sources_failed": 0,
+  "sources_queried": 16,
+  "sources_succeeded": 16,
+  "target_entity": {
+    "construct_id": "two_rail_marketplace_core",
+    "dataset_id": "arrears_v0_2_18",
+    "record_count": 16,
+    "template_id": "arrears_resolution_v1"
+  },
+  "theatre_id": "arrears_resolution_v1",
+  "verification_tier": "UNVERIFIED"
+}

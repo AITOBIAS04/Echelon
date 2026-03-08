@@ -1,0 +1,60 @@
+{
+  "bundle_hash": "",
+  "collection": {
+    "bundles": [],
+    "gaps": [],
+    "query_window_end": null,
+    "query_window_start": null,
+    "theatre_id": "product_replay_engine_v1",
+    "total_sources_attempted": 15,
+    "total_sources_failed": 0,
+    "total_sources_succeeded": 15
+  },
+  "composite_score": 0.8933333333333332,
+  "corroboration_results": [],
+  "counter_signal_results": [],
+  "counter_signals_checked": 0,
+  "counter_signals_found": 0,
+  "coverage_percentage": 0.0,
+  "criterion_scores": [
+    {
+      "criterion_id": "bank_ref_match",
+      "detail": "bank_ref_match: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "bucket_sum_matches_gross",
+      "detail": "bucket_sum_matches_gross: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "bucket_destination_valid",
+      "detail": "bucket_destination_valid: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "event_log_complete",
+      "detail": "event_log_complete: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "exceptions_correct",
+      "detail": "exceptions_correct: 0.6667 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.6666666666666666
+    }
+  ],
+  "evaluated_at": "2026-01-01T00:00:00Z",
+  "gap_report": [],
+  "oracle_id": "replay_ledger_reconciliation_v1",
+  "theatre_id": "product_replay_engine_v1"
+}

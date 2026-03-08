@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Empty States System (Alexander)</title>
+<!--
+  ===================================================================
+  COMPONENT SYSTEM: EMPTY STATES (Alexander)
+  ===================================================================
+  v1 — Cross-cutting empty-state language for all Echelon surfaces.
+
+  NOT a page. A component system with 6 state types applied across
+  13+ surfaces.
+
+  DESIGN PRINCIPLES:
+  1. One shared component anatomy, adapted by copy and tone
+  2. All Clear ≠ Zero State — visually distinguishable
+  3. Quiet Monitoring preserves spatial structure (map/graph visible)
+  4. No novelty illustrations, no mascots, no "nothing to see here"
+  5. Icons reuse nav icon set, not special empty-state art
+  6. Copy tone follows page role: operations / intelligence / portfolio / archival
+
+  STATE TYPES:
+  1. Zero State — nothing created yet (onboarding)
+  2. All Clear — system active, nothing needs intervention (success)
+  3. Quiet Monitoring — watching, low activity (subdued awareness)
+  4. Sparse Data — some activity, not enough for analytics (patience)
+  5. No Results — filters returned nothing (compact inline)
+  6. Not Yet Generated — upstream dependency hasn't run (explanatory)
+  ===================================================================
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --shadow-lg:0 8px 24px oklch(0.20 0.01 265/0.12),0 2px 8px oklch(0.20 0.01 265/0.05);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;--duration-slow:300ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ===================================================================
+   SHOWCASE LAYOUT
+   =================================================================== */
+.showcase{max-width:1120px;margin:0 auto;padding:var(--space-8) var(--space-6) 80px}
+.showcase-header{margin-bottom:var(--space-10);padding-bottom:var(--space-6);border-bottom:1px solid var(--border-primary)}
+.showcase-title{font-size:28px;font-weight:700;letter-spacing:-0.02em;margin-bottom:var(--space-2)}
+.showcase-subtitle{font-size:15px;color:var(--text-secondary);max-width:640px;line-height:24px}
+
+.section{margin-bottom:var(--space-12)}
+.section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--purple-600);margin-bottom:var(--space-2)}
+.section-title{font-size:20px;font-weight:700;letter-spacing:-0.01em;margin-bottom:var(--space-1)}
+.section-desc{font-size:13px;color:var(--text-secondary);margin-bottom:var(--space-6);max-width:560px;line-height:22px}
+
+.example-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-5)}
+.example-grid.single{grid-template-columns:1fr}
+.example-grid.triple{grid-template-columns:1fr 1fr 1fr}
+
+.example-wrap{display:flex;flex-direction:column;gap:var(--space-2)}
+.example-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);display:flex;align-items:center;gap:var(--space-2)}
+.example-label .page-tag{font-weight:600;color:var(--purple-600);background:var(--purple-50);padding:1px 6px;border-radius:4px;text-transform:none;letter-spacing:0;font-size:10px}
+.example-label .state-tag{font-weight:600;padding:1px 6px;border-radius:4px;text-transform:none;letter-spacing:0;font-size:10px}
+.state-tag.zero{background:var(--bg-sunken);color:var(--text-secondary);border:1px solid var(--border-secondary)}
+.state-tag.all-clear{background:var(--green-50);color:var(--green-700);border:1px solid var(--green-200)}
+.state-tag.quiet{background:oklch(0.525 0.155 260/0.06);color:oklch(0.420 0.140 260);border:1px solid oklch(0.525 0.155 260/0.15)}
+.state-tag.sparse{background:var(--orange-50);color:var(--orange-700);border:1px solid var(--orange-200)}
+.state-tag.no-results{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.state-tag.not-yet{background:var(--purple-50);color:var(--purple-600);border:1px solid var(--purple-200)}
+
+.example-frame{background:var(--bg-app);border:1px solid var(--border-primary);border-radius:var(--radius-md);overflow:hidden;min-height:200px}
+
+/* ===================================================================
+   COMPONENT SPEC
+   =================================================================== */
+.spec-anatomy{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-6);display:grid;grid-template-columns:1fr 280px;gap:var(--space-8);box-shadow:var(--shadow-xs)}
+.spec-visual{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--space-8) var(--space-6);background:var(--bg-app);border:1px dashed var(--border-primary);border-radius:var(--radius-sm);position:relative}
+.spec-slot{position:absolute;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--purple-600);background:var(--purple-50);padding:1px 6px;border-radius:4px;border:1px solid var(--purple-200)}
+.spec-details h3{font-size:15px;font-weight:700;margin-bottom:var(--space-4)}
+.spec-slot-list{display:flex;flex-direction:column;gap:var(--space-3)}
+.spec-slot-item{display:flex;gap:var(--space-3);font-size:13px;line-height:20px}
+.spec-slot-name{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--purple-600);white-space:nowrap;min-width:100px;padding-top:1px}
+.spec-slot-desc{color:var(--text-secondary)}
+.spec-slot-optional{font-size:10px;font-weight:600;color:var(--text-muted);background:var(--bg-sunken);padding:0 4px;border-radius:2px;margin-left:4px;vertical-align:middle}
+
+/* ===================================================================
+   EMPTY STATE COMPONENT — THE SHARED DNA
+   =================================================================== */
+
+/* === 1. ZERO STATE — centered message, CTA === */
+.es-zero{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--space-12) var(--space-6);text-align:center;background:var(--bg-card);min-height:280px}
+.es-zero-icon{width:56px;height:56px;display:flex;align-items:center;justify-content:center;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-lg);color:var(--text-muted);margin-bottom:var(--space-5)}
+.es-zero-title{font-size:17px;font-weight:700;margin-bottom:var(--space-2)}
+.es-zero-desc{font-size:14px;color:var(--text-secondary);line-height:22px;max-width:400px;margin-bottom:var(--space-6)}
+.es-zero-actions{display:flex;gap:var(--space-3);justify-content:center}
+
+/* === 2. ALL CLEAR — positive status strip === */
+.es-clear{background:var(--bg-card);padding:var(--space-5) var(--space-6);min-height:160px;display:flex;flex-direction:column}
+.es-clear-strip{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:oklch(0.545 0.170 152/0.04);border:1px solid oklch(0.545 0.170 152/0.12);border-radius:var(--radius-md);margin-bottom:var(--space-5)}
+.es-clear-dot{width:10px;height:10px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 3px oklch(0.545 0.170 152/0.15);flex-shrink:0}
+.es-clear-text{font-size:14px;font-weight:600;color:var(--green-700)}
+.es-clear-time{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);margin-left:auto}
+.es-clear-body{display:flex;flex-direction:column;gap:var(--space-2);flex:1}
+.es-clear-message{font-size:13px;color:var(--text-secondary);line-height:20px}
+.es-clear-recent{margin-top:var(--space-4)}
+.es-clear-recent-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-2)}
+.es-clear-recent-item{display:flex;align-items:center;gap:var(--space-2);font-size:12px;color:var(--text-muted);padding:var(--space-1) 0}
+.es-clear-recent-dot{width:5px;height:5px;border-radius:var(--radius-full);background:var(--border-primary)}
+
+/* === 3. QUIET MONITORING — skeleton with overlay note === */
+.es-quiet{background:var(--bg-card);min-height:280px;position:relative;overflow:hidden}
+.es-quiet-skeleton{opacity:0.25;width:100%;height:100%;position:absolute;top:0;left:0}
+.es-quiet-overlay{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px;padding:var(--space-6)}
+.es-quiet-badge{display:inline-flex;align-items:center;gap:6px;padding:var(--space-2) var(--space-4);background:oklch(0.525 0.155 260/0.06);border:1px solid oklch(0.525 0.155 260/0.15);border-radius:var(--radius-md);font-size:12px;font-weight:600;color:oklch(0.420 0.140 260);margin-bottom:var(--space-3)}
+.es-quiet-badge::before{content:'';width:6px;height:6px;border-radius:var(--radius-full);background:var(--status-info);animation:pulse-slow 3s ease-in-out infinite}
+@keyframes pulse-slow{0%,100%{opacity:1}50%{opacity:0.4}}
+.es-quiet-message{font-size:13px;color:var(--text-secondary);text-align:center;max-width:320px;line-height:20px}
+
+/* === 4. SPARSE DATA — chart shells with note === */
+.es-sparse{background:var(--bg-card);padding:var(--space-5) var(--space-6);min-height:200px}
+.es-sparse-charts{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-5)}
+.es-sparse-chart{background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-sm);padding:var(--space-4);min-height:100px;display:flex;flex-direction:column}
+.es-sparse-chart-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-3)}
+.es-sparse-chart-skeleton{flex:1;display:flex;align-items:flex-end;gap:4px;padding-top:var(--space-2)}
+.es-sparse-bar{width:100%;border-radius:2px 2px 0 0;background:var(--border-secondary);min-height:4px}
+.es-sparse-note{display:flex;align-items:flex-start;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-sm)}
+.es-sparse-note-icon{color:var(--text-muted);flex-shrink:0;margin-top:1px}
+.es-sparse-note-text{font-size:12px;color:var(--text-muted);line-height:18px}
+
+/* === 5. NO RESULTS — compact inline === */
+.es-no-results{display:flex;align-items:center;justify-content:center;gap:var(--space-4);padding:var(--space-6) var(--space-4);background:var(--bg-card);border:1px solid var(--border-secondary);border-radius:var(--radius-sm);min-height:80px}
+.es-no-results-text{font-size:13px;color:var(--text-muted)}
+.es-no-results-text strong{color:var(--text-secondary);font-weight:600}
+.es-no-results-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;font-size:12px;font-weight:600;border-radius:var(--radius-sm);border:1px solid var(--border-primary);background:var(--bg-card);color:var(--text-secondary);cursor:pointer}
+.es-no-results-btn:hover{border-color:var(--purple-200);color:var(--purple-600);background:var(--purple-50)}
+
+/* === 6. NOT YET GENERATED — dependency explanation === */
+.es-not-yet{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--space-10) var(--space-6);text-align:center;background:var(--bg-card);min-height:240px}
+.es-not-yet-icon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:var(--purple-50);border:1px solid var(--purple-200);border-radius:var(--radius-lg);color:var(--purple-500);margin-bottom:var(--space-4)}
+.es-not-yet-title{font-size:16px;font-weight:700;margin-bottom:var(--space-2)}
+.es-not-yet-desc{font-size:13px;color:var(--text-secondary);line-height:20px;max-width:380px;margin-bottom:var(--space-2)}
+.es-not-yet-trigger{font-size:12px;color:var(--text-muted);font-style:italic;margin-bottom:var(--space-5)}
+.es-not-yet-actions{display:flex;gap:var(--space-3)}
+
+/* === SHARED BUTTON STYLES === */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-sm{height:30px;padding:0 var(--space-3);font-size:12px}
+
+/* ===================================================================
+   COMPARISON PANEL
+   =================================================================== */
+.compare-panel{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-5);margin-top:var(--space-6)}
+.compare-item{display:flex;flex-direction:column;gap:var(--space-2)}
+.compare-label{font-size:12px;font-weight:700;display:flex;align-items:center;gap:var(--space-2)}
+.compare-vs{display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;grid-column:1/-1;padding:var(--space-2) 0}
+</style>
+</head>
+<body>
+
+<div class="showcase">
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       HEADER
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="showcase-header">
+    <div class="showcase-title">Empty States System</div>
+    <div class="showcase-subtitle">A shared component language for every empty surface in Echelon. Six state types, one anatomy, adapted by copy and tone across 13+ pages.</div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SECTION 1: COMPONENT SPEC
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Component Spec</div>
+    <div class="section-title">Anatomy & Slots</div>
+    <div class="section-desc">One component with five slots. Variants are in copy, tone, and which slots are populated — not in layout.</div>
+
+    <div class="spec-anatomy">
+      <div class="spec-visual">
+        <!-- Visual representation of the component -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:var(--space-4);width:100%">
+          <div style="width:56px;height:56px;background:var(--bg-sunken);border:1px dashed var(--border-primary);border-radius:var(--radius-lg);display:flex;align-items:center;justify-content:center;color:var(--text-disabled)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg>
+          </div>
+          <div style="width:180px;height:20px;background:var(--bg-sunken);border:1px dashed var(--border-primary);border-radius:4px"></div>
+          <div style="width:280px;height:32px;background:var(--bg-sunken);border:1px dashed var(--border-primary);border-radius:4px"></div>
+          <div style="display:flex;gap:var(--space-3)">
+            <div style="width:120px;height:36px;background:var(--bg-sunken);border:1px dashed var(--border-primary);border-radius:var(--radius-md)"></div>
+            <div style="width:100px;height:36px;background:var(--bg-sunken);border:1px dashed var(--border-primary);border-radius:var(--radius-md)"></div>
+          </div>
+          <div style="width:220px;height:16px;background:var(--bg-sunken);border:1px dashed var(--border-primary);border-radius:4px;margin-top:var(--space-2)"></div>
+        </div>
+        <span class="spec-slot" style="top:12px;left:12px">icon</span>
+        <span class="spec-slot" style="top:84px;right:40px">title</span>
+        <span class="spec-slot" style="top:114px;right:12px">description</span>
+        <span class="spec-slot" style="top:160px;left:12px">cta</span>
+        <span class="spec-slot" style="bottom:16px;right:12px">context</span>
+      </div>
+
+      <div class="spec-details">
+        <h3>Slot Definitions</h3>
+        <div class="spec-slot-list">
+          <div class="spec-slot-item">
+            <span class="spec-slot-name">icon</span>
+            <span class="spec-slot-desc">Page's own nav icon, rendered at 24-32px in a 48-56px container. Same icon the user sees in the sidebar. Never a novelty illustration.<span class="spec-slot-optional">optional</span></span>
+          </div>
+          <div class="spec-slot-item">
+            <span class="spec-slot-name">title</span>
+            <span class="spec-slot-desc">Short declarative statement. 2-5 words. "No theatres yet" not "Welcome to Theatres!" Describes the state, not the page.</span>
+          </div>
+          <div class="spec-slot-item">
+            <span class="spec-slot-name">description</span>
+            <span class="spec-slot-desc">One sentence explaining what produces content here. Written in the page's voice (operational / intelligence / portfolio / archival).</span>
+          </div>
+          <div class="spec-slot-item">
+            <span class="spec-slot-name">cta</span>
+            <span class="spec-slot-desc">Primary action button + optional secondary. The primary should be the most direct path to populating this page.<span class="spec-slot-optional">optional</span></span>
+          </div>
+          <div class="spec-slot-item">
+            <span class="spec-slot-name">context</span>
+            <span class="spec-slot-desc">Secondary information: status strip (All Clear), recent resolved items, skeleton structure, or dependency explanation.<span class="spec-slot-optional">optional</span></span>
+          </div>
+        </div>
+
+        <div style="margin-top:var(--space-6);padding-top:var(--space-4);border-top:1px solid var(--border-secondary)">
+          <h3 style="margin-bottom:var(--space-3)">Variant Rules</h3>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:20px;display:flex;flex-direction:column;gap:var(--space-2)">
+            <div><strong>Zero State:</strong> icon + title + desc + CTA. Centered. Full-width within content area.</div>
+            <div><strong>All Clear:</strong> status strip (context) + message (desc). No icon, no CTA. Strip is green-tinted.</div>
+            <div><strong>Quiet Monitoring:</strong> skeleton (context) + overlay badge + message. Preserve spatial structure.</div>
+            <div><strong>Sparse Data:</strong> chart shells (context) + inline note (desc). Keep visual scaffolding.</div>
+            <div><strong>No Results:</strong> inline text + clear-filters CTA. Compact. Never full-page.</div>
+            <div><strong>Not Yet Generated:</strong> icon + title + desc + trigger explanation (context) + CTA.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SECTION 2: ZERO STATE vs ALL CLEAR — VISUAL DISTINCTION
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Key Distinction</div>
+    <div class="section-title">Zero State vs All Clear</div>
+    <div class="section-desc">These must be visually distinguishable at a glance. Zero State is onboarding — the user hasn't started. All Clear is success — the system is working and nothing is wrong.</div>
+
+    <div class="example-grid">
+      <!-- ZERO STATE example -->
+      <div class="example-wrap">
+        <div class="example-label">
+          <span class="state-tag zero">Zero State</span>
+          <span class="page-tag">Theatres</span>
+          Onboarding — nothing created yet
+        </div>
+        <div class="example-frame">
+          <div class="es-zero">
+            <div class="es-zero-icon">
+              <svg width="28" height="28" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l2.5 2.5"/></svg>
+            </div>
+            <div class="es-zero-title">No theatres yet</div>
+            <div class="es-zero-desc">Theatres are live prediction markets where participants trade on real-world outcomes. Create your first theatre to start.</div>
+            <div class="es-zero-actions">
+              <button class="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+                Create Theatre
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ALL CLEAR example -->
+      <div class="example-wrap">
+        <div class="example-label">
+          <span class="state-tag all-clear">All Clear</span>
+          <span class="page-tag">Mission Control</span>
+          Operational — system healthy, nothing to act on
+        </div>
+        <div class="example-frame">
+          <div class="es-clear">
+            <div class="es-clear-strip">
+              <div class="es-clear-dot"></div>
+              <div class="es-clear-text">All systems nominal</div>
+              <div class="es-clear-time">Updated 12s ago</div>
+            </div>
+            <div class="es-clear-body">
+              <div class="es-clear-message">All markets are operating within expected parameters. No anomalies, contradictions, or intervention requests detected.</div>
+              <div class="es-clear-recent">
+                <div class="es-clear-recent-label">Recently resolved</div>
+                <div class="es-clear-recent-item"><div class="es-clear-recent-dot"></div>Agent drift corrected — Fleet unit #7 realigned (2h ago)</div>
+                <div class="es-clear-recent-item"><div class="es-clear-recent-dot"></div>Verification completed — ECH-CERT-2026-0024 (4h ago)</div>
+                <div class="es-clear-recent-item"><div class="es-clear-recent-dot"></div>Signal anomaly investigated — no action required (6h ago)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SECTION 3: ALL SIX STATE TYPES
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">State Types</div>
+    <div class="section-title">The Six Empty States</div>
+    <div class="section-desc">Each type has a distinct visual signature while sharing the same component anatomy.</div>
+
+    <!-- 3a. Additional Zero States -->
+    <div style="margin-bottom:var(--space-8)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:var(--space-4);color:var(--text-secondary)">1. Zero State — Onboarding</div>
+      <div class="example-grid triple">
+        <div class="example-wrap">
+          <div class="example-label"><span class="page-tag">Fleet</span></div>
+          <div class="example-frame">
+            <div class="es-zero">
+              <div class="es-zero-icon">
+                <svg width="24" height="24" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h12M3 9h8M3 13h5"/><circle cx="14" cy="11" r="3"/></svg>
+              </div>
+              <div class="es-zero-title">No agents deployed</div>
+              <div class="es-zero-desc">Agents monitor signals, gather evidence, and support market operations. Deploy your first agent from the roster.</div>
+              <div class="es-zero-actions">
+                <button class="btn btn-primary btn-sm">Deploy Agent</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="example-wrap">
+          <div class="example-label"><span class="page-tag">Investigations</span></div>
+          <div class="example-frame">
+            <div class="es-zero">
+              <div class="es-zero-icon">
+                <svg width="24" height="24" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3v12M12 3v12M3 6h12M3 12h12"/></svg>
+              </div>
+              <div class="es-zero-title">No investigations yet</div>
+              <div class="es-zero-desc">Investigations collect and evaluate evidence for markets that require deeper verification before resolution.</div>
+              <div class="es-zero-actions">
+                <button class="btn btn-primary btn-sm">New Investigation</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="example-wrap">
+          <div class="example-label"><span class="page-tag">Positions</span></div>
+          <div class="example-frame">
+            <div class="es-zero">
+              <div class="es-zero-icon">
+                <svg width="24" height="24" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2L2 6.5v5L9 16l7-4.5v-5L9 2z"/><path d="M2 6.5L9 11l7-4.5"/><path d="M9 16V11"/></svg>
+              </div>
+              <div class="es-zero-title">No open positions</div>
+              <div class="es-zero-desc">Positions appear here after you trade in a theatre. Browse active markets to take your first position.</div>
+              <div class="es-zero-actions">
+                <button class="btn btn-primary btn-sm">Browse Theatres</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="example-grid" style="margin-top:var(--space-4);grid-template-columns:1fr 1fr">
+        <div class="example-wrap">
+          <div class="example-label"><span class="page-tag">Scenario Packs</span></div>
+          <div class="example-frame">
+            <div class="es-zero">
+              <div class="es-zero-icon">
+                <svg width="24" height="24" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 3h10a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M7 7l2 2 2-2"/><path d="M7 11l2 2 2-2"/></svg>
+              </div>
+              <div class="es-zero-title">No scenario packs</div>
+              <div class="es-zero-desc">Scenario packs are branching simulation environments that generate training telemetry, replay data, and RLMF outputs for agent learning.</div>
+              <div class="es-zero-actions">
+                <button class="btn btn-primary btn-sm">Browse Starter Packs</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="example-wrap">
+          <div class="example-label"><span class="page-tag">Theatres</span> — alt: after onboarding</div>
+          <div class="example-frame">
+            <div class="es-zero" style="padding:var(--space-8) var(--space-6)">
+              <div class="es-zero-icon" style="width:48px;height:48px">
+                <svg width="22" height="22" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l2.5 2.5"/></svg>
+              </div>
+              <div class="es-zero-title">No theatres yet</div>
+              <div class="es-zero-desc">Theatres are live prediction markets. Create your first to begin trading on real-world outcomes.</div>
+              <div class="es-zero-actions">
+                <button class="btn btn-primary btn-sm">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 2v10M2 7h10"/></svg>
+                  Create Theatre
+                </button>
+                <button class="btn btn-secondary btn-sm">Learn More</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3b. All Clear -->
+    <div style="margin-bottom:var(--space-8)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:var(--space-4);color:var(--text-secondary)">2. All Clear — Operational Success</div>
+      <div class="example-grid">
+        <div class="example-wrap">
+          <div class="example-label"><span class="state-tag all-clear">All Clear</span> <span class="page-tag">Mission Control</span></div>
+          <div class="example-frame">
+            <div class="es-clear">
+              <div class="es-clear-strip">
+                <div class="es-clear-dot"></div>
+                <div class="es-clear-text">All systems nominal</div>
+                <div class="es-clear-time">Updated 12s ago</div>
+              </div>
+              <div class="es-clear-body">
+                <div class="es-clear-message">All markets are operating within expected parameters. No anomalies, contradictions, or intervention requests detected.</div>
+                <div class="es-clear-recent">
+                  <div class="es-clear-recent-label">Recently resolved</div>
+                  <div class="es-clear-recent-item"><div class="es-clear-recent-dot"></div>Agent drift corrected — Fleet unit #7 realigned (2h ago)</div>
+                  <div class="es-clear-recent-item"><div class="es-clear-recent-dot"></div>Verification completed — ECH-CERT-2026-0024 (4h ago)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="example-wrap">
+          <div class="example-label"><span class="state-tag all-clear">All Clear</span> <span class="page-tag">Paradox Console</span></div>
+          <div class="example-frame">
+            <div class="es-clear">
+              <div class="es-clear-strip">
+                <div class="es-clear-dot"></div>
+                <div class="es-clear-text">No active contradictions</div>
+                <div class="es-clear-time">Last check 45s ago</div>
+              </div>
+              <div class="es-clear-body">
+                <div class="es-clear-message">All market signals are internally consistent. No source conflicts, price-evidence divergences, or unresolved paradoxes.</div>
+                <div class="es-clear-recent">
+                  <div class="es-clear-recent-label">Recently resolved paradoxes</div>
+                  <div class="es-clear-recent-item"><div class="es-clear-recent-dot"></div>Price-source divergence on TH-0038 — source updated (3h ago)</div>
+                  <div class="es-clear-recent-item"><div class="es-clear-recent-dot"></div>Cross-market inconsistency — correlation recalibrated (8h ago)</div>
+                  <div class="es-clear-recent-item"><div class="es-clear-recent-dot"></div>Evidence conflict on INV-014 — consensus reached (1d ago)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3c. Quiet Monitoring -->
+    <div style="margin-bottom:var(--space-8)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:var(--space-4);color:var(--text-secondary)">3. Quiet Monitoring — Spatial Structure Preserved</div>
+      <div class="example-grid">
+        <div class="example-wrap">
+          <div class="example-label"><span class="state-tag quiet">Quiet</span> <span class="page-tag">WorldMonitor</span></div>
+          <div class="example-frame">
+            <div class="es-quiet">
+              <!-- Skeleton: world map outline -->
+              <svg class="es-quiet-skeleton" viewBox="0 0 600 280" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                <!-- Simplified map outlines -->
+                <path d="M120 80c10-20 40-30 60-25s30 20 25 35-20 20-35 25-40 5-50-5-10-15 0-30z" stroke="var(--border-primary)" stroke-width="1.5" fill="none"/>
+                <path d="M200 70c15-10 45-15 65-10s35 25 30 40-25 20-45 22-35-5-45-20-15-22-5-32z" stroke="var(--border-primary)" stroke-width="1.5" fill="none"/>
+                <path d="M310 60c20-5 50 0 65 15s15 35 5 50-30 20-50 15-30-15-30-35 0-40 10-45z" stroke="var(--border-primary)" stroke-width="1.5" fill="none"/>
+                <path d="M400 80c10-15 35-20 55-15s30 20 25 40-20 30-40 30-35-5-40-20-10-20 0-35z" stroke="var(--border-primary)" stroke-width="1.5" fill="none"/>
+                <path d="M170 140c5-10 25-20 45-18s25 15 20 30-15 25-30 25-30-5-35-17 0-12 0-20z" stroke="var(--border-primary)" stroke-width="1.5" fill="none"/>
+                <path d="M310 130c10-5 30-5 45 5s20 25 12 40-25 20-40 15-25-15-22-30 0-20 5-30z" stroke="var(--border-primary)" stroke-width="1.5" fill="none"/>
+                <path d="M430 140c5-15 25-25 40-20s20 20 15 35-15 25-30 25-25-10-28-20 0-10 3-20z" stroke="var(--border-primary)" stroke-width="1.5" fill="none"/>
+                <!-- Subtle grid lines -->
+                <line x1="0" y1="140" x2="600" y2="140" stroke="var(--border-secondary)" stroke-width="0.5" stroke-dasharray="4 8"/>
+                <line x1="300" y1="0" x2="300" y2="280" stroke="var(--border-secondary)" stroke-width="0.5" stroke-dasharray="4 8"/>
+              </svg>
+              <div class="es-quiet-overlay">
+                <div class="es-quiet-badge">Monitoring active</div>
+                <div class="es-quiet-message">No significant events detected. WorldMonitor is scanning 847 sources across 12 domains. Activity will appear here when signal thresholds are reached.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="example-wrap">
+          <div class="example-label"><span class="state-tag quiet">Quiet</span> <span class="page-tag">Signal Map</span></div>
+          <div class="example-frame">
+            <div class="es-quiet">
+              <!-- Skeleton: network graph -->
+              <svg class="es-quiet-skeleton" viewBox="0 0 600 280" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+                <!-- Node positions -->
+                <circle cx="300" cy="140" r="12" stroke="var(--border-primary)" stroke-width="1.5" fill="none"/>
+                <circle cx="180" cy="90" r="8" stroke="var(--border-primary)" stroke-width="1" fill="none"/>
+                <circle cx="420" cy="95" r="8" stroke="var(--border-primary)" stroke-width="1" fill="none"/>
+                <circle cx="150" cy="180" r="6" stroke="var(--border-primary)" stroke-width="1" fill="none"/>
+                <circle cx="450" cy="185" r="6" stroke="var(--border-primary)" stroke-width="1" fill="none"/>
+                <circle cx="240" cy="210" r="7" stroke="var(--border-primary)" stroke-width="1" fill="none"/>
+                <circle cx="360" cy="205" r="7" stroke="var(--border-primary)" stroke-width="1" fill="none"/>
+                <circle cx="120" cy="130" r="5" stroke="var(--border-primary)" stroke-width="1" fill="none"/>
+                <circle cx="480" cy="140" r="5" stroke="var(--border-primary)" stroke-width="1" fill="none"/>
+                <!-- Edges -->
+                <line x1="300" y1="140" x2="180" y2="90" stroke="var(--border-secondary)" stroke-width="1"/>
+                <line x1="300" y1="140" x2="420" y2="95" stroke="var(--border-secondary)" stroke-width="1"/>
+                <line x1="300" y1="140" x2="240" y2="210" stroke="var(--border-secondary)" stroke-width="1"/>
+                <line x1="300" y1="140" x2="360" y2="205" stroke="var(--border-secondary)" stroke-width="1"/>
+                <line x1="180" y1="90" x2="150" y2="180" stroke="var(--border-secondary)" stroke-width="0.5"/>
+                <line x1="180" y1="90" x2="120" y2="130" stroke="var(--border-secondary)" stroke-width="0.5"/>
+                <line x1="420" y1="95" x2="450" y2="185" stroke="var(--border-secondary)" stroke-width="0.5"/>
+                <line x1="420" y1="95" x2="480" y2="140" stroke="var(--border-secondary)" stroke-width="0.5"/>
+                <line x1="240" y1="210" x2="150" y2="180" stroke="var(--border-secondary)" stroke-width="0.5"/>
+                <line x1="360" y1="205" x2="450" y2="185" stroke="var(--border-secondary)" stroke-width="0.5"/>
+              </svg>
+              <div class="es-quiet-overlay">
+                <div class="es-quiet-badge">Low signal density</div>
+                <div class="es-quiet-message">Signal network is active but density is below display threshold. 23 signals tracked across 4 clusters. The map populates as signal strength increases.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3d. Sparse Data -->
+    <div style="margin-bottom:var(--space-8)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:var(--space-4);color:var(--text-secondary)">4. Sparse Data — Chart Shells with Explanation</div>
+      <div class="example-grid">
+        <div class="example-wrap">
+          <div class="example-label"><span class="state-tag sparse">Sparse</span> <span class="page-tag">Analytics</span></div>
+          <div class="example-frame">
+            <div class="es-sparse">
+              <div class="es-sparse-charts">
+                <div class="es-sparse-chart">
+                  <div class="es-sparse-chart-label">Trading Volume</div>
+                  <div class="es-sparse-chart-skeleton">
+                    <div class="es-sparse-bar" style="height:8px"></div>
+                    <div class="es-sparse-bar" style="height:14px"></div>
+                    <div class="es-sparse-bar" style="height:6px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                  </div>
+                </div>
+                <div class="es-sparse-chart">
+                  <div class="es-sparse-chart-label">Resolution Accuracy</div>
+                  <div class="es-sparse-chart-skeleton">
+                    <div class="es-sparse-bar" style="height:20px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="es-sparse-note">
+                <div class="es-sparse-note-icon">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 10v.5"/></svg>
+                </div>
+                <div class="es-sparse-note-text">Limited data available. Analytics become more meaningful after 5+ resolved markets and 30+ days of trading history. Current data: 2 markets, 8 days.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="example-wrap">
+          <div class="example-label"><span class="state-tag sparse">Sparse</span> <span class="page-tag">Theatre Detail</span> — newly launched</div>
+          <div class="example-frame">
+            <div class="es-sparse">
+              <div class="es-sparse-charts">
+                <div class="es-sparse-chart">
+                  <div class="es-sparse-chart-label">Price History</div>
+                  <div class="es-sparse-chart-skeleton">
+                    <div class="es-sparse-bar" style="height:12px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                  </div>
+                </div>
+                <div class="es-sparse-chart">
+                  <div class="es-sparse-chart-label">Participant Activity</div>
+                  <div class="es-sparse-chart-skeleton">
+                    <div class="es-sparse-bar" style="height:8px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                    <div class="es-sparse-bar" style="height:4px"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="es-sparse-note">
+                <div class="es-sparse-note-icon">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 10v.5"/></svg>
+                </div>
+                <div class="es-sparse-note-text">This market launched recently. Charts populate as trading activity accumulates. First trades set the initial price curve.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3e. No Results -->
+    <div style="margin-bottom:var(--space-8)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:var(--space-4);color:var(--text-secondary)">5. No Results — Compact Inline (Never Full-Page)</div>
+      <div class="example-grid triple">
+        <div class="example-wrap">
+          <div class="example-label"><span class="state-tag no-results">No Results</span> <span class="page-tag">Certificates</span></div>
+          <div class="example-frame" style="min-height:auto;padding:var(--space-4)">
+            <div class="es-no-results">
+              <div class="es-no-results-text">No certificates match <strong>"Disputed" + "Enhanced"</strong> filters.</div>
+              <button class="es-no-results-btn">Clear Filters</button>
+            </div>
+          </div>
+        </div>
+        <div class="example-wrap">
+          <div class="example-label"><span class="state-tag no-results">No Results</span> <span class="page-tag">Theatres</span></div>
+          <div class="example-frame" style="min-height:auto;padding:var(--space-4)">
+            <div class="es-no-results">
+              <div class="es-no-results-text">No theatres match <strong>"Temporal" + "Settled"</strong> filters.</div>
+              <button class="es-no-results-btn">Clear Filters</button>
+            </div>
+          </div>
+        </div>
+        <div class="example-wrap">
+          <div class="example-label"><span class="state-tag no-results">No Results</span> <span class="page-tag">Investigations</span></div>
+          <div class="example-frame" style="min-height:auto;padding:var(--space-4)">
+            <div class="es-no-results">
+              <div class="es-no-results-text">No investigations match <strong>"Closed" + "Finance"</strong>.</div>
+              <button class="es-no-results-btn">Clear Filters</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3f. Not Yet Generated -->
+    <div style="margin-bottom:var(--space-8)">
+      <div style="font-size:13px;font-weight:700;margin-bottom:var(--space-4);color:var(--text-secondary)">6. Not Yet Generated — Upstream Dependency</div>
+      <div class="example-grid">
+        <div class="example-wrap">
+          <div class="example-label"><span class="state-tag not-yet">Not Yet</span> <span class="page-tag">RLMF Exports</span></div>
+          <div class="example-frame">
+            <div class="es-not-yet">
+              <div class="es-not-yet-icon">
+                <svg width="24" height="24" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h12M3 9h12M3 13h12"/><circle cx="14.5" cy="5" r="1.5"/></svg>
+              </div>
+              <div class="es-not-yet-title">No exports generated</div>
+              <div class="es-not-yet-desc">RLMF exports are produced from market settlements, scenario telemetry, and labeled outcomes. They become available after upstream processes complete.</div>
+              <div class="es-not-yet-trigger">Triggered by: market settlement, scenario pack completion, or manual export request</div>
+              <div class="es-not-yet-actions">
+                <button class="btn btn-primary btn-sm">Generate First Export</button>
+                <button class="btn btn-secondary btn-sm">View Requirements</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="example-wrap">
+          <div class="example-label"><span class="state-tag not-yet">Not Yet</span> <span class="page-tag">Certificates</span></div>
+          <div class="example-frame">
+            <div class="es-not-yet">
+              <div class="es-not-yet-icon">
+                <svg width="24" height="24" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="12" height="10" rx="1.5"/><path d="M3 8h12"/><path d="M7 11h4"/></svg>
+              </div>
+              <div class="es-not-yet-title">No certificates yet</div>
+              <div class="es-not-yet-desc">Certificates are issued when markets resolve and outcomes are verified. Take positions in theatres to receive certificates on settlement.</div>
+              <div class="es-not-yet-trigger">Triggered by: market resolution + outcome verification</div>
+              <div class="es-not-yet-actions">
+                <button class="btn btn-primary btn-sm">Browse Theatres</button>
+                <button class="btn btn-secondary btn-sm">Verify a Certificate</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SECTION 4: PER-PAGE APPLICATION MAP
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Application Map</div>
+    <div class="section-title">Per-Page Reference</div>
+    <div class="section-desc">Which state type applies to each page, with the exact copy to use.</div>
+
+    <div style="background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead style="background:var(--bg-sunken)">
+          <tr>
+            <th style="padding:var(--space-3) var(--space-4);text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap">Page</th>
+            <th style="padding:var(--space-3) var(--space-4);text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap">State Type</th>
+            <th style="padding:var(--space-3) var(--space-4);text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)">Title</th>
+            <th style="padding:var(--space-3) var(--space-4);text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)">Description</th>
+            <th style="padding:var(--space-3) var(--space-4);text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap">CTA</th>
+            <th style="padding:var(--space-3) var(--space-4);text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap">Voice</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border-secondary)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">Theatres</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag zero" style="font-size:10px;padding:1px 6px">Zero</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">No theatres yet</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">Theatres are live prediction markets where participants trade on real-world outcomes.</td>
+            <td style="padding:var(--space-3) var(--space-4);white-space:nowrap">Create Theatre</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Onboarding</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-secondary)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">Fleet</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag zero" style="font-size:10px;padding:1px 6px">Zero</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">No agents deployed</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">Agents monitor signals, gather evidence, and support market operations.</td>
+            <td style="padding:var(--space-3) var(--space-4);white-space:nowrap">Deploy Agent</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Onboarding</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-secondary)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">Investigations</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag zero" style="font-size:10px;padding:1px 6px">Zero</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">No investigations yet</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">Investigations collect and evaluate evidence for markets requiring deeper verification.</td>
+            <td style="padding:var(--space-3) var(--space-4);white-space:nowrap">New Investigation</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Onboarding</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-secondary)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">Positions</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag zero" style="font-size:10px;padding:1px 6px">Zero</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">No open positions</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">Positions appear here after you trade in a theatre.</td>
+            <td style="padding:var(--space-3) var(--space-4);white-space:nowrap">Browse Theatres</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Portfolio</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-secondary)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">Scenario Packs</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag zero" style="font-size:10px;padding:1px 6px">Zero</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">No scenario packs</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">Scenario packs are branching simulation environments for agent training and RLMF outputs.</td>
+            <td style="padding:var(--space-3) var(--space-4);white-space:nowrap">Browse Starter Packs</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Creation</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-secondary);background:oklch(0.545 0.170 152/0.02)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">Mission Control</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag all-clear" style="font-size:10px;padding:1px 6px">All Clear</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">All systems nominal</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">All markets operating within expected parameters. No anomalies or interventions needed.</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted)">—</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Operational</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-secondary);background:oklch(0.545 0.170 152/0.02)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">Paradox Console</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag all-clear" style="font-size:10px;padding:1px 6px">All Clear</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">No active contradictions</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">All signals internally consistent. No source conflicts or price-evidence divergences.</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted)">—</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Operational</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-secondary);background:oklch(0.525 0.155 260/0.02)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">WorldMonitor</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag quiet" style="font-size:10px;padding:1px 6px">Quiet</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">Monitoring active</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">No significant events detected. Scanning 847 sources across 12 domains.</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted)">—</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Intelligence</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-secondary);background:oklch(0.525 0.155 260/0.02)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">Signal Map</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag quiet" style="font-size:10px;padding:1px 6px">Quiet</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">Low signal density</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">Signal network active but below display threshold. Map populates as signal strength increases.</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted)">—</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Intelligence</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-secondary);background:oklch(0.540 0.150 85/0.02)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">Analytics</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag sparse" style="font-size:10px;padding:1px 6px">Sparse</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">Limited data</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">Analytics become more meaningful after 5+ resolved markets and 30+ days of history.</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted)">—</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Portfolio</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-secondary)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">RLMF Exports</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag not-yet" style="font-size:10px;padding:1px 6px">Not Yet</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">No exports generated</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">RLMF exports are produced from settlements, scenario telemetry, and labeled outcomes.</td>
+            <td style="padding:var(--space-3) var(--space-4);white-space:nowrap">Generate First Export</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Archival</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border-secondary)">
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">Certificates</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag not-yet" style="font-size:10px;padding:1px 6px">Not Yet</span></td>
+            <td style="padding:var(--space-3) var(--space-4)">No certificates yet</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">Certificates are issued when markets resolve and outcomes are verified.</td>
+            <td style="padding:var(--space-3) var(--space-4);white-space:nowrap">Browse Theatres</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Archival</td>
+          </tr>
+          <tr>
+            <td style="padding:var(--space-3) var(--space-4);font-weight:600">Any filtered list</td>
+            <td style="padding:var(--space-3) var(--space-4)"><span class="state-tag no-results" style="font-size:10px;padding:1px 6px">No Results</span></td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);font-style:italic">(inline)</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-secondary);max-width:280px">No [items] match [active filters].</td>
+            <td style="padding:var(--space-3) var(--space-4);white-space:nowrap">Clear Filters</td>
+            <td style="padding:var(--space-3) var(--space-4);color:var(--text-muted);white-space:nowrap">Neutral</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       SECTION 5: VISUAL RULES SUMMARY
+       ═══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <div class="section-label">Visual Rules</div>
+    <div class="section-title">Implementation Checklist</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)">
+      <div style="background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-5);box-shadow:var(--shadow-xs)">
+        <div style="font-size:13px;font-weight:700;margin-bottom:var(--space-3);color:var(--green-700)">Do</div>
+        <div style="font-size:13px;color:var(--text-secondary);line-height:22px;display:flex;flex-direction:column;gap:var(--space-2)">
+          <div>Use the page's own nav icon at 24-32px</div>
+          <div>Keep empty states inside the existing content grid</div>
+          <div>Use status vocabulary: Healthy, Live, Settled, etc.</div>
+          <div>Make All Clear feel alive with recent-resolved items</div>
+          <div>Preserve map/graph skeletons in Quiet Monitoring</div>
+          <div>Keep No Results compact and inline</div>
+          <div>Explain what upstream event triggers content</div>
+          <div>Match copy tone to page role</div>
+        </div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-5);box-shadow:var(--shadow-xs)">
+        <div style="font-size:13px;font-weight:700;margin-bottom:var(--space-3);color:var(--red-600)">Don't</div>
+        <div style="font-size:13px;color:var(--text-secondary);line-height:22px;display:flex;flex-direction:column;gap:var(--space-2)">
+          <div>Use novelty illustrations or mascots</div>
+          <div>Write "Nothing to see here" or "Oops!"</div>
+          <div>Make Zero State and All Clear look the same</div>
+          <div>Remove spatial structure from monitoring pages</div>
+          <div>Use full-page layout for No Results</div>
+          <div>Make empty states feel like errors</div>
+          <div>Add special empty-state art different from nav icons</div>
+          <div>Use exclamation marks or overly cheerful copy</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

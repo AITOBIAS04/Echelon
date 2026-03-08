@@ -1,0 +1,41 @@
+{
+  "request": {
+    "episode_id": "oracle_0012",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "pr_diff": "diff --git a/src/api/pagination.py\n+ from dataclasses import dataclass\n+ \n+ @dataclass\n+ class Page:\n+     items: list\n+     total: int\n+     page: int\n+     per_page: int\n+     \n+     @property\n+     def has_next(self) -> bool:\n+         return self.page * self.per_page < self.total",
+      "construct_summary": "Adds a Page dataclass for paginated API responses. Includes items, total count, current page, and per_page. Computed has_next property for pagination control.",
+      "followup_qa": [
+        {
+          "question": "Is there a has_previous property?",
+          "answer": "Not included. Could add has_previous = self.page > 1."
+        },
+        {
+          "question": "What about total_pages?",
+          "answer": "Not computed. Can derive from math.ceil(total / per_page)."
+        },
+        {
+          "question": "Is items typed?",
+          "answer": "Uses bare list. Consider using Generic[T] for type safety."
+        },
+        {
+          "question": "Serialization support?",
+          "answer": "Dataclass can be serialized with dataclasses.asdict(). Works with JSON serializers."
+        },
+        {
+          "question": "Default per_page?",
+          "answer": "No default set. The caller must specify per_page explicitly."
+        }
+      ],
+      "episode_id": "oracle_0012"
+    },
+    "scores": {
+      "precision": 0.8,
+      "recall": 0.25,
+      "reply_accuracy": 0.6
+    },
+    "composite": 0.54
+  }
+}

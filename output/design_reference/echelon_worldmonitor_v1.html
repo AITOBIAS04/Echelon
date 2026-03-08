@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — WorldMonitor</title>
+<!--
+  ═══════════════════════════════════════════════════════════
+  MOCK DATA ANNOTATIONS — for engineering team, not UI
+  ═══════════════════════════════════════════════════════════
+  The following fields use mock values pending endpoint confirmation:
+  - Event data (GET /api/v1/worldmonitor/events)
+  - Signal counts and freshness (GET /api/v1/worldmonitor/signals)
+  - Linked theatre/investigation references (resolved via entity IDs)
+  - Region activity aggregates (computed from event data)
+  - Domain mix (computed from event classification)
+
+  All structure and layout is production-ready. Wire real data
+  into the same column/field structure when endpoints are confirmed.
+
+  PAGE STATE MACHINE (3 mutually exclusive states):
+  if (escalating_count >= 3)    → ESCALATED state (red attention strip, hotspot map)
+  else if (active_events > 0)   → ACTIVE state (green attention strip, normal map)
+  else                          → QUIET state (muted attention strip, calm map)
+
+  All elements — attention strip, KPIs, map, event list, right rail —
+  derive from the same pageState variable. No mixing states.
+
+  MAP INTERACTION MODEL:
+  - Hover: show event title, severity, linked theatre count
+  - Click: scroll to event in roster below
+  - Cluster nodes for regions with multiple events
+  - Pulse animation for escalating events
+
+  EVENT STATUS VOCABULARY:
+  - Monitoring (default tracking)
+  - Escalating (signal density increasing)
+  - Linked (connected to live theatre/investigation)
+  - Resolved (event concluded)
+  - Quiet (low signal, background monitoring)
+
+  SEVERITY uses locked system vocabulary:
+  - Healthy / Watch / Critical / Urgent / Paradox Active
+
+  DOMAIN TAXONOMY:
+  - Macro / Geopolitics / Conflict / Policy / Tech / Commodities / Legal
+  ═══════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   TASTE TOKENS v1.0
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;--duration-slow:300ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER (locked) ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR (locked) ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.nav-badge.warn{background:oklch(0.540 0.150 85/0.10);color:oklch(0.430 0.130 85);border:1px solid oklch(0.540 0.150 85/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN + PAGE CHROME
+   ═══════════════════════════════════════════════════════════ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-5)}
+.page-header-left{display:flex;flex-direction:column;gap:2px}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:2px}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700}
+.page-header-right{display:flex;align-items:center;gap:var(--space-2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-ghost:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.btn-sm{height:28px;padding:0 var(--space-3);font-size:11px;border-radius:var(--radius-sm)}
+.btn-danger{background:var(--status-danger);color:var(--text-inverse)}.btn-danger:hover{background:var(--red-400)}
+
+/* ═══════════════════════════════════════════════════════════
+   ATTENTION STRIP — state-driven
+   ═══════════════════════════════════════════════════════════ */
+.attention-strip{display:flex;align-items:center;gap:var(--space-4);padding:var(--space-3) var(--space-5);border-radius:var(--radius-md);margin-bottom:var(--space-4);font-size:13px;line-height:20px}
+.attention-strip.escalated-state{background:oklch(0.545 0.185 25/0.06);border:1px solid oklch(0.545 0.185 25/0.18)}
+.attention-strip.escalated-state .attention-icon{color:var(--status-danger)}
+.attention-strip.escalated-state .attention-label{color:var(--status-danger)}
+.attention-strip.active-state{background:oklch(0.545 0.170 152/0.06);border:1px solid oklch(0.545 0.170 152/0.18)}
+.attention-strip.active-state .attention-icon{color:var(--green-600)}
+.attention-strip.active-state .attention-label{color:var(--green-700)}
+.attention-strip.quiet-state{background:var(--bg-sunken);border:1px solid var(--border-primary)}
+.attention-strip.quiet-state .attention-icon{color:var(--text-muted)}
+.attention-strip.quiet-state .attention-label{color:var(--text-muted)}
+.attention-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.attention-label{font-weight:600;white-space:nowrap}
+.attention-items{display:flex;align-items:center;gap:var(--space-1);flex-wrap:wrap;flex:1}
+.attention-item{display:inline-flex;align-items:center;gap:4px;color:var(--text-secondary);font-size:13px;padding:2px 6px;border-radius:4px}
+.attention-item .attn-count{font-family:var(--font-mono);font-weight:700;font-variant-numeric:tabular-nums}
+.attention-item.critical .attn-count{color:var(--status-danger)}
+.attention-item.warning .attn-count{color:oklch(0.430 0.130 85)}
+.attention-sep{color:var(--border-primary);margin:0 var(--space-1);user-select:none}
+.attention-quiet-msg{color:var(--text-muted);font-weight:500}
+
+/* ═══════════════════════════════════════════════════════════
+   KPI SUMMARY STRIP
+   ═══════════════════════════════════════════════════════════ */
+.wm-summary{display:flex;gap:var(--space-3);margin-bottom:var(--space-4)}
+.wm-kpi{flex:1;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:2px}
+.wm-kpi-top{display:flex;align-items:center;justify-content:space-between}
+.wm-kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);line-height:16px}
+.wm-kpi-window{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-disabled);background:var(--bg-sunken);padding:1px 5px;border-radius:3px;border:1px solid var(--border-secondary)}
+.wm-kpi-row{display:flex;align-items:baseline;gap:var(--space-2)}
+.wm-kpi-value{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:32px;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.wm-kpi-value.danger{color:var(--status-danger)}
+.wm-kpi-value.warning{color:var(--orange-600)}
+.wm-kpi-value.success{color:var(--green-600)}
+.wm-kpi-delta{font-family:var(--font-mono);font-size:11px;font-weight:500;font-variant-numeric:tabular-nums}
+.wm-kpi-delta.up{color:var(--status-danger)}.wm-kpi-delta.down{color:var(--green-600)}.wm-kpi-delta.flat{color:var(--text-muted)}
+.wm-kpi.kpi-alert{border-color:oklch(0.545 0.185 25/0.25);background:var(--red-50)}
+.wm-kpi.kpi-alert .wm-kpi-value{color:var(--status-danger)}
+
+/* ═══════════════════════════════════════════════════════════
+   WORLD MAP — hero surface (SVG)
+   ═══════════════════════════════════════════════════════════ */
+.map-container{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-lg);box-shadow:var(--shadow-xs);margin-bottom:var(--space-4);overflow:hidden;position:relative}
+.map-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-5);border-bottom:1px solid var(--border-secondary)}
+.map-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.map-legend{display:flex;align-items:center;gap:var(--space-4)}
+.map-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--text-muted)}
+.map-legend-dot{width:8px;height:8px;border-radius:var(--radius-full)}
+.map-legend-dot.monitoring{background:var(--status-info)}
+.map-legend-dot.escalating{background:var(--status-danger)}
+.map-legend-dot.linked{background:var(--purple-500)}
+.map-legend-dot.resolved{background:var(--text-disabled)}
+.map-svg-wrap{position:relative;width:100%;height:0;padding-bottom:45%}
+.map-svg-wrap svg{position:absolute;top:0;left:0;width:100%;height:100%}
+.map-tooltip{position:absolute;pointer-events:none;background:var(--bg-elevated);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-md);padding:var(--space-3);font-size:12px;line-height:18px;z-index:40;max-width:260px;display:none;white-space:nowrap}
+.map-tooltip.show{display:block}
+.map-tooltip-title{font-weight:600;color:var(--text-primary);margin-bottom:2px}
+.map-tooltip-meta{color:var(--text-muted);font-size:11px;display:flex;flex-direction:column;gap:2px}
+.map-tooltip-meta span{display:flex;align-items:center;gap:4px}
+
+/* Map SVG styling */
+.map-land{fill:var(--bg-sunken);stroke:var(--border-secondary);stroke-width:0.5}
+.map-grid-line{stroke:var(--border-secondary);stroke-width:0.3;stroke-dasharray:4 4;fill:none}
+
+/* Event nodes on map */
+.map-node{cursor:pointer;transition:transform var(--duration-fast) ease}
+.map-node:hover{transform:scale(1.3)}
+.map-node-circle{stroke-width:1.5}
+.map-node-circle.monitoring{fill:oklch(0.525 0.155 260/0.25);stroke:var(--status-info)}
+.map-node-circle.escalating{fill:oklch(0.545 0.185 25/0.25);stroke:var(--status-danger)}
+.map-node-circle.linked{fill:oklch(0.530 0.230 295/0.25);stroke:var(--purple-500)}
+.map-node-circle.resolved{fill:oklch(0.700 0.005 265/0.15);stroke:var(--text-disabled)}
+
+/* Pulse animation for escalating nodes */
+.map-pulse{animation:pulse-ring 2s ease-out infinite}
+@keyframes pulse-ring{
+  0%{r:8;opacity:0.6}
+  100%{r:20;opacity:0}
+}
+
+/* Cluster nodes */
+.map-cluster{cursor:pointer}
+.map-cluster-circle{stroke-width:2}
+.map-cluster-text{font-family:var(--font-mono);font-size:11px;font-weight:700;fill:var(--text-inverse);text-anchor:middle;dominant-baseline:central}
+.map-cluster-label{font-family:var(--font-sans);font-size:9px;font-weight:600;fill:var(--text-muted);text-anchor:middle;text-transform:uppercase;letter-spacing:0.04em}
+
+/* Connection lines — linked events to theatres */
+.map-connection{stroke:var(--purple-300);stroke-width:1;stroke-dasharray:3 3;fill:none;opacity:0.5}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN LAYOUT — event list + right rail
+   ═══════════════════════════════════════════════════════════ */
+.wm-layout{display:grid;grid-template-columns:1fr 320px;gap:var(--space-4);align-items:start}
+
+/* ═══════════════════════════════════════════════════════════
+   FILTER BAR
+   ═══════════════════════════════════════════════════════════ */
+.filter-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);gap:var(--space-3)}
+.filter-left{display:flex;align-items:center;gap:var(--space-2)}
+.filter-select{height:30px;padding:0 26px 0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 3.75l2.5 2.5 2.5-2.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+.filter-search{height:30px;width:220px;padding:0 var(--space-3) 0 28px;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:12px;color:var(--text-primary);outline:none}
+.filter-search:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12)}
+.filter-search-wrap{position:relative}
+.filter-search-wrap .search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.filter-count{font-size:12px;color:var(--text-muted);font-weight:500}
+
+/* ═══════════════════════════════════════════════════════════
+   EVENT ROSTER — main event list
+   ═══════════════════════════════════════════════════════════ */
+.event-panel{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.event-panel-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-5);border-bottom:1px solid var(--border-secondary)}
+.event-panel-title{font-size:13px;font-weight:600;color:var(--text-primary)}
+
+.event-row{display:grid;grid-template-columns:1fr 110px 90px 80px 140px;gap:var(--space-3);align-items:center;padding:var(--space-3) var(--space-5);border-bottom:1px solid var(--border-secondary);transition:background var(--duration-instant) ease;cursor:pointer}
+.event-row:last-child{border-bottom:none}
+.event-row:hover{background:var(--bg-hover)}
+
+/* Escalating rows get left accent */
+.event-row.row-escalating{background:oklch(0.545 0.185 25/0.03)}
+.event-row.row-escalating:hover{background:oklch(0.545 0.185 25/0.06)}
+.event-row.row-escalating .event-cell-main{border-left:3px solid var(--status-danger);padding-left:var(--space-3)}
+
+/* Linked rows get purple left accent */
+.event-row.row-linked .event-cell-main{border-left:3px solid var(--purple-500);padding-left:var(--space-3)}
+
+.event-cell-main{display:flex;flex-direction:column;gap:2px;min-width:0}
+.event-title{font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.event-region{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:4px}
+.event-region-flag{font-size:13px;line-height:1}
+
+.event-cell-status{display:flex;flex-direction:column;gap:2px}
+.event-status-chip{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:1px 5px;border-radius:3px;white-space:nowrap;line-height:14px;width:fit-content}
+.event-status-chip.monitoring{color:var(--status-info);background:oklch(0.525 0.155 260/0.08)}
+.event-status-chip.escalating{color:var(--status-danger);background:oklch(0.545 0.185 25/0.08)}
+.event-status-chip.linked{color:var(--purple-700);background:var(--purple-50)}
+.event-status-chip.resolved{color:var(--text-muted);background:var(--bg-sunken)}
+.event-status-chip.quiet{color:var(--text-disabled);background:var(--bg-sunken)}
+.event-severity{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-top:1px}
+.event-severity.watch{color:oklch(0.430 0.130 85)}
+.event-severity.critical{color:var(--status-danger)}
+.event-severity.urgent{color:var(--status-danger);font-weight:700}
+.event-severity.healthy{color:var(--green-600)}
+
+.event-cell-domain{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted)}
+
+.event-cell-signals{display:flex;flex-direction:column;gap:1px}
+.event-signal-count{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--text-primary);font-variant-numeric:tabular-nums}
+.event-signal-fresh{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+.event-cell-links{display:flex;flex-direction:column;gap:3px;min-width:0}
+.event-entity-chip{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-decoration:none;cursor:pointer}
+.event-entity-chip.theatre{color:var(--purple-700);background:var(--purple-50);border:1px solid oklch(0.530 0.230 295/0.12)}
+.event-entity-chip.investigation{color:var(--orange-700);background:var(--orange-50);border:1px solid oklch(0.610 0.185 62/0.12)}
+.event-entity-chip.paradox{color:var(--status-danger);background:var(--red-50);border:1px solid oklch(0.545 0.185 25/0.12)}
+
+.event-cell-action{display:flex;justify-content:flex-end}
+.event-action-link{font-size:12px;font-weight:600;color:var(--purple-700);text-decoration:none;white-space:nowrap;cursor:pointer;padding:4px 8px;border-radius:var(--radius-sm)}
+.event-action-link:hover{color:var(--purple-500);background:var(--purple-50)}
+.event-action-link.create{color:var(--purple-500)}
+
+/* Resolved rows dimmed */
+.event-row.row-resolved{opacity:0.55}
+.event-row.row-resolved:hover{opacity:0.75}
+
+/* ═══════════════════════════════════════════════════════════
+   RIGHT RAIL — secondary intelligence
+   ═══════════════════════════════════════════════════════════ */
+.rail-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);margin-bottom:var(--space-3)}
+.rail-card-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-secondary)}
+.rail-card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.rail-card-body{padding:var(--space-3) var(--space-4)}
+
+/* Region activity list */
+.region-item{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-secondary)}
+.region-item:last-child{border-bottom:none}
+.region-item-left{display:flex;align-items:center;gap:var(--space-2)}
+.region-flag{font-size:15px;line-height:1}
+.region-name{font-size:13px;font-weight:500;color:var(--text-primary)}
+.region-item-right{display:flex;align-items:center;gap:var(--space-3)}
+.region-count{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.region-bar{width:48px;height:4px;background:var(--bg-sunken);border-radius:2px;overflow:hidden}
+.region-bar-fill{height:100%;border-radius:2px}
+
+/* Domain mix */
+.domain-item{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border-secondary)}
+.domain-item:last-child{border-bottom:none}
+.domain-label{font-size:12px;font-weight:500;color:var(--text-secondary)}
+.domain-count{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text-primary);font-variant-numeric:tabular-nums}
+
+/* Signal spike feed */
+.spike-item{display:flex;flex-direction:column;gap:2px;padding:6px 0;border-bottom:1px solid var(--border-secondary)}
+.spike-item:last-child{border-bottom:none}
+.spike-top{display:flex;align-items:center;justify-content:space-between}
+.spike-title{font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.spike-delta{font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--status-danger);font-variant-numeric:tabular-nums}
+.spike-meta{font-size:10px;color:var(--text-muted)}
+
+/* Linked theatres in rail */
+.linked-theatre-item{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-secondary)}
+.linked-theatre-item:last-child{border-bottom:none}
+.linked-theatre-name{font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.linked-theatre-prob{font-family:var(--font-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.linked-theatre-prob.yes{color:var(--green-600)}
+.linked-theatre-prob.no{color:var(--status-danger)}
+.linked-theatre-events{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+/* Paradox events card */
+.paradox-event{display:flex;align-items:center;gap:var(--space-2);padding:6px 0;border-bottom:1px solid var(--border-secondary)}
+.paradox-event:last-child{border-bottom:none}
+.paradox-dot{width:6px;height:6px;border-radius:var(--radius-full);background:var(--status-danger);flex-shrink:0}
+.paradox-title{font-size:12px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.paradox-chip{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;color:var(--status-danger);background:oklch(0.545 0.185 25/0.08);padding:1px 4px;border-radius:3px;flex-shrink:0}
+
+/* ═══════════════════════════════════════════════════════════
+   STATE TOGGLE — cycle through states
+   ═══════════════════════════════════════════════════════════ */
+.state-toggle{position:fixed;bottom:var(--space-6);right:var(--space-6);z-index:100;display:flex;align-items:center;gap:var(--space-2);background:var(--bg-elevated);border:1px solid var(--border-primary);border-radius:var(--radius-full);padding:4px 6px;box-shadow:var(--shadow-md)}
+.state-toggle-btn{height:28px;padding:0 var(--space-3);border:none;background:transparent;font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);border-radius:var(--radius-full);cursor:pointer;white-space:nowrap}
+.state-toggle-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.state-toggle-btn.active{background:var(--purple-500);color:var(--text-inverse)}
+
+@media (prefers-reduced-motion:reduce){
+  .map-pulse{animation:none}
+  *{transition-duration:0s!important;animation-duration:0s!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header class="header">
+  <div class="header-left">
+    <a class="header-logo" href="#">
+      <div class="header-logo-mark">E</div>
+      <span class="header-logo-text">Echelon</span>
+      <span class="header-logo-version">v4.2</span>
+    </a>
+    <button class="sidebar-toggle">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="header-center">
+    <div class="header-search">
+      <span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+      <input type="text" placeholder="Search events, regions, theatres...">
+      <span class="header-search-kbd">⌘K</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span> Mainnet</div>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="header-badge">3</span></button>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
+    <div class="wallet-btn">
+      <div class="wallet-balance">
+        <div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span> 12,847</div>
+        <div class="wallet-divider"></div>
+        <div class="wallet-balance-item"><span class="wallet-balance-label">ECH</span> 3,291</div>
+      </div>
+      <div class="wallet-avatar"></div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ SIDEBAR ═══ -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group">
+      <div class="nav-group-label">Operations</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span class="nav-item-label">Dashboard</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">23</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span class="nav-item-label">Positions</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Intelligence</div>
+      <a class="nav-item active" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></span><span class="nav-item-label">WorldMonitor</span><span class="nav-badge alert">3</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="nav-item-label">Signal Map</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge count">7</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">2</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Fleet</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg></span><span class="nav-item-label">Agents</span><span class="nav-badge live">34</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Analytics</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="nav-item-label">Analytics</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span><span class="nav-item-label">RLMF Exports</span></a>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span><span class="nav-item-label">Settings</span></a>
+    <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span class="nav-item-label">Help</span></a>
+  </div>
+</nav>
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<main class="main">
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-breadcrumb">
+        <span>Intelligence</span>
+        <span class="page-breadcrumb-sep">/</span>
+        <span class="page-breadcrumb-current">WorldMonitor</span>
+      </div>
+      <h1 class="page-title">WorldMonitor</h1>
+    </div>
+    <div class="page-header-right" id="headerActions">
+      <select class="filter-select" style="height:36px;font-size:13px">
+        <option>All Regions</option>
+        <option>Americas</option>
+        <option>Europe</option>
+        <option>Asia-Pacific</option>
+        <option>Middle East</option>
+        <option>Africa</option>
+      </select>
+      <select class="filter-select" style="height:36px;font-size:13px">
+        <option>24h</option>
+        <option>7d</option>
+        <option>30d</option>
+      </select>
+      <button class="btn btn-primary" id="headerCta">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create Theatre from Event
+      </button>
+    </div>
+  </div>
+
+  <!-- Attention strip -->
+  <div class="attention-strip" id="attentionStrip"></div>
+
+  <!-- KPI Summary -->
+  <div class="wm-summary" id="kpiStrip"></div>
+
+  <!-- World Map — hero surface -->
+  <div class="map-container" id="mapContainer">
+    <div class="map-header">
+      <span class="map-title">Global Event Monitor</span>
+      <div class="map-legend">
+        <div class="map-legend-item"><span class="map-legend-dot monitoring"></span> Monitoring</div>
+        <div class="map-legend-item"><span class="map-legend-dot escalating"></span> Escalating</div>
+        <div class="map-legend-item"><span class="map-legend-dot linked"></span> Linked</div>
+        <div class="map-legend-item"><span class="map-legend-dot resolved"></span> Resolved</div>
+      </div>
+    </div>
+    <div class="map-svg-wrap" id="mapSvgWrap">
+      <!-- SVG map rendered by JS -->
+    </div>
+    <div class="map-tooltip" id="mapTooltip">
+      <div class="map-tooltip-title" id="tooltipTitle"></div>
+      <div class="map-tooltip-meta" id="tooltipMeta"></div>
+    </div>
+  </div>
+
+  <!-- Event roster + right rail -->
+  <div class="wm-layout">
+    <div>
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <div class="filter-left">
+          <select class="filter-select"><option>All Statuses</option><option>Monitoring</option><option>Escalating</option><option>Linked</option><option>Resolved</option></select>
+          <select class="filter-select"><option>All Domains</option><option>Macro</option><option>Geopolitics</option><option>Conflict</option><option>Policy</option><option>Tech</option><option>Commodities</option><option>Legal</option></select>
+          <div class="filter-search-wrap">
+            <span class="search-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+            <input class="filter-search" type="text" placeholder="Search events...">
+          </div>
+        </div>
+        <span class="filter-count" id="eventCount"></span>
+      </div>
+
+      <!-- Event list panel -->
+      <div class="event-panel" id="eventPanel">
+        <div class="event-panel-header">
+          <span class="event-panel-title">Event Roster</span>
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)">Sorted by severity</span>
+        </div>
+        <div id="eventList"></div>
+      </div>
+    </div>
+
+    <!-- Right rail -->
+    <div id="rightRail"></div>
+  </div>
+</main>
+
+<!-- State toggle -->
+<div class="state-toggle">
+  <button class="state-toggle-btn active" onclick="setPageState('escalated')">Escalated</button>
+  <button class="state-toggle-btn" onclick="setPageState('active')">Active</button>
+  <button class="state-toggle-btn" onclick="setPageState('quiet')">Quiet</button>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   STATE MACHINE
+   3 mutually exclusive states: escalated | active | quiet
+   ═══════════════════════════════════════════════════════════ */
+const STATES = ['escalated','active','quiet'];
+let currentState = 'escalated';
+
+/* ═══ MOCK DATA ═══ */
+const EVENTS = {
+  escalated: [
+    { id:'EV-0041', title:'Fed Emergency Rate Decision', region:'United States', flag:'🇺🇸', status:'escalating', severity:'critical', domain:'Macro', signals:47, fresh:'+12 / 1h', linked:[{type:'theatre',label:'Fed Rate Cut Q2 2026'},{type:'investigation',label:'INV-0039'}], mapX:25, mapY:38 },
+    { id:'EV-0038', title:'Taiwan Strait Military Exercises', region:'Taiwan / China', flag:'🇹🇼', status:'escalating', severity:'urgent', domain:'Conflict', signals:34, fresh:'+8 / 2h', linked:[{type:'theatre',label:'TSMC Supply Chain'},{type:'paradox',label:'Paradox Active'}], mapX:78, mapY:38 },
+    { id:'EV-0044', title:'EU AI Act Enforcement Phase II', region:'European Union', flag:'🇪🇺', status:'escalating', severity:'watch', domain:'Policy', signals:22, fresh:'+5 / 4h', linked:[{type:'theatre',label:'EU AI Compliance'}], mapX:50, mapY:30 },
+    { id:'EV-0036', title:'OPEC+ Output Surprise Cut', region:'Saudi Arabia', flag:'🇸🇦', status:'linked', severity:'watch', domain:'Commodities', signals:19, fresh:'+3 / 6h', linked:[{type:'theatre',label:'Brent >$95 by Q3'}], mapX:55, mapY:40 },
+    { id:'EV-0042', title:'Japan BOJ Policy Shift Signal', region:'Japan', flag:'🇯🇵', status:'monitoring', severity:'watch', domain:'Macro', signals:16, fresh:'+2 / 8h', linked:[], mapX:82, mapY:34 },
+    { id:'EV-0033', title:'Brazil Soybean Export Restrictions', region:'Brazil', flag:'🇧🇷', status:'monitoring', severity:'healthy', domain:'Commodities', signals:11, fresh:'+1 / 12h', linked:[], mapX:32, mapY:60 },
+    { id:'EV-0029', title:'UK-India Trade Framework', region:'United Kingdom', flag:'🇬🇧', status:'linked', severity:'healthy', domain:'Geopolitics', signals:8, fresh:'0 / 24h', linked:[{type:'theatre',label:'GBP/INR Corridor'}], mapX:47, mapY:28 },
+    { id:'EV-0025', title:'South Africa Power Grid Reform', region:'South Africa', flag:'🇿🇦', status:'monitoring', severity:'healthy', domain:'Policy', signals:6, fresh:'0 / 36h', linked:[], mapX:53, mapY:68 },
+    { id:'EV-0019', title:'Argentina Peso Dollarization Vote', region:'Argentina', flag:'🇦🇷', status:'resolved', severity:'healthy', domain:'Macro', signals:4, fresh:'—', linked:[{type:'theatre',label:'ARS Collapse'}], mapX:30, mapY:65 },
+    { id:'EV-0015', title:'Swiss Banking Transparency Act', region:'Switzerland', flag:'🇨🇭', status:'resolved', severity:'healthy', domain:'Legal', signals:3, fresh:'—', linked:[], mapX:49, mapY:30 },
+  ],
+  active: [
+    { id:'EV-0036', title:'OPEC+ Output Surprise Cut', region:'Saudi Arabia', flag:'🇸🇦', status:'linked', severity:'watch', domain:'Commodities', signals:19, fresh:'+3 / 6h', linked:[{type:'theatre',label:'Brent >$95 by Q3'}], mapX:55, mapY:40 },
+    { id:'EV-0042', title:'Japan BOJ Policy Shift Signal', region:'Japan', flag:'🇯🇵', status:'monitoring', severity:'watch', domain:'Macro', signals:16, fresh:'+2 / 8h', linked:[], mapX:82, mapY:34 },
+    { id:'EV-0033', title:'Brazil Soybean Export Restrictions', region:'Brazil', flag:'🇧🇷', status:'monitoring', severity:'healthy', domain:'Commodities', signals:11, fresh:'+1 / 12h', linked:[], mapX:32, mapY:60 },
+    { id:'EV-0029', title:'UK-India Trade Framework', region:'United Kingdom', flag:'🇬🇧', status:'linked', severity:'healthy', domain:'Geopolitics', signals:8, fresh:'0 / 24h', linked:[{type:'theatre',label:'GBP/INR Corridor'}], mapX:47, mapY:28 },
+    { id:'EV-0031', title:'India Semiconductor Fab Approvals', region:'India', flag:'🇮🇳', status:'monitoring', severity:'healthy', domain:'Tech', signals:7, fresh:'+1 / 18h', linked:[], mapX:67, mapY:42 },
+    { id:'EV-0025', title:'South Africa Power Grid Reform', region:'South Africa', flag:'🇿🇦', status:'monitoring', severity:'healthy', domain:'Policy', signals:6, fresh:'0 / 36h', linked:[], mapX:53, mapY:68 },
+    { id:'EV-0019', title:'Argentina Peso Dollarization Vote', region:'Argentina', flag:'🇦🇷', status:'resolved', severity:'healthy', domain:'Macro', signals:4, fresh:'—', linked:[{type:'theatre',label:'ARS Collapse'}], mapX:30, mapY:65 },
+  ],
+  quiet: [
+    { id:'EV-0025', title:'South Africa Power Grid Reform', region:'South Africa', flag:'🇿🇦', status:'quiet', severity:'healthy', domain:'Policy', signals:3, fresh:'0 / 48h', linked:[], mapX:53, mapY:68 },
+    { id:'EV-0031', title:'India Semiconductor Fab Approvals', region:'India', flag:'🇮🇳', status:'quiet', severity:'healthy', domain:'Tech', signals:2, fresh:'0 / 72h', linked:[], mapX:67, mapY:42 },
+    { id:'EV-0019', title:'Argentina Peso Dollarization Vote', region:'Argentina', flag:'🇦🇷', status:'resolved', severity:'healthy', domain:'Macro', signals:1, fresh:'—', linked:[{type:'theatre',label:'ARS Collapse'}], mapX:30, mapY:65 },
+  ]
+};
+
+const CLUSTERS = {
+  escalated: [
+    { label:'Middle East', count:3, escalating:1, x:55, y:40, r:18, color:'var(--status-warning)' },
+    { label:'East Asia', count:2, escalating:1, x:80, y:36, r:15, color:'var(--status-danger)' },
+  ],
+  active: [
+    { label:'Asia-Pacific', count:3, escalating:0, x:74, y:40, r:16, color:'var(--status-info)' },
+  ],
+  quiet: []
+};
+
+/* ═══ RENDER FUNCTIONS ═══ */
+
+function setPageState(state) {
+  currentState = state;
+  document.querySelectorAll('.state-toggle-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase() === state);
+  });
+  renderAttentionStrip(state);
+  renderKPIs(state);
+  renderMap(state);
+  renderEventList(state);
+  renderRightRail(state);
+}
+
+function renderAttentionStrip(state) {
+  const el = document.getElementById('attentionStrip');
+  if (state === 'escalated') {
+    el.className = 'attention-strip escalated-state';
+    el.innerHTML = `
+      <div class="attention-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <span class="attention-label">3 Escalating</span>
+      <div class="attention-items">
+        <span class="attention-item critical"><span class="attn-count">1</span> Critical</span>
+        <span class="attention-sep">·</span>
+        <span class="attention-item critical"><span class="attn-count">1</span> Urgent</span>
+        <span class="attention-sep">·</span>
+        <span class="attention-item warning"><span class="attn-count">1</span> Watch</span>
+        <span class="attention-sep">·</span>
+        <span class="attention-item"><span class="attn-count">1</span> Paradox linked</span>
+      </div>`;
+  } else if (state === 'active') {
+    el.className = 'attention-strip active-state';
+    el.innerHTML = `
+      <div class="attention-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
+      <span class="attention-label">Normal Monitoring</span>
+      <div class="attention-items">
+        <span class="attention-item"><span class="attn-count">7</span> events tracked</span>
+        <span class="attention-sep">·</span>
+        <span class="attention-item"><span class="attn-count">2</span> linked to theatres</span>
+        <span class="attention-sep">·</span>
+        <span class="attention-item"><span class="attn-count">5</span> regions</span>
+      </div>`;
+  } else {
+    el.className = 'attention-strip quiet-state';
+    el.innerHTML = `
+      <div class="attention-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 18a5 5 0 00-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/></svg></div>
+      <span class="attention-label">Quiet</span>
+      <div class="attention-items">
+        <span class="attention-quiet-msg">No escalating events. Background monitoring active across 3 regions.</span>
+      </div>`;
+  }
+}
+
+function renderKPIs(state) {
+  const el = document.getElementById('kpiStrip');
+  const d = {
+    escalated: { events:10, evDelta:'+4', high:3, highClass:'danger', regions:6, linked:5, signals:47, sigDelta:'+28', clusters:2, clusterClass:'danger' },
+    active:    { events:7, evDelta:'+1', high:0, highClass:'', regions:5, linked:2, signals:16, sigDelta:'+4', clusters:1, clusterClass:'' },
+    quiet:     { events:3, evDelta:'0', high:0, highClass:'', regions:3, linked:1, signals:3, sigDelta:'0', clusters:0, clusterClass:'' }
+  }[state];
+
+  el.innerHTML = `
+    <div class="wm-kpi${d.highClass === 'danger' ? ' kpi-alert' : ''}">
+      <div class="wm-kpi-top"><span class="wm-kpi-label">Active Events</span><span class="wm-kpi-window">now</span></div>
+      <div class="wm-kpi-row"><span class="wm-kpi-value">${d.events}</span><span class="wm-kpi-delta ${d.evDelta.startsWith('+') && d.evDelta !== '+0' ? 'up' : 'flat'}">${d.evDelta} / 24h</span></div>
+    </div>
+    <div class="wm-kpi${d.highClass === 'danger' ? ' kpi-alert' : ''}">
+      <div class="wm-kpi-top"><span class="wm-kpi-label">High Priority</span><span class="wm-kpi-window">now</span></div>
+      <div class="wm-kpi-row"><span class="wm-kpi-value ${d.highClass}">${d.high}</span></div>
+    </div>
+    <div class="wm-kpi">
+      <div class="wm-kpi-top"><span class="wm-kpi-label">Regions Active</span><span class="wm-kpi-window">now</span></div>
+      <div class="wm-kpi-row"><span class="wm-kpi-value">${d.regions}</span></div>
+    </div>
+    <div class="wm-kpi">
+      <div class="wm-kpi-top"><span class="wm-kpi-label">Linked Theatres</span><span class="wm-kpi-window">linked</span></div>
+      <div class="wm-kpi-row"><span class="wm-kpi-value">${d.linked}</span></div>
+    </div>
+    <div class="wm-kpi">
+      <div class="wm-kpi-top"><span class="wm-kpi-label">New Signals</span><span class="wm-kpi-window">24h</span></div>
+      <div class="wm-kpi-row"><span class="wm-kpi-value">${d.signals}</span><span class="wm-kpi-delta ${d.sigDelta.startsWith('+') && d.sigDelta !== '+0' ? 'up' : 'flat'}">${d.sigDelta}</span></div>
+    </div>
+    <div class="wm-kpi${d.clusterClass === 'danger' ? ' kpi-alert' : ''}">
+      <div class="wm-kpi-top"><span class="wm-kpi-label">Escalating Clusters</span><span class="wm-kpi-window">now</span></div>
+      <div class="wm-kpi-row"><span class="wm-kpi-value ${d.clusterClass}">${d.clusters}</span></div>
+    </div>`;
+}
+
+function renderMap(state) {
+  const wrap = document.getElementById('mapSvgWrap');
+  const events = EVENTS[state];
+  const clusters = CLUSTERS[state];
+
+  // Simplified world map paths (Natural Earth inspired, heavily simplified for reference design)
+  const continents = `
+    <!-- North America -->
+    <path class="map-land" d="M60,70 L90,55 L120,50 L150,52 L160,65 L155,80 L148,95 L140,105 L130,115 L120,118 L100,120 L85,110 L75,100 L65,90 L55,85 Z"/>
+    <!-- South America -->
+    <path class="map-land" d="M130,175 L140,155 L148,140 L155,130 L158,145 L160,165 L155,190 L148,210 L140,225 L132,235 L125,230 L120,215 L118,200 L120,185 Z"/>
+    <!-- Europe -->
+    <path class="map-land" d="M240,55 L260,48 L280,50 L295,55 L300,65 L298,78 L290,85 L275,88 L260,85 L248,82 L238,75 L235,65 Z"/>
+    <!-- Africa -->
+    <path class="map-land" d="M250,110 L270,100 L290,102 L300,115 L305,135 L302,160 L295,180 L285,195 L270,200 L258,195 L248,180 L242,160 L240,140 L242,120 Z"/>
+    <!-- Asia -->
+    <path class="map-land" d="M300,40 L330,32 L360,30 L390,35 L420,42 L440,55 L445,70 L440,85 L430,95 L410,100 L390,98 L370,95 L350,90 L330,85 L310,78 L300,68 Z"/>
+    <!-- India -->
+    <path class="map-land" d="M350,100 L370,98 L380,110 L375,125 L365,135 L355,130 L345,120 L340,110 Z"/>
+    <!-- Southeast Asia & Indonesia -->
+    <path class="map-land" d="M390,105 L410,100 L430,105 L445,115 L450,125 L445,130 L430,128 L415,125 L400,120 L392,112 Z"/>
+    <!-- Australia -->
+    <path class="map-land" d="M410,175 L435,165 L460,168 L475,178 L478,195 L470,210 L455,215 L435,212 L420,205 L412,195 L408,185 Z"/>
+    <!-- Greenland -->
+    <path class="map-land" d="M170,20 L195,15 L210,18 L215,30 L208,42 L195,45 L180,40 L170,32 Z"/>
+  `;
+
+  // Grid lines (latitude/longitude)
+  const gridLines = `
+    <line class="map-grid-line" x1="0" y1="60" x2="500" y2="60"/>
+    <line class="map-grid-line" x1="0" y1="120" x2="500" y2="120"/>
+    <line class="map-grid-line" x1="0" y1="180" x2="500" y2="180"/>
+    <line class="map-grid-line" x1="125" y1="0" x2="125" y2="240"/>
+    <line class="map-grid-line" x1="250" y1="0" x2="250" y2="240"/>
+    <line class="map-grid-line" x1="375" y1="0" x2="375" y2="240"/>
+  `;
+
+  // Build event nodes
+  let nodesHtml = '';
+  events.forEach((ev, i) => {
+    const cx = ev.mapX * 5; // Scale to 500-wide SVG
+    const cy = ev.mapY * (240/100); // Scale to 240-tall SVG
+    const isLinked = ev.linked.length > 0 && ev.status !== 'escalating';
+    const nodeClass = ev.status === 'escalating' ? 'escalating' : (isLinked ? 'linked' : (ev.status === 'resolved' ? 'resolved' : 'monitoring'));
+    const r = ev.status === 'escalating' ? 7 : (isLinked ? 6 : 5);
+
+    if (ev.status === 'escalating') {
+      nodesHtml += `<circle class="map-pulse" cx="${cx}" cy="${cy}" r="8" fill="none" stroke="var(--status-danger)" stroke-width="1.5" opacity="0.5"/>`;
+    }
+
+    nodesHtml += `
+      <g class="map-node" data-idx="${i}" onmouseenter="showTooltip(event, ${i})" onmouseleave="hideTooltip()" onclick="scrollToEvent(${i})">
+        <circle class="map-node-circle ${nodeClass}" cx="${cx}" cy="${cy}" r="${r}"/>
+      </g>`;
+  });
+
+  // Build cluster nodes
+  let clusterHtml = '';
+  clusters.forEach(cl => {
+    const cx = cl.x * 5;
+    const cy = cl.y * (240/100);
+    const fill = cl.escalating > 0 ? 'var(--status-danger)' : 'var(--status-info)';
+    clusterHtml += `
+      <g class="map-cluster">
+        <circle class="map-cluster-circle" cx="${cx}" cy="${cy}" r="${cl.r}" fill="${fill}" opacity="0.18" stroke="${fill}" stroke-width="1.5"/>
+        <text class="map-cluster-text" x="${cx}" y="${cy}">${cl.count}</text>
+        <text class="map-cluster-label" x="${cx}" y="${cy + cl.r + 10}">${cl.label}${cl.escalating > 0 ? ' · ' + cl.escalating + ' escalating' : ''}</text>
+      </g>`;
+  });
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 500 240" xmlns="http://www.w3.org/2000/svg" style="background:var(--bg-sunken)">
+      ${gridLines}
+      ${continents}
+      ${clusterHtml}
+      ${nodesHtml}
+    </svg>`;
+}
+
+function showTooltip(mouseEvent, idx) {
+  const events = EVENTS[currentState];
+  const ev = events[idx];
+  if (!ev) return;
+  const tt = document.getElementById('mapTooltip');
+  const title = document.getElementById('tooltipTitle');
+  const meta = document.getElementById('tooltipMeta');
+  title.textContent = ev.title;
+  let metaHtml = `<span>${ev.flag} ${ev.region}</span>`;
+  metaHtml += `<span>Status: <strong style="color:${ev.status === 'escalating' ? 'var(--status-danger)' : 'var(--text-primary)'}">${ev.status.charAt(0).toUpperCase() + ev.status.slice(1)}</strong></span>`;
+  metaHtml += `<span>Signals: <strong>${ev.signals}</strong> (${ev.fresh})</span>`;
+  if (ev.linked.length > 0) {
+    metaHtml += `<span>Linked: ${ev.linked.map(l => l.label).join(', ')}</span>`;
+  }
+  meta.innerHTML = metaHtml;
+
+  const container = document.getElementById('mapContainer');
+  const rect = container.getBoundingClientRect();
+  const x = mouseEvent.clientX - rect.left + 12;
+  const y = mouseEvent.clientY - rect.top - 10;
+  tt.style.left = Math.min(x, rect.width - 270) + 'px';
+  tt.style.top = y + 'px';
+  tt.classList.add('show');
+}
+
+function hideTooltip() {
+  document.getElementById('mapTooltip').classList.remove('show');
+}
+
+function scrollToEvent(idx) {
+  const rows = document.querySelectorAll('.event-row');
+  if (rows[idx]) {
+    rows[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    rows[idx].style.background = 'var(--purple-50)';
+    setTimeout(() => { rows[idx].style.background = ''; }, 1500);
+  }
+}
+
+function renderEventList(state) {
+  const events = EVENTS[state];
+  document.getElementById('eventCount').textContent = `${events.length} events`;
+
+  const list = document.getElementById('eventList');
+  if (events.length === 0) {
+    list.innerHTML = `<div style="padding:var(--space-10);text-align:center;color:var(--text-muted);font-size:13px">No events tracked. Background monitoring active.</div>`;
+    return;
+  }
+
+  list.innerHTML = events.map((ev, i) => {
+    const rowClass = ev.status === 'escalating' ? ' row-escalating' : (ev.status === 'resolved' ? ' row-resolved' : (ev.linked.length > 0 ? ' row-linked' : ''));
+    const linksHtml = ev.linked.length > 0
+      ? ev.linked.map(l => `<span class="event-entity-chip ${l.type}">${l.type === 'theatre' ? '▸' : l.type === 'investigation' ? '◈' : '⚡'} ${l.label}</span>`).join('')
+      : '<span style="font-size:11px;color:var(--text-disabled)">—</span>';
+    const actionLabel = ev.status === 'resolved' ? 'View Archive' : (ev.linked.length === 0 && ev.status !== 'quiet' ? 'Create Theatre →' : 'Open Event →');
+    const actionClass = ev.linked.length === 0 && ev.status !== 'resolved' && ev.status !== 'quiet' ? ' create' : '';
+
+    return `
+      <div class="event-row${rowClass}" id="event-${i}">
+        <div class="event-cell-main">
+          <span class="event-title">${ev.title}</span>
+          <span class="event-region"><span class="event-region-flag">${ev.flag}</span> ${ev.region}</span>
+        </div>
+        <div class="event-cell-status">
+          <span class="event-status-chip ${ev.status}">${ev.status === 'escalating' ? '▲ ' : ''}${ev.status.charAt(0).toUpperCase() + ev.status.slice(1)}</span>
+          <span class="event-severity ${ev.severity}">${ev.severity.charAt(0).toUpperCase() + ev.severity.slice(1)}</span>
+        </div>
+        <div class="event-cell-domain">${ev.domain}</div>
+        <div class="event-cell-signals">
+          <span class="event-signal-count">${ev.signals}</span>
+          <span class="event-signal-fresh">${ev.fresh}</span>
+        </div>
+        <div class="event-cell-links">${linksHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+function renderRightRail(state) {
+  const rail = document.getElementById('rightRail');
+  const d = {
+    escalated: {
+      regions: [
+        { flag:'🇺🇸', name:'Americas', count:3, pct:70, color:'var(--status-danger)' },
+        { flag:'🌏', name:'East Asia', count:2, pct:55, color:'var(--status-danger)' },
+        { flag:'🇪🇺', name:'Europe', count:2, pct:40, color:'var(--status-warning)' },
+        { flag:'🌍', name:'Middle East', count:2, pct:45, color:'var(--status-warning)' },
+        { flag:'🌍', name:'Africa', count:1, pct:15, color:'var(--status-info)' },
+      ],
+      domains: [
+        { label:'Macro', count:3 },{ label:'Commodities', count:2 },{ label:'Conflict', count:1 },{ label:'Policy', count:2 },{ label:'Geopolitics', count:1 },{ label:'Legal', count:1 }
+      ],
+      spikes: [
+        { title:'Fed Emergency Rate Decision', delta:'+12', time:'1h ago', region:'US' },
+        { title:'Taiwan Strait Military Exercises', delta:'+8', time:'2h ago', region:'TW' },
+        { title:'EU AI Act Enforcement', delta:'+5', time:'4h ago', region:'EU' },
+      ],
+      theatres: [
+        { name:'Fed Rate Cut Q2 2026', prob:'67¢', side:'yes', events:2 },
+        { name:'TSMC Supply Chain', prob:'34¢', side:'no', events:1 },
+        { name:'Brent >$95 by Q3', prob:'52¢', side:'yes', events:1 },
+        { name:'EU AI Compliance', prob:'71¢', side:'yes', events:1 },
+      ],
+      paradoxes: [
+        { title:'TSMC Supply Chain', chip:'Paradox Active' },
+      ]
+    },
+    active: {
+      regions: [
+        { flag:'🌏', name:'Asia-Pacific', count:3, pct:45, color:'var(--status-info)' },
+        { flag:'🌍', name:'Middle East', count:1, pct:25, color:'var(--status-info)' },
+        { flag:'🇪🇺', name:'Europe', count:1, pct:20, color:'var(--status-info)' },
+        { flag:'🌍', name:'Africa', count:1, pct:15, color:'var(--status-info)' },
+        { flag:'🇺🇸', name:'Americas', count:1, pct:15, color:'var(--status-info)' },
+      ],
+      domains: [
+        { label:'Commodities', count:2 },{ label:'Macro', count:2 },{ label:'Geopolitics', count:1 },{ label:'Tech', count:1 },{ label:'Policy', count:1 }
+      ],
+      spikes: [
+        { title:'OPEC+ Output Surprise Cut', delta:'+3', time:'6h ago', region:'SA' },
+        { title:'Japan BOJ Policy Shift', delta:'+2', time:'8h ago', region:'JP' },
+      ],
+      theatres: [
+        { name:'Brent >$95 by Q3', prob:'52¢', side:'yes', events:1 },
+        { name:'GBP/INR Corridor', prob:'44¢', side:'no', events:1 },
+      ],
+      paradoxes: []
+    },
+    quiet: {
+      regions: [
+        { flag:'🌍', name:'Africa', count:1, pct:15, color:'var(--text-disabled)' },
+        { flag:'🌏', name:'Asia-Pacific', count:1, pct:10, color:'var(--text-disabled)' },
+        { flag:'🇺🇸', name:'Americas', count:1, pct:10, color:'var(--text-disabled)' },
+      ],
+      domains: [
+        { label:'Policy', count:1 },{ label:'Tech', count:1 },{ label:'Macro', count:1 }
+      ],
+      spikes: [],
+      theatres: [
+        { name:'ARS Collapse', prob:'89¢', side:'yes', events:1 },
+      ],
+      paradoxes: []
+    }
+  }[state];
+
+  let html = '';
+
+  // Region Activity
+  html += `<div class="rail-card">
+    <div class="rail-card-header"><span class="rail-card-title">Region Activity</span></div>
+    <div class="rail-card-body">
+      ${d.regions.map(r => `
+        <div class="region-item">
+          <div class="region-item-left">
+            <span class="region-flag">${r.flag}</span>
+            <span class="region-name">${r.name}</span>
+          </div>
+          <div class="region-item-right">
+            <span class="region-count">${r.count}</span>
+            <div class="region-bar"><div class="region-bar-fill" style="width:${r.pct}%;background:${r.color}"></div></div>
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+
+  // Domain Mix
+  html += `<div class="rail-card">
+    <div class="rail-card-header"><span class="rail-card-title">Domain Mix</span></div>
+    <div class="rail-card-body">
+      ${d.domains.map(dm => `
+        <div class="domain-item">
+          <span class="domain-label">${dm.label}</span>
+          <span class="domain-count">${dm.count}</span>
+        </div>`).join('')}
+    </div>
+  </div>`;
+
+  // Signal Spikes
+  if (d.spikes.length > 0) {
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Recent Signal Spikes</span><span class="wm-kpi-window">24h</span></div>
+      <div class="rail-card-body">
+        ${d.spikes.map(s => `
+          <div class="spike-item">
+            <div class="spike-top">
+              <span class="spike-title">${s.title}</span>
+              <span class="spike-delta">${s.delta}</span>
+            </div>
+            <span class="spike-meta">${s.region} · ${s.time}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Linked Theatres
+  if (d.theatres.length > 0) {
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Linked Theatres</span></div>
+      <div class="rail-card-body">
+        ${d.theatres.map(t => `
+          <div class="linked-theatre-item">
+            <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+              <span class="linked-theatre-name">${t.name}</span>
+              <span class="linked-theatre-events">${t.events} event${t.events > 1 ? 's' : ''} linked</span>
+            </div>
+            <span class="linked-theatre-prob ${t.side}">${t.prob}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // Paradox Events
+  if (d.paradoxes.length > 0) {
+    html += `<div class="rail-card" style="border-color:oklch(0.545 0.185 25/0.25)">
+      <div class="rail-card-header"><span class="rail-card-title" style="color:var(--status-danger)">Paradox-Linked Events</span></div>
+      <div class="rail-card-body">
+        ${d.paradoxes.map(p => `
+          <div class="paradox-event">
+            <span class="paradox-dot"></span>
+            <span class="paradox-title">${p.title}</span>
+            <span class="paradox-chip">${p.chip}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  rail.innerHTML = html;
+}
+
+/* ═══ INIT ═══ */
+setPageState('escalated');
+</script>
+</body>
+</html>

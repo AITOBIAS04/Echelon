@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Fleet / Agents</title>
+<!--
+  ═══════════════════════════════════════════════════════════
+  MOCK DATA ANNOTATIONS — for engineering team, not UI
+  ═══════════════════════════════════════════════════════════
+  The following fields use mock values pending endpoint confirmation:
+  - P&L per agent (GET /api/v1/agents does not currently return P&L)
+  - Agent uptime / failure metadata
+  - Scheduler uptime and cycle time
+  - Deployment deltas (e.g. "+3 / 7d")
+
+  All structure and layout is production-ready. Wire real data
+  into the same column/field structure when endpoints are confirmed.
+
+  STATUS MODEL (canonical):
+  Total provisioned = 42
+  ├── Alive = 34 (responding to heartbeat)
+  │   ├── Deployed = 28 (assigned to theatres)
+  │   │   ├── Healthy = 26 (operating normally)
+  │   │   └── Degraded = 2 (online but stuck/slow/high-latency)
+  │   └── Idle = 6 (online, unassigned)
+  ├── Failed = 1 (crashed / unresponsive)
+  └── Decommissioned = 7 (permanently offline, excluded from active count)
+
+  PAGE STATE MACHINE (3 mutually exclusive states):
+  if (total === 0)         → EMPTY state (entire page is zero state)
+  else if (failed > 0)     → CRITICAL state (red banner, red KPI, failed sorted top)
+  else                     → HEALTHY state (green banner, all nominal)
+
+  All elements — banner, KPIs, table, right rail — derive from the
+  same pageState variable. No mixing states.
+
+  ACTION RULES (max 2 per row):
+  Failed:           "Restart" (primary, red) + "Decommission" (text-only ghost)
+  Degraded:         "View" (primary) — investigate first
+  Healthy deployed: "View" (primary) + "Recall" (secondary ghost, on hover)
+  Idle:             "Deploy" (primary, purple)
+  ═══════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   TASTE TOKENS v1.0
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER (locked) ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR (locked) ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.nav-badge.warn{background:oklch(0.540 0.150 85/0.10);color:oklch(0.430 0.130 85);border:1px solid oklch(0.540 0.150 85/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN + PAGE CHROME
+   ═══════════════════════════════════════════════════════════ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-5)}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:2px}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-ghost:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.btn-sm{height:28px;padding:0 var(--space-3);font-size:11px;border-radius:var(--radius-sm)}
+.btn-danger{background:var(--status-danger);color:var(--text-inverse)}.btn-danger:hover{background:var(--red-400)}
+.btn-danger-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-danger-ghost:hover{color:var(--status-danger);background:var(--red-50)}
+
+/* ═══════════════════════════════════════════════════════════
+   ATTENTION STRIP — state-driven (red/green/empty)
+   3 states only: EMPTY | HEALTHY | CRITICAL
+   ═══════════════════════════════════════════════════════════ */
+.attention-strip{display:flex;align-items:center;gap:var(--space-4);padding:var(--space-3) var(--space-5);border-radius:var(--radius-md);margin-bottom:var(--space-4);font-size:13px;line-height:20px}
+.attention-strip.critical-state{background:oklch(0.545 0.185 25/0.06);border:1px solid oklch(0.545 0.185 25/0.18)}
+.attention-strip.critical-state .attention-icon{color:var(--status-danger)}
+.attention-strip.critical-state .attention-label{color:var(--status-danger)}
+.attention-strip.healthy-state{background:oklch(0.545 0.170 152/0.06);border:1px solid oklch(0.545 0.170 152/0.18)}
+.attention-strip.healthy-state .attention-icon{color:var(--green-600)}
+.attention-strip.healthy-state .attention-label{color:var(--green-700)}
+.attention-strip.empty-state{background:var(--bg-sunken);border:1px solid var(--border-primary)}
+.attention-strip.empty-state .attention-icon{color:var(--text-muted)}
+.attention-strip.empty-state .attention-label{color:var(--text-muted)}
+.attention-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.attention-label{font-weight:600;white-space:nowrap}
+.attention-items{display:flex;align-items:center;gap:var(--space-1);flex-wrap:wrap;flex:1}
+.attention-item{display:inline-flex;align-items:center;gap:4px;color:var(--text-secondary);font-size:13px;text-decoration:none;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background var(--duration-instant) ease}
+.attention-item:hover{color:var(--text-primary);background:oklch(0.20 0.01 265/0.04)}
+.attention-item .attn-count{font-family:var(--font-mono);font-weight:700;font-variant-numeric:tabular-nums}
+.attention-item.critical .attn-count{color:var(--status-danger)}
+.attention-item.warning .attn-count{color:oklch(0.430 0.130 85)}
+.attention-sep{color:var(--border-primary);margin:0 var(--space-1);user-select:none}
+.attention-all-clear{color:var(--green-700);font-weight:500;display:flex;align-items:center;gap:var(--space-2)}
+.attention-empty-msg{color:var(--text-muted);font-weight:500}
+
+/* ═══════════════════════════════════════════════════════════
+   SUMMARY STRIP — KPI metrics for fleet
+   ═══════════════════════════════════════════════════════════ */
+.fleet-summary{display:flex;gap:var(--space-3);margin-bottom:var(--space-4)}
+.fleet-kpi{flex:1;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:2px}
+.fleet-kpi-top{display:flex;align-items:center;justify-content:space-between}
+.fleet-kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);line-height:16px}
+.fleet-kpi-window{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-disabled);background:var(--bg-sunken);padding:1px 5px;border-radius:3px;border:1px solid var(--border-secondary)}
+.fleet-kpi-row{display:flex;align-items:baseline;gap:var(--space-2)}
+.fleet-kpi-value{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:32px;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.fleet-kpi-value.success{color:var(--green-600)}
+.fleet-kpi-value.warning{color:var(--orange-600)}
+.fleet-kpi-value.danger{color:var(--status-danger)}
+.fleet-kpi-value.zero{color:var(--text-disabled)}
+.fleet-kpi-unit{font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--text-muted)}
+.fleet-kpi-interp{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;padding:1px 6px;border-radius:3px;margin-top:var(--space-1)}
+.fleet-kpi-interp.healthy{color:var(--green-700);background:var(--green-50)}
+.fleet-kpi-interp.critical{color:var(--status-danger);background:var(--red-50)}
+.fleet-kpi.kpi-alert{border-color:oklch(0.545 0.185 25/0.25);background:var(--red-50)}
+.fleet-kpi.kpi-alert .fleet-kpi-value{color:var(--status-danger)}
+.fleet-kpi-breakdown{font-size:10px;color:var(--text-disabled);font-family:var(--font-mono);font-weight:500;margin-top:2px;font-variant-numeric:tabular-nums}
+
+/* ═══════════════════════════════════════════════════════════
+   FLEET LAYOUT — roster + right rail
+   ═══════════════════════════════════════════════════════════ */
+.fleet-layout{display:grid;grid-template-columns:1fr 300px;gap:var(--space-4);align-items:start}
+
+/* ═══════════════════════════════════════════════════════════
+   FILTER BAR
+   ═══════════════════════════════════════════════════════════ */
+.filter-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);gap:var(--space-3)}
+.filter-left{display:flex;align-items:center;gap:var(--space-2)}
+.filter-select{height:30px;padding:0 26px 0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 3.75l2.5 2.5 2.5-2.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+.filter-search{height:30px;width:200px;padding:0 var(--space-3) 0 28px;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:12px;color:var(--text-primary);outline:none}
+.filter-search:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12)}
+.filter-search-wrap{position:relative}
+.filter-search-wrap .search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.filter-count{font-size:12px;color:var(--text-muted);font-weight:500}
+
+/* ═══════════════════════════════════════════════════════════
+   AGENT TABLE — dense operational roster
+   Backend archetypes: SHARK, CARDINAL, DIPLOMAT, SHADOW,
+                       TITAN, VIPER, LEVIATHAN, AMBASSADOR
+   ═══════════════════════════════════════════════════════════ */
+.roster-panel{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+
+.roster-table{width:100%;border-collapse:collapse}
+.roster-table th{position:sticky;top:0;background:var(--bg-sunken);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);padding:var(--space-2) var(--space-3);text-align:left;white-space:nowrap;border-bottom:1px solid var(--border-primary);z-index:1}
+.roster-table th.right{text-align:right}
+
+.roster-table td{padding:var(--space-2) var(--space-3);font-size:13px;border-bottom:1px solid var(--border-secondary);vertical-align:middle;white-space:nowrap}
+.roster-table tr:last-child td{border-bottom:none}
+.roster-table tr{transition:background var(--duration-instant) ease}
+.roster-table tbody tr:hover{background:var(--bg-hover)}
+
+/* Failed rows get red left accent */
+.roster-table tr.row-failed{background:oklch(0.545 0.185 25/0.03)}
+.roster-table tr.row-failed td:first-child{box-shadow:inset 3px 0 0 var(--status-danger)}
+/* Degraded rows get orange left accent */
+.roster-table tr.row-degraded{background:oklch(0.540 0.150 85/0.03)}
+.roster-table tr.row-degraded td:first-child{box-shadow:inset 3px 0 0 var(--status-warning)}
+
+/* Status dot */
+.agent-status-dot{width:8px;height:8px;border-radius:var(--radius-full);display:inline-block;vertical-align:middle}
+.agent-status-dot.healthy{background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.18)}
+.agent-status-dot.degraded{background:var(--status-warning);box-shadow:0 0 0 2px oklch(0.540 0.150 85/0.18)}
+.agent-status-dot.failed{background:var(--status-danger);box-shadow:0 0 0 2px oklch(0.545 0.185 25/0.18);animation:pulse-dot 1.5s ease-in-out infinite}
+.agent-status-dot.idle{background:var(--text-disabled)}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.agent-status-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;margin-left:6px}
+.agent-status-label.healthy{color:var(--green-600)}
+.agent-status-label.degraded{color:oklch(0.430 0.130 85)}
+.agent-status-label.failed{color:var(--status-danger)}
+.agent-status-label.idle{color:var(--text-disabled)}
+
+/* Agent name */
+.agent-name{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--text-primary)}
+.agent-name a{color:inherit;text-decoration:none}
+.agent-name a:hover{color:var(--purple-600)}
+
+/* Archetype badge — real backend archetypes */
+.archetype-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:1px 6px;border-radius:3px;white-space:nowrap;line-height:14px}
+.archetype-badge.shark{color:oklch(0.470 0.170 25);background:oklch(0.545 0.185 25/0.08)}
+.archetype-badge.cardinal{color:var(--orange-700);background:oklch(0.610 0.185 62/0.08)}
+.archetype-badge.diplomat{color:oklch(0.420 0.140 260);background:oklch(0.525 0.155 260/0.08)}
+.archetype-badge.shadow{color:var(--purple-700);background:oklch(0.500 0.200 295/0.08)}
+.archetype-badge.titan{color:var(--green-700);background:oklch(0.545 0.170 152/0.08)}
+.archetype-badge.viper{color:oklch(0.430 0.130 85);background:oklch(0.560 0.155 85/0.08)}
+.archetype-badge.leviathan{color:oklch(0.350 0.160 260);background:oklch(0.525 0.155 260/0.12)}
+.archetype-badge.ambassador{color:oklch(0.380 0.120 152);background:oklch(0.545 0.170 152/0.12)}
+
+/* Deployed theatres */
+.agent-theatres{display:flex;align-items:center;gap:var(--space-1);max-width:220px}
+.agent-theatre-tag{font-size:11px;font-weight:500;color:var(--text-secondary);background:var(--bg-sunken);padding:1px 6px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;border:1px solid var(--border-secondary)}
+.agent-theatre-more{font-size:10px;font-weight:600;color:var(--text-muted);white-space:nowrap}
+.agent-undeployed{font-size:11px;color:var(--text-disabled);font-style:italic}
+
+/* Last action */
+.agent-action{font-size:12px;color:var(--text-secondary);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.agent-action-time{font-family:var(--font-mono);font-size:10px;color:var(--text-disabled);font-variant-numeric:tabular-nums;display:block;margin-top:1px}
+
+/* P&L */
+.agent-pnl{font-family:var(--font-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.agent-pnl.positive{color:var(--green-600)}
+.agent-pnl.negative{color:var(--red-500)}
+.agent-pnl.zero{color:var(--text-muted)}
+
+/* Row actions — max 2 per row */
+.row-actions{display:flex;align-items:center;gap:var(--space-1);justify-content:flex-end}
+.row-action-secondary{opacity:0;transition:opacity var(--duration-instant) ease}
+.roster-table tbody tr:hover .row-action-secondary{opacity:1}
+
+/* ═══════════════════════════════════════════════════════════
+   EMPTY STATE — centered illustration when total = 0
+   ═══════════════════════════════════════════════════════════ */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:var(--space-12) var(--space-8);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs)}
+.empty-state-icon{width:64px;height:64px;border-radius:var(--radius-lg);background:var(--bg-sunken);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-5);color:var(--text-disabled)}
+.empty-state-title{font-size:17px;font-weight:700;color:var(--text-primary);margin-bottom:var(--space-2)}
+.empty-state-desc{font-size:13px;color:var(--text-muted);max-width:340px;line-height:20px;margin-bottom:var(--space-5)}
+.empty-rail-msg{font-size:12px;color:var(--text-disabled);padding:var(--space-4);text-align:center;font-style:italic}
+
+/* ═══════════════════════════════════════════════════════════
+   RIGHT RAIL — scheduler, archetypes, events
+   ═══════════════════════════════════════════════════════════ */
+.rail{display:flex;flex-direction:column;gap:var(--space-4)}
+.rail-panel{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.rail-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-secondary)}
+.rail-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.rail-body{padding:var(--space-3) var(--space-4)}
+
+/* Scheduler status */
+.sched-row{display:flex;align-items:center;justify-content:space-between;padding:var(--space-1) 0}
+.sched-row + .sched-row{border-top:1px solid var(--border-secondary)}
+.sched-label{font-size:12px;color:var(--text-secondary)}
+.sched-value{font-family:var(--font-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.sched-value.ok{color:var(--green-600)}
+.sched-value.warn{color:var(--orange-600)}
+.sched-value.idle-val{color:var(--text-disabled)}
+
+/* Archetype distribution */
+.arch-bar-container{display:flex;flex-direction:column;gap:var(--space-2)}
+.arch-row{display:flex;align-items:center;gap:var(--space-2)}
+.arch-label{font-size:11px;font-weight:600;color:var(--text-secondary);width:80px;flex-shrink:0}
+.arch-bar{flex:1;height:16px;background:var(--bg-sunken);border-radius:3px;overflow:hidden}
+.arch-bar-fill{height:100%;border-radius:3px;transition:width 0.3s var(--ease-out)}
+.arch-count{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-muted);width:24px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
+
+/* Archetype bar colors */
+.arch-bar-fill.diplomat{background:oklch(0.525 0.155 260/0.45)}
+.arch-bar-fill.shark{background:oklch(0.545 0.185 25/0.45)}
+.arch-bar-fill.titan{background:oklch(0.545 0.170 152/0.45)}
+.arch-bar-fill.shadow{background:oklch(0.500 0.200 295/0.45)}
+.arch-bar-fill.cardinal{background:oklch(0.610 0.185 62/0.45)}
+.arch-bar-fill.viper{background:oklch(0.560 0.155 85/0.45)}
+.arch-bar-fill.leviathan{background:oklch(0.525 0.155 260/0.60)}
+.arch-bar-fill.ambassador{background:oklch(0.545 0.170 152/0.60)}
+
+/* Recent events feed */
+.event-item{display:flex;align-items:flex-start;gap:var(--space-2);padding:var(--space-2) 0;border-bottom:1px solid var(--border-secondary);font-size:12px;line-height:16px}
+.event-item:last-child{border-bottom:none}
+.event-dot{width:5px;height:5px;border-radius:var(--radius-full);margin-top:5px;flex-shrink:0}
+.event-dot.deploy{background:var(--green-500)}
+.event-dot.trade{background:var(--purple-400)}
+.event-dot.fail{background:var(--status-danger)}
+.event-dot.recall{background:var(--orange-500)}
+.event-text{flex:1;color:var(--text-secondary)}
+.event-text strong{color:var(--text-primary);font-weight:600}
+.event-time{font-family:var(--font-mono);font-size:10px;color:var(--text-disabled);font-variant-numeric:tabular-nums;flex-shrink:0}
+
+/* ═══════════════════════════════════════════════════════════
+   STATE TOGGLE (demo)
+   ═══════════════════════════════════════════════════════════ */
+.state-toggle{position:fixed;bottom:var(--space-5);right:var(--space-5);display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-full);box-shadow:var(--shadow-md);font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer;z-index:100}
+.state-toggle:hover{border-color:var(--purple-200);color:var(--text-primary)}
+.state-toggle-dot{width:8px;height:8px;border-radius:var(--radius-full)}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+@media(max-width:1400px){.fleet-layout{grid-template-columns:1fr 260px}.fleet-summary{flex-wrap:wrap}.fleet-kpi{min-width:calc(50% - var(--space-3))}}
+@media(max-width:1024px){.sidebar{width:64px}.sidebar .nav-item-label,.sidebar .nav-badge{display:none}.sidebar .nav-group-label{font-size:0;padding:var(--space-2) var(--space-4)}.sidebar .nav-group-label::after{content:'';display:block;width:16px;height:1px;background:var(--border-primary);margin:0 auto}.sidebar .nav-item{padding:0;justify-content:center;margin:1px var(--space-1);width:calc(100% - var(--space-2))}.main{margin-left:64px}.fleet-layout{grid-template-columns:1fr}}
+@media(max-width:768px){.sidebar{display:none}.main{margin-left:0;padding:var(--space-4)}.fleet-layout{grid-template-columns:1fr}.fleet-summary{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<!-- HEADER (locked) -->
+<header class="header">
+  <div class="header-left">
+    <a href="#" class="header-logo"><div class="header-logo-mark">E</div><span class="header-logo-text">Echelon</span><span class="header-logo-version">v2</span></a>
+    <button class="sidebar-toggle"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4.5h12M3 9h12M3 13.5h12"/></svg></button>
+  </div>
+  <div class="header-center"><div class="header-search"><span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg></span><input type="text" placeholder="Search theatres, agents, investigations..."><span class="header-search-kbd">/</span></div></div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span>Base</div>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 12.73A6 6 0 0 0 15 9V7.5a6 6 0 1 0-12 0V9a6 6 0 0 0 1.27 3.73L3 15h12l-1.27-2.27z"/><path d="M7.5 15a1.5 1.5 0 0 0 3 0"/></svg><span class="header-badge">3</span></button>
+    <button class="wallet-btn"><div class="wallet-balance"><div class="wallet-balance-item"><span class="wallet-balance-label">ETH</span>2.45</div><span class="wallet-divider"></span><div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span>1,250</div></div><div class="wallet-avatar"></div></button>
+  </div>
+</header>
+
+<!-- SIDEBAR (locked) -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group"><div class="nav-group-label">Command</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg></span><span class="nav-item-label">Dashboard</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Markets</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14l4-5 3 3 5-7"/><path d="M11 5h3v3"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">5</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Intelligence</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge warn">2</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="14" height="14" rx="1"/><path d="M2 6h14M6 2v14M10 2v14M2 10h14"/></svg></span><span class="nav-item-label">Signal Map</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="3"/><circle cx="9" cy="9" r="1"/></svg></span><span class="nav-item-label">WorldMonitor</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Verification</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l2.5 2.5L13 6"/><circle cx="9" cy="9" r="7"/></svg></span><span class="nav-item-label">Verify</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="12" height="14" rx="1"/><path d="M7 6h4M7 9h4M7 12h2"/></svg></span><span class="nav-item-label">Certificates</span><span class="nav-badge warn">4</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Portfolio</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4z"/><path d="M2 7h14"/><path d="M12 11h2"/></svg></span><span class="nav-item-label">Positions</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Agents</div><a href="#" class="nav-item active"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="6" r="3"/><path d="M3 15a6 6 0 0 1 12 0"/></svg></span><span class="nav-item-label">Fleet</span><span class="nav-badge live" id="nav-fleet-badge">34</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Operations</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">3</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 14V4M7 14V8M11 14V6M15 14V2"/></svg></span><span class="nav-item-label">Analytics</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Data Products</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h10v2H4zM4 8h10v2H4zM4 12h10v2H4z"/></svg></span><span class="nav-item-label">RLMF Exports</span></a></div>
+  </div>
+  <div class="sidebar-footer"><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M14.5 9a5.5 5.5 0 0 0-.4-1.5l1.5-1.2-1-1.7-1.8.6A5.5 5.5 0 0 0 11.5 4l.2-1.9h-2L9.5 4a5.5 5.5 0 0 0-1.3 1.2l-1.8-.6-1 1.7 1.5 1.2A5.5 5.5 0 0 0 6.5 9a5.5 5.5 0 0 0 .4 1.5l-1.5 1.2 1 1.7 1.8-.6a5.5 5.5 0 0 0 1.3 1.2l-.2 1.9h2l.2-1.9a5.5 5.5 0 0 0 1.3-1.2l1.8.6 1-1.7-1.5-1.2A5.5 5.5 0 0 0 14.5 9z"/></svg></span><span class="nav-item-label">Settings</span></a></div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FLEET / AGENTS — 3 mutually exclusive states
+     State variable drives: banner, KPIs, table, right rail
+     ═══════════════════════════════════════════════════════════ -->
+
+<main class="main">
+
+  <div class="page-header">
+    <div>
+      <div class="page-breadcrumb"><span>Agents</span><span class="page-breadcrumb-sep">/</span><span class="page-breadcrumb-current">Fleet</span></div>
+      <h1 class="page-title">Fleet</h1>
+    </div>
+    <div style="display:flex;gap:var(--space-2)">
+      <button class="btn btn-secondary" id="header-live-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 8a7 7 0 1 1 14 0A7 7 0 0 1 1 8z"/><path d="M8 4v4l2.5 1.5"/></svg>Live</button>
+      <button class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>Deploy Agent</button>
+    </div>
+  </div>
+
+  <!-- ═══ ATTENTION STRIP ═══ -->
+  <div class="attention-strip" id="attention-strip">
+    <div class="attention-icon" id="attention-icon"></div>
+    <span class="attention-label" id="attention-label"></span>
+    <div class="attention-items" id="attention-items"></div>
+  </div>
+
+  <!-- ═══ SUMMARY STRIP ═══ -->
+  <div class="fleet-summary" id="fleet-summary"></div>
+
+  <!-- ═══ FLEET LAYOUT: Table + Right Rail ═══ -->
+  <div class="fleet-layout" id="fleet-layout">
+
+    <!-- ── LEFT: Agent Roster Table (or empty state) ── -->
+    <div id="roster-area"></div>
+
+    <!-- ── RIGHT RAIL ── -->
+    <div class="rail" id="right-rail"></div>
+
+  </div>
+
+</main>
+
+<!-- State toggle (demo) — cycles through all 3 page states -->
+<button class="state-toggle" onclick="cycleState()">
+  <span class="state-toggle-dot" id="toggle-dot"></span>
+  <span id="toggle-label"></span>
+</button>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// PAGE STATE MACHINE
+// Single variable drives ALL page elements.
+// 3 states: 'empty' | 'healthy' | 'critical'
+// ═══════════════════════════════════════════════════════════
+
+const STATES = ['critical', 'healthy', 'empty'];
+let stateIdx = 0;
+
+function setPageState(state) {
+  renderAttentionStrip(state);
+  renderKPIs(state);
+  renderRosterArea(state);
+  renderRightRail(state);
+  renderNavBadge(state);
+  renderToggleButton(state);
+}
+
+// ── ATTENTION STRIP ──
+function renderAttentionStrip(state) {
+  const strip = document.getElementById('attention-strip');
+  const icon = document.getElementById('attention-icon');
+  const label = document.getElementById('attention-label');
+  const items = document.getElementById('attention-items');
+
+  if (state === 'critical') {
+    strip.className = 'attention-strip critical-state';
+    icon.innerHTML = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M6.5 6.5l5 5M11.5 6.5l-5 5"/></svg>';
+    label.textContent = 'Critical';
+    items.innerHTML = '<a class="attention-item critical"><span class="attn-count">1</span> agent failed \u2014 requires intervention</a><span class="attention-sep">\u00b7</span><a class="attention-item warning"><span class="attn-count">2</span> degraded</a>';
+  } else if (state === 'healthy') {
+    strip.className = 'attention-strip healthy-state';
+    icon.innerHTML = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l3 3 5-5"/><circle cx="9" cy="9" r="7"/></svg>';
+    label.textContent = 'All Clear';
+    items.innerHTML = '<span class="attention-all-clear"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.5 7l2.5 2.5 4.5-4.5"/></svg>All 34 agents healthy \u2014 scheduler nominal</span>';
+  } else {
+    strip.className = 'attention-strip empty-state';
+    icon.innerHTML = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M9 6v3M9 11.5v.5"/></svg>';
+    label.textContent = 'Fleet Empty';
+    items.innerHTML = '<span class="attention-empty-msg">No agents provisioned \u2014 deploy your first agent to begin</span>';
+  }
+}
+
+// ── KPI CARDS ──
+function renderKPIs(state) {
+  const el = document.getElementById('fleet-summary');
+
+  if (state === 'empty') {
+    el.innerHTML = `
+      <div class="fleet-kpi">
+        <div class="fleet-kpi-top"><span class="fleet-kpi-label">Total</span><span class="fleet-kpi-window">roster</span></div>
+        <div class="fleet-kpi-row"><span class="fleet-kpi-value zero">0</span></div>
+      </div>
+      <div class="fleet-kpi">
+        <div class="fleet-kpi-top"><span class="fleet-kpi-label">Alive</span><span class="fleet-kpi-window">now</span></div>
+        <div class="fleet-kpi-row"><span class="fleet-kpi-value zero">0</span></div>
+      </div>
+      <div class="fleet-kpi">
+        <div class="fleet-kpi-top"><span class="fleet-kpi-label">Deployed</span><span class="fleet-kpi-window">now</span></div>
+        <div class="fleet-kpi-row"><span class="fleet-kpi-value zero">0</span></div>
+      </div>
+      <div class="fleet-kpi">
+        <div class="fleet-kpi-top"><span class="fleet-kpi-label">Idle</span><span class="fleet-kpi-window">now</span></div>
+        <div class="fleet-kpi-row"><span class="fleet-kpi-value zero">0</span></div>
+      </div>
+      <div class="fleet-kpi">
+        <div class="fleet-kpi-top"><span class="fleet-kpi-label">Failed</span><span class="fleet-kpi-window">live</span></div>
+        <div class="fleet-kpi-row"><span class="fleet-kpi-value zero">0</span></div>
+      </div>`;
+    return;
+  }
+
+  if (state === 'healthy') {
+    el.innerHTML = `
+      <div class="fleet-kpi">
+        <div class="fleet-kpi-top"><span class="fleet-kpi-label">Total</span><span class="fleet-kpi-window">roster</span></div>
+        <div class="fleet-kpi-row"><span class="fleet-kpi-value">40</span></div>
+        <div class="fleet-kpi-breakdown">34 active \u00b7 6 decommissioned</div>
+      </div>
+      <div class="fleet-kpi">
+        <div class="fleet-kpi-top"><span class="fleet-kpi-label">Alive</span><span class="fleet-kpi-window">now</span></div>
+        <div class="fleet-kpi-row"><span class="fleet-kpi-value success">34</span><span class="fleet-kpi-unit">/ 34 active</span></div>
+        <span class="fleet-kpi-interp healthy" title="Healthy: \u226580% | Watch: 50-79% | Critical: <50%">Healthy \u2265 80%</span>
+        <div class="fleet-kpi-breakdown">100% alive (0 failed)</div>
+      </div>
+      <div class="fleet-kpi">
+        <div class="fleet-kpi-top"><span class="fleet-kpi-label">Deployed</span><span class="fleet-kpi-window">now</span></div>
+        <div class="fleet-kpi-row"><span class="fleet-kpi-value">28</span><span class="fleet-kpi-unit">/ 34 alive</span></div>
+        <div class="fleet-kpi-breakdown">28 healthy \u00b7 0 degraded</div>
+      </div>
+      <div class="fleet-kpi">
+        <div class="fleet-kpi-top"><span class="fleet-kpi-label">Idle</span><span class="fleet-kpi-window">now</span></div>
+        <div class="fleet-kpi-row"><span class="fleet-kpi-value warning">6</span><span class="fleet-kpi-unit">/ 34 alive</span></div>
+        <div class="fleet-kpi-breakdown">alive but unassigned</div>
+      </div>
+      <div class="fleet-kpi">
+        <div class="fleet-kpi-top"><span class="fleet-kpi-label">Failed</span><span class="fleet-kpi-window">live</span></div>
+        <div class="fleet-kpi-row"><span class="fleet-kpi-value success">0</span></div>
+      </div>`;
+    return;
+  }
+
+  // critical
+  el.innerHTML = `
+    <div class="fleet-kpi">
+      <div class="fleet-kpi-top"><span class="fleet-kpi-label">Total</span><span class="fleet-kpi-window">roster</span></div>
+      <div class="fleet-kpi-row"><span class="fleet-kpi-value">42</span></div>
+      <div class="fleet-kpi-breakdown">35 active \u00b7 7 decommissioned</div>
+    </div>
+    <div class="fleet-kpi">
+      <div class="fleet-kpi-top"><span class="fleet-kpi-label">Alive</span><span class="fleet-kpi-window">now</span></div>
+      <div class="fleet-kpi-row"><span class="fleet-kpi-value success">34</span><span class="fleet-kpi-unit">/ 35 active</span></div>
+      <span class="fleet-kpi-interp healthy" title="Healthy: \u226580% | Watch: 50-79% | Critical: <50%">Healthy \u2265 80%</span>
+      <div class="fleet-kpi-breakdown">97% alive (1 failed)</div>
+    </div>
+    <div class="fleet-kpi">
+      <div class="fleet-kpi-top"><span class="fleet-kpi-label">Deployed</span><span class="fleet-kpi-window">now</span></div>
+      <div class="fleet-kpi-row"><span class="fleet-kpi-value">28</span><span class="fleet-kpi-unit">/ 34 alive</span></div>
+      <div class="fleet-kpi-breakdown">26 healthy \u00b7 2 degraded</div>
+    </div>
+    <div class="fleet-kpi">
+      <div class="fleet-kpi-top"><span class="fleet-kpi-label">Idle</span><span class="fleet-kpi-window">now</span></div>
+      <div class="fleet-kpi-row"><span class="fleet-kpi-value warning">6</span><span class="fleet-kpi-unit">/ 34 alive</span></div>
+      <div class="fleet-kpi-breakdown">alive but unassigned</div>
+    </div>
+    <div class="fleet-kpi kpi-alert">
+      <div class="fleet-kpi-top"><span class="fleet-kpi-label">Failed</span><span class="fleet-kpi-window">live</span></div>
+      <div class="fleet-kpi-row"><span class="fleet-kpi-value danger">1</span></div>
+      <span class="fleet-kpi-interp critical">Intervention needed</span>
+    </div>`;
+}
+
+// ── ROSTER AREA (table or empty state) ──
+function renderRosterArea(state) {
+  const el = document.getElementById('roster-area');
+
+  if (state === 'empty') {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <circle cx="16" cy="12" r="5"/>
+            <path d="M6 28a10 10 0 0 1 20 0"/>
+            <path d="M22 8l4-4M26 8l-4-4"/>
+          </svg>
+        </div>
+        <div class="empty-state-title">No agents provisioned</div>
+        <div class="empty-state-desc">Deploy your first agent to begin autonomous market participation. Agents monitor theatres, gather evidence, and execute trades on your behalf.</div>
+        <button class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>Deploy Agent</button>
+      </div>`;
+    return;
+  }
+
+  // For healthy state: all agents are healthy or idle — no failed/degraded rows
+  // For critical state: failed/degraded sorted to top
+  const filterBar = `
+    <div class="filter-bar">
+      <div class="filter-left">
+        <div class="filter-search-wrap">
+          <svg class="search-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="5" r="3.5"/><path d="M8 8l2.5 2.5"/></svg>
+          <input type="text" class="filter-search" placeholder="Search agents...">
+        </div>
+        <select class="filter-select">
+          <option>All Status</option><option>Healthy</option><option>Degraded</option><option>Failed</option><option>Idle</option>
+        </select>
+        <select class="filter-select">
+          <option>All Archetypes</option><option>Shark</option><option>Cardinal</option><option>Diplomat</option><option>Shadow</option><option>Titan</option><option>Viper</option><option>Leviathan</option><option>Ambassador</option>
+        </select>
+        <select class="filter-select">
+          <option>All Theatres</option><option>Fed Rate Cut</option><option>BTC $150K</option><option>Taiwan Strait</option><option>US CPI</option><option>SpaceX Refuel</option>
+        </select>
+        <span class="filter-count">${state === 'critical' ? '35 active agents' : '34 active agents'}</span>
+      </div>
+    </div>`;
+
+  const tableHead = `
+    <table class="roster-table"><thead><tr>
+      <th style="width:100px">Status</th><th>Name</th><th>Archetype</th><th>Deployed to</th><th>Last Action</th><th class="right">P&amp;L</th><th class="right" style="width:130px">Actions</th>
+    </tr></thead><tbody>`;
+
+  let rows = '';
+
+  if (state === 'critical') {
+    // Failed row first
+    rows += `
+      <tr class="row-failed">
+        <td><span class="agent-status-dot failed"></span><span class="agent-status-label failed">Failed</span></td>
+        <td><span class="agent-name"><a href="#">PHANTOM-03</a></span></td>
+        <td><span class="archetype-badge shadow">Shadow</span></td>
+        <td><span class="agent-theatre-tag">Taiwan Strait</span></td>
+        <td><span class="agent-action">Crash: OOM on evidence parse</span><span class="agent-action-time">18m ago</span></td>
+        <td class="right"><span class="agent-pnl negative">-$142</span></td>
+        <td class="right"><div class="row-actions"><button class="btn btn-sm btn-danger">Restart</button><button class="btn btn-sm btn-danger-ghost row-action-secondary">Decommission</button></div></td>
+      </tr>`;
+    // Degraded rows next
+    rows += `
+      <tr class="row-degraded">
+        <td><span class="agent-status-dot degraded"></span><span class="agent-status-label degraded">Degraded</span></td>
+        <td><span class="agent-name"><a href="#">WRAITH-11</a></span></td>
+        <td><span class="archetype-badge viper">Viper</span></td>
+        <td><span class="agent-theatre-tag">BTC $150K</span></td>
+        <td><span class="agent-action">Stuck: no trade in 45m</span><span class="agent-action-time">45m ago</span></td>
+        <td class="right"><span class="agent-pnl negative">-$28</span></td>
+        <td class="right"><div class="row-actions"><button class="btn btn-sm btn-secondary">View</button></div></td>
+      </tr>
+      <tr class="row-degraded">
+        <td><span class="agent-status-dot degraded"></span><span class="agent-status-label degraded">Degraded</span></td>
+        <td><span class="agent-name"><a href="#">NOMAD-08</a></span></td>
+        <td><span class="archetype-badge cardinal">Cardinal</span></td>
+        <td><span class="agent-theatre-tag">SpaceX Refuel</span></td>
+        <td><span class="agent-action">High latency: 4200ms avg</span><span class="agent-action-time">12m ago</span></td>
+        <td class="right"><span class="agent-pnl positive">+$64</span></td>
+        <td class="right"><div class="row-actions"><button class="btn btn-sm btn-secondary">View</button></div></td>
+      </tr>`;
+  }
+
+  // Healthy deployed rows (same for both healthy and critical states — just the fleet doing its thing)
+  rows += `
+    <tr>
+      <td><span class="agent-status-dot healthy"></span><span class="agent-status-label healthy">Healthy</span></td>
+      <td><span class="agent-name"><a href="#">CARDINAL-07</a></span></td>
+      <td><span class="archetype-badge cardinal">Cardinal</span></td>
+      <td><span class="agent-theatre-tag">Fed Rate Cut</span></td>
+      <td><span class="agent-action">Bought Yes @ 67\u00a2</span><span class="agent-action-time">2m ago</span></td>
+      <td class="right"><span class="agent-pnl positive">+$312</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-secondary">View</button><button class="btn btn-sm btn-ghost row-action-secondary">Recall</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot healthy"></span><span class="agent-status-label healthy">Healthy</span></td>
+      <td><span class="agent-name"><a href="#">VIPER-02</a></span></td>
+      <td><span class="archetype-badge viper">Viper</span></td>
+      <td><span class="agent-theatre-tag">BTC $150K</span></td>
+      <td><span class="agent-action">Sold $420 No</span><span class="agent-action-time">8m ago</span></td>
+      <td class="right"><span class="agent-pnl positive">+$1,204</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-secondary">View</button><button class="btn btn-sm btn-ghost row-action-secondary">Recall</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot healthy"></span><span class="agent-status-label healthy">Healthy</span></td>
+      <td><span class="agent-name"><a href="#">SHADOW-01</a></span></td>
+      <td><span class="archetype-badge shadow">Shadow</span></td>
+      <td><div class="agent-theatres"><span class="agent-theatre-tag">Taiwan Strait</span><span class="agent-theatre-tag">Fed Rate Cut</span></div></td>
+      <td><span class="agent-action">Flagged paradox: OSINT</span><span class="agent-action-time">14m ago</span></td>
+      <td class="right"><span class="agent-pnl positive">+$87</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-secondary">View</button><button class="btn btn-sm btn-ghost row-action-secondary">Recall</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot healthy"></span><span class="agent-status-label healthy">Healthy</span></td>
+      <td><span class="agent-name"><a href="#">LEVIATHAN-04</a></span></td>
+      <td><span class="archetype-badge leviathan">Leviathan</span></td>
+      <td><div class="agent-theatres"><span class="agent-theatre-tag">Fed Rate Cut</span><span class="agent-theatre-tag">US CPI</span><span class="agent-theatre-more">+1</span></div></td>
+      <td><span class="agent-action">Bought $850 Yes @ 66\u00a2</span><span class="agent-action-time">21m ago</span></td>
+      <td class="right"><span class="agent-pnl positive">+$2,840</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-secondary">View</button><button class="btn btn-sm btn-ghost row-action-secondary">Recall</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot healthy"></span><span class="agent-status-label healthy">Healthy</span></td>
+      <td><span class="agent-name"><a href="#">TITAN-05</a></span></td>
+      <td><span class="archetype-badge titan">Titan</span></td>
+      <td><span class="agent-theatre-tag">SpaceX Refuel</span></td>
+      <td><span class="agent-action">Exited position at -$32</span><span class="agent-action-time">35m ago</span></td>
+      <td class="right"><span class="agent-pnl negative">-$32</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-secondary">View</button><button class="btn btn-sm btn-ghost row-action-secondary">Recall</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot healthy"></span><span class="agent-status-label healthy">Healthy</span></td>
+      <td><span class="agent-name"><a href="#">AMBASSADOR-09</a></span></td>
+      <td><span class="archetype-badge ambassador">Ambassador</span></td>
+      <td><span class="agent-theatre-tag">US CPI</span></td>
+      <td><span class="agent-action">Targeting P75 bracket</span><span class="agent-action-time">48m ago</span></td>
+      <td class="right"><span class="agent-pnl positive">+$56</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-secondary">View</button><button class="btn btn-sm btn-ghost row-action-secondary">Recall</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot healthy"></span><span class="agent-status-label healthy">Healthy</span></td>
+      <td><span class="agent-name"><a href="#">SHARK-14</a></span></td>
+      <td><span class="archetype-badge shark">Shark</span></td>
+      <td><span class="agent-theatre-tag">Fed Rate Cut</span></td>
+      <td><span class="agent-action">Sold $200 No @ 33\u00a2</span><span class="agent-action-time">1h ago</span></td>
+      <td class="right"><span class="agent-pnl positive">+$428</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-secondary">View</button><button class="btn btn-sm btn-ghost row-action-secondary">Recall</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot healthy"></span><span class="agent-status-label healthy">Healthy</span></td>
+      <td><span class="agent-name"><a href="#">SHADOW-06</a></span></td>
+      <td><span class="archetype-badge shadow">Shadow</span></td>
+      <td><div class="agent-theatres"><span class="agent-theatre-tag">BTC $150K</span><span class="agent-theatre-tag">Taiwan Strait</span></div></td>
+      <td><span class="agent-action">Evidence scan complete</span><span class="agent-action-time">1h ago</span></td>
+      <td class="right"><span class="agent-pnl positive">+$190</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-secondary">View</button><button class="btn btn-sm btn-ghost row-action-secondary">Recall</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot healthy"></span><span class="agent-status-label healthy">Healthy</span></td>
+      <td><span class="agent-name"><a href="#">SHARK-12</a></span></td>
+      <td><span class="archetype-badge shark">Shark</span></td>
+      <td><span class="agent-theatre-tag">BTC $150K</span></td>
+      <td><span class="agent-action">Bought $180 Yes @ 42\u00a2</span><span class="agent-action-time">1.5h ago</span></td>
+      <td class="right"><span class="agent-pnl negative">-$14</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-secondary">View</button><button class="btn btn-sm btn-ghost row-action-secondary">Recall</button></div></td>
+    </tr>`;
+
+  // Idle rows
+  rows += `
+    <tr>
+      <td><span class="agent-status-dot idle"></span><span class="agent-status-label idle">Idle</span></td>
+      <td><span class="agent-name"><a href="#">DIPLOMAT-15</a></span></td>
+      <td><span class="archetype-badge diplomat">Diplomat</span></td>
+      <td><span class="agent-undeployed">Undeployed</span></td>
+      <td><span class="agent-action">Awaiting assignment</span><span class="agent-action-time">2h ago</span></td>
+      <td class="right"><span class="agent-pnl zero">$0</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-primary">Deploy</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot idle"></span><span class="agent-status-label idle">Idle</span></td>
+      <td><span class="agent-name"><a href="#">TITAN-16</a></span></td>
+      <td><span class="archetype-badge titan">Titan</span></td>
+      <td><span class="agent-undeployed">Undeployed</span></td>
+      <td><span class="agent-action">Recalled from EU AI Act</span><span class="agent-action-time">3h ago</span></td>
+      <td class="right"><span class="agent-pnl positive">+$92</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-primary">Deploy</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot idle"></span><span class="agent-status-label idle">Idle</span></td>
+      <td><span class="agent-name"><a href="#">VIPER-18</a></span></td>
+      <td><span class="archetype-badge viper">Viper</span></td>
+      <td><span class="agent-undeployed">Undeployed</span></td>
+      <td><span class="agent-action">Cooldown after SpaceX</span><span class="agent-action-time">5h ago</span></td>
+      <td class="right"><span class="agent-pnl negative">-$45</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-primary">Deploy</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot idle"></span><span class="agent-status-label idle">Idle</span></td>
+      <td><span class="agent-name"><a href="#">AMBASSADOR-19</a></span></td>
+      <td><span class="archetype-badge ambassador">Ambassador</span></td>
+      <td><span class="agent-undeployed">Undeployed</span></td>
+      <td><span class="agent-action">Fresh provisioned</span><span class="agent-action-time">6h ago</span></td>
+      <td class="right"><span class="agent-pnl zero">$0</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-primary">Deploy</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot idle"></span><span class="agent-status-label idle">Idle</span></td>
+      <td><span class="agent-name"><a href="#">SHARK-20</a></span></td>
+      <td><span class="archetype-badge shark">Shark</span></td>
+      <td><span class="agent-undeployed">Undeployed</span></td>
+      <td><span class="agent-action">Fresh provisioned</span><span class="agent-action-time">6h ago</span></td>
+      <td class="right"><span class="agent-pnl zero">$0</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-primary">Deploy</button></div></td>
+    </tr>
+    <tr>
+      <td><span class="agent-status-dot idle"></span><span class="agent-status-label idle">Idle</span></td>
+      <td><span class="agent-name"><a href="#">CARDINAL-21</a></span></td>
+      <td><span class="archetype-badge cardinal">Cardinal</span></td>
+      <td><span class="agent-undeployed">Undeployed</span></td>
+      <td><span class="agent-action">Recalled from OSINT scan</span><span class="agent-action-time">8h ago</span></td>
+      <td class="right"><span class="agent-pnl positive">+$18</span></td>
+      <td class="right"><div class="row-actions"><button class="btn btn-sm btn-primary">Deploy</button></div></td>
+    </tr>`;
+
+  el.innerHTML = filterBar + '<div class="roster-panel">' + tableHead + rows + '</tbody></table></div>';
+}
+
+// ── RIGHT RAIL ──
+function renderRightRail(state) {
+  const el = document.getElementById('right-rail');
+
+  // Scheduler — always shown, content varies by state
+  let scheduler = '';
+  if (state === 'empty') {
+    scheduler = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Scheduler</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--text-disabled)">v2.4.1</span></div>
+        <div class="rail-body">
+          <div class="sched-row"><span class="sched-label">Status</span><span class="sched-value idle-val">Idle</span></div>
+          <div class="sched-row"><span class="sched-label">Queue Depth</span><span class="sched-value idle-val">0 tasks</span></div>
+          <div class="sched-row"><span class="sched-label">Uptime</span><span class="sched-value idle-val">\u2014</span></div>
+        </div>
+      </div>`;
+  } else {
+    scheduler = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Scheduler</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--text-disabled)">v2.4.1</span></div>
+        <div class="rail-body">
+          <div class="sched-row"><span class="sched-label">Heartbeat</span><span class="sched-value ok">Alive \u00b7 4s ago</span></div>
+          <div class="sched-row"><span class="sched-label">Queue Depth</span><span class="sched-value ok">3 tasks</span></div>
+          <div class="sched-row"><span class="sched-label">Next Run</span><span class="sched-value" style="color:var(--text-primary)">12s</span></div>
+          <div class="sched-row"><span class="sched-label">Uptime</span><span class="sched-value" style="color:var(--text-primary)">14d 6h</span></div>
+          <div class="sched-row"><span class="sched-label">Cycle Time (avg)</span><span class="sched-value" style="color:var(--text-primary)">1.2s</span></div>
+        </div>
+      </div>`;
+  }
+
+  // Archetype Mix — hidden in empty state
+  let archetypes = '';
+  if (state !== 'empty') {
+    const activeCount = state === 'critical' ? '35 active' : '34 active';
+    archetypes = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Archetype Mix</span><span style="font-size:11px;color:var(--text-muted);font-weight:500">${activeCount}</span></div>
+        <div class="rail-body">
+          <div class="arch-bar-container">
+            <div class="arch-row"><span class="arch-label">Diplomat</span><div class="arch-bar"><div class="arch-bar-fill diplomat" style="width:26%"></div></div><span class="arch-count">9</span></div>
+            <div class="arch-row"><span class="arch-label">Shark</span><div class="arch-bar"><div class="arch-bar-fill shark" style="width:20%"></div></div><span class="arch-count">7</span></div>
+            <div class="arch-row"><span class="arch-label">Shadow</span><div class="arch-bar"><div class="arch-bar-fill shadow" style="width:14%"></div></div><span class="arch-count">5</span></div>
+            <div class="arch-row"><span class="arch-label">Cardinal</span><div class="arch-bar"><div class="arch-bar-fill cardinal" style="width:11%"></div></div><span class="arch-count">4</span></div>
+            <div class="arch-row"><span class="arch-label">Titan</span><div class="arch-bar"><div class="arch-bar-fill titan" style="width:11%"></div></div><span class="arch-count">4</span></div>
+            <div class="arch-row"><span class="arch-label">Viper</span><div class="arch-bar"><div class="arch-bar-fill viper" style="width:9%"></div></div><span class="arch-count">3</span></div>
+            <div class="arch-row"><span class="arch-label">Leviathan</span><div class="arch-bar"><div class="arch-bar-fill leviathan" style="width:6%"></div></div><span class="arch-count">2</span></div>
+            <div class="arch-row"><span class="arch-label">Ambassador</span><div class="arch-bar"><div class="arch-bar-fill ambassador" style="width:3%"></div></div><span class="arch-count">1</span></div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Recent Events — varies by state
+  let events = '';
+  if (state === 'empty') {
+    events = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Recent Events</span></div>
+        <div class="empty-rail-msg">No agent activity yet.</div>
+      </div>`;
+  } else if (state === 'critical') {
+    // Critical events sorted to top
+    events = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Recent Events</span></div>
+        <div class="rail-body" style="padding:var(--space-2) var(--space-4)">
+          <div class="event-item"><span class="event-dot fail"></span><span class="event-text"><strong>PHANTOM-03</strong> crashed \u2014 OOM</span><span class="event-time">18m</span></div>
+          <div class="event-item"><span class="event-dot deploy"></span><span class="event-text"><strong>CARDINAL-07</strong> deployed to Fed Rate Cut</span><span class="event-time">2m</span></div>
+          <div class="event-item"><span class="event-dot trade"></span><span class="event-text"><strong>VIPER-02</strong> sold $420 No on BTC</span><span class="event-time">8m</span></div>
+          <div class="event-item"><span class="event-dot recall"></span><span class="event-text"><strong>TITAN-05</strong> exited SpaceX at -$32</span><span class="event-time">35m</span></div>
+          <div class="event-item"><span class="event-dot deploy"></span><span class="event-text"><strong>AMBASSADOR-09</strong> deployed to US CPI</span><span class="event-time">48m</span></div>
+          <div class="event-item"><span class="event-dot trade"></span><span class="event-text"><strong>SHARK-14</strong> sold $200 No @ 33\u00a2</span><span class="event-time">1h</span></div>
+          <div class="event-item"><span class="event-dot recall"></span><span class="event-text"><strong>TITAN-16</strong> recalled from EU AI Act</span><span class="event-time">3h</span></div>
+        </div>
+      </div>`;
+  } else {
+    // Healthy — normal chronological events, no failures
+    events = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Recent Events</span></div>
+        <div class="rail-body" style="padding:var(--space-2) var(--space-4)">
+          <div class="event-item"><span class="event-dot deploy"></span><span class="event-text"><strong>CARDINAL-07</strong> deployed to Fed Rate Cut</span><span class="event-time">2m</span></div>
+          <div class="event-item"><span class="event-dot trade"></span><span class="event-text"><strong>VIPER-02</strong> sold $420 No on BTC</span><span class="event-time">8m</span></div>
+          <div class="event-item"><span class="event-dot trade"></span><span class="event-text"><strong>SHADOW-01</strong> flagged paradox: OSINT</span><span class="event-time">14m</span></div>
+          <div class="event-item"><span class="event-dot recall"></span><span class="event-text"><strong>TITAN-05</strong> exited SpaceX at -$32</span><span class="event-time">35m</span></div>
+          <div class="event-item"><span class="event-dot deploy"></span><span class="event-text"><strong>AMBASSADOR-09</strong> deployed to US CPI</span><span class="event-time">48m</span></div>
+          <div class="event-item"><span class="event-dot trade"></span><span class="event-text"><strong>SHARK-14</strong> sold $200 No @ 33\u00a2</span><span class="event-time">1h</span></div>
+          <div class="event-item"><span class="event-dot recall"></span><span class="event-text"><strong>TITAN-16</strong> recalled from EU AI Act</span><span class="event-time">3h</span></div>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = scheduler + archetypes + events;
+}
+
+// ── NAV BADGE ──
+function renderNavBadge(state) {
+  const badge = document.getElementById('nav-fleet-badge');
+  if (state === 'empty') {
+    badge.textContent = '0';
+    badge.className = 'nav-badge count';
+  } else {
+    badge.textContent = '34';
+    badge.className = 'nav-badge live';
+  }
+}
+
+// ── TOGGLE BUTTON ──
+function renderToggleButton(state) {
+  const dot = document.getElementById('toggle-dot');
+  const label = document.getElementById('toggle-label');
+  if (state === 'critical') {
+    dot.style.background = 'var(--status-danger)';
+    label.textContent = 'Critical (click to cycle)';
+  } else if (state === 'healthy') {
+    dot.style.background = 'var(--green-500)';
+    label.textContent = 'Healthy (click to cycle)';
+  } else {
+    dot.style.background = 'var(--text-disabled)';
+    label.textContent = 'Empty (click to cycle)';
+  }
+}
+
+function cycleState() {
+  stateIdx = (stateIdx + 1) % STATES.length;
+  setPageState(STATES[stateIdx]);
+}
+
+// Initialize on critical state (matches mock data with 1 failed agent)
+setPageState(STATES[0]);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "criteria_verdicts": {
+    "idempotency": false,
+    "release_amount_correct": true,
+    "required_evidence_present": true,
+    "signature_policy_satisfied": true,
+    "validity_window_respected": true
+  },
+  "release_instruction": {
+    "milestone_id": "ms_010_foundation_complete",
+    "prior_release_at": "2026-03-05T15:00:00Z",
+    "prior_release_certificate": "cert_prior_010",
+    "rejection_reason": "DUPLICATE_RELEASE",
+    "release_allowed": false
+  }
+}

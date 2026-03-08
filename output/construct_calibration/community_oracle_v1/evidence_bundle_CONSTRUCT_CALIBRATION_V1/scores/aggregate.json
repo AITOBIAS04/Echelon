@@ -1,0 +1,12 @@
+{
+  "scores": {
+    "precision": 0.7999999999999999,
+    "recall": 0.5416666666666666,
+    "reply_accuracy": 0.7999999999999999
+  },
+  "composite_score": 0.6966666666666667,
+  "replay_count": 12,
+  "scored_count": 12,
+  "failure_count": 0,
+  "failure_rate": 0.0
+}

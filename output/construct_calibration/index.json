@@ -1,0 +1,17 @@
+{
+  "community_oracle_v1": {
+    "certificate_path": "construct_calibration/community_oracle_v1/certificates/CONSTRUCT_CALIBRATION_V1.json",
+    "composite_score": 0.6966666666666667,
+    "construct_id": "community_oracle_v1",
+    "evidence_bundle_hash": "cabd0288dc5386fbdc8748b8ce6931b1eb6aca2aeadb32a14afaa133788b36c2",
+    "generated_at": "2026-03-01T00:00:00",
+    "replay_count": 12,
+    "scores": {
+      "precision": 0.7999999999999999,
+      "recall": 0.5416666666666666,
+      "reply_accuracy": 0.7999999999999999
+    },
+    "template_id": "CONSTRUCT_CALIBRATION_V1",
+    "verification_tier": "UNVERIFIED"
+  }
+}

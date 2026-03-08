@@ -1,0 +1,10 @@
+{
+  "composite": 0.8933333333333332,
+  "per_criterion": {
+    "bank_ref_match": 0.9333333333333333,
+    "bucket_destination_valid": 0.9333333333333333,
+    "bucket_sum_matches_gross": 0.9333333333333333,
+    "event_log_complete": 0.9333333333333333,
+    "exceptions_correct": 0.6666666666666666
+  }
+}

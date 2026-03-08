@@ -91,6 +91,42 @@ class InvestigationCounterSignalFeed:
         self._signals.append(signal)
         return signal
 
+    def add_signal_from_persisted(
+        self,
+        counter_signal_id: str,
+        signal_class: InvestigationCounterSignalClass,
+        detected_at: datetime,
+        evidence_ref: str | None,
+        material: bool,
+        resolution_impact: str,
+        detection_method: str,
+    ) -> InvestigationCounterSignal:
+        """Replay a persisted counter-signal into the feed.
+
+        Unlike log_counter_signal(), this accepts pre-existing IDs and timestamps.
+        Used for toolset rebuild from DB.
+        """
+        signal = InvestigationCounterSignal(
+            counter_signal_id=counter_signal_id,
+            signal_class=signal_class,
+            detected_at=detected_at,
+            evidence_ref=evidence_ref,
+            material=material,
+            resolution_impact=resolution_impact,
+            detection_method=detection_method,
+        )
+        self._signals.append(signal)
+        try:
+            stripped = counter_signal_id[2:] if counter_signal_id.startswith("CS") else ""
+            num = int(stripped) if stripped.isdigit() else None
+        except (ValueError, IndexError):
+            num = None
+        if num is not None and num > self._counter:
+            self._counter = num
+        else:
+            self._counter += 1
+        return signal
+
     def get_summary(self) -> dict:
         """Returns {checked, gaps, material_contradictions}.
 

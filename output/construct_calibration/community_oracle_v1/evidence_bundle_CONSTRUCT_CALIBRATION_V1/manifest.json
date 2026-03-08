@@ -1,0 +1,27 @@
+{
+  "commitment_hash": "1d258c8ce6070b43cd00e1ebe8cc96d0eeba4ccd13162a32ddf5873c18084287",
+  "construct_id": "community_oracle_v1",
+  "created_at": "2026-03-01T00:00:00",
+  "execution_path": "replay",
+  "file_inventory": {
+    "commitment_receipt.json": "f3b430062463d0f883f4d7fb61cf900e6482b412264d0de5d51ae843e8c70cbd",
+    "ground_truth/community_oracle_v1_episodes.jsonl": "22b665c95882280a91a36c4838ebba56d7b2376d425acb737b7051310b54ac95",
+    "invocations/oracle_0001.json": "3d7e33bdee9490c2ebd3341f577fb4234dbb118ed81a867a04c1703b54e7710f",
+    "invocations/oracle_0002.json": "068782f033aaa564ce12b36010c3e3994d4fdc5f705df6d8d5e32f10272e400a",
+    "invocations/oracle_0003.json": "a153c4581b1a68c96f04b6a375e2b37fd897f36ea506130a597c6caa4e48fe33",
+    "invocations/oracle_0004.json": "6bbfa40871682b7dc11ddd89afccc6388b0e97ee4a5a04c91bd21fb65b54111d",
+    "invocations/oracle_0005.json": "a4c33fea4b86f6e8598d5d9c6b7227cb0f290e2b412858ffb45cea1ddc582def",
+    "invocations/oracle_0006.json": "63d88a232da3e11ba87f4615e94c5a010752d61e10613b84c245bb37d31f028d",
+    "invocations/oracle_0007.json": "7ee80e744a58365f868b5e629637143bc8c13f642d3f1c9611f183b8c1ba1b4d",
+    "invocations/oracle_0008.json": "b5d65dd68c58a6a3b01227445a02a7d536f7174b103b08383c0a09f45f51077b",
+    "invocations/oracle_0009.json": "58740d066241f01a9765c693124d279148093ce6cc98768135a9adcf66ab8477",
+    "invocations/oracle_0010.json": "8ebf86788534e41ae751a1f4a314249d2a6c278259ebe476f80e78897167aecf",
+    "invocations/oracle_0011.json": "6449d281ad404adeac50eba53d8daad6eab37254031ba0e375c307c9cb263bdc",
+    "invocations/oracle_0012.json": "247e7a186c9cbd0b17e0e661900e57ce1b784710dc05daeec5ece1b9ebccea53",
+    "scores/aggregate.json": "ca3a89f26bab3bc41f3695a3bf32b1ab7656b9dc9bf5473f0d64806dff30c4a8",
+    "scores/per_episode.jsonl": "26956d1766de3675d832b2dddde38e63822ccbb2ecc34602040e3405a5cbf224",
+    "template.json": "205e9fe7f392c6b98c1f817138579becf49d4e78bd622b9fa308e2241439fa3f"
+  },
+  "template_id": "CONSTRUCT_CALIBRATION_V1",
+  "theatre_id": "product_replay_engine_v1"
+}

@@ -1,0 +1,15 @@
+{
+  "criteria_verdicts": {
+    "idempotency": true,
+    "release_amount_correct": true,
+    "required_evidence_present": true,
+    "signature_policy_satisfied": true,
+    "validity_window_respected": true
+  },
+  "release_instruction": {
+    "currency": "GBP",
+    "milestone_id": "ms_002_structure_topped_out",
+    "release_allowed": true,
+    "release_amount": 62500.0
+  }
+}

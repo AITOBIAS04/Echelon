@@ -34,6 +34,7 @@ import { SignalMapPage } from './pages/SignalMapPage';
 import { CertificatesPage } from './pages/CertificatesPage';
 import { CreateTheatrePage } from './pages/CreateTheatrePage';
 import { ScenarioPacksPage } from './pages/ScenarioPacksPage';
+import { ScenarioPackDetailPage } from './pages/ScenarioPackDetailPage';
 
 const VerifyPage = lazy(() =>
   import('./pages/VerifyPage').then((m) => ({ default: m.VerifyPage }))
@@ -162,6 +163,14 @@ export const router = createBrowserRouter([
         element: (
           <ErrorBoundary>
             <ScenarioPacksPage />
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'scenario-packs/:templateId',
+        element: (
+          <ErrorBoundary>
+            <ScenarioPackDetailPage />
           </ErrorBoundary>
         ),
       },

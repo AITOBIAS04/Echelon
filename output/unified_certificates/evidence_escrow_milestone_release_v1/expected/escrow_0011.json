@@ -1,0 +1,18 @@
+{
+  "criteria_verdicts": {
+    "idempotency": true,
+    "release_amount_correct": false,
+    "required_evidence_present": true,
+    "signature_policy_satisfied": true,
+    "validity_window_respected": true
+  },
+  "release_instruction": {
+    "claimed_amount": 40000.0,
+    "correct_amount": 20000.0,
+    "escrow_balance": 200000.0,
+    "milestone_id": "ms_011_foundation_complete",
+    "rejection_reason": "AMOUNT_MISMATCH",
+    "release_allowed": false,
+    "schedule_pct": 0.1
+  }
+}

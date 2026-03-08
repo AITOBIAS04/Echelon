@@ -1,0 +1,1365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Navigation + Header Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   ECHELON DESIGN SYSTEM — TASTE TOKENS v1.0
+   oklch-native. No hex. No HSL.
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Neutrals (hue 265 — purple-blue whisper) ── */
+  --bg-app:          oklch(0.965 0.004 265);
+  --bg-card:         oklch(0.993 0.001 265);
+  --bg-elevated:     oklch(1.000 0 0);
+  --bg-sunken:       oklch(0.945 0.006 265);
+  --bg-hover:        oklch(0.935 0.008 265);
+  --bg-active:       oklch(0.910 0.010 265);
+  --border-primary:  oklch(0.875 0.006 265);
+  --border-secondary:oklch(0.920 0.004 265);
+  --border-focus:    oklch(0.530 0.230 295);
+
+  /* ── Text ── */
+  --text-primary:    oklch(0.205 0.015 265);
+  --text-secondary:  oklch(0.440 0.010 265);
+  --text-muted:      oklch(0.590 0.008 265);
+  --text-disabled:   oklch(0.700 0.005 265);
+  --text-inverse:    oklch(0.985 0.002 265);
+
+  /* ── Purple (primary accent — the verb color) ── */
+  --purple-50:  oklch(0.970 0.018 295);
+  --purple-100: oklch(0.935 0.042 295);
+  --purple-200: oklch(0.870 0.085 295);
+  --purple-300: oklch(0.760 0.140 295);
+  --purple-400: oklch(0.640 0.195 295);
+  --purple-500: oklch(0.530 0.230 295);
+  --purple-600: oklch(0.455 0.215 295);
+  --purple-700: oklch(0.385 0.190 295);
+  --purple-800: oklch(0.315 0.165 295);
+  --purple-900: oklch(0.255 0.135 295);
+
+  /* ── Green (alive / success) ── */
+  --green-50:  oklch(0.965 0.022 152);
+  --green-100: oklch(0.930 0.050 152);
+  --green-200: oklch(0.860 0.095 152);
+  --green-400: oklch(0.640 0.165 152);
+  --green-500: oklch(0.545 0.170 152);
+  --green-600: oklch(0.470 0.155 152);
+
+  /* ── Orange (attention / warm) ── */
+  --orange-50:  oklch(0.970 0.022 62);
+  --orange-100: oklch(0.935 0.050 62);
+  --orange-400: oklch(0.690 0.165 62);
+  --orange-500: oklch(0.610 0.185 62);
+  --orange-600: oklch(0.540 0.175 62);
+
+  /* ── Status ── */
+  --status-success:      oklch(0.545 0.170 152);
+  --status-warning:      oklch(0.540 0.150 85);
+  --status-danger:       oklch(0.545 0.185 25);
+  --status-info:         oklch(0.525 0.155 260);
+  --status-paradox:      oklch(0.500 0.200 295);
+
+  /* ── Shadows (hue 265 for brand consistency) ── */
+  --shadow-xs:  0 1px 2px oklch(0.20 0.01 265 / 0.04);
+  --shadow-sm:  0 1px 3px oklch(0.20 0.01 265 / 0.06), 0 1px 2px oklch(0.20 0.01 265 / 0.03);
+  --shadow-md:  0 2px 8px oklch(0.20 0.01 265 / 0.08), 0 1px 3px oklch(0.20 0.01 265 / 0.04);
+  --shadow-lg:  0 8px 24px oklch(0.20 0.01 265 / 0.12), 0 2px 8px oklch(0.20 0.01 265 / 0.05);
+
+  /* ── Typography ── */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* ── Spacing (4px grid) ── */
+  --space-1: 4px;   --space-2: 8px;   --space-3: 12px;
+  --space-4: 16px;  --space-5: 20px;  --space-6: 24px;
+  --space-8: 32px;  --space-10: 40px; --space-12: 48px;
+
+  /* ── Layout ── */
+  --sidebar-width: 240px;
+  --sidebar-collapsed: 64px;
+  --header-height: 56px;
+
+  /* ── Radii ── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* ── Motion ── */
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── Z-index ── */
+  --z-sidebar: 20;
+  --z-header: 30;
+  --z-dropdown: 40;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESET + BASE
+   ═══════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--text-primary);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-primary); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ═══════════════════════════════════════════════════════════
+   HEADER
+   56px fixed top bar. Logo left, actions right.
+   Wallet connect is the most visible action after the logo.
+   ═══════════════════════════════════════════════════════════ */
+
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-primary);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-6);
+  z-index: var(--z-header);
+  box-shadow: var(--shadow-xs);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: calc(var(--sidebar-width) - var(--space-6));
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  color: var(--text-primary);
+}
+
+.header-logo-mark {
+  width: 28px;
+  height: 28px;
+  background: var(--purple-500);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-inverse);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.header-logo-text {
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: -0.02em;
+}
+
+.header-logo-version {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-sunken);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-secondary);
+}
+
+.sidebar-toggle {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-instant) ease;
+}
+.sidebar-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.header-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-8);
+}
+
+.header-search {
+  width: 100%;
+  max-width: 480px;
+  position: relative;
+}
+
+.header-search input {
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--space-3) 0 36px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: all var(--duration-fast) ease;
+}
+.header-search input::placeholder { color: var(--text-muted); }
+.header-search input:focus {
+  border-color: var(--purple-500);
+  box-shadow: 0 0 0 2px oklch(0.530 0.230 295 / 0.12);
+  background: var(--bg-card);
+}
+.header-search-icon {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.header-search-kbd {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-disabled);
+  background: var(--bg-card);
+  border: 1px solid var(--border-secondary);
+  padding: 1px 5px;
+  border-radius: 4px;
+  line-height: 16px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ── Wallet Button (MOST VISIBLE ACTION) ── */
+
+.wallet-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 36px;
+  padding: 0 var(--space-4);
+  background: var(--purple-500);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+  white-space: nowrap;
+}
+.wallet-btn:hover { background: var(--purple-400); }
+.wallet-btn:active { transform: scale(0.97); }
+
+/* Connected state — shows balance */
+.wallet-btn.connected {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  padding: 0 var(--space-2) 0 var(--space-3);
+  gap: var(--space-1);
+}
+.wallet-btn.connected:hover {
+  border-color: var(--purple-200);
+  background: var(--bg-hover);
+}
+
+.wallet-balance {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.wallet-balance-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.wallet-balance-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wallet-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-primary);
+}
+
+.wallet-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--purple-300), var(--green-400));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wallet-chevron {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── Header icon buttons ── */
+
+.header-icon-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-instant) ease;
+}
+.header-icon-btn:hover {
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.header-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  background: var(--status-danger);
+  color: var(--text-inverse);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid var(--bg-card);
+}
+
+/* ── Network indicator ── */
+.network-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 var(--space-2) 0 6px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.network-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--status-success);
+  box-shadow: 0 0 0 2px oklch(0.545 0.170 152 / 0.20);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SIDEBAR NAVIGATION
+   240px expanded, 64px collapsed.
+   7 groups with section headers.
+   Active item: purple-50 bg + purple-500 left border + purple-700 text.
+   ═══════════════════════════════════════════════════════════ */
+
+.sidebar {
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  background: var(--bg-card);
+  border-right: 1px solid var(--border-primary);
+  z-index: var(--z-sidebar);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed);
+}
+
+.sidebar-content {
+  flex: 1;
+  padding: var(--space-3) 0;
+}
+
+/* ── Nav group ── */
+.nav-group {
+  margin-bottom: var(--space-1);
+}
+
+.nav-group-label {
+  padding: var(--space-3) var(--space-5) var(--space-1);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar.collapsed .nav-group-label {
+  font-size: 0;
+  padding: var(--space-2) var(--space-4);
+}
+.sidebar.collapsed .nav-group-label::after {
+  content: '';
+  display: block;
+  width: 16px;
+  height: 1px;
+  background: var(--border-primary);
+  margin: 0 auto;
+}
+
+/* ── Nav item ── */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 36px;
+  padding: 0 var(--space-5);
+  margin: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-instant) ease;
+  white-space: nowrap;
+  position: relative;
+  border: none;
+  background: none;
+  width: calc(100% - var(--space-4));
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--purple-50);
+  color: var(--purple-700);
+  font-weight: 600;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--purple-500);
+}
+
+.nav-item-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.nav-item.active .nav-item-icon { opacity: 1; }
+.nav-item:hover .nav-item-icon { opacity: 1; }
+
+.nav-item-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar.collapsed .nav-item-label { display: none; }
+.sidebar.collapsed .nav-item {
+  padding: 0;
+  justify-content: center;
+  margin: 1px var(--space-1);
+  width: calc(100% - var(--space-2));
+}
+
+/* ── Nav badge ── */
+.nav-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.nav-badge.count {
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  border: 1px solid var(--border-secondary);
+}
+.nav-badge.alert {
+  background: oklch(0.545 0.185 25 / 0.10);
+  color: var(--status-danger);
+  border: 1px solid oklch(0.545 0.185 25 / 0.20);
+}
+.nav-badge.live {
+  background: oklch(0.545 0.170 152 / 0.10);
+  color: var(--status-success);
+  border: 1px solid oklch(0.545 0.170 152 / 0.20);
+}
+.sidebar.collapsed .nav-badge { display: none; }
+
+/* ── Sidebar footer ── */
+.sidebar-footer {
+  border-top: 1px solid var(--border-secondary);
+  padding: var(--space-3) var(--space-2);
+}
+
+.sidebar-footer .nav-item {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.sidebar-footer .nav-item:hover { color: var(--text-secondary); }
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN CONTENT AREA
+   Offset by header + sidebar. Placeholder for page content.
+   ═══════════════════════════════════════════════════════════ */
+
+.main {
+  margin-left: var(--sidebar-width);
+  margin-top: var(--header-height);
+  min-height: calc(100vh - var(--header-height));
+  transition: margin-left var(--duration-slow) var(--ease-out);
+  padding: var(--space-8) var(--space-6);
+}
+
+.sidebar.collapsed ~ .main,
+body.sidebar-collapsed .main {
+  margin-left: var(--sidebar-collapsed);
+}
+
+/* ── Page header ── */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-8);
+}
+
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.page-breadcrumb-sep { color: var(--border-primary); }
+.page-breadcrumb-current {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.page-title {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: var(--space-1);
+}
+
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--purple-500);
+  color: var(--text-inverse);
+  border-color: transparent;
+}
+.btn-primary:hover { background: var(--purple-400); }
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-color: var(--border-primary);
+}
+.btn-secondary:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ── Placeholder content (demo of page structure) ── */
+.placeholder-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  text-align: center;
+  padding: var(--space-12);
+}
+
+.placeholder-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--purple-50);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-5);
+  color: var(--purple-500);
+}
+
+.placeholder-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.placeholder-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 360px;
+  line-height: 20px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   WALLET DROPDOWN
+   ═══════════════════════════════════════════════════════════ */
+
+.wallet-dropdown {
+  position: fixed;
+  top: calc(var(--header-height) + 4px);
+  right: var(--space-6);
+  width: 320px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+  padding: var(--space-4);
+  display: none;
+  animation: dropIn var(--duration-normal) var(--ease-out);
+}
+
+.wallet-dropdown.open { display: block; }
+
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.wallet-dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.wallet-dropdown-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--purple-300), var(--green-400));
+}
+
+.wallet-dropdown-address {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.wallet-dropdown-network {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.wallet-dropdown-balances {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.wallet-dropdown-balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  background: var(--bg-sunken);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-secondary);
+}
+
+.wallet-dropdown-balance-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.wallet-dropdown-balance-value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.wallet-dropdown-balance-usd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.wallet-dropdown-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-secondary);
+}
+
+.wallet-dropdown-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: all var(--duration-instant) ease;
+}
+.wallet-dropdown-action:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.wallet-dropdown-action.danger { color: var(--status-danger); }
+.wallet-dropdown-action.danger:hover { background: oklch(0.545 0.185 25 / 0.06); }
+
+/* ═══════════════════════════════════════════════════════════
+   DEMO MODE BANNER
+   ═══════════════════════════════════════════════════════════ */
+
+.demo-banner {
+  position: fixed;
+  bottom: var(--space-6);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-5);
+  background: var(--orange-50);
+  border: 1px solid var(--orange-400);
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--orange-600);
+  box-shadow: var(--shadow-md);
+  z-index: 100;
+}
+.demo-banner-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--orange-500);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+
+@media (max-width: 1024px) {
+  .sidebar { width: var(--sidebar-collapsed); }
+  .sidebar .nav-item-label { display: none; }
+  .sidebar .nav-group-label { font-size: 0; }
+  .sidebar .nav-group-label::after {
+    content: '';
+    display: block;
+    width: 16px;
+    height: 1px;
+    background: var(--border-primary);
+    margin: 0 auto;
+  }
+  .sidebar .nav-badge { display: none; }
+  .sidebar .nav-item {
+    padding: 0;
+    justify-content: center;
+    margin: 1px var(--space-1);
+    width: calc(100% - var(--space-2));
+  }
+  .main { margin-left: var(--sidebar-collapsed); }
+  .header-left { min-width: auto; }
+  .header-search { display: none; }
+}
+
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; }
+  .network-pill { display: none; }
+  .wallet-balance-item:first-child { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER
+     ═══════════════════════════════════════════════════════════ -->
+
+<header class="header">
+  <div class="header-left">
+    <a href="#" class="header-logo">
+      <div class="header-logo-mark">E</div>
+      <span class="header-logo-text">Echelon</span>
+      <span class="header-logo-version">v2</span>
+    </a>
+    <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <path d="M3 4.5h12M3 9h12M3 13.5h12"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="header-center">
+    <div class="header-search">
+      <span class="header-search-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="7" cy="7" r="5"/>
+          <path d="M11 11l3.5 3.5"/>
+        </svg>
+      </span>
+      <input type="text" placeholder="Search theatres, agents, investigations...">
+      <span class="header-search-kbd">/</span>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <div class="network-pill">
+      <span class="network-dot"></span>
+      Base
+    </div>
+
+    <!-- Notification bell with badge -->
+    <button class="header-icon-btn" title="Notifications">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13.73 12.73A6 6 0 0 0 15 9V7.5a6 6 0 1 0-12 0V9a6 6 0 0 0 1.27 3.73L3 15h12l-1.27-2.27z"/>
+        <path d="M7.5 15a1.5 1.5 0 0 0 3 0"/>
+      </svg>
+      <span class="header-badge">3</span>
+    </button>
+
+    <!-- WALLET BUTTON — most visible action after logo -->
+    <button class="wallet-btn connected" onclick="toggleWalletDropdown()">
+      <div class="wallet-balance">
+        <div class="wallet-balance-item">
+          <span class="wallet-balance-label">ETH</span>
+          2.45
+        </div>
+        <span class="wallet-divider"></span>
+        <div class="wallet-balance-item">
+          <span class="wallet-balance-label">USDC</span>
+          1,250.00
+        </div>
+      </div>
+      <div class="wallet-avatar"></div>
+      <span class="wallet-chevron">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path d="M4 5.5l3 3 3-3"/>
+        </svg>
+      </span>
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     WALLET DROPDOWN
+     ═══════════════════════════════════════════════════════════ -->
+
+<div class="wallet-dropdown" id="walletDropdown">
+  <div class="wallet-dropdown-header">
+    <div class="wallet-dropdown-avatar"></div>
+    <div>
+      <div class="wallet-dropdown-address">0x7a3F...8c2E</div>
+      <div class="wallet-dropdown-network">
+        <span class="network-dot" style="width:6px;height:6px;"></span>
+        Base Mainnet
+      </div>
+    </div>
+  </div>
+
+  <div class="wallet-dropdown-balances">
+    <div class="wallet-dropdown-balance-row">
+      <div>
+        <div class="wallet-dropdown-balance-label">ETH Balance</div>
+        <div class="wallet-dropdown-balance-value">2.4518</div>
+      </div>
+      <div class="wallet-dropdown-balance-usd">$6,247.32</div>
+    </div>
+    <div class="wallet-dropdown-balance-row">
+      <div>
+        <div class="wallet-dropdown-balance-label">USDC Balance</div>
+        <div class="wallet-dropdown-balance-value">1,250.00</div>
+      </div>
+      <div class="wallet-dropdown-balance-usd">$1,250.00</div>
+    </div>
+    <div class="wallet-dropdown-balance-row" style="border-color: var(--purple-200);">
+      <div>
+        <div class="wallet-dropdown-balance-label">Platform Balance</div>
+        <div class="wallet-dropdown-balance-value" style="color: var(--purple-700);">820.50</div>
+      </div>
+      <div class="wallet-dropdown-balance-usd" style="color: var(--purple-600);">USDC</div>
+    </div>
+  </div>
+
+  <div class="wallet-dropdown-actions">
+    <button class="wallet-dropdown-action">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>
+      Deposit
+    </button>
+    <button class="wallet-dropdown-action">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8h8M8 4l4 4-4 4"/></svg>
+      Withdraw
+    </button>
+    <button class="wallet-dropdown-action">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M2 6h12"/></svg>
+      Transaction History
+    </button>
+    <button class="wallet-dropdown-action">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 12l8-8M12 4v4M12 4H8"/></svg>
+      View on Explorer
+    </button>
+    <button class="wallet-dropdown-action danger">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 8h4M3 4l1 9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-9M2 4h12M6 4V3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1"/></svg>
+      Disconnect
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SIDEBAR
+     ═══════════════════════════════════════════════════════════ -->
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-content">
+
+    <!-- COMMAND -->
+    <div class="nav-group">
+      <div class="nav-group-label">Command</div>
+      <a href="#" class="nav-item active">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg>
+        </span>
+        <span class="nav-item-label">Dashboard</span>
+      </a>
+    </div>
+
+    <!-- MARKETS -->
+    <div class="nav-group">
+      <div class="nav-group-label">Markets</div>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14l4-5 3 3 5-7"/><path d="M11 5h3v3"/></svg>
+        </span>
+        <span class="nav-item-label">Theatres</span>
+        <span class="nav-badge live">5</span>
+      </a>
+    </div>
+
+    <!-- INTELLIGENCE -->
+    <div class="nav-group">
+      <div class="nav-group-label">Intelligence</div>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg>
+        </span>
+        <span class="nav-item-label">Investigations</span>
+        <span class="nav-badge count">2</span>
+      </a>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="14" height="14" rx="1"/><path d="M2 6h14M6 2v14M10 2v14M2 10h14M2 14h14"/></svg>
+        </span>
+        <span class="nav-item-label">Signal Map</span>
+      </a>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="3"/><circle cx="9" cy="9" r="1"/></svg>
+        </span>
+        <span class="nav-item-label">WorldMonitor</span>
+      </a>
+    </div>
+
+    <!-- VERIFICATION -->
+    <div class="nav-group">
+      <div class="nav-group-label">Verification</div>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l2.5 2.5L13 6"/><circle cx="9" cy="9" r="7"/></svg>
+        </span>
+        <span class="nav-item-label">Verify</span>
+      </a>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="12" height="14" rx="1"/><path d="M7 6h4M7 9h4M7 12h2"/></svg>
+        </span>
+        <span class="nav-item-label">Certificates</span>
+      </a>
+    </div>
+
+    <!-- PORTFOLIO -->
+    <div class="nav-group">
+      <div class="nav-group-label">Portfolio</div>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4z"/><path d="M2 7h14"/><path d="M12 11h2"/></svg>
+        </span>
+        <span class="nav-item-label">Positions</span>
+      </a>
+    </div>
+
+    <!-- AGENTS -->
+    <div class="nav-group">
+      <div class="nav-group-label">Agents</div>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="6" r="3"/><path d="M3 15a6 6 0 0 1 12 0"/></svg>
+        </span>
+        <span class="nav-item-label">Fleet</span>
+        <span class="nav-badge live">12</span>
+      </a>
+    </div>
+
+    <!-- OPERATIONS -->
+    <div class="nav-group">
+      <div class="nav-group-label">Operations</div>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg>
+        </span>
+        <span class="nav-item-label">Paradox Console</span>
+        <span class="nav-badge alert">3</span>
+      </a>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 14V4M7 14V8M11 14V6M15 14V2"/></svg>
+        </span>
+        <span class="nav-item-label">Analytics</span>
+      </a>
+    </div>
+
+    <!-- DATA PRODUCTS -->
+    <div class="nav-group">
+      <div class="nav-group-label">Data Products</div>
+      <a href="#" class="nav-item" onclick="setActive(this)">
+        <span class="nav-item-icon">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h10v2H4zM4 8h10v2H4zM4 12h10v2H4z"/></svg>
+        </span>
+        <span class="nav-item-label">RLMF Exports</span>
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Sidebar footer -->
+  <div class="sidebar-footer">
+    <a href="#" class="nav-item" onclick="setActive(this)">
+      <span class="nav-item-icon">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M14.5 9a5.5 5.5 0 0 0-.4-1.5l1.5-1.2-1-1.7-1.8.6A5.5 5.5 0 0 0 11.5 4l.2-1.9h-2L9.5 4a5.5 5.5 0 0 0-1.3 1.2l-1.8-.6-1 1.7 1.5 1.2A5.5 5.5 0 0 0 6.5 9a5.5 5.5 0 0 0 .4 1.5l-1.5 1.2 1 1.7 1.8-.6a5.5 5.5 0 0 0 1.3 1.2l-.2 1.9h2l.2-1.9a5.5 5.5 0 0 0 1.3-1.2l1.8.6 1-1.7-1.5-1.2A5.5 5.5 0 0 0 14.5 9z"/></svg>
+      </span>
+      <span class="nav-item-label">Settings</span>
+    </a>
+    <a href="#" class="nav-item" onclick="setActive(this)">
+      <span class="nav-item-icon">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M9 6v3M9 12h.01"/></svg>
+      </span>
+      <span class="nav-item-label">Help</span>
+    </a>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN CONTENT
+     Placeholder showing page structure with breadcrumb
+     ═══════════════════════════════════════════════════════════ -->
+
+<main class="main" id="main">
+  <div class="page-header">
+    <div>
+      <div class="page-breadcrumb">
+        <span>Command</span>
+        <span class="page-breadcrumb-sep">/</span>
+        <span class="page-breadcrumb-current">Dashboard</span>
+      </div>
+      <h1 class="page-title">Mission Control</h1>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M4 8h8M6 12h4"/></svg>
+        Filters
+      </button>
+      <button class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>
+        Create Theatre
+      </button>
+    </div>
+  </div>
+
+  <div class="placeholder-content">
+    <div class="placeholder-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+    </div>
+    <div class="placeholder-title">Dashboard content renders here</div>
+    <div class="placeholder-desc">This reference implementation defines the navigation shell and header. Page content (Mission Control widgets, stat cards, feeds) will be designed in the next reference page.</div>
+  </div>
+</main>
+
+<!-- ── Demo mode banner ── -->
+<div class="demo-banner">
+  <span class="demo-banner-dot"></span>
+  Demo Mode — Mock Data
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DISCONNECTED WALLET STATE (hidden, toggle with button)
+     ═══════════════════════════════════════════════════════════ -->
+
+<template id="wallet-disconnected">
+  <button class="wallet-btn" onclick="toggleWalletState()">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <path d="M2 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4z"/>
+      <path d="M2 7h14"/>
+      <circle cx="13" cy="11" r="1"/>
+    </svg>
+    Connect Wallet
+  </button>
+</template>
+
+<script>
+// ── Sidebar toggle ──
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const main = document.getElementById('main');
+  sidebar.classList.toggle('collapsed');
+  if (sidebar.classList.contains('collapsed')) {
+    main.style.marginLeft = 'var(--sidebar-collapsed)';
+  } else {
+    main.style.marginLeft = 'var(--sidebar-width)';
+  }
+}
+
+// ── Nav active state ──
+function setActive(el) {
+  document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+  el.classList.add('active');
+
+  // Update breadcrumb
+  const group = el.closest('.nav-group');
+  const groupLabel = group ? group.querySelector('.nav-group-label').textContent.trim() : '';
+  const pageLabel = el.querySelector('.nav-item-label').textContent.trim();
+  const breadcrumb = document.querySelector('.page-breadcrumb');
+  const title = document.querySelector('.page-title');
+
+  breadcrumb.innerHTML = `
+    <span>${groupLabel}</span>
+    <span class="page-breadcrumb-sep">/</span>
+    <span class="page-breadcrumb-current">${pageLabel}</span>
+  `;
+  title.textContent = pageLabel;
+}
+
+// ── Wallet dropdown ──
+function toggleWalletDropdown() {
+  const dropdown = document.getElementById('walletDropdown');
+  dropdown.classList.toggle('open');
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', (e) => {
+  const dropdown = document.getElementById('walletDropdown');
+  const btn = document.querySelector('.wallet-btn');
+  if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+    dropdown.classList.remove('open');
+  }
+});
+
+// ── Wallet connect/disconnect toggle (demo) ──
+let walletConnected = true;
+function toggleWalletState() {
+  walletConnected = !walletConnected;
+  const container = document.querySelector('.header-right');
+  const walletEl = container.querySelector('.wallet-btn');
+  if (walletConnected) {
+    walletEl.outerHTML = `
+      <button class="wallet-btn connected" onclick="toggleWalletDropdown()">
+        <div class="wallet-balance">
+          <div class="wallet-balance-item">
+            <span class="wallet-balance-label">ETH</span>
+            2.45
+          </div>
+          <span class="wallet-divider"></span>
+          <div class="wallet-balance-item">
+            <span class="wallet-balance-label">USDC</span>
+            1,250.00
+          </div>
+        </div>
+        <div class="wallet-avatar"></div>
+        <span class="wallet-chevron">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 5.5l3 3 3-3"/></svg>
+        </span>
+      </button>`;
+  } else {
+    walletEl.outerHTML = `
+      <button class="wallet-btn" onclick="toggleWalletState()">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <path d="M2 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4z"/>
+          <path d="M2 7h14"/>
+          <circle cx="13" cy="11" r="1"/>
+        </svg>
+        Connect Wallet
+      </button>`;
+    document.getElementById('walletDropdown').classList.remove('open');
+  }
+}
+
+// ── Keyboard shortcut for search ──
+document.addEventListener('keydown', (e) => {
+  if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+    const input = document.querySelector('.header-search input');
+    if (document.activeElement !== input) {
+      e.preventDefault();
+      input.focus();
+    }
+  }
+  if (e.key === 'Escape') {
+    document.querySelector('.header-search input').blur();
+    document.getElementById('walletDropdown').classList.remove('open');
+  }
+});
+</script>
+
+</body>
+</html>

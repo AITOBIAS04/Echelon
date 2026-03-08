@@ -75,6 +75,41 @@ class CommitmentMonitor:
         self._events.append(event)
         return event
 
+    def add_event_from_persisted(
+        self,
+        drift_id: str,
+        drift_type: DriftType,
+        detected_at: datetime,
+        original_value: str,
+        new_value: str,
+        evidence_ref: str | None,
+        impact_assessment: str,
+    ) -> DriftEvent:
+        """Replay a persisted drift event into the monitor.
+
+        Unlike log_drift(), this accepts pre-existing IDs and timestamps.
+        Used for toolset rebuild from DB.
+        """
+        event = DriftEvent(
+            drift_id=drift_id,
+            drift_type=drift_type,
+            detected_at=detected_at,
+            original_value=original_value,
+            new_value=new_value,
+            evidence_ref=evidence_ref,
+            impact_assessment=DriftImpact(impact_assessment),
+        )
+        self._events.append(event)
+        try:
+            num = int(drift_id.lstrip("D")) if drift_id.startswith("D") and drift_id[1:].isdigit() else None
+        except (ValueError, IndexError):
+            num = None
+        if num is not None and num > self._counter:
+            self._counter = num
+        else:
+            self._counter += 1
+        return event
+
     def has_material_drift(self) -> bool:
         """True if any drift event has MATERIAL impact."""
         return any(

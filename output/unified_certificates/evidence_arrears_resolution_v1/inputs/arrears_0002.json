@@ -1,0 +1,35 @@
+{
+  "accrual_schedule": {
+    "billing_cycles_in_scope": 1,
+    "billing_frequency": "monthly",
+    "first_due_date": "2026-03-01",
+    "rent_amount": 1500.0,
+    "total_rent_due": 1500.0
+  },
+  "arrears_policy": {
+    "arrears_threshold": 1500.0,
+    "grace_period_days": 5
+  },
+  "current_date": "2026-03-04",
+  "lease_state": {
+    "accrued_ladder_balance": 600.0,
+    "currency": "GBP",
+    "deposit_amount": 2500.0,
+    "ladder_contribution": 150.0,
+    "ladder_plan_active": true,
+    "lease_id": "lease_002",
+    "payment_due_date": "2026-03-01",
+    "rent_amount": 1500.0,
+    "tenant_id": "tenant_002"
+  },
+  "payment_events": [
+    {
+      "amount": 1500.0,
+      "currency": "GBP",
+      "payment_id": "pay_arr_002",
+      "received_at": "2026-03-04T14:22:00Z",
+      "settlement_reference": "BANKREF-arr_002"
+    }
+  ],
+  "prior_state": "CURRENT"
+}

@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Readiness & Certificate Lifecycle</title>
+<!--
+  ═══════════════════════════════════════════════════════════
+  DESIGN REFERENCE: Readiness & Certificate Lifecycle Panel
+  ═══════════════════════════════════════════════════════════
+
+  This file documents the Readiness tab panel within the
+  Investigation detail workspace.
+
+  BACKEND TRUTH:
+  - GET  /api/v1/investigations/{id}/readiness
+    → { investigation_id, status, stop_condition, stop_condition_status,
+        stop_condition_reason, stop_condition_evaluated_at,
+        has_certificate, certificate_status }
+  - GET  /api/v1/investigations/{id}/certificate
+    → { certificate_id, investigation_id, certificate_status,
+        certificate_hash, routing_decision, routing_reason,
+        ready_at, anchored_at, issued_at, batch_anchor_hash,
+        certificate_json }
+    → 404 if no certificate exists
+  - POST /api/v1/investigations/{id}/certificate/build → 201
+    → 409 if certificate already exists
+    → 409 if stop_condition_status != READY
+  - POST /api/v1/investigations/certificates/anchor-batch
+    → Batch transitions all READY certs to ANCHORED then ISSUED
+    → Runs at 00:00 UTC, NOT immediately after build
+
+  CERTIFICATE LIFECYCLE: READY → ANCHORED → ISSUED
+  - READY: Certificate built, queued for batch anchor
+  - ANCHORED → ISSUED: Collapsed in a single batch pass at 00:00 UTC
+    (run_batch_anchor sets ANCHORED then immediately ISSUED in one loop)
+    ANCHORED is a transient bookkeeping state, not durably observable.
+    anchored_at and issued_at receive the same batch_timestamp.
+
+  ROUTING DECISIONS: ALLOWED | REVIEW_REQUIRED
+  - routing_decision is recorded on the certificate at build time
+  - run_batch_anchor does NOT gate on routing_decision
+  - REVIEW_REQUIRED triggers coherence gate evaluation but does not
+    block batch-anchor progression in the current implementation
+
+  STATES SHOWN:
+  1. Not Ready — stop condition not met, lifecycle pending
+  2. Ready, No Certificate — stop condition met, build CTA shown
+  3. Ready, Certificate Built — READY status, awaiting batch anchor
+  4. Issued — terminal state (ANCHORED collapses into ISSUED in same batch)
+  5. Review Required — routing recorded, does not block anchoring
+
+  Primary implementation:
+    frontend/src/components/investigation/ReadinessCertificatePanel.tsx
+-->
+<style>
+  :root {
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --panel: #f4f4f5;
+    --border: #e4e4e7;
+    --border-subtle: #e4e4e720;
+
+    --text-primary: #18181b;
+    --text-secondary: #3f3f46;
+    --text-muted: #71717a;
+    --text-disabled: #a1a1aa;
+
+    --cyan-500: #06b6d4;
+    --cyan-100: #cffafe;
+    --cyan-800: #155e75;
+    --cyan-50: #ecfeff;
+
+    --green-500: #22c55e;
+    --green-50: #f0fdf4;
+    --green-100: #dcfce7;
+    --green-700: #15803d;
+
+    --red-500: #ef4444;
+    --red-50: #fef2f2;
+    --red-100: #fee2e2;
+    --red-700: #b91c1c;
+
+    --amber-500: #f59e0b;
+    --amber-50: #fffbeb;
+    --amber-100: #fef3c7;
+    --amber-700: #b45309;
+
+    --orange-500: #f97316;
+    --orange-50: #fff7ed;
+    --orange-100: #ffedd5;
+    --orange-700: #c2410c;
+
+    --purple-50: #faf5ff;
+    --purple-400: #c084fc;
+    --purple-600: #9333ea;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+
+    --radius: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.5;
+    padding: var(--space-8);
+  }
+
+  .page-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+  }
+
+  .page-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-8);
+  }
+
+  /* State toggle */
+  .state-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    z-index: 100;
+  }
+  .state-toggle:hover { border-color: var(--cyan-500); }
+  .state-toggle-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green-500); }
+
+  /* Section card */
+  .section-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: var(--space-4);
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 10px var(--space-5);
+    background: var(--panel);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+
+  .section-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-disabled);
+    margin-left: auto;
+  }
+
+  .section-cert-id {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cyan-800);
+    margin-left: auto;
+  }
+
+  .section-awaiting {
+    font-size: 11px;
+    color: var(--text-disabled);
+    font-style: italic;
+    margin-left: auto;
+  }
+
+  .section-body { padding: var(--space-5); }
+
+  /* Readiness badge */
+  .readiness-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 6px;
+    margin-bottom: var(--space-4);
+  }
+  .readiness-badge::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .readiness-badge.ready {
+    background: var(--green-50);
+    color: var(--green-700);
+    border: 1px solid var(--green-100);
+  }
+  .readiness-badge.ready::before { background: var(--green-500); }
+  .readiness-badge.not-ready {
+    background: var(--panel);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .readiness-badge.not-ready::before { background: var(--text-disabled); }
+
+  /* Meta rows */
+  .meta-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    font-size: 13px;
+    margin-bottom: var(--space-2);
+  }
+  .meta-row:last-child { margin-bottom: 0; }
+  .meta-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    min-width: 120px;
+    font-size: 12px;
+  }
+  .meta-value { color: var(--text-primary); font-weight: 500; }
+  .meta-value.mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Build CTA */
+  .build-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-4) var(--space-5);
+    background: var(--cyan-50);
+    border: 1px solid rgba(6,182,212,0.15);
+    border-radius: var(--radius);
+    margin-bottom: var(--space-4);
+  }
+  .build-cta-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 20px;
+    margin-right: var(--space-4);
+  }
+  .build-cta-text strong { color: var(--text-primary); }
+
+  .btn-build {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--surface);
+    background: var(--cyan-500);
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .btn-build:hover { opacity: 0.9; }
+  .btn-build svg { width: 16px; height: 16px; }
+
+  /* Lifecycle stepper */
+  .lifecycle-stepper {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--space-6) var(--space-8);
+  }
+
+  .lifecycle-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 100px;
+  }
+
+  .lifecycle-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text-disabled);
+    transition: all 0.3s ease;
+  }
+  .lifecycle-circle.reached {
+    background: var(--green-50);
+    border-color: var(--green-500);
+    color: var(--green-700);
+  }
+  .lifecycle-circle.active {
+    background: var(--cyan-50);
+    border-color: var(--cyan-500);
+    color: var(--cyan-800);
+    animation: pulse-circle 2s ease-in-out infinite;
+  }
+  .lifecycle-circle.pending {
+    background: var(--panel);
+    border-color: var(--border);
+    color: var(--text-disabled);
+  }
+  .lifecycle-circle svg { width: 20px; height: 20px; }
+
+  @keyframes pulse-circle {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(6,182,212,0.3); }
+    50% { box-shadow: 0 0 0 6px rgba(6,182,212,0); }
+  }
+
+  .lifecycle-label {
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    text-align: center;
+  }
+  .lifecycle-label.reached { color: var(--green-700); }
+  .lifecycle-label.active { color: var(--cyan-800); }
+  .lifecycle-label.pending { color: var(--text-disabled); }
+
+  .lifecycle-timestamp {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    min-height: 14px;
+  }
+
+  .lifecycle-connector {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    min-width: 40px;
+    margin-top: 20px;
+  }
+  .lifecycle-line {
+    height: 2px;
+    width: 100%;
+    background: var(--border);
+    border-radius: 1px;
+  }
+  .lifecycle-line.reached { background: var(--green-500); }
+
+  .batch-note {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: var(--space-2);
+  }
+
+  /* Routing row */
+  .routing-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .routing-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .routing-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .routing-badge.allowed {
+    background: var(--green-50);
+    color: var(--green-700);
+    border: 1px solid var(--green-100);
+  }
+  .routing-badge.allowed::before { background: var(--green-500); }
+  .routing-badge.review-required {
+    background: var(--orange-50);
+    color: var(--orange-700);
+    border: 1px solid var(--orange-100);
+  }
+  .routing-badge.review-required::before { background: var(--orange-500); }
+
+  .routing-reason {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 16px;
+  }
+
+  /* Certificate record */
+  .cert-meta-grid {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 8px 16px;
+    font-size: 13px;
+  }
+  .cert-meta-grid dt {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .cert-meta-grid dd {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-primary);
+    word-break: break-all;
+  }
+
+  /* Review required banner */
+  .review-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: var(--amber-50);
+    border: 1px solid var(--amber-100);
+    border-radius: var(--radius);
+    margin-bottom: var(--space-4);
+  }
+  .review-banner svg { width: 16px; height: 16px; color: var(--amber-500); flex-shrink: 0; }
+  .review-banner span { font-size: 12px; color: var(--amber-700); }
+
+  /* State wrappers */
+  .state-wrapper {
+    max-width: 720px;
+    margin: 0 auto var(--space-8);
+    padding-bottom: var(--space-8);
+    border-bottom: 1px solid var(--border);
+  }
+  .state-wrapper:last-child { border-bottom: none; }
+
+  .state-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-2);
+    border-bottom: 2px solid var(--cyan-500);
+    display: inline-block;
+  }
+
+  /* SVG icons inline */
+  .icon-check { color: var(--green-700); }
+  .icon-clock { color: var(--cyan-800); }
+  .icon-circle { color: var(--text-disabled); }
+  .icon-shield { color: var(--surface); }
+</style>
+</head>
+<body>
+
+<div class="page-title">Readiness & Certificate Lifecycle</div>
+<div class="page-subtitle">
+  Design reference for the Readiness tab within Investigation detail.
+  Shows 6 representative states. Toggle cycles visibility.
+  Lifecycle: READY → ANCHORED (00:00 UTC batch) → ISSUED.
+</div>
+
+<!-- SVG templates -->
+<svg style="display:none">
+  <symbol id="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></symbol>
+  <symbol id="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></symbol>
+  <symbol id="alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+</svg>
+
+
+<!-- ═══════════════════════════════════════ -->
+<!-- STATE 1: NOT READY -->
+<!-- ═══════════════════════════════════════ -->
+<div class="state-wrapper" id="state-not-ready">
+  <div class="state-label">State 1: Not Ready — Stop Condition Not Met</div>
+
+  <!-- Readiness section -->
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-title">Stop Condition Readiness</span>
+      <span class="section-meta">evaluated 2026-03-07 10:15:22</span>
+    </div>
+    <div class="section-body">
+      <div class="readiness-badge not-ready">NOT_READY</div>
+      <div class="meta-row"><span class="meta-label">Stop Condition</span><span class="meta-value">Evidence Threshold</span></div>
+      <div class="meta-row"><span class="meta-label">Detail</span><span class="meta-value">Evidence threshold not met: 12/15 public primary items collected, 4/5 claims SUPPORTED</span></div>
+      <div class="meta-row"><span class="meta-label">Last Evaluated</span><span class="meta-value mono">2026-03-07 10:15:22</span></div>
+    </div>
+  </div>
+
+  <!-- Lifecycle — all pending -->
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-title">Certificate Lifecycle</span>
+      <span class="section-awaiting">Awaiting readiness</span>
+    </div>
+    <div style="padding:0">
+      <div class="lifecycle-stepper">
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle pending"><svg class="icon-circle"><use href="#circle"/></svg></div>
+          <div class="lifecycle-label pending">READY</div>
+          <div class="lifecycle-timestamp">&mdash;</div>
+        </div>
+        <div class="lifecycle-connector"><div class="lifecycle-line"></div></div>
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle pending"><svg class="icon-circle"><use href="#circle"/></svg></div>
+          <div class="lifecycle-label pending">ANCHORED</div>
+          <div class="lifecycle-timestamp">&mdash;</div>
+        </div>
+        <div class="lifecycle-connector"><div class="lifecycle-line"></div></div>
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle pending"><svg class="icon-circle"><use href="#circle"/></svg></div>
+          <div class="lifecycle-label pending">ISSUED</div>
+          <div class="lifecycle-timestamp">&mdash;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════ -->
+<!-- STATE 2: READY, NO CERTIFICATE -->
+<!-- ═══════════════════════════════════════ -->
+<div class="state-wrapper" id="state-ready-no-cert">
+  <div class="state-label">State 2: Ready — No Certificate Built</div>
+
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-title">Stop Condition Readiness</span>
+      <span class="section-meta">evaluated 2026-03-07 14:32:08</span>
+    </div>
+    <div class="section-body">
+      <div class="readiness-badge ready">READY</div>
+      <div class="meta-row"><span class="meta-label">Stop Condition</span><span class="meta-value">Evidence Threshold</span></div>
+      <div class="meta-row"><span class="meta-label">Detail</span><span class="meta-value">Evidence threshold met: 18 public primary items collected, 6 claims SUPPORTED</span></div>
+      <div class="meta-row"><span class="meta-label">Last Evaluated</span><span class="meta-value mono">2026-03-07 14:32:08</span></div>
+    </div>
+  </div>
+
+  <!-- Build CTA -->
+  <div class="build-cta">
+    <div class="build-cta-text"><strong>Stop condition met.</strong> This investigation is ready for certificate issuance. The certificate will be queued for the next 00:00 UTC batch-anchor cycle.</div>
+    <button class="btn-build"><svg><use href="#shield"/></svg> Build Certificate</button>
+  </div>
+
+  <!-- Lifecycle — all pending (no cert yet) -->
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-title">Certificate Lifecycle</span>
+      <span class="section-awaiting">Awaiting build</span>
+    </div>
+    <div style="padding:0">
+      <div class="lifecycle-stepper">
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle pending"><svg class="icon-circle"><use href="#circle"/></svg></div>
+          <div class="lifecycle-label pending">READY</div>
+          <div class="lifecycle-timestamp">&mdash;</div>
+        </div>
+        <div class="lifecycle-connector"><div class="lifecycle-line"></div></div>
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle pending"><svg class="icon-circle"><use href="#circle"/></svg></div>
+          <div class="lifecycle-label pending">ANCHORED</div>
+          <div class="lifecycle-timestamp">&mdash;</div>
+        </div>
+        <div class="lifecycle-connector"><div class="lifecycle-line"></div></div>
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle pending"><svg class="icon-circle"><use href="#circle"/></svg></div>
+          <div class="lifecycle-label pending">ISSUED</div>
+          <div class="lifecycle-timestamp">&mdash;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════ -->
+<!-- STATE 3: READY, CERTIFICATE BUILT -->
+<!-- ═══════════════════════════════════════ -->
+<div class="state-wrapper" id="state-cert-ready">
+  <div class="state-label">State 3: Certificate Built — READY (Awaiting Batch Anchor)</div>
+
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-title">Stop Condition Readiness</span>
+      <span class="section-meta">evaluated 2026-03-07 14:32:08</span>
+    </div>
+    <div class="section-body">
+      <div class="readiness-badge ready">READY</div>
+      <div class="meta-row"><span class="meta-label">Stop Condition</span><span class="meta-value">Evidence Threshold</span></div>
+      <div class="meta-row"><span class="meta-label">Detail</span><span class="meta-value">Evidence threshold met: 18 public primary items collected, 6 claims SUPPORTED</span></div>
+      <div class="meta-row"><span class="meta-label">Last Evaluated</span><span class="meta-value mono">2026-03-07 14:32:08</span></div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-title">Certificate Lifecycle</span>
+      <span class="section-cert-id">CERT-00291</span>
+    </div>
+    <div style="padding:0">
+      <div class="lifecycle-stepper">
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle reached"><svg class="icon-check"><use href="#check"/></svg></div>
+          <div class="lifecycle-label reached">READY</div>
+          <div class="lifecycle-timestamp">2026-03-07 14:32:08</div>
+        </div>
+        <div class="lifecycle-connector"><div class="lifecycle-line"></div></div>
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle active"><svg class="icon-clock"><use href="#clock"/></svg></div>
+          <div class="lifecycle-label active">ANCHORED</div>
+          <div class="lifecycle-timestamp">&mdash;</div>
+        </div>
+        <div class="lifecycle-connector"><div class="lifecycle-line"></div></div>
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle pending"><svg class="icon-circle"><use href="#circle"/></svg></div>
+          <div class="lifecycle-label pending">ISSUED</div>
+          <div class="lifecycle-timestamp">&mdash;</div>
+        </div>
+      </div>
+      <div class="batch-note">Queued for next 00:00 UTC batch-anchor cycle</div>
+    </div>
+    <div class="routing-row">
+      <span class="routing-badge allowed">ALLOWED</span>
+      <span class="routing-reason">All governance checks passed. Evidence chain verified.</span>
+    </div>
+  </div>
+
+  <!-- Certificate record -->
+  <div class="section-card">
+    <div class="section-header"><span class="section-title">Certificate Record</span></div>
+    <div class="section-body">
+      <dl class="cert-meta-grid">
+        <dt>Certificate ID</dt><dd>CERT-00291</dd>
+        <dt>Status</dt><dd>READY</dd>
+        <dt>Hash</dt><dd>sha256:7a3f9b2c...e4d1f08a</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════ -->
+<!-- STATE 4: ISSUED -->
+<!-- ═══════════════════════════════════════ -->
+<div class="state-wrapper" id="state-issued">
+  <div class="state-label">State 4: Issued — Terminal State (ANCHORED collapses into same batch)</div>
+
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-title">Stop Condition Readiness</span>
+      <span class="section-meta">evaluated 2026-03-07 14:32:08</span>
+    </div>
+    <div class="section-body">
+      <div class="readiness-badge ready">READY</div>
+      <div class="meta-row"><span class="meta-label">Stop Condition</span><span class="meta-value">Evidence Threshold</span></div>
+      <div class="meta-row"><span class="meta-label">Detail</span><span class="meta-value">Evidence threshold met: 18 public primary items collected, 6 claims SUPPORTED</span></div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-title">Certificate Lifecycle</span>
+      <span class="section-cert-id">CERT-00291</span>
+    </div>
+    <div style="padding:0">
+      <div class="lifecycle-stepper">
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle reached"><svg class="icon-check"><use href="#check"/></svg></div>
+          <div class="lifecycle-label reached">READY</div>
+          <div class="lifecycle-timestamp">2026-03-07 14:32:08</div>
+        </div>
+        <div class="lifecycle-connector"><div class="lifecycle-line reached"></div></div>
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle reached"><svg class="icon-check"><use href="#check"/></svg></div>
+          <div class="lifecycle-label reached">ANCHORED</div>
+          <div class="lifecycle-timestamp">2026-03-08 00:00:00</div>
+        </div>
+        <div class="lifecycle-connector"><div class="lifecycle-line reached"></div></div>
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle reached"><svg class="icon-check"><use href="#check"/></svg></div>
+          <div class="lifecycle-label reached">ISSUED</div>
+          <div class="lifecycle-timestamp">2026-03-08 00:00:00</div>
+        </div>
+      </div>
+    </div>
+    <div class="routing-row">
+      <span class="routing-badge allowed">ALLOWED</span>
+      <span class="routing-reason">All governance checks passed. Evidence chain verified.</span>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header"><span class="section-title">Certificate Record</span></div>
+    <div class="section-body">
+      <dl class="cert-meta-grid">
+        <dt>Certificate ID</dt><dd>CERT-00291</dd>
+        <dt>Status</dt><dd>ISSUED</dd>
+        <dt>Hash</dt><dd>sha256:7a3f9b2c...e4d1f08a</dd>
+        <dt>Anchor Hash</dt><dd>0xba7c3f...91d2e4</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════ -->
+<!-- STATE 5: REVIEW REQUIRED -->
+<!-- ═══════════════════════════════════════ -->
+<div class="state-wrapper" id="state-review">
+  <div class="state-label">State 5: Review Required — Routing Recorded, Does Not Block Anchoring</div>
+
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-title">Stop Condition Readiness</span>
+      <span class="section-meta">evaluated 2026-03-07 14:32:08</span>
+    </div>
+    <div class="section-body">
+      <div class="readiness-badge ready">READY</div>
+      <div class="meta-row"><span class="meta-label">Stop Condition</span><span class="meta-value">Evidence Threshold</span></div>
+      <div class="meta-row"><span class="meta-label">Detail</span><span class="meta-value">Evidence threshold met: 18 public primary items collected, 6 claims SUPPORTED</span></div>
+    </div>
+  </div>
+
+  <!-- Review required banner -->
+  <div class="review-banner">
+    <svg><use href="#alert"/></svg>
+    <span>Routing decision: REVIEW_REQUIRED — coherence gate evaluation triggered. Batch-anchor progression is not blocked by routing decision in the current implementation.</span>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header">
+      <span class="section-title">Certificate Lifecycle</span>
+      <span class="section-cert-id">CERT-00291</span>
+    </div>
+    <div style="padding:0">
+      <div class="lifecycle-stepper">
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle reached"><svg class="icon-check"><use href="#check"/></svg></div>
+          <div class="lifecycle-label reached">READY</div>
+          <div class="lifecycle-timestamp">2026-03-07 14:32:08</div>
+        </div>
+        <div class="lifecycle-connector"><div class="lifecycle-line"></div></div>
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle active"><svg class="icon-clock"><use href="#clock"/></svg></div>
+          <div class="lifecycle-label active">ANCHORED</div>
+          <div class="lifecycle-timestamp">&mdash;</div>
+        </div>
+        <div class="lifecycle-connector"><div class="lifecycle-line"></div></div>
+        <div class="lifecycle-step">
+          <div class="lifecycle-circle pending"><svg class="icon-circle"><use href="#circle"/></svg></div>
+          <div class="lifecycle-label pending">ISSUED</div>
+          <div class="lifecycle-timestamp">&mdash;</div>
+        </div>
+      </div>
+    </div>
+    <div class="routing-row">
+      <span class="routing-badge review-required">REVIEW REQUIRED</span>
+      <span class="routing-reason">Material drift detected. Coherence review required before batch-anchor eligibility.</span>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-header"><span class="section-title">Certificate Record</span></div>
+    <div class="section-body">
+      <dl class="cert-meta-grid">
+        <dt>Certificate ID</dt><dd>CERT-00291</dd>
+        <dt>Status</dt><dd>READY</dd>
+        <dt>Hash</dt><dd>sha256:7a3f9b2c...e4d1f08a</dd>
+      </dl>
+    </div>
+  </div>
+</div>
+
+
+<!-- State toggle -->
+<button class="state-toggle" onclick="cycleVisibility()">
+  <span class="state-toggle-dot" id="toggle-dot"></span>
+  <span id="toggle-label">Showing: all states</span>
+</button>
+
+<script>
+const VIEWS = [
+  { label: 'all states', ids: ['state-not-ready','state-ready-no-cert','state-cert-ready','state-issued','state-review'] },
+  { label: 'not ready', ids: ['state-not-ready'] },
+  { label: 'ready (no cert)', ids: ['state-ready-no-cert'] },
+  { label: 'cert READY', ids: ['state-cert-ready'] },
+  { label: 'issued', ids: ['state-issued'] },
+  { label: 'review required', ids: ['state-review'] },
+];
+let viewIdx = 0;
+
+function cycleVisibility() {
+  viewIdx = (viewIdx + 1) % VIEWS.length;
+  const view = VIEWS[viewIdx];
+  document.querySelectorAll('.state-wrapper').forEach(el => {
+    el.style.display = view.ids.includes(el.id) ? 'block' : 'none';
+  });
+  document.getElementById('toggle-label').textContent = 'Showing: ' + view.label;
+  const colors = ['#22c55e','#71717a','#06b6d4','#9333ea','#22c55e','#ef4444'];
+  document.getElementById('toggle-dot').style.background = colors[viewIdx];
+}
+</script>
+
+</body>
+</html>

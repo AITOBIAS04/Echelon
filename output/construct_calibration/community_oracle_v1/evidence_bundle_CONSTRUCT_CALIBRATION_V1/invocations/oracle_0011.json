@@ -1,0 +1,41 @@
+{
+  "request": {
+    "episode_id": "oracle_0011",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "pr_diff": "diff --git a/src/utils/retry.py\n+ from functools import wraps\n+ import asyncio\n+ \n+ def with_retry(max_attempts=3, backoff=1.0):\n+     def decorator(fn):\n+         @wraps(fn)\n+         async def wrapper(*args, **kwargs):\n+             for attempt in range(max_attempts):\n+                 try:\n+                     return await fn(*args, **kwargs)\n+                 except Exception:\n+                     if attempt == max_attempts - 1:\n+                         raise\n+                     await asyncio.sleep(backoff * (2 ** attempt))\n+         return wrapper\n+     return decorator",
+      "construct_summary": "Adds a with_retry decorator for async functions. Supports configurable max attempts and exponential backoff. Reraises the last exception after all attempts are exhausted.",
+      "followup_qa": [
+        {
+          "question": "Is it async-only?",
+          "answer": "Yes, the wrapper is an async function that uses await."
+        },
+        {
+          "question": "What's the backoff strategy?",
+          "answer": "Exponential: backoff * 2^attempt, so 1s, 2s, 4s by default."
+        },
+        {
+          "question": "Can we filter exception types?",
+          "answer": "Not currently. All exceptions trigger retry. Could add an exceptions parameter."
+        },
+        {
+          "question": "Is jitter included?",
+          "answer": "No jitter. Consider adding random jitter to prevent thundering herd."
+        },
+        {
+          "question": "Thread-safe?",
+          "answer": "Yes, each invocation creates its own attempt counter."
+        }
+      ],
+      "episode_id": "oracle_0011"
+    },
+    "scores": {
+      "precision": 0.8,
+      "recall": 0.5,
+      "reply_accuracy": 0.8
+    },
+    "composite": 0.68
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "request": {
+    "episode_id": "PR-25",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "summary": "Site-wide visual overhaul implementing a 4-tier elevation system, typography ladder, shadow tokens, chart standardization with shared color constants, Launchpad redesign with hero banner and premium treatments, and layout improvements including sidebar active states and page transitions.",
+      "key_claims": [
+        "Added 4-tier opaque surface elevation system: bg < panel < card < elevated with corresponding CSS classes",
+        "Created CHART constants object with BID/ASK/CYAN/BLUE/GRID/LABEL color values for SVG contexts",
+        "Standardized all 5 chart components (DepthChart, VolumeProfile, Heatmap, PriceChart, OrderBook) to use shared CHART constants",
+        "Unified candle-down color to #EF4444 across charts and added tabular-nums class to number spans",
+        "Implemented typography ladder with .page-title, .section-title, .data-label, .data-value classes",
+        "Added shadow tokens (elevation-1/2/3, glow-cyan/blue) and micro-interactions (.hover-lift, .press-down)",
+        "Redesigned Sidebar with left-bar cyan accent for active states, replacing dot indicators",
+        "Added brand lockup with gradient glow and section separators in Sidebar",
+        "Implemented page transition animation on route change in AppLayout with .page-enter class",
+        "Redesigned Launchpad with hero banner featuring gradient background, pulsing status dot, and live metrics",
+        "Added premium treatment to LaunchCardMini with top-edge gradient, hover scale+shadow, and gradient quality bar",
+        "Upgraded .btn component with focus-visible ring and active scale transform",
+        "Migrated RLMF tabs from hardcoded hex values to design system tokens",
+        "Added staggered card entrance animation with 40ms delay increments"
+      ],
+      "follow_up_question": "What color value did the `candle-down` color get unified to in the chart standardization, replacing the previous `#FB7185`?",
+      "follow_up_response": "Based on the diff content, the `candle-down` color was unified to `#EF4444`, replacing the previous `#FB7185`.\n\nThis can be seen in the PriceChart.tsx file where the color assignment was changed from:\n```typescript\nconst color = isUp ? '#4ADE80' : '#FB7185';\n```\n\nto:\n```typescript\nconst color = isUp ? CHART.BID : CHART.ASK;\n```\n\nAnd in the constants/colors.ts file, `CHART.ASK` is defined as `'#EF4444'` with the comment indicating it corresponds to `echelon-red`.",
+      "episode_id": "PR-25",
+      "metadata": {
+        "model": "claude-sonnet-4-20250514",
+        "latency_ms": 17719
+      }
+    },
+    "scores": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "reply_accuracy": 1.0
+    },
+    "composite": 1.0
+  }
+}

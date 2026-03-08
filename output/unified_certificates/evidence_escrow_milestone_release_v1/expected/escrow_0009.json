@@ -1,0 +1,16 @@
+{
+  "criteria_verdicts": {
+    "idempotency": true,
+    "release_amount_correct": true,
+    "required_evidence_present": true,
+    "signature_policy_satisfied": true,
+    "validity_window_respected": false
+  },
+  "release_instruction": {
+    "evidence_submitted_at": "2026-03-15T10:00:00Z",
+    "milestone_id": "ms_009_foundation_complete",
+    "rejection_reason": "VALIDITY_WINDOW_EXPIRED",
+    "release_allowed": false,
+    "window_closed_at": "2026-02-01T00:00:00Z"
+  }
+}

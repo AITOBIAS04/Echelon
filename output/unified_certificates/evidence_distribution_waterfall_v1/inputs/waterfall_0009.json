@@ -1,0 +1,46 @@
+{
+  "cap_table_snapshot": {
+    "distribution_per_token": 0.0072,
+    "token_class": "rail1_income_units",
+    "token_supply": 100000
+  },
+  "noi_report": {
+    "allocations": [
+      {
+        "amount": 720.0,
+        "bucket": "distributions"
+      },
+      {
+        "amount": 30.0,
+        "bucket": "platform_fee"
+      },
+      {
+        "amount": 150.0,
+        "bucket": "ladder_credit"
+      }
+    ],
+    "noi_pool": 900.0,
+    "period_end": "2026-10-28"
+  },
+  "payment": {
+    "currency": "GBP",
+    "gross_amount": 1500.0,
+    "payment_id": "pay_0009",
+    "settlement_reference": "BANKREF-pay_0009",
+    "splits": [
+      {
+        "amount": 600.0,
+        "bucket": "operating_costs"
+      },
+      {
+        "amount": 900.0,
+        "bucket": "noi_pool"
+      }
+    ]
+  },
+  "rounding_policy": {
+    "currency": "GBP",
+    "mode": "half_up",
+    "precision": 2
+  }
+}

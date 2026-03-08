@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Signal Map</title>
+<!--
+  ═══════════════════════════════════════════════════════════
+  MOCK DATA ANNOTATIONS — for engineering team, not UI
+  ═══════════════════════════════════════════════════════════
+  Data sources pending endpoint confirmation:
+  - Signal graph (GET /api/v1/signals/graph?depth=2)
+  - Cluster aggregates (GET /api/v1/signals/clusters)
+  - Node detail (GET /api/v1/signals/nodes/:id)
+  - Linked entities resolved via entity IDs
+
+  NODE TYPES:
+  - source   (circle, neutral)
+  - claim    (diamond, neutral)
+  - event    (square, neutral)
+  - investigation (hexagon, orange tint)
+  - theatre  (pentagon, purple tint)
+
+  EDGE TYPES:
+  - supports    (solid, thin, neutral)
+  - contradicts (dashed, red, thicker)
+  - references  (dotted, subtle)
+  - linked_to   (solid, purple — entity connections)
+
+  PAGE STATE MACHINE (4 mutually exclusive states):
+  quiet         → sparse graph, few clusters
+  active        → medium density, multiple clusters
+  contradictions → contradiction edges highlighted, tension visible
+  focused       → single cluster isolated, detail panel open
+
+  GRAPH DENSITY SCALING:
+  Sparse (5-15 nodes):  labels visible, edges clear
+  Medium (30-60 nodes): cluster labels only, node labels on hover
+  Dense (100+ nodes):   clusters as primary unit, zoom to see nodes
+
+  All elements derive from the same pageState variable.
+  ═══════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;--duration-slow:300ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.nav-badge.warn{background:oklch(0.540 0.150 85/0.10);color:oklch(0.430 0.130 85);border:1px solid oklch(0.540 0.150 85/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══ MAIN ═══ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-5)}
+.page-header-left{display:flex;flex-direction:column;gap:2px}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:2px}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700}
+.page-header-right{display:flex;align-items:center;gap:var(--space-2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-ghost:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.btn-sm{height:28px;padding:0 var(--space-3);font-size:11px;border-radius:var(--radius-sm)}
+.filter-select{height:36px;padding:0 28px 0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 3.75l2.5 2.5 2.5-2.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+
+/* ═══ KPI STRIP ═══ */
+.sm-summary{display:flex;gap:var(--space-3);margin-bottom:var(--space-4)}
+.sm-kpi{flex:1;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:2px}
+.sm-kpi-top{display:flex;align-items:center;justify-content:space-between}
+.sm-kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);line-height:16px}
+.sm-kpi-window{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-disabled);background:var(--bg-sunken);padding:1px 5px;border-radius:3px;border:1px solid var(--border-secondary)}
+.sm-kpi-value{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:32px;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.sm-kpi-value.danger{color:var(--status-danger)}.sm-kpi-value.warning{color:oklch(0.430 0.130 85)}.sm-kpi-value.zero{color:var(--text-disabled)}
+.sm-kpi-delta{font-family:var(--font-mono);font-size:11px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--text-muted)}
+.sm-kpi.kpi-alert{border-color:oklch(0.545 0.185 25/0.25);background:var(--red-50)}
+
+/* ═══ GRAPH + DETAIL LAYOUT ═══ */
+.sm-graph-layout{display:grid;grid-template-columns:1fr 340px;gap:var(--space-4);align-items:start}
+.sm-graph-layout.no-detail{grid-template-columns:1fr}
+
+/* ═══ GRAPH CONTAINER ═══ */
+.graph-container{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-lg);box-shadow:var(--shadow-xs);overflow:hidden;position:relative}
+.graph-toolbar{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-5);border-bottom:1px solid var(--border-secondary)}
+.graph-toolbar-left{display:flex;align-items:center;gap:var(--space-3)}
+.graph-toolbar-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.graph-toolbar-right{display:flex;align-items:center;gap:var(--space-2)}
+
+/* Legend */
+.graph-legend{display:flex;align-items:center;gap:var(--space-4);padding:0 var(--space-5) var(--space-2);border-bottom:1px solid var(--border-secondary)}
+.legend-section{display:flex;align-items:center;gap:var(--space-3)}
+.legend-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-disabled);margin-right:var(--space-1)}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:500;color:var(--text-muted)}
+.legend-node{width:10px;height:10px;border:1.5px solid;display:inline-flex;align-items:center;justify-content:center}
+.legend-node.source{border-radius:var(--radius-full);border-color:var(--text-muted);background:oklch(0.590 0.008 265/0.2)}
+.legend-node.claim{border-radius:1px;border-color:var(--status-info);background:oklch(0.525 0.155 260/0.15);transform:rotate(45deg)}
+.legend-node.event{border-radius:2px;border-color:var(--text-secondary);background:oklch(0.440 0.010 265/0.15)}
+.legend-node.investigation{border-radius:2px;border-color:var(--orange-600);background:oklch(0.610 0.185 62/0.15)}
+.legend-node.theatre{border-radius:2px;border-color:var(--purple-500);background:oklch(0.530 0.230 295/0.15)}
+.legend-edge{width:20px;height:0;display:inline-block;margin-right:2px}
+.legend-edge.supports{border-top:1.5px solid var(--border-primary)}
+.legend-edge.contradicts{border-top:2px dashed var(--status-danger)}
+.legend-edge.references{border-top:1px dotted var(--text-disabled)}
+
+/* SVG area */
+.graph-svg-wrap{position:relative;width:100%;height:520px}
+.graph-svg-wrap svg{width:100%;height:100%}
+
+/* Cluster hulls */
+.cluster-hull{fill-opacity:0.04;stroke-width:1.5;stroke-dasharray:none;cursor:pointer;transition:fill-opacity var(--duration-normal) ease}
+.cluster-hull:hover{fill-opacity:0.08}
+.cluster-hull.selected{fill-opacity:0.10;stroke-width:2}
+.cluster-label{font-family:var(--font-sans);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;fill:var(--text-muted)}
+.cluster-count{font-family:var(--font-mono);font-size:9px;font-weight:500;fill:var(--text-disabled)}
+
+/* Graph nodes */
+.g-node{cursor:pointer;transition:transform var(--duration-fast) ease}
+.g-node:hover{transform:scale(1.2)}
+.g-node.selected{transform:scale(1.3)}
+.g-node-shape{stroke-width:1.5;transition:stroke-width var(--duration-fast) ease}
+.g-node.selected .g-node-shape{stroke-width:2.5}
+.g-node-label{font-family:var(--font-sans);font-size:9px;font-weight:600;fill:var(--text-secondary);text-anchor:middle}
+.g-node.stale .g-node-shape{opacity:0.45}
+
+/* Node type colors */
+.node-source{fill:oklch(0.920 0.004 265);stroke:var(--text-muted)}
+.node-claim{fill:oklch(0.945 0.020 260);stroke:var(--status-info)}
+.node-event{fill:oklch(0.930 0.006 265);stroke:var(--text-secondary)}
+.node-investigation{fill:oklch(0.950 0.025 62);stroke:var(--orange-600)}
+.node-theatre{fill:oklch(0.955 0.022 295);stroke:var(--purple-500)}
+.node-selected{stroke:var(--purple-500)!important;stroke-width:2.5}
+
+/* Edges */
+.g-edge{fill:none}
+.g-edge.supports{stroke:var(--border-primary);stroke-width:1}
+.g-edge.contradicts{stroke:var(--status-danger);stroke-width:1.5;stroke-dasharray:5 3;opacity:0.7}
+.g-edge.references{stroke:var(--text-disabled);stroke-width:0.7;stroke-dasharray:2 2}
+.g-edge.linked{stroke:var(--purple-300);stroke-width:1;opacity:0.5}
+.g-edge.highlighted{opacity:1;stroke-width:2}
+.g-edge.dimmed{opacity:0.15}
+
+/* Contradiction tension glow between clusters */
+.tension-zone{fill:oklch(0.545 0.185 25/0.04);stroke:oklch(0.545 0.185 25/0.15);stroke-width:1;stroke-dasharray:4 4}
+
+/* Focus overlay — dims non-focused elements */
+.graph-svg-wrap.focused .g-node:not(.in-focus){opacity:0.15}
+.graph-svg-wrap.focused .g-edge:not(.in-focus){opacity:0.08}
+.graph-svg-wrap.focused .cluster-hull:not(.selected){opacity:0.1}
+
+/* ═══ DETAIL PANEL ═══ */
+.detail-panel{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);position:sticky;top:calc(var(--header-height) + var(--space-6))}
+.detail-panel-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-secondary)}
+.detail-panel-header-left{display:flex;flex-direction:column;gap:2px;min-width:0}
+.detail-panel-title{font-size:15px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-panel-type{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:1px 6px;border-radius:3px}
+.detail-panel-type.source{color:var(--text-secondary);background:var(--bg-sunken)}
+.detail-panel-type.claim{color:var(--status-info);background:oklch(0.525 0.155 260/0.08)}
+.detail-panel-type.event{color:var(--text-secondary);background:var(--bg-sunken)}
+.detail-panel-type.investigation{color:var(--orange-700);background:var(--orange-50)}
+.detail-panel-type.theatre{color:var(--purple-700);background:var(--purple-50)}
+.detail-panel-type.cluster{color:var(--text-primary);background:var(--bg-active)}
+.detail-close{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.detail-close:hover{background:var(--bg-hover);color:var(--text-primary)}
+.detail-panel-body{padding:var(--space-4) var(--space-5)}
+.detail-section{margin-bottom:var(--space-4)}
+.detail-section:last-child{margin-bottom:0}
+.detail-section-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-2)}
+
+/* Detail stats row */
+.detail-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-3);margin-bottom:var(--space-3)}
+.detail-stat{display:flex;flex-direction:column;gap:1px}
+.detail-stat-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted)}
+.detail-stat-value{font-family:var(--font-mono);font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.detail-stat-value.danger{color:var(--status-danger)}
+.detail-stat-value.warn{color:oklch(0.430 0.130 85)}
+.detail-stat-value.success{color:var(--green-600)}
+
+/* Support/contradiction balance bar */
+.balance-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin-top:var(--space-1)}
+.balance-supports{background:var(--green-400);height:100%}
+.balance-contradicts{background:var(--status-danger);height:100%}
+.balance-labels{display:flex;justify-content:space-between;margin-top:2px}
+.balance-label{font-size:9px;font-weight:600;color:var(--text-muted)}
+.balance-label.green{color:var(--green-600)}
+.balance-label.red{color:var(--status-danger)}
+
+/* Entity links in detail */
+.detail-entity{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border-secondary)}
+.detail-entity:last-child{border-bottom:none}
+.detail-entity-left{display:flex;align-items:center;gap:var(--space-2);min-width:0}
+.detail-entity-chip{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;white-space:nowrap}
+.detail-entity-chip.theatre{color:var(--purple-700);background:var(--purple-50);border:1px solid oklch(0.530 0.230 295/0.12)}
+.detail-entity-chip.investigation{color:var(--orange-700);background:var(--orange-50);border:1px solid oklch(0.610 0.185 62/0.12)}
+.detail-entity-name{font-size:12px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.detail-entity-action{font-size:11px;font-weight:600;color:var(--purple-700);cursor:pointer;white-space:nowrap;padding:2px 6px;border-radius:var(--radius-sm)}
+.detail-entity-action:hover{color:var(--purple-500);background:var(--purple-50)}
+
+/* Contradiction detail */
+.contradiction-item{padding:6px 0;border-bottom:1px solid var(--border-secondary)}
+.contradiction-item:last-child{border-bottom:none}
+.contradiction-top{display:flex;align-items:center;gap:var(--space-2);margin-bottom:2px}
+.contradiction-badge{font-size:9px;font-weight:700;text-transform:uppercase;color:var(--status-danger);background:oklch(0.545 0.185 25/0.08);padding:1px 4px;border-radius:3px;letter-spacing:0.03em}
+.contradiction-source{font-size:11px;font-weight:600;color:var(--text-primary)}
+.contradiction-desc{font-size:11px;color:var(--text-muted);line-height:16px}
+
+/* Connected nodes list */
+.connected-node{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-secondary)}
+.connected-node:last-child{border-bottom:none}
+.connected-node-left{display:flex;align-items:center;gap:6px;min-width:0}
+.connected-node-dot{width:6px;height:6px;border-radius:var(--radius-full);flex-shrink:0}
+.connected-node-dot.source{background:var(--text-muted)}
+.connected-node-dot.claim{background:var(--status-info)}
+.connected-node-dot.event{background:var(--text-secondary)}
+.connected-node-name{font-size:11px;font-weight:500;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.connected-node-edge{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em}
+.connected-node-edge.supports{color:var(--green-600)}
+.connected-node-edge.contradicts{color:var(--status-danger)}
+
+/* ═══ RIGHT RAIL (below detail on scroll) ═══ */
+.rail-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);margin-bottom:var(--space-3)}
+.rail-card-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-secondary)}
+.rail-card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.rail-card-body{padding:var(--space-3) var(--space-4)}
+.rail-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-secondary)}
+.rail-row:last-child{border-bottom:none}
+.rail-row-label{font-size:12px;font-weight:500;color:var(--text-secondary)}
+.rail-row-value{font-family:var(--font-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.rail-row-value.danger{color:var(--status-danger)}
+
+/* ═══ STATE TOGGLE ═══ */
+.state-toggle{position:fixed;bottom:var(--space-6);right:var(--space-6);z-index:100;display:flex;align-items:center;gap:var(--space-2);background:var(--bg-elevated);border:1px solid var(--border-primary);border-radius:var(--radius-full);padding:4px 6px;box-shadow:var(--shadow-md)}
+.state-toggle-btn{height:28px;padding:0 var(--space-3);border:none;background:transparent;font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);border-radius:var(--radius-full);cursor:pointer;white-space:nowrap}
+.state-toggle-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.state-toggle-btn.active-btn{background:var(--purple-500);color:var(--text-inverse)}
+
+@media(prefers-reduced-motion:reduce){*{transition-duration:0s!important;animation-duration:0s!important}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <a class="header-logo" href="#"><div class="header-logo-mark">E</div><span class="header-logo-text">Echelon</span><span class="header-logo-version">v4.2</span></a>
+    <button class="sidebar-toggle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+  </div>
+  <div class="header-center"><div class="header-search"><span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><input type="text" placeholder="Search signals, sources, clusters..."><span class="header-search-kbd">⌘K</span></div></div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span> Mainnet</div>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="header-badge">3</span></button>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
+    <div class="wallet-btn"><div class="wallet-balance"><div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span> 12,847</div><div class="wallet-divider"></div><div class="wallet-balance-item"><span class="wallet-balance-label">ECH</span> 3,291</div></div><div class="wallet-avatar"></div></div>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group"><div class="nav-group-label">Operations</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span class="nav-item-label">Dashboard</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">23</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span class="nav-item-label">Positions</span></a>
+    </div>
+    <div class="nav-group"><div class="nav-group-label">Intelligence</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></span><span class="nav-item-label">WorldMonitor</span></a>
+      <a class="nav-item active" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="nav-item-label">Signal Map</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge count">7</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">2</span></a>
+    </div>
+    <div class="nav-group"><div class="nav-group-label">Fleet</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg></span><span class="nav-item-label">Agents</span><span class="nav-badge live">34</span></a>
+    </div>
+    <div class="nav-group"><div class="nav-group-label">Analytics</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="nav-item-label">Analytics</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span><span class="nav-item-label">RLMF Exports</span></a>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span><span class="nav-item-label">Settings</span></a>
+    <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span class="nav-item-label">Help</span></a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-breadcrumb"><span>Intelligence</span><span class="page-breadcrumb-sep">/</span><span class="page-breadcrumb-current">Signal Map</span></div>
+      <h1 class="page-title">Signal Map</h1>
+    </div>
+    <div class="page-header-right">
+      <select class="filter-select"><option>All Domains</option><option>Macro</option><option>Geopolitics</option><option>Conflict</option><option>Policy</option><option>Tech</option><option>Commodities</option></select>
+      <select class="filter-select"><option>All Sources</option><option>OSINT</option><option>Official</option><option>Agent</option><option>Model</option></select>
+      <select class="filter-select"><option>24h</option><option>7d</option><option>30d</option></select>
+      <button class="btn btn-secondary btn-sm" id="resetBtn" style="display:none" onclick="setPageState(currentState)">Reset View</button>
+    </div>
+  </div>
+
+  <div class="sm-summary" id="kpiStrip"></div>
+
+  <div class="sm-graph-layout" id="graphLayout">
+    <div>
+      <div class="graph-container">
+        <div class="graph-toolbar">
+          <div class="graph-toolbar-left">
+            <span class="graph-toolbar-title" id="graphTitle">Signal Network</span>
+            <span id="graphMeta" style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);font-variant-numeric:tabular-nums"></span>
+          </div>
+          <div class="graph-toolbar-right">
+            <button class="btn btn-ghost btn-sm" onclick="toggleLegend()">Legend</button>
+          </div>
+        </div>
+        <div class="graph-legend" id="graphLegend" style="display:none">
+          <div class="legend-section">
+            <span class="legend-title">Nodes</span>
+            <div class="legend-item"><span class="legend-node source"></span> Source</div>
+            <div class="legend-item"><span class="legend-node claim"></span> Claim</div>
+            <div class="legend-item"><span class="legend-node event"></span> Event</div>
+            <div class="legend-item"><span class="legend-node investigation"></span> Investigation</div>
+            <div class="legend-item"><span class="legend-node theatre"></span> Theatre</div>
+          </div>
+          <div class="legend-section">
+            <span class="legend-title">Edges</span>
+            <div class="legend-item"><span class="legend-edge supports"></span> Supports</div>
+            <div class="legend-item"><span class="legend-edge contradicts"></span> Contradicts</div>
+            <div class="legend-item"><span class="legend-edge references"></span> References</div>
+          </div>
+        </div>
+        <div class="graph-svg-wrap" id="graphWrap"></div>
+      </div>
+    </div>
+    <div id="detailCol"></div>
+  </div>
+</main>
+
+<div class="state-toggle">
+  <button class="state-toggle-btn" onclick="setPageState('quiet')">Quiet</button>
+  <button class="state-toggle-btn active-btn" onclick="setPageState('active')">Active</button>
+  <button class="state-toggle-btn" onclick="setPageState('contradictions')">Contradictions</button>
+  <button class="state-toggle-btn" onclick="setPageState('focused')">Focused</button>
+</div>
+
+<script>
+let currentState = 'active';
+let legendVisible = false;
+
+function toggleLegend() {
+  legendVisible = !legendVisible;
+  document.getElementById('graphLegend').style.display = legendVisible ? 'flex' : 'none';
+}
+
+/* ═══ GRAPH DATA PER STATE ═══ */
+/* Nodes: {id, type, label, x, y, r, cluster, stale, influence} */
+/* Edges: {from, to, type} */
+/* Clusters: {id, label, cx, cy, rx, ry, color, nodes} */
+
+const GRAPHS = {
+  quiet: {
+    kpis: {clusters:2,nodes:9,contradictions:0,investigations:1,theatres:2,edges:'+3',sources:4},
+    nodes: [
+      {id:'s1',type:'source',label:'Reuters',x:150,y:180,r:7,cluster:'c1'},
+      {id:'s2',type:'source',label:'Bloomberg',x:210,y:220,r:6,cluster:'c1'},
+      {id:'cl1',type:'claim',label:'BOJ rate hold',x:180,y:140,r:6,cluster:'c1'},
+      {id:'e1',type:'event',label:'BOJ Minutes',x:120,y:130,r:5,cluster:'c1'},
+      {id:'t1',type:'theatre',label:'JPY/USD Q3',x:250,y:150,r:8,cluster:'c1'},
+      {id:'s3',type:'source',label:'IEA Report',x:430,y:200,r:6,cluster:'c2'},
+      {id:'cl2',type:'claim',label:'Supply stable',x:400,y:160,r:5,cluster:'c2'},
+      {id:'i1',type:'investigation',label:'INV-0042',x:470,y:170,r:7,cluster:'c2'},
+      {id:'t2',type:'theatre',label:'Brent >$95',x:350,y:140,r:8,cluster:'c2'},
+    ],
+    edges: [
+      {from:'s1',to:'cl1',type:'supports'},{from:'s2',to:'cl1',type:'supports'},
+      {from:'e1',to:'cl1',type:'references'},{from:'cl1',to:'t1',type:'linked'},
+      {from:'s3',to:'cl2',type:'supports'},{from:'cl2',to:'t2',type:'linked'},
+      {from:'cl2',to:'i1',type:'linked'},{from:'s1',to:'e1',type:'references'},
+    ],
+    clusters: [
+      {id:'c1',label:'Japan Macro',cx:180,cy:170,rx:100,ry:70,color:'var(--status-info)'},
+      {id:'c2',label:'Energy Supply',cx:410,cy:175,rx:90,ry:55,color:'var(--green-500)'},
+    ],
+    detail: null
+  },
+
+  active: {
+    kpis: {clusters:4,nodes:32,contradictions:3,investigations:4,theatres:5,edges:'+18',sources:11},
+    nodes: [
+      // Cluster: Fed/Macro
+      {id:'s1',type:'source',label:'Fed Minutes',x:100,y:120,r:7,cluster:'fed'},
+      {id:'s2',type:'source',label:'WSJ',x:60,y:170,r:6,cluster:'fed'},
+      {id:'s3',type:'source',label:'Reuters',x:140,y:180,r:5,cluster:'fed'},
+      {id:'cl1',type:'claim',label:'Rate cut likely',x:110,y:150,r:6,cluster:'fed'},
+      {id:'cl2',type:'claim',label:'Inflation sticky',x:160,y:130,r:5,cluster:'fed'},
+      {id:'e1',type:'event',label:'CPI Release',x:70,y:130,r:5,cluster:'fed'},
+      {id:'i1',type:'investigation',label:'INV-0039',x:180,y:160,r:7,cluster:'fed'},
+      {id:'t1',type:'theatre',label:'Fed Rate Q2',x:130,y:100,r:9,cluster:'fed'},
+      // Cluster: TSMC/Tech
+      {id:'s4',type:'source',label:'Satellite',x:360,y:100,r:7,cluster:'tsmc'},
+      {id:'s5',type:'source',label:'Supply Intel',x:420,y:130,r:5,cluster:'tsmc'},
+      {id:'cl3',type:'claim',label:'Production resumed',x:390,y:120,r:6,cluster:'tsmc'},
+      {id:'cl4',type:'claim',label:'Disruption ongoing',x:370,y:150,r:5,cluster:'tsmc'},
+      {id:'t2',type:'theatre',label:'TSMC Supply',x:410,y:85,r:9,cluster:'tsmc'},
+      {id:'i2',type:'investigation',label:'INV-0041',x:440,y:150,r:7,cluster:'tsmc'},
+      // Cluster: Energy
+      {id:'s6',type:'source',label:'OPEC',x:100,y:330,r:7,cluster:'energy'},
+      {id:'s7',type:'source',label:'IEA',x:160,y:370,r:6,cluster:'energy'},
+      {id:'cl5',type:'claim',label:'Supply cut deep',x:130,y:350,r:5,cluster:'energy'},
+      {id:'cl6',type:'claim',label:'Supply cut mild',x:170,y:330,r:5,cluster:'energy'},
+      {id:'t3',type:'theatre',label:'Brent >$95',x:140,y:300,r:9,cluster:'energy'},
+      {id:'i3',type:'investigation',label:'INV-0043',x:80,y:360,r:6,cluster:'energy'},
+      // Cluster: EU Policy
+      {id:'s8',type:'source',label:'EU Official',x:380,y:310,r:6,cluster:'eu'},
+      {id:'s9',type:'source',label:'Compliance DB',x:440,y:340,r:5,cluster:'eu'},
+      {id:'cl7',type:'claim',label:'Enforcement strict',x:410,y:330,r:5,cluster:'eu'},
+      {id:'t4',type:'theatre',label:'EU AI Compliance',x:420,y:290,r:8,cluster:'eu'},
+      {id:'i4',type:'investigation',label:'INV-0038',x:460,y:320,r:6,cluster:'eu'},
+      // Cross-cluster nodes
+      {id:'s10',type:'source',label:'Bloomberg',x:260,y:230,r:8},
+      {id:'s11',type:'source',label:'FT',x:280,y:260,r:5},
+    ],
+    edges: [
+      // Fed cluster
+      {from:'s1',to:'cl1',type:'supports'},{from:'s2',to:'cl1',type:'supports'},
+      {from:'s3',to:'cl2',type:'supports'},{from:'e1',to:'cl1',type:'references'},
+      {from:'cl1',to:'t1',type:'linked'},{from:'cl2',to:'t1',type:'linked'},
+      {from:'i1',to:'t1',type:'linked'},{from:'cl1',to:'cl2',type:'contradicts'},
+      // TSMC cluster
+      {from:'s4',to:'cl3',type:'supports'},{from:'s5',to:'cl4',type:'supports'},
+      {from:'cl3',to:'cl4',type:'contradicts'},{from:'cl3',to:'t2',type:'linked'},
+      {from:'cl4',to:'t2',type:'linked'},{from:'i2',to:'t2',type:'linked'},
+      // Energy cluster
+      {from:'s6',to:'cl5',type:'supports'},{from:'s7',to:'cl6',type:'supports'},
+      {from:'cl5',to:'cl6',type:'contradicts'},{from:'cl5',to:'t3',type:'linked'},
+      {from:'t3',to:'i3',type:'linked'},
+      // EU cluster
+      {from:'s8',to:'cl7',type:'supports'},{from:'s9',to:'cl7',type:'supports'},
+      {from:'cl7',to:'t4',type:'linked'},{from:'i4',to:'t4',type:'linked'},
+      // Cross-cluster
+      {from:'s10',to:'cl1',type:'supports'},{from:'s10',to:'cl5',type:'supports'},
+      {from:'s11',to:'cl7',type:'references'},{from:'s11',to:'cl2',type:'references'},
+    ],
+    clusters: [
+      {id:'fed',label:'Fed / Macro',cx:120,cy:145,rx:100,ry:60,color:'var(--status-info)'},
+      {id:'tsmc',label:'TSMC / Tech',cx:400,cy:120,rx:75,ry:55,color:'var(--status-danger)'},
+      {id:'energy',label:'Energy / Commodities',cx:130,cy:340,rx:80,ry:55,color:'var(--status-warning)'},
+      {id:'eu',label:'EU / Policy',cx:420,cy:320,rx:70,ry:45,color:'var(--purple-500)'},
+    ],
+    detail: null
+  },
+
+  contradictions: {
+    kpis: {clusters:4,nodes:32,contradictions:5,investigations:4,theatres:5,edges:'+18',sources:11},
+    // Same graph as active but contradiction edges highlighted
+    detail: null
+  },
+
+  focused: {
+    kpis: {clusters:1,nodes:8,contradictions:1,investigations:1,theatres:1,edges:'+8',sources:3},
+    detail: {
+      type:'cluster', typeBadge:'cluster', title:'TSMC / Tech',
+      stats:{nodes:6,supports:3,contradictions:1,freshness:'2h'},
+      balance:{supports:75,contradicts:25},
+      contradictionItems:[
+        {source:'Satellite imagery vs Supply Intel',desc:'Satellite shows resumed fab activity; Supply Intel reports ongoing disruption — 38¢ gap between implied prices'}
+      ],
+      entities:[
+        {type:'theatre',chip:'Theatre',name:'TSMC Supply Chain',action:'Open Theatre →'},
+        {type:'investigation',chip:'Investigation',name:'INV-0041 · TSMC Sat Imagery',action:'Open Investigation →'},
+      ],
+      connectedNodes:[
+        {name:'Satellite',dot:'source',edge:'supports',edgeLabel:'Supports'},
+        {name:'Supply Intel',dot:'source',edge:'supports',edgeLabel:'Supports'},
+        {name:'Production resumed',dot:'claim',edge:'supports',edgeLabel:'Claim'},
+        {name:'Disruption ongoing',dot:'claim',edge:'contradicts',edgeLabel:'Contradicts'},
+      ]
+    }
+  }
+};
+
+function setPageState(state) {
+  currentState = state;
+  document.querySelectorAll('.state-toggle-btn').forEach(b => {
+    b.classList.toggle('active-btn', b.textContent.toLowerCase() === state);
+  });
+  renderKPIs(state);
+  renderGraph(state);
+  renderDetail(state);
+}
+
+function renderKPIs(state) {
+  const d = (state === 'contradictions' ? GRAPHS.active : GRAPHS[state] || GRAPHS.active).kpis || GRAPHS.active.kpis;
+  const el = document.getElementById('kpiStrip');
+  el.innerHTML = `
+    <div class="sm-kpi"><div class="sm-kpi-top"><span class="sm-kpi-label">Clusters</span><span class="sm-kpi-window">now</span></div><span class="sm-kpi-value">${d.clusters}</span></div>
+    <div class="sm-kpi"><div class="sm-kpi-top"><span class="sm-kpi-label">Signal Nodes</span><span class="sm-kpi-window">now</span></div><span class="sm-kpi-value">${d.nodes}</span></div>
+    <div class="sm-kpi${d.contradictions>2?' kpi-alert':''}"><div class="sm-kpi-top"><span class="sm-kpi-label">Contradictions</span><span class="sm-kpi-window">now</span></div><span class="sm-kpi-value${d.contradictions>0?' danger':' zero'}">${d.contradictions}</span></div>
+    <div class="sm-kpi"><div class="sm-kpi-top"><span class="sm-kpi-label">Investigations</span><span class="sm-kpi-window">linked</span></div><span class="sm-kpi-value">${d.investigations}</span></div>
+    <div class="sm-kpi"><div class="sm-kpi-top"><span class="sm-kpi-label">Theatres</span><span class="sm-kpi-window">linked</span></div><span class="sm-kpi-value">${d.theatres}</span></div>
+    <div class="sm-kpi"><div class="sm-kpi-top"><span class="sm-kpi-label">New Edges</span><span class="sm-kpi-window">24h</span></div><span class="sm-kpi-value">${d.edges.replace('+','')}</span><span class="sm-kpi-delta">${d.edges} / 24h</span></div>
+    <div class="sm-kpi"><div class="sm-kpi-top"><span class="sm-kpi-label">Sources</span><span class="sm-kpi-window">active</span></div><span class="sm-kpi-value">${d.sources}</span></div>`;
+}
+
+function nodePos(nodes, id) {
+  const n = nodes.find(n => n.id === id);
+  return n ? {x:n.x,y:n.y} : {x:0,y:0};
+}
+
+function renderGraph(state) {
+  const wrap = document.getElementById('graphWrap');
+  const meta = document.getElementById('graphMeta');
+  const graphData = (state === 'contradictions' || state === 'focused') ? GRAPHS.active : GRAPHS[state];
+  const nodes = graphData.nodes;
+  const edges = graphData.edges;
+  const clusters = graphData.clusters;
+  const isContradiction = state === 'contradictions';
+  const isFocused = state === 'focused';
+  const focusCluster = isFocused ? 'tsmc' : null;
+
+  meta.textContent = `${nodes.length} nodes · ${edges.length} edges · ${clusters.length} clusters`;
+  document.getElementById('graphTitle').textContent = isFocused ? 'TSMC / Tech — Focused' : 'Signal Network';
+  document.getElementById('resetBtn').style.display = isFocused ? 'inline-flex' : 'none';
+
+  // Build SVG
+  let svg = '<svg viewBox="0 0 560 440" xmlns="http://www.w3.org/2000/svg">';
+
+  // Cluster hulls (ellipses)
+  clusters.forEach(cl => {
+    const dimmed = isFocused && cl.id !== focusCluster;
+    const selected = isFocused && cl.id === focusCluster;
+    svg += `<ellipse class="cluster-hull${selected?' selected':''}" cx="${cl.cx}" cy="${cl.cy}" rx="${cl.rx}" ry="${cl.ry}" fill="${cl.color}" stroke="${cl.color}" style="${dimmed?'opacity:0.08':''}"/>`;
+    if (!dimmed) {
+      svg += `<text class="cluster-label" x="${cl.cx}" y="${cl.cy - cl.ry - 6}">${cl.label}</text>`;
+      const clusterNodes = nodes.filter(n => n.cluster === cl.id);
+      svg += `<text class="cluster-count" x="${cl.cx}" y="${cl.cy - cl.ry + 6}">${clusterNodes.length} nodes</text>`;
+    }
+  });
+
+  // Tension zones between contradicting clusters
+  if (isContradiction) {
+    // Fed-TSMC tension (cross-contradiction)
+    svg += `<line x1="220" y1="145" x2="325" y2="120" stroke="var(--status-danger)" stroke-width="1" stroke-dasharray="4 4" opacity="0.3"/>`;
+    // Energy internal
+    svg += `<line x1="100" y1="350" x2="170" y2="330" stroke="var(--status-danger)" stroke-width="2" stroke-dasharray="5 3" opacity="0.5"/>`;
+  }
+
+  // Edges
+  edges.forEach(e => {
+    const from = nodePos(nodes, e.from);
+    const to = nodePos(nodes, e.to);
+    const inFocus = !isFocused || (nodes.find(n=>n.id===e.from)?.cluster===focusCluster && nodes.find(n=>n.id===e.to)?.cluster===focusCluster) || nodes.find(n=>n.id===e.from)?.cluster===focusCluster || nodes.find(n=>n.id===e.to)?.cluster===focusCluster;
+    let cls = `g-edge ${e.type}`;
+    if (isContradiction && e.type === 'contradicts') cls += ' highlighted';
+    if (isFocused && !inFocus) cls += ' dimmed';
+    if (isFocused && inFocus) cls += ' in-focus';
+    svg += `<line class="${cls}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"/>`;
+  });
+
+  // Nodes
+  nodes.forEach(n => {
+    const inFocus = !isFocused || n.cluster === focusCluster;
+    const dimmedNode = isFocused && !inFocus;
+    let cls = `g-node${dimmedNode?' dimmed':''}${inFocus && isFocused?' in-focus':''}`;
+    const r = n.r || 6;
+    let shape = '';
+    if (n.type === 'source') {
+      shape = `<circle class="g-node-shape node-source" cx="${n.x}" cy="${n.y}" r="${r}"/>`;
+    } else if (n.type === 'claim') {
+      const s = r * 0.9;
+      shape = `<rect class="g-node-shape node-claim" x="${n.x-s}" y="${n.y-s}" width="${s*2}" height="${s*2}" rx="1" transform="rotate(45 ${n.x} ${n.y})"/>`;
+    } else if (n.type === 'event') {
+      const s = r * 0.85;
+      shape = `<rect class="g-node-shape node-event" x="${n.x-s}" y="${n.y-s}" width="${s*2}" height="${s*2}" rx="2"/>`;
+    } else if (n.type === 'investigation') {
+      // Hexagon approximation
+      const pts = [0,1,2,3,4,5].map(i => {
+        const a = Math.PI/3*i - Math.PI/6;
+        return `${n.x+r*Math.cos(a)},${n.y+r*Math.sin(a)}`;
+      }).join(' ');
+      shape = `<polygon class="g-node-shape node-investigation" points="${pts}"/>`;
+    } else if (n.type === 'theatre') {
+      // Pentagon
+      const pts = [0,1,2,3,4].map(i => {
+        const a = Math.PI*2/5*i - Math.PI/2;
+        return `${n.x+(r+1)*Math.cos(a)},${n.y+(r+1)*Math.sin(a)}`;
+      }).join(' ');
+      shape = `<polygon class="g-node-shape node-theatre" points="${pts}"/>`;
+    }
+    // Show labels based on density
+    const showLabel = state === 'quiet' || (isFocused && inFocus) || n.type === 'theatre' || n.type === 'investigation';
+    const labelHtml = showLabel ? `<text class="g-node-label" x="${n.x}" y="${n.y + r + 12}">${n.label}</text>` : '';
+    svg += `<g class="${cls}" style="${dimmedNode?'opacity:0.12':''}">${shape}${labelHtml}</g>`;
+  });
+
+  svg += '</svg>';
+  wrap.innerHTML = svg;
+  wrap.className = 'graph-svg-wrap' + (isFocused ? ' focused' : '');
+}
+
+function renderDetail(state) {
+  const col = document.getElementById('detailCol');
+  const layout = document.getElementById('graphLayout');
+
+  if (state !== 'focused') {
+    // Show right rail cards instead of detail panel
+    layout.className = 'sm-graph-layout';
+    col.innerHTML = renderRailCards(state);
+    return;
+  }
+
+  layout.className = 'sm-graph-layout';
+  const d = GRAPHS.focused.detail;
+
+  col.innerHTML = `
+    <div class="detail-panel">
+      <div class="detail-panel-header">
+        <div class="detail-panel-header-left">
+          <span class="detail-panel-type ${d.typeBadge}">${d.type.toUpperCase()}</span>
+          <span class="detail-panel-title">${d.title}</span>
+        </div>
+        <button class="detail-close" onclick="setPageState('active')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="detail-panel-body">
+        <div class="detail-stats">
+          <div class="detail-stat"><span class="detail-stat-label">Nodes</span><span class="detail-stat-value">${d.stats.nodes}</span></div>
+          <div class="detail-stat"><span class="detail-stat-label">Supports</span><span class="detail-stat-value success">${d.stats.supports}</span></div>
+          <div class="detail-stat"><span class="detail-stat-label">Contradictions</span><span class="detail-stat-value danger">${d.stats.contradictions}</span></div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">Support / Contradiction Balance</div>
+          <div class="balance-bar">
+            <div class="balance-supports" style="width:${d.balance.supports}%"></div>
+            <div class="balance-contradicts" style="width:${d.balance.contradicts}%"></div>
+          </div>
+          <div class="balance-labels">
+            <span class="balance-label green">${d.balance.supports}% supports</span>
+            <span class="balance-label red">${d.balance.contradicts}% contradicts</span>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">Contradictions</div>
+          ${d.contradictionItems.map(c => `
+            <div class="contradiction-item">
+              <div class="contradiction-top">
+                <span class="contradiction-badge">Contradicts</span>
+                <span class="contradiction-source">${c.source}</span>
+              </div>
+              <div class="contradiction-desc">${c.desc}</div>
+            </div>`).join('')}
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">Linked Entities</div>
+          ${d.entities.map(e => `
+            <div class="detail-entity">
+              <div class="detail-entity-left">
+                <span class="detail-entity-chip ${e.type}">${e.chip}</span>
+                <span class="detail-entity-name">${e.name}</span>
+              </div>
+              <span class="detail-entity-action">${e.action}</span>
+            </div>`).join('')}
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">Connected Nodes</div>
+          ${d.connectedNodes.map(n => `
+            <div class="connected-node">
+              <div class="connected-node-left">
+                <span class="connected-node-dot ${n.dot}"></span>
+                <span class="connected-node-name">${n.name}</span>
+              </div>
+              <span class="connected-node-edge ${n.edge}">${n.edgeLabel}</span>
+            </div>`).join('')}
+        </div>
+
+        <div class="detail-section" style="margin-top:var(--space-4)">
+          <div class="detail-stat"><span class="detail-stat-label">Freshness</span><span class="detail-stat-value">${d.stats.freshness}</span></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderRailCards(state) {
+  const isContra = state === 'contradictions';
+  let html = '';
+
+  if (isContra) {
+    html += `<div class="rail-card" style="border-color:oklch(0.545 0.185 25/0.25)">
+      <div class="rail-card-header"><span class="rail-card-title" style="color:var(--status-danger)">Contradiction Hotspots</span></div>
+      <div class="rail-card-body">
+        <div class="rail-row"><span class="rail-row-label">TSMC / Tech</span><span class="rail-row-value danger">1</span></div>
+        <div class="rail-row"><span class="rail-row-label">Fed / Macro</span><span class="rail-row-value danger">1</span></div>
+        <div class="rail-row"><span class="rail-row-label">Energy / Commodities</span><span class="rail-row-value danger">1</span></div>
+        <div class="rail-row"><span class="rail-row-label">Cross-cluster tensions</span><span class="rail-row-value danger">2</span></div>
+      </div>
+    </div>`;
+  }
+
+  html += `<div class="rail-card">
+    <div class="rail-card-header"><span class="rail-card-title">Domain Mix</span></div>
+    <div class="rail-card-body">
+      ${(state==='quiet'?[{l:'Macro',v:5},{l:'Commodities',v:4}]:[{l:'Macro',v:10},{l:'Tech',v:6},{l:'Commodities',v:7},{l:'Policy',v:5},{l:'Geopolitics',v:4}]).map(d=>`<div class="rail-row"><span class="rail-row-label">${d.l}</span><span class="rail-row-value">${d.v}</span></div>`).join('')}
+    </div>
+  </div>`;
+
+  html += `<div class="rail-card">
+    <div class="rail-card-header"><span class="rail-card-title">Source Provenance</span></div>
+    <div class="rail-card-body">
+      ${(state==='quiet'?[{l:'Official',v:2},{l:'OSINT',v:1},{l:'Model',v:1}]:[{l:'Official',v:4},{l:'OSINT',v:3},{l:'Agent',v:2},{l:'Model',v:2}]).map(d=>`<div class="rail-row"><span class="rail-row-label">${d.l}</span><span class="rail-row-value">${d.v}</span></div>`).join('')}
+    </div>
+  </div>`;
+
+  html += `<div class="rail-card">
+    <div class="rail-card-header"><span class="rail-card-title">Most Influential</span></div>
+    <div class="rail-card-body">
+      ${(state==='quiet'?[{l:'Reuters',v:'7 edges'},{l:'IEA Report',v:'4 edges'}]:[{l:'Bloomberg',v:'12 edges'},{l:'Fed Minutes',v:'8 edges'},{l:'Satellite',v:'6 edges'},{l:'OPEC',v:'5 edges'}]).map(d=>`<div class="rail-row"><span class="rail-row-label">${d.l}</span><span class="rail-row-value" style="color:var(--text-muted)">${d.v}</span></div>`).join('')}
+    </div>
+  </div>`;
+
+  html += `<div class="rail-card">
+    <div class="rail-card-header"><span class="rail-card-title">Linked Theatres</span></div>
+    <div class="rail-card-body">
+      ${(state==='quiet'?[{l:'JPY/USD Q3',v:'5 signals'},{l:'Brent >$95',v:'3 signals'}]:[{l:'Fed Rate Q2',v:'8 signals'},{l:'TSMC Supply',v:'6 signals'},{l:'Brent >$95',v:'5 signals'},{l:'EU AI Compliance',v:'4 signals'},{l:'GBP/INR Corridor',v:'2 signals'}]).map(d=>`<div class="rail-row"><span class="rail-row-label">${d.l}</span><span class="rail-row-value" style="color:var(--text-muted)">${d.v}</span></div>`).join('')}
+    </div>
+  </div>`;
+
+  return html;
+}
+
+/* INIT */
+setPageState('active');
+</script>
+</body>
+</html>

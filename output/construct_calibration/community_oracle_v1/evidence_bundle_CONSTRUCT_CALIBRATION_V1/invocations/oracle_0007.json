@@ -1,0 +1,41 @@
+{
+  "request": {
+    "episode_id": "oracle_0007",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "pr_diff": "diff --git a/src/middleware/cors.py\n- ALLOWED_ORIGINS = ['http://localhost:3000']\n+ ALLOWED_ORIGINS = [\n+     'http://localhost:3000',\n+     'https://app.example.com',\n+     'https://staging.example.com',\n+ ]\n+ ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']",
+      "construct_summary": "Expands CORS allowed origins to include production and staging domains. Adds explicit allowed methods list. Previously only localhost was permitted.",
+      "followup_qa": [
+        {
+          "question": "Is wildcard origin used?",
+          "answer": "No, only specific origins are whitelisted."
+        },
+        {
+          "question": "Are credentials supported?",
+          "answer": "The existing allow_credentials=True is preserved."
+        },
+        {
+          "question": "Should OPTIONS be listed?",
+          "answer": "Yes, preflight OPTIONS requests need explicit allowance."
+        },
+        {
+          "question": "Is PATCH missing?",
+          "answer": "PATCH is not used by the API currently, so it's intentionally excluded."
+        },
+        {
+          "question": "Environment-specific config?",
+          "answer": "These are hardcoded. Consider moving to environment variables."
+        }
+      ],
+      "episode_id": "oracle_0007"
+    },
+    "scores": {
+      "precision": 1.0,
+      "recall": 0.25,
+      "reply_accuracy": 1.0
+    },
+    "composite": 0.7
+  }
+}

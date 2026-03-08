@@ -1,0 +1,41 @@
+{
+  "request": {
+    "episode_id": "oracle_0003",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "pr_diff": "diff --git a/src/db/queries.py\n- def get_user(id):\n-     return db.execute('SELECT * FROM users WHERE id = ?', (id,))\n+ def get_user(id):\n+     return db.execute('SELECT id, name, email FROM users WHERE id = ?', (id,))",
+      "construct_summary": "Replaces SELECT * with explicit column selection for the get_user query. This reduces data transfer and prevents accidental exposure of sensitive columns like password_hash.",
+      "followup_qa": [
+        {
+          "question": "Which columns were removed?",
+          "answer": "password_hash, created_at, and last_login are no longer fetched."
+        },
+        {
+          "question": "Will this break any callers?",
+          "answer": "Callers accessing .password_hash will break, but no current code does that outside auth module."
+        },
+        {
+          "question": "Is this a security fix?",
+          "answer": "Yes, it prevents password hash leakage through the user API."
+        },
+        {
+          "question": "Should we add a migration?",
+          "answer": "No migration needed, this is a query change only."
+        },
+        {
+          "question": "Are other queries affected?",
+          "answer": "Only get_user was using SELECT *, other queries already specify columns."
+        }
+      ],
+      "episode_id": "oracle_0003"
+    },
+    "scores": {
+      "precision": 1.0,
+      "recall": 0.75,
+      "reply_accuracy": 0.8
+    },
+    "composite": 0.8600000000000001
+  }
+}

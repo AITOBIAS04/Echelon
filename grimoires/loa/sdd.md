@@ -1,609 +1,978 @@
-# SDD — Cycle-020: Scenario Pack Evaluator v2 + Paradox Risk Orchestration
+# SDD — Cycle-021: Investigation Certificate Lifecycle + Domain Filter Enforcement
 
-**Cycle:** cycle-020
+**Cycle:** cycle-021
 **Date:** 7 March 2026
-**PRD:** grimoires/loa/prd.md
-**Depends on:** Cycle-019, Cycle-018, Cycle-017
+**PRD:** `grimoires/loa/prd.md`
+**Builder:** Loa (backend/runtime only)
+
+> Sources: PRD FR-1 through FR-4; codebase exploration of `backend/investigation/`, `backend/api/investigation_routes.py`, `backend/database/models.py`, `backend/websockets/realtime_manager.py`, `backend/services/`
 
 ---
 
 ## 1. Executive Summary
 
-Cycle 020 upgrades two staged backend systems to release posture:
+Cycle-021 closes 4 gaps in the investigation certificate pipeline:
 
-1. **Checkpoint Evaluator v2**: Replace hash-based branch selection with true schema-driven evaluation using 5 evaluator primitives, explicit environment RNG, and schema-driven theatre spawn rules.
-2. **Paradox Risk Orchestrator**: Replace passive on-read risk computation with event-driven orchestration that recalculates from mutation paths and emits WebSocket events on material delta.
+1. **Domain filter enforcement** — a reusable validator that rejects out-of-scope evidence/signals at ingestion time
+2. **Automated stop condition evaluation** — an orchestrator that evaluates stop conditions after every material mutation (drift, evidence, counter-signal, claim change)
+3. **Certificate lifecycle state machine** — READY / ANCHORED / ISSUED with persisted timestamps and no skippable states
+4. **Daily batch anchor** — certificates are only ISSUED during the 00:00 UTC batch window; readiness can precede issuance by hours
 
-No new models or migrations. All schema columns already exist. This is a runtime behavior upgrade.
+All 4 items are backend-only. Alexander consumes the API and WebSocket events.
 
 ---
 
 ## 2. System Architecture
 
-### 2.1 Checkpoint Evaluation Flow (v2)
+### 2.1 Component Interaction
 
 ```
-POST /scenario-packs/{id}/run
-  |
-  v
-ScenarioSeedManager.allocate_seed(run_mode, run_index)
-  |
-  v
-evaluate_checkpoints(session, run, seed, agent_actions)
-  |
-  +---> for each checkpoint:
-  |      |
-  |      v
-  |    PrimitiveEvaluator.evaluate(evaluator_type, trigger_condition, branch_rules, action, seed, state)
-  |      |
-  |      v
-  |    Branch selected + reward computed
-  |      |
-  |      +---> SpawnRuleEvaluator.should_spawn(spawn_rule, branch, reward, run_mode)
-  |      |      |
-  |      |      v
-  |      |    spawn_theatre() if rule passes
-  |      |
-  |      v
-  |    RunCheckpointResult persisted
-  |    WS: CHECKPOINT_RESOLVED emitted
-  |
-  v
-Run COMPLETED
+                    API Layer (investigation_routes.py)
+                    ┌──────────────────────────────────┐
+                    │  POST /{id}/evidence              │
+                    │  POST /{id}/counter-signals       │
+                    │  POST /{id}/drift                 │
+  Ingestion ───────►│  POST /{id}/certificate/build     │
+                    │  GET  /{id}/certificate            │
+                    │  GET  /{id}/readiness              │
+                    │  POST /certificates/anchor-batch   │
+                    └──────┬───────────────────────────┘
+                           │
+              ┌────────────┼────────────────┐
+              ▼            ▼                ▼
+   DomainFilterValidator  StopCondition   CertificateLifecycle
+   (pure function)        Orchestrator    Service
+              │            │                │
+              │            ▼                ▼
+              │   InvestigationStop    InvestigationCertificate
+              │   ConditionEvaluator  Builder (existing)
+              │   (existing)               │
+              │            │                │
+              ▼            ▼                ▼
+         ┌─────────────────────────────────────┐
+         │  InvestigationRepository (existing)  │
+         │  + new columns on Investigation      │
+         │  + new columns on CertificateRecord  │
+         └──────────────┬──────────────────────┘
+                        │
+                        ▼
+                   WebSocket Manager
+                   (realtime_manager.py)
 ```
 
-### 2.2 Paradox Risk Orchestration Flow
+### 2.2 Data Flow per Mutation Path
 
-```
-Mutation event (paradox state, counter-signal, evidence, certificate)
-  |
-  v
-ParadoxRiskOrchestrator.trigger_recompute(theatre_id, trigger_reason)
-  |
-  v
-ParadoxRiskEvaluator.evaluate(factors from theatre/investigation state)
-  |
-  v
-Compare old_level vs new_level
-  |
-  +---> if material delta:
-  |      persist_risk_to_theatre()
-  |      WS: PARADOX_RISK_CHANGED
-  |
-  +---> if no material delta:
-         persist_risk_to_theatre() (update timestamp only)
-         no WS event
-```
+**Evidence submission** (`POST /{id}/evidence`):
+1. DomainFilterValidator.validate() — reject if out-of-scope
+2. Existing evidence persistence
+3. StopConditionOrchestrator.evaluate_after_mutation() — check readiness
+4. Existing paradox-risk recompute
+
+**Counter-signal ingestion** (`POST /{id}/counter-signals`):
+1. DomainFilterValidator.validate() — reject if out-of-scope
+2. Existing counter-signal persistence
+3. StopConditionOrchestrator.evaluate_after_mutation()
+
+**Drift event** (`POST /{id}/drift`):
+1. Existing drift persistence
+2. StopConditionOrchestrator.evaluate_after_mutation() — includes material drift as factor
+
+**Certificate build** (`POST /{id}/certificate/build`):
+1. Verify stop conditions are satisfied (or override)
+2. Build certificate via existing builder
+3. CertificateLifecycleService.transition_to_ready()
+4. Investigation status → CERTIFICATE_READY
+
+**Batch anchor** (`POST /certificates/anchor-batch`):
+1. CertificateLifecycleService.run_batch_anchor()
+2. READY → ANCHORED → ISSUED for all qualifying certificates
+3. Investigation status → COMPLETED for each
+4. WebSocket events emitted per certificate
 
 ---
 
-## 3. Component Design
+## 3. Technology Stack
 
-### 3.1 Primitive Evaluator System
+No new dependencies. All work uses existing stack:
 
-Replace `_deterministic_branch_index()` with evaluator-type-specific branch selection.
+| Layer | Technology | Notes |
+|-------|-----------|-------|
+| Runtime | Python 3.11+ | Existing |
+| Web framework | FastAPI | Existing |
+| ORM | SQLAlchemy 2.0 (async) | Existing |
+| Database | SQLite (dev) / PostgreSQL (prod) | Existing |
+| Migrations | Alembic | Existing |
+| WebSocket | FastAPI WebSocket + ConnectionManager | Existing singleton |
+| Validation | Pydantic v2 | Existing |
+| Hashing | hashlib (SHA-256) | Existing stdlib |
 
-**Location**: `backend/services/checkpoint_evaluator.py`
+---
 
-Each primitive defines:
-- **Trigger condition contract**: When the checkpoint activates
-- **Branch rule contract**: How a branch is selected given (action, state, seed)
-- **Reward mapping**: How reward is computed for the selected branch
+## 4. Component Design
 
-#### 3.1.1 Primitive Contracts
+### 4.1 DomainFilterValidator
 
-**BINARY_RISK_GATE**
-```json
-{
-  "trigger_condition_json": {
-    "type": "BINARY_RISK_GATE",
-    "threshold": 0.65,
-    "metric": "risk_exposure"
-  },
-  "branch_rule_json": {
-    "type": "threshold_compare",
-    "field": "action_value",
-    "threshold": 0.65,
-    "above_branch_index": 0,
-    "below_branch_index": 1
-  }
-}
-```
-Logic: `action_value >= threshold` -> branch 0, else branch 1.
+**File:** `backend/services/domain_filter_validator.py`
 
-**RESOURCE_DEPLETION**
-```json
-{
-  "trigger_condition_json": {
-    "type": "RESOURCE_DEPLETION",
-    "resource": "capital",
-    "depletion_curve": "linear"
-  },
-  "branch_rule_json": {
-    "type": "resource_bracket",
-    "brackets": [
-      {"min": 0.0, "max": 0.3, "branch_index": 0},
-      {"min": 0.3, "max": 0.7, "branch_index": 1},
-      {"min": 0.7, "max": 1.0, "branch_index": 2}
-    ],
-    "field": "remaining_fraction"
-  }
-}
-```
-Logic: `remaining_fraction` mapped to bracket -> corresponding branch.
-
-**DETECTION_EVENT**
-```json
-{
-  "trigger_condition_json": {
-    "type": "DETECTION_EVENT",
-    "base_detection_probability": 0.3
-  },
-  "branch_rule_json": {
-    "type": "probability_gate",
-    "base_probability": 0.3,
-    "noise_amplitude": 0.1,
-    "detected_branch_index": 0,
-    "safe_branch_index": 1
-  }
-}
-```
-Logic: `base_probability + noise(seed) > action_stealth_value` -> detected, else safe. Noise from seeded RNG.
-
-**TIMING_BREACH**
-```json
-{
-  "trigger_condition_json": {
-    "type": "TIMING_BREACH",
-    "deadline_sec": 300,
-    "drift_range": 30
-  },
-  "branch_rule_json": {
-    "type": "deadline_compare",
-    "deadline_sec": 300,
-    "drift_range": 30,
-    "on_time_branch_index": 0,
-    "breach_branch_index": 1
-  }
-}
-```
-Logic: `action_time + drift(seed) <= deadline` -> on-time, else breach. Drift from seeded RNG.
-
-**MISSION_COMPLETION**
-```json
-{
-  "trigger_condition_json": {
-    "type": "MISSION_COMPLETION",
-    "required_objectives": ["obj_a", "obj_b", "obj_c"],
-    "min_completion": 2
-  },
-  "branch_rule_json": {
-    "type": "objective_set",
-    "required": ["obj_a", "obj_b", "obj_c"],
-    "min_completion": 2,
-    "success_branch_index": 0,
-    "partial_branch_index": 1,
-    "fail_branch_index": 2
-  }
-}
-```
-Logic: Count completed objectives from action. `>= min` -> success, `> 0` -> partial, `0` -> fail.
-
-#### 3.1.2 Evaluator Dispatch
+**Design:** Pure function, no DB access. Takes domain filters and source metadata, returns pass/fail.
 
 ```python
-# New in checkpoint_evaluator.py
+# Imports
+from backend.investigation.signal_scanner import DomainFilter, DOMAIN_FILTER_SOURCE_GROUPS
 
-PRIMITIVE_EVALUATORS = {
-    "BINARY_RISK_GATE": evaluate_binary_risk_gate,
-    "RESOURCE_DEPLETION": evaluate_resource_depletion,
-    "DETECTION_EVENT": evaluate_detection_event,
-    "TIMING_BREACH": evaluate_timing_breach,
-    "MISSION_COMPLETION": evaluate_mission_completion,
-}
-
-def select_branch(
-    evaluator_type: str,
-    branches: list[CheckpointBranch],
-    branch_rule_json: dict,
-    agent_action: str,
-    seed: int,
-    state_vector: dict,
-) -> tuple[CheckpointBranch, dict]:
-    """Select branch via primitive evaluator.
-
-    Returns (selected_branch, evaluation_detail).
-    Raises ValueError for unknown evaluator_type or malformed config.
-    """
-    evaluator = PRIMITIVE_EVALUATORS.get(evaluator_type)
-    if evaluator is None:
-        raise ValueError(f"Unknown evaluator primitive: {evaluator_type}")
-
-    branch_index, detail = evaluator(
-        branch_rule_json=branch_rule_json,
-        agent_action=agent_action,
-        seed=seed,
-        state_vector=state_vector,
-    )
-
-    if branch_index < 0 or branch_index >= len(branches):
-        raise ValueError(
-            f"Evaluator {evaluator_type} returned branch_index {branch_index} "
-            f"but only {len(branches)} branches exist"
+class DomainFilterViolation(Exception):
+    """Raised when evidence/signal source is outside committed domain filters."""
+    def __init__(self, source: str, allowed_sources: list[str], domain_filters: list[str]):
+        self.source = source
+        self.allowed_sources = allowed_sources
+        self.domain_filters = domain_filters
+        super().__init__(
+            f"Source '{source}' is outside committed domain filters {domain_filters}. "
+            f"Allowed sources: {allowed_sources}"
         )
 
-    return branches[branch_index], detail
-```
+def get_allowed_sources(domain_filters: list[str]) -> set[str]:
+    """Expand domain filter enum values into the set of allowed source groups.
 
-#### 3.1.3 Environment RNG Integration
-
-Each primitive that uses randomness (DETECTION_EVENT, TIMING_BREACH) creates a seeded `random.Random` instance:
-
-```python
-def _seeded_rng(seed: int, checkpoint_id: str) -> random.Random:
-    """Create checkpoint-scoped seeded RNG.
-
-    Combines run seed with checkpoint_id for per-checkpoint determinism.
+    Uses DOMAIN_FILTER_SOURCE_GROUPS mapping from signal_scanner.py.
+    Returns empty set if domain_filters is empty (no enforcement).
     """
-    combined = hashlib.sha256(f"{seed}|{checkpoint_id}".encode()).hexdigest()
-    return random.Random(int(combined[:8], 16))
-```
+    allowed: set[str] = set()
+    for df_value in domain_filters:
+        try:
+            df = DomainFilter(df_value)
+        except ValueError:
+            continue  # unknown filter — skip gracefully
+        allowed.update(DOMAIN_FILTER_SOURCE_GROUPS.get(df, []))
+    return allowed
 
-This ensures:
-- Same seed + same checkpoint = same noise value
-- Different checkpoints within same run get different noise
-- Agent actions never influence randomness
+def validate_evidence_source(
+    domain_filters_json: list[str],
+    source_id: str,
+    source_description: str = "",
+) -> None:
+    """Validate that evidence source falls within committed domain filters.
 
-### 3.2 Scenario Run State Builder
-
-**New file**: `backend/services/scenario_run_state_builder.py`
-
-Normalizes checkpoint state into a state vector that evaluators consume:
-
-```python
-def build_state_vector(
-    run: ScenarioRun,
-    checkpoint: ScenarioCheckpoint,
-    previous_results: list[RunCheckpointResult],
-) -> dict:
-    """Build state vector for checkpoint evaluation.
-
-    Returns dict with:
-    - cumulative_reward: float
-    - completed_objectives: list[str]
-    - remaining_resources: dict[str, float]
-    - elapsed_time_sec: float
-    - previous_branch_outcomes: list[str]
+    No-op if domain_filters_json is empty (backward compatible).
+    Raises DomainFilterViolation if source is out of scope.
     """
+    if not domain_filters_json:
+        return  # no enforcement
+
+    allowed = get_allowed_sources(domain_filters_json)
+    if not allowed:
+        return  # no resolvable filters — no enforcement
+
+    # Match source_id against allowed source groups
+    # source_id format examples: "market_data", "corporate_filing", "maritime_ais"
+    if source_id and source_id not in allowed:
+        raise DomainFilterViolation(source_id, sorted(allowed), domain_filters_json)
+
+def validate_signal_source(
+    domain_filters_json: list[str],
+    detection_method: str,
+    source_ref: str = "",
+) -> None:
+    """Validate counter-signal/scanner source against domain filters.
+
+    Same logic as evidence but checks detection_method and source_ref.
+    No-op if domain_filters_json is empty.
+    Raises DomainFilterViolation if out of scope.
+    """
+    if not domain_filters_json:
+        return
+
+    allowed = get_allowed_sources(domain_filters_json)
+    if not allowed:
+        return
+
+    # For automated signals, source_ref indicates the source group
+    source_to_check = source_ref or detection_method
+    if source_to_check and source_to_check not in allowed:
+        # "automated_osint" and "human_submitted" are meta-methods, always allowed
+        if source_to_check in ("automated_osint", "paradox_engine", "human_submitted"):
+            return
+        raise DomainFilterViolation(source_to_check, sorted(allowed), domain_filters_json)
 ```
 
-The state vector accumulates from previous checkpoint results within the same run, providing evaluators with the run-so-far context.
+**Key decisions:**
+- **Pure function** — no session param, no DB access. Caller fetches investigation and passes `domain_filters_json`.
+- **Empty filters = no enforcement** — backward compatible per PRD.
+- **Uses existing `DOMAIN_FILTER_SOURCE_GROUPS`** mapping from `signal_scanner.py` — single source of truth for domain-to-source mapping.
+- **Custom exception** — `DomainFilterViolation` carries source, allowed list, and filters for clear 422 responses.
+- **Meta-methods pass through** — `automated_osint`, `paradox_engine`, `human_submitted` are detection methods, not domain sources.
 
-### 3.3 Theatre Spawn Rule Evaluator
+### 4.2 StopConditionOrchestrator
 
-**Updated in**: `backend/services/theatre_spawner.py`
+**File:** `backend/services/stop_condition_orchestrator.py`
 
-Replace `can_spawn_theatre` boolean with `theatre_spawn_rule_json` evaluation:
+**Design:** Async service function that wraps `InvestigationStopConditionEvaluator` with automatic triggering, drift awareness, and persistence.
 
 ```python
-def should_spawn(
-    spawn_rule: dict | None,
-    branch: CheckpointBranch,
-    reward: float,
-    run_mode: str,
-    checkpoint: ScenarioCheckpoint,
-) -> bool:
-    """Evaluate whether to spawn a theatre from this checkpoint resolution.
+from datetime import datetime, timezone
+from sqlalchemy.ext.asyncio import AsyncSession
 
-    spawn_rule_json contract:
-    {
-        "outcome_types": ["SUCCESS", "PARTIAL_SUCCESS"],  // allowed branch outcome_types
-        "min_reward": 0.5,                                 // minimum reward threshold
-        "checkpoint_classes": ["CRITICAL"],                 // allowed checkpoint classes (optional)
-        "run_modes": ["TRAINING", "EVALUATION"]            // allowed run modes (optional, default: all)
+from backend.database.models import Investigation
+from backend.investigation.stop_conditions import InvestigationStopConditionEvaluator
+from backend.investigation.commitment_monitor import CommitmentMonitor, DriftImpact
+from backend.investigation.toolset import InvestigationToolset, InvestigationConfig
+from backend.websockets.realtime_manager import manager as ws_manager
+
+class StopConditionResult:
+    """Immutable result of stop condition evaluation."""
+    __slots__ = ("ready", "reason", "drift_material", "trigger")
+
+    def __init__(self, ready: bool, reason: str, drift_material: bool, trigger: str):
+        self.ready = ready
+        self.reason = reason
+        self.drift_material = drift_material
+        self.trigger = trigger  # "drift" | "evidence" | "counter_signal" | "claim" | "manual"
+
+async def evaluate_after_mutation(
+    session: AsyncSession,
+    investigation: Investigation,
+    trigger: str,
+    time_remaining: float | None = None,
+) -> StopConditionResult:
+    """Evaluate stop conditions after a material mutation.
+
+    Rebuilds toolset from DB state, checks drift, evaluates stop condition,
+    persists result to investigation record, emits WS event on readiness change.
+
+    Args:
+        session: Active async session (caller manages transaction).
+        investigation: Eagerly-loaded Investigation with relationships.
+        trigger: What caused this evaluation.
+        time_remaining: Override for time-based stop conditions. If None, computed from stop_config.
+
+    Returns:
+        StopConditionResult with ready/not-ready + reason.
+    """
+    # Skip if investigation is already completed or has certificate
+    if investigation.status in ("COMPLETED", "CERTIFICATE_READY"):
+        return StopConditionResult(
+            ready=True,
+            reason="already_ready_or_completed",
+            drift_material=False,
+            trigger=trigger,
+        )
+
+    # Rebuild toolset from persisted state
+    config = InvestigationConfig(
+        domain_filters=investigation.domain_filters_json or [],
+        stop_condition=investigation.stop_condition,
+        stop_config=investigation.stop_config_json or {},
+    )
+    toolset = InvestigationToolset(
+        config=config,
+        theatre_id=investigation.theatre_id,
+        construct_id=investigation.construct_id,
+        inquiry_class=investigation.inquiry_class,
+    )
+    toolset.rebuild_from_persisted(investigation)
+
+    # Check material drift
+    has_drift = toolset.commitment_monitor.has_material_drift()
+
+    # Compute time_remaining if not provided
+    if time_remaining is None:
+        time_remaining = _compute_time_remaining(investigation.stop_config_json or {})
+
+    # Evaluate stop condition
+    evaluator = InvestigationStopConditionEvaluator()
+    ready, reason = evaluator.evaluate(
+        stop_condition=investigation.stop_condition,
+        stop_config=investigation.stop_config_json or {},
+        claim_graph=toolset.claim_graph,
+        evidence_envelope=toolset.evidence_envelope,
+        time_remaining=time_remaining,
+    )
+
+    # Augment reason with drift state
+    if has_drift and trigger == "drift":
+        reason = f"drift_material;{reason}"
+
+    # Persist evaluation result
+    old_status = investigation.stop_condition_status
+    investigation.stop_condition_status = "READY" if ready else "NOT_READY"
+    investigation.stop_condition_reason = reason
+    investigation.stop_condition_evaluated_at = datetime.now(timezone.utc)
+    await session.flush()
+
+    # Emit WS event if readiness changed
+    if ready and old_status != "READY":
+        await ws_manager.broadcast_global(
+            "INVESTIGATION_STOP_CONDITION_MET",
+            {
+                "investigation_id": investigation.id,
+                "reason": reason,
+                "trigger": trigger,
+                "drift_material": has_drift,
+            },
+        )
+
+    return StopConditionResult(
+        ready=ready,
+        reason=reason,
+        drift_material=has_drift,
+        trigger=trigger,
+    )
+
+
+def _compute_time_remaining(stop_config: dict) -> float:
+    """Compute seconds remaining from stop_config milestone or deadline."""
+    milestone_str = stop_config.get("milestone_timestamp")
+    if milestone_str:
+        try:
+            milestone = datetime.fromisoformat(milestone_str)
+            if milestone.tzinfo is None:
+                milestone = milestone.replace(tzinfo=timezone.utc)
+            return (milestone - datetime.now(timezone.utc)).total_seconds()
+        except (ValueError, TypeError):
+            pass
+    # Default: no time constraint (large positive)
+    return 999_999.0
+```
+
+**Key decisions:**
+- **Follows existing service pattern** — async function, takes `session: AsyncSession`, flushes (doesn't commit).
+- **Rebuilds toolset** from persisted investigation state (same pattern as certificate endpoint).
+- **Drift augments reason** — when trigger is "drift" and drift is material, prefixes reason with `drift_material;`.
+- **Only emits WS on state change** — prevents event spam on repeated evaluations.
+- **`time_remaining` computed from `stop_config`** — OUTCOME_RESOLUTION and SPONSOR_DEFINED use `milestone_timestamp`.
+- **Skips already-completed investigations** — idempotent.
+
+### 4.3 CertificateLifecycleService
+
+**File:** `backend/services/certificate_lifecycle_service.py`
+
+**Design:** Async service with state machine enforcement and batch anchor logic.
+
+```python
+import hashlib
+import json
+from datetime import datetime, timezone
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.database.models import Investigation, InvestigationCertificateRecord
+from backend.websockets.realtime_manager import manager as ws_manager
+
+# Certificate Status Constants
+CERT_STATUS_READY = "READY"
+CERT_STATUS_ANCHORED = "ANCHORED"
+CERT_STATUS_ISSUED = "ISSUED"
+
+# Valid Transitions
+_VALID_TRANSITIONS = {
+    CERT_STATUS_READY: CERT_STATUS_ANCHORED,
+    CERT_STATUS_ANCHORED: CERT_STATUS_ISSUED,
+}
+
+
+async def transition_to_ready(
+    session: AsyncSession,
+    certificate: InvestigationCertificateRecord,
+    investigation: Investigation,
+) -> InvestigationCertificateRecord:
+    """Transition certificate to READY state.
+
+    Called after certificate is built. Sets ready_at, does NOT set issued_at.
+    Investigation status becomes CERTIFICATE_READY.
+
+    Raises ValueError if certificate already has a status beyond READY.
+    """
+    if hasattr(certificate, "certificate_status") and certificate.certificate_status:
+        if certificate.certificate_status != CERT_STATUS_READY:
+            raise ValueError(
+                f"Cannot transition to READY: certificate is already "
+                f"'{certificate.certificate_status}'"
+            )
+
+    certificate.certificate_status = CERT_STATUS_READY
+    certificate.ready_at = datetime.now(timezone.utc)
+
+    investigation.status = "CERTIFICATE_READY"
+    await session.flush()
+
+    await ws_manager.broadcast_global(
+        "INVESTIGATION_CERTIFICATE_READY",
+        {
+            "investigation_id": investigation.id,
+            "certificate_id": certificate.id,
+            "ready_at": certificate.ready_at.isoformat(),
+        },
+    )
+
+    return certificate
+
+
+async def run_batch_anchor(
+    session: AsyncSession,
+    batch_timestamp: datetime | None = None,
+) -> list[str]:
+    """Process all READY certificates in a single batch.
+
+    1. Query all certificates with certificate_status = 'READY'
+    2. Compute batch anchor hash (SHA-256 of sorted certificate hashes)
+    3. Transition each to ANCHORED with batch_anchor_hash
+    4. Transition each to ISSUED with issued_at = batch_timestamp
+    5. Mark investigations as COMPLETED
+    6. Emit WS events
+
+    Returns list of issued certificate IDs.
+    Idempotent: if no READY certificates exist, returns empty list.
+    """
+    if batch_timestamp is None:
+        batch_timestamp = datetime.now(timezone.utc)
+
+    # 1. Query READY certificates
+    result = await session.execute(
+        select(InvestigationCertificateRecord)
+        .where(InvestigationCertificateRecord.certificate_status == CERT_STATUS_READY)
+    )
+    ready_certs = list(result.scalars().all())
+
+    if not ready_certs:
+        return []  # idempotent no-op
+
+    # 2. Compute batch anchor hash
+    sorted_hashes = sorted(cert.certificate_hash for cert in ready_certs)
+    batch_hash_input = json.dumps(sorted_hashes, separators=(",", ":"))
+    batch_anchor_hash = hashlib.sha256(batch_hash_input.encode()).hexdigest()
+
+    issued_ids: list[str] = []
+
+    for cert in ready_certs:
+        # 3. READY -> ANCHORED
+        cert.certificate_status = CERT_STATUS_ANCHORED
+        cert.anchored_at = batch_timestamp
+        cert.batch_anchor_hash = batch_anchor_hash
+
+        # 4. ANCHORED -> ISSUED
+        cert.certificate_status = CERT_STATUS_ISSUED
+        cert.issued_at = batch_timestamp
+
+        # 5. Mark investigation COMPLETED
+        investigation = await session.get(Investigation, cert.investigation_id)
+        if investigation:
+            investigation.status = "COMPLETED"
+            investigation.completed_at = batch_timestamp
+
+        issued_ids.append(cert.id)
+
+    await session.flush()
+
+    # 6. Emit WS events (after flush to ensure persistence)
+    for cert in ready_certs:
+        await ws_manager.broadcast_global(
+            "INVESTIGATION_CERTIFICATE_ISSUED",
+            {
+                "investigation_id": cert.investigation_id,
+                "certificate_id": cert.id,
+                "issued_at": batch_timestamp.isoformat(),
+                "batch_anchor_hash": batch_anchor_hash,
+            },
+        )
+
+    return issued_ids
+```
+
+**Key decisions:**
+- **READY -> ANCHORED -> ISSUED in batch** — both transitions happen atomically in `run_batch_anchor()`. The intermediate ANCHORED state is persisted (with `anchored_at` and `batch_anchor_hash`) but the batch processes both transitions in a single call.
+- **Batch anchor hash** — SHA-256 of JSON array of sorted certificate hashes. Deterministic.
+- **Idempotent** — queries only READY certificates. Second run finds none, returns empty list.
+- **`issued_at` = batch timestamp** — not certificate build time, per PRD.
+- **Investigation COMPLETED only after ISSUED** — never at READY time.
+- **`transition_to_ready` is separate** — called from certificate build endpoint, not from batch.
+
+---
+
+## 5. Data Architecture
+
+### 5.1 Schema Changes
+
+#### Table: `investigations` (existing — add 3 columns)
+
+| Column | Type | Default | Nullable | Purpose |
+|--------|------|---------|----------|---------|
+| `stop_condition_status` | String(20) | `NULL` | Yes | `"READY"` or `"NOT_READY"` — persisted evaluation result |
+| `stop_condition_reason` | String(500) | `NULL` | Yes | Human-readable reason from evaluator |
+| `stop_condition_evaluated_at` | DateTime | `NULL` | Yes | When last evaluated |
+
+**Status values extended:** `ACTIVE` | `CERTIFICATE_READY` | `COMPLETED`
+
+`CERTIFICATE_READY` is a new intermediate status set when certificate is built but not yet issued.
+
+#### Table: `investigation_certificates` (existing — add 4 columns)
+
+| Column | Type | Default | Nullable | Purpose |
+|--------|------|---------|----------|---------|
+| `certificate_status` | String(20) | `"READY"` | No | `READY` / `ANCHORED` / `ISSUED` |
+| `ready_at` | DateTime | `NULL` | Yes | When certificate entered READY state |
+| `anchored_at` | DateTime | `NULL` | Yes | When included in batch anchor |
+| `batch_anchor_hash` | String(64) | `NULL` | Yes | SHA-256 of the batch anchor |
+
+**Existing `issued_at`:** Semantics change — no longer set at build time. Set only during batch anchor.
+
+**Existing `anchoring_status`:** Deprecated in favor of `certificate_status`. Left in place for backward compatibility but no longer written to by new code.
+
+### 5.2 Alembic Migration
+
+**File:** `backend/alembic/versions/c021_certificate_lifecycle.py`
+
+**Revision chain:** `c020_replay_source_run_id` -> `c021_certificate_lifecycle`
+
+```python
+revision = "c021_certificate_lifecycle"
+down_revision = "c020_replay_source_run_id"
+```
+
+**Operations (all idempotent with column-existence checks):**
+
+1. Add `stop_condition_status` to `investigations`
+2. Add `stop_condition_reason` to `investigations`
+3. Add `stop_condition_evaluated_at` to `investigations`
+4. Add `certificate_status` to `investigation_certificates` (default `'READY'`)
+5. Add `ready_at` to `investigation_certificates`
+6. Add `anchored_at` to `investigation_certificates`
+7. Add `batch_anchor_hash` to `investigation_certificates`
+
+**Downgrade:** Drop all 7 columns.
+
+### 5.3 Model Changes
+
+**`backend/database/models.py` — Investigation class:**
+
+```python
+# Add after existing fields:
+stop_condition_status: Mapped[Optional[str]] = mapped_column(
+    String(20), nullable=True, default=None,
+    comment="READY | NOT_READY — persisted stop condition evaluation result"
+)
+stop_condition_reason: Mapped[Optional[str]] = mapped_column(
+    String(500), nullable=True, default=None,
+)
+stop_condition_evaluated_at: Mapped[Optional[datetime]] = mapped_column(
+    DateTime, nullable=True, default=None,
+)
+```
+
+**Status comment update:** `"ACTIVE | CERTIFICATE_READY | COMPLETED"`
+
+**`backend/database/models.py` — InvestigationCertificateRecord class:**
+
+```python
+# Add after existing fields:
+certificate_status: Mapped[str] = mapped_column(
+    String(20), default="READY",
+    comment="READY | ANCHORED | ISSUED"
+)
+ready_at: Mapped[Optional[datetime]] = mapped_column(
+    DateTime, nullable=True, default=None,
+)
+anchored_at: Mapped[Optional[datetime]] = mapped_column(
+    DateTime, nullable=True, default=None,
+)
+batch_anchor_hash: Mapped[Optional[str]] = mapped_column(
+    String(64), nullable=True, default=None,
+    comment="SHA-256 of batch anchor (sorted cert hashes)"
+)
+```
+
+---
+
+## 6. API Design
+
+### 6.1 Modified Endpoints
+
+#### `POST /api/v1/investigations/{investigation_id}/evidence`
+
+**Change:** Add domain filter validation before acceptance.
+
+```python
+# In route handler, before existing evidence persistence:
+investigation = await repo.get(investigation_id)
+validate_evidence_source(
+    domain_filters_json=investigation.domain_filters_json or [],
+    source_id=body.source_id,
+    source_description=body.source_description,
+)
+# ... existing evidence submission logic ...
+
+# After persistence, trigger stop condition evaluation:
+await evaluate_after_mutation(session, investigation, trigger="evidence")
+```
+
+**Error response on violation:**
+```json
+{
+    "detail": "Source 'cyber_threat' is outside committed domain filters ['corporate_and_entity', 'finance_and_markets']. Allowed sources: ['corporate_filing', 'entity_resolution', 'market_data', 'central_bank', 'official_gov', 'prediction_market']"
+}
+```
+HTTP 422 Unprocessable Entity.
+
+#### `POST /api/v1/investigations/{investigation_id}/counter-signals`
+
+**Change:** Add domain filter validation + stop condition evaluation.
+
+```python
+validate_signal_source(
+    domain_filters_json=investigation.domain_filters_json or [],
+    detection_method=body.detection_method,
+    source_ref=body.source_ref if hasattr(body, 'source_ref') else "",
+)
+# ... existing counter-signal logic ...
+await evaluate_after_mutation(session, investigation, trigger="counter_signal")
+```
+
+#### `POST /api/v1/investigations/{investigation_id}/drift`
+
+**Change:** Trigger stop condition evaluation after drift persistence.
+
+```python
+# ... existing drift persistence ...
+await evaluate_after_mutation(session, investigation, trigger="drift")
+```
+
+#### `GET /api/v1/investigations/{investigation_id}/certificate`
+
+**Change:** Returns current certificate state without building. No longer triggers certificate construction.
+
+```python
+@router.get("/{investigation_id}/certificate")
+async def get_certificate(investigation_id: str, db: AsyncSession = Depends(get_db)):
+    """Return current certificate state (READY/ANCHORED/ISSUED) without building."""
+    investigation = await repo.get(investigation_id)
+    if not investigation:
+        raise HTTPException(404, "Investigation not found")
+    if not investigation.certificate:
+        raise HTTPException(404, "No certificate exists. Use POST .../certificate/build.")
+    cert = investigation.certificate
+    return {
+        "certificate_id": cert.id,
+        "investigation_id": cert.investigation_id,
+        "certificate_status": cert.certificate_status,
+        "certificate_hash": cert.certificate_hash,
+        "routing_decision": cert.routing_decision,
+        "routing_reason": cert.routing_reason,
+        "ready_at": cert.ready_at.isoformat() if cert.ready_at else None,
+        "anchored_at": cert.anchored_at.isoformat() if cert.anchored_at else None,
+        "issued_at": cert.issued_at.isoformat() if cert.issued_at else None,
+        "batch_anchor_hash": cert.batch_anchor_hash,
+        "certificate_json": cert.certificate_json,
     }
+```
 
-    Returns False if spawn_rule is None (backward compat with can_spawn_theatre=False).
-    Returns True for can_spawn_theatre=True with no spawn_rule (legacy fallback).
+### 6.2 New Endpoints
+
+#### `POST /api/v1/investigations/{investigation_id}/certificate/build`
+
+**Purpose:** Build certificate and transition to READY. Replaces the old GET behavior.
+
+```python
+@router.post("/{investigation_id}/certificate/build")
+async def build_certificate(investigation_id: str, db: AsyncSession = Depends(get_db)):
+    """Build certificate and transition to READY.
+
+    Prerequisites: Investigation must be ACTIVE with stop conditions satisfied.
+    Result: Certificate persisted with status=READY, investigation=CERTIFICATE_READY.
     """
+    investigation = await repo.get(investigation_id)
+    if not investigation:
+        raise HTTPException(404, "Investigation not found")
+    if investigation.certificate:
+        raise HTTPException(409, "Certificate already exists")
+
+    # Rebuild toolset and build certificate (existing logic)
+    toolset = _rebuild_toolset(investigation)
+    cert_model = toolset.build_certificate()
+
+    # Persist certificate record (modified: does NOT set COMPLETED)
+    cert_record = await repo.persist_certificate_as_ready(
+        investigation_id=investigation_id,
+        certificate_hash=cert_model.certificate_hash,
+        certificate_json=cert_model.model_dump(mode="json"),
+        routing_decision=cert_model.routing_decision,
+        routing_reason=cert_model.routing_reason,
+    )
+
+    # Transition to READY via lifecycle service
+    await transition_to_ready(db, cert_record, investigation)
+
+    # Trigger paradox-risk recompute
+    await _recompute_theatre_paradox_risk(
+        db, investigation.theatre_id, investigation.inquiry_class,
+        trigger_reason="certificate_ready",
+    )
+
+    return {
+        "certificate_id": cert_record.id,
+        "certificate_status": cert_record.certificate_status,
+        "certificate_hash": cert_record.certificate_hash,
+        "ready_at": cert_record.ready_at.isoformat() if cert_record.ready_at else None,
+        "routing_decision": cert_record.routing_decision,
+    }
 ```
 
-**Fallback logic**:
-- `theatre_spawn_rule_json` is set -> evaluate the rule
-- `theatre_spawn_rule_json` is None AND `can_spawn_theatre` is True -> spawn unconditionally (backward compat)
-- `theatre_spawn_rule_json` is None AND `can_spawn_theatre` is False -> don't spawn
+#### `POST /api/v1/investigations/certificates/anchor-batch`
 
-### 3.4 Paradox Risk Orchestrator
-
-**New file**: `backend/services/paradox_risk_orchestrator.py`
+**Purpose:** Trigger daily batch anchor. Admin/cron endpoint.
 
 ```python
-class ParadoxRiskOrchestrator:
-    """Centralized paradox risk recomputation + persistence + event gating."""
+@router.post("/certificates/anchor-batch")
+async def anchor_batch(db: AsyncSession = Depends(get_db)):
+    """Process all READY certificates in a batch anchor.
 
-    async def trigger_recompute(
-        self,
-        db: AsyncSession,
-        theatre_id: str,
-        trigger_reason: str,
-    ) -> ParadoxRiskAssessment | None:
-        """Recompute paradox risk for a theatre.
-
-        1. Load theatre + related investigation state
-        2. Gather risk factors from live data
-        3. Evaluate via ParadoxRiskEvaluator
-        4. Compare with persisted level
-        5. Persist new assessment
-        6. Emit WS event if material delta
-
-        Returns assessment or None if theatre not found.
-        """
-
-    def _is_material_delta(
-        self,
-        old_level: str | None,
-        new_level: str,
-        old_factors: dict | None,
-        new_factors: dict,
-    ) -> bool:
-        """Determine if risk change is material enough for WS emission.
-
-        Material = level changed OR any factor crossed a threshold boundary.
-        """
-
-    async def _gather_factors(
-        self,
-        db: AsyncSession,
-        theatre,
-    ) -> dict:
-        """Gather risk computation inputs from live theatre/investigation state.
-
-        Reads:
-        - Active paradox state from theatre
-        - Material counter-signal count from linked investigations
-        - Evidence freshness from linked investigations
-        - Logic gap / stability from theatre fields
-        """
+    Transitions READY -> ANCHORED -> ISSUED atomically.
+    Idempotent: second call is a no-op if no READY certificates exist.
+    """
+    issued_ids = await run_batch_anchor(db)
+    return {
+        "issued_count": len(issued_ids),
+        "issued_certificate_ids": issued_ids,
+        "batch_timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 ```
 
-**Trigger integration points** (called from existing mutation paths):
+#### `GET /api/v1/investigations/{investigation_id}/readiness`
 
-| Trigger | Location | Call |
-|---------|----------|------|
-| Paradox state change | `backend/worker/tasks/paradox.py` | `orchestrator.trigger_recompute(theatre_id, "paradox_state_change")` |
-| Material counter-signal | `backend/api/investigation_routes.py` (counter-signal endpoint) | `orchestrator.trigger_recompute(theatre_id, "counter_signal_ingested")` |
-| Evidence freshness threshold | Background task or on investigation update | `orchestrator.trigger_recompute(theatre_id, "evidence_freshness_threshold")` |
-| Certificate/policy transition | `backend/services/certificate_pipeline.py` | `orchestrator.trigger_recompute(theatre_id, "certificate_transition")` |
-
-### 3.5 Materiality Rule for PARADOX_RISK_CHANGED
-
-A delta is material when:
-- `level` changes (LOW -> WATCH, WATCH -> HIGH, etc.)
-- OR `active_paradox` flips (False -> True or True -> False)
-- OR `material_counter_signals` crosses from 0 to >0
-
-Non-material: factor values change within same level without crossing the above boundaries.
-
----
-
-## 4. Data Architecture
-
-No new models or migrations required. All schema columns exist from Cycle-018 and Cycle-019.
-
-### 4.1 Existing Columns Used by v2
-
-**ScenarioCheckpoint** (line ~795 in models.py):
-- `trigger_condition_json` — JSON, currently STAGED, now consumed
-- `evaluator_type` — String, already used for hash input, now dispatches to primitive
-- `can_spawn_theatre` — Boolean, kept for backward compat fallback
-- `theatre_spawn_rule_json` — JSON, currently STAGED, now consumed
-
-**CheckpointBranch** (line ~826):
-- `branch_rule_json` — JSON, currently STAGED, now consumed
-- `outcome_type` — String, used by spawn rule evaluation
-- `reward_mapping_json` — JSON, already consumed
-
-**ScenarioRun** (line ~886):
-- `environment_seed` — Integer, already set
-- `run_mode` — String, already set
-
-**RunCheckpointResult** (line ~918):
-- `state_vector_json` — JSON, upgraded from minimal to full state vector
-- `spawned_theatre_id` — String FK, already used
-
-**Theatre**:
-- `paradox_risk_level` — String, already persisted
-- `paradox_risk_factors_json` — JSON, already persisted
-- `paradox_risk_updated_at` — DateTime, already persisted
-
-### 4.2 Template Seeder Updates
-
-Existing scenario pack template seeders must be updated to include valid `trigger_condition_json`, `branch_rule_json`, and `theatre_spawn_rule_json` for RUNNABLE templates. CATALOG_ONLY templates can leave these as null.
-
----
-
-## 5. API Design
-
-### 5.1 Scenario Pack Endpoints (Behavior Changes Only)
-
-**`POST /api/v1/scenario-packs/{id}/run`**
-- Now validates that all checkpoints in the template have valid evaluator configs
-- Returns 422 if any checkpoint has missing/malformed `trigger_condition_json` or branches lack `branch_rule_json`
-- Response shape unchanged
-
-**`GET /api/v1/scenario-packs/{id}/runs/{run_id}/tree`**
-- `state_vector_json` on each node now contains full state vector (cumulative_reward, completed_objectives, etc.)
-- Response shape unchanged (additive detail in existing field)
-
-**`GET /api/v1/scenario-packs/{id}/runs/{run_id}/replay`**
-- Replay now uses recorded seed + state vectors for exact reproduction
-- Response shape unchanged
-
-### 5.2 Theatre Endpoints (No Changes)
-
-`GET /api/v1/theatres/{id}` continues returning `paradox_risk` from persisted state. On-read fallback computation remains for missing/stale values but orchestrated recompute is now the primary path.
-
----
-
-## 6. WebSocket Events
-
-### 6.1 CHECKPOINT_RESOLVED
-
-Emitted after each checkpoint evaluation in `evaluate_checkpoints()`.
+**Purpose:** Return stop condition evaluation status.
 
 ```python
-await realtime_manager.broadcast_checkpoint_resolved(
-    pack_id=pack.id,
-    run_id=run.id,
-    checkpoint_id=checkpoint.id,
-    selected_branch_id=selected_branch.id,
-    reward=reward,
-    seed=seed,
-)
+@router.get("/{investigation_id}/readiness")
+async def get_readiness(investigation_id: str, db: AsyncSession = Depends(get_db)):
+    """Return current stop condition evaluation status."""
+    investigation = await repo.get(investigation_id)
+    if not investigation:
+        raise HTTPException(404, "Investigation not found")
+    return {
+        "investigation_id": investigation.id,
+        "status": investigation.status,
+        "stop_condition": investigation.stop_condition,
+        "stop_condition_status": investigation.stop_condition_status,
+        "stop_condition_reason": investigation.stop_condition_reason,
+        "stop_condition_evaluated_at": (
+            investigation.stop_condition_evaluated_at.isoformat()
+            if investigation.stop_condition_evaluated_at else None
+        ),
+        "has_certificate": investigation.certificate is not None,
+        "certificate_status": (
+            investigation.certificate.certificate_status
+            if investigation.certificate else None
+        ),
+    }
 ```
 
-### 6.2 THEATRE_SPAWNED
+---
 
-Emitted in `spawn_theatre()` after theatre creation.
+## 7. WebSocket Events
+
+All events use existing `ConnectionManager.broadcast_global()` pattern. Message format: `{"type": <event_type>, "timestamp": <iso>, "data": <payload>}`.
+
+| Event Type | Payload | Trigger |
+|-----------|---------|---------|
+| `INVESTIGATION_STOP_CONDITION_MET` | `{investigation_id, reason, trigger, drift_material}` | `evaluate_after_mutation()` determines readiness (state change from NOT_READY to READY) |
+| `INVESTIGATION_CERTIFICATE_READY` | `{investigation_id, certificate_id, ready_at}` | `transition_to_ready()` |
+| `INVESTIGATION_CERTIFICATE_ISSUED` | `{investigation_id, certificate_id, issued_at, batch_anchor_hash}` | `run_batch_anchor()` per certificate |
+
+Existing event `INVESTIGATION_STATUS_CHANGED` continues to fire for status transitions but is NOT emitted from the new certificate build path (since we now emit the more specific events above).
+
+---
+
+## 8. Repository Changes
+
+### 8.1 InvestigationRepository Modifications
+
+**`persist_certificate_as_ready()`** — New method replacing part of `persist_certificate()`:
 
 ```python
-await realtime_manager.broadcast_theatre_spawned(
-    pack_id=pack.id,
-    run_id=run.id,
-    checkpoint_id=checkpoint.id,
-    theatre_id=theatre.id,
-)
+async def persist_certificate_as_ready(
+    self,
+    investigation_id: str,
+    certificate_hash: str,
+    certificate_json: dict,
+    routing_decision: str,
+    routing_reason: str = "",
+) -> InvestigationCertificateRecord:
+    """Persist certificate record in READY state.
+
+    Unlike persist_certificate(), does NOT set investigation to COMPLETED.
+    Does NOT set issued_at. Sets certificate_status='READY' and ready_at.
+    """
+    cert = InvestigationCertificateRecord(
+        investigation_id=investigation_id,
+        certificate_hash=certificate_hash,
+        certificate_json=certificate_json,
+        routing_decision=routing_decision,
+        routing_reason=routing_reason,
+        certificate_status="READY",
+        ready_at=datetime.now(timezone.utc),
+    )
+    self._session.add(cert)
+    await self._session.flush()
+    return cert
 ```
 
-### 6.3 PARADOX_RISK_CHANGED
-
-Emitted by `ParadoxRiskOrchestrator` only on material delta.
-
-```python
-await realtime_manager.broadcast_paradox_risk_changed(
-    theatre_id=theatre_id,
-    old_level=old_level,
-    new_level=new_level,
-    factors=new_factors,
-    reason=trigger_reason,
-)
-```
+**Existing `persist_certificate()`** — Kept for backward compatibility but deprecated. If called, it sets `certificate_status='ISSUED'` and `issued_at` for legacy behavior.
 
 ---
 
-## 7. Security Architecture
+## 9. Integration Points
 
-No new authentication or authorization surfaces. All endpoints retain existing auth guards.
+### 9.1 Existing Toolset Rebuild
 
-- Scenario pack run endpoints require authenticated user who owns the pack
-- Theatre paradox risk is read-only for non-owners
-- WebSocket events are scoped to connected users with appropriate theatre/pack access
+The `InvestigationToolset.rebuild_from_persisted(investigation)` method (existing) rebuilds in-memory tool state from DB-persisted investigation. Used by:
+- Certificate build endpoint (existing)
+- Stop condition orchestrator (new — needs toolset for claim_graph and evidence_envelope)
 
----
+No changes needed to `rebuild_from_persisted()` itself.
 
-## 8. Testing Strategy
+### 9.2 Paradox Risk Orchestrator
 
-### 8.1 Unit Tests
+Existing `_recompute_theatre_paradox_risk()` is called from:
+- Evidence submission (existing)
+- Certificate build (existing, reason changes from `"investigation_completed"` to `"certificate_ready"`)
+- Batch anchor (new — with reason `"investigation_completed"`)
 
-**Primitive evaluators** (per primitive):
-- Correct branch selection for known inputs
-- Determinism: same inputs always produce same output
-- Boundary cases: threshold edge values
-- Invalid config rejection (missing fields, malformed JSON)
+### 9.3 Signal Scanner
 
-**Environment RNG**:
-- `_seeded_rng` produces same output for same seed+checkpoint
-- Different checkpoints produce different noise
-- DETECTION_EVENT noise is bounded
-- TIMING_BREACH drift is bounded
-
-**Spawn rule evaluator**:
-- Rule-based spawn gating
-- Backward compat with `can_spawn_theatre` boolean
-- Mode restriction enforcement
-
-**Paradox risk orchestrator**:
-- Materiality detection
-- Factor gathering from theatre/investigation state
-- No WS event on non-material delta
-
-### 8.2 Integration Tests
-
-- Full run: template -> pack -> run -> checkpoints resolve from schema -> correct branches selected
-- Replay: same seed reproduces exact path
-- Spawn: derived theatre created only when spawn rule passes
-- Paradox: mutation triggers recompute, material delta emits WS event
-
-### 8.3 Regression
-
-- Existing Cycle-018 template catalog tests pass
-- Existing Cycle-019 deployment/investigation/paradox tests pass
-- CATALOG_ONLY templates unaffected
+`DOMAIN_FILTER_SOURCE_GROUPS` is imported by `DomainFilterValidator` but not modified. The scanner itself is not changed.
 
 ---
 
-## 9. Implementation Plan (Sprint Mapping)
+## 10. Security Architecture
 
-### Sprint 0: Runtime Contract Tightening
-- Verify schema fields, freeze primitive contracts
-- Define JSON contracts per primitive (trigger, branch_rule, spawn_rule)
-- Define materiality rule
-- Lock stale-cache policy
+### 10.1 Domain Filter Enforcement
 
-### Sprint 1: Schema-Driven Checkpoint Evaluation
-- Implement 5 primitive evaluator functions
-- Implement `select_branch()` dispatch
-- Replace `_deterministic_branch_index()` calls in `evaluate_checkpoints()`
-- Add `_seeded_rng()` for noise-using primitives
-- Fail-fast validation for malformed configs
-- Update template seeders with valid configs
+- **Enforcement boundary:** API layer (routes), before any persistence.
+- **Bypass prevention:** `DomainFilterValidator` is called in every ingestion path. No path to submit evidence without passing through validation.
+- **Empty filters = open:** Backward compatible. Only committed investigations with non-empty `domain_filters_json` enforce.
 
-### Sprint 2: Environment RNG + Mode Semantics
-- Implement `ScenarioRunStateBuilder`
-- Wire `ScenarioSeedManager` as sole seed source in evaluation path
-- State vector accumulation across checkpoints
-- Replay path validation (recorded seed + no fresh randomness)
-- Parity tests across modes
+### 10.2 Batch Anchor Endpoint
 
-### Sprint 3: Derived Theatre Rules + Run Integrity
-- Replace `can_spawn_theatre` logic with `should_spawn()` rule evaluator
-- Implement spawn rule contract evaluation
-- Backward compat fallback for legacy boolean
-- Spawn provenance with run-scoped uniqueness
+- `POST /certificates/anchor-batch` — should be restricted to admin/cron callers in production. For v1, no auth gate (internal network only).
+- Idempotent — safe to call repeatedly.
 
-### Sprint 4: Paradox Risk Orchestration
-- Create `ParadoxRiskOrchestrator` service
-- Wire 4 trigger paths into existing mutation code
-- Implement materiality detection
-- Factor gathering from live theatre/investigation state
-- On-read fallback kept for missing/stale
+### 10.3 Certificate Immutability
 
-### Sprint 5: WebSocket Emission + Integration + E2E
-- Wire CHECKPOINT_RESOLVED emission from evaluate_checkpoints
-- Wire THEATRE_SPAWNED emission from spawn_theatre
-- Wire PARADOX_RISK_CHANGED emission from orchestrator
-- Full integration tests
-- Regression verification
+- Once a certificate reaches `ISSUED` status, no further mutations are allowed.
+- `issued_at` is only set during batch anchor — cannot be set via any other path.
+- `certificate_hash` is computed at build time and never changes.
 
 ---
 
-## 10. Technical Risks & Mitigation
+## 11. Testing Strategy
+
+### 11.1 DomainFilterValidator Tests
+
+| Test | Description |
+|------|-------------|
+| `test_validate_in_scope_evidence_passes` | Evidence with source_id in allowed sources passes |
+| `test_validate_out_of_scope_evidence_rejected` | Evidence with source_id outside allowed sources raises DomainFilterViolation |
+| `test_validate_empty_filters_passes_all` | Empty domain_filters_json = no enforcement |
+| `test_validate_signal_out_of_scope_rejected` | Counter-signal source outside domain raises violation |
+| `test_validate_meta_methods_always_pass` | `automated_osint`, `human_submitted` always allowed |
+| `test_get_allowed_sources_expands_correctly` | Domain filter enum values expand to correct source groups |
+
+### 11.2 StopConditionOrchestrator Tests
+
+| Test | Description |
+|------|-------------|
+| `test_evaluate_persists_ready_status` | Evaluation result written to investigation fields |
+| `test_evaluate_emits_ws_on_readiness_change` | WS event fired when NOT_READY -> READY |
+| `test_evaluate_no_ws_when_already_ready` | No WS event when status unchanged |
+| `test_drift_trigger_includes_drift_in_reason` | Material drift trigger augments reason string |
+| `test_skips_completed_investigation` | Returns early for COMPLETED/CERTIFICATE_READY |
+| `test_evidence_trigger_evaluates_stop` | Evidence trigger calls evaluator correctly |
+
+### 11.3 CertificateLifecycleService Tests
+
+| Test | Description |
+|------|-------------|
+| `test_transition_to_ready_sets_fields` | Sets certificate_status=READY, ready_at, investigation=CERTIFICATE_READY |
+| `test_transition_to_ready_no_issued_at` | ready_at set, issued_at is None |
+| `test_batch_anchor_transitions_ready_to_issued` | READY -> ANCHORED -> ISSUED with correct timestamps |
+| `test_batch_anchor_computes_hash` | Batch hash = SHA-256 of sorted cert hashes |
+| `test_batch_anchor_idempotent` | Second call returns empty list |
+| `test_batch_anchor_sets_completed` | Investigation status = COMPLETED after ISSUED |
+| `test_batch_anchor_emits_ws_per_cert` | One WS event per issued certificate |
+| `test_cannot_skip_to_issued` | Cannot set ISSUED without going through ANCHORED |
+
+### 11.4 API Integration Tests
+
+| Test | Description |
+|------|-------------|
+| `test_evidence_rejected_422_on_domain_violation` | POST evidence with out-of-scope source returns 422 |
+| `test_drift_triggers_stop_evaluation` | POST drift updates stop_condition_status |
+| `test_get_certificate_returns_state` | GET certificate returns READY/ANCHORED/ISSUED |
+| `test_build_certificate_creates_ready` | POST certificate/build creates READY cert |
+| `test_anchor_batch_issues_all_ready` | POST anchor-batch processes all READY certs |
+| `test_readiness_endpoint_returns_status` | GET readiness returns evaluation state |
+
+### 11.5 Test Infrastructure
+
+Following existing patterns:
+- **Sync `Session` with SQLite in-memory** for unit tests
+- **Selective table creation** (investigation tables only)
+- **Direct service function calls** (not through API for unit tests)
+- **Mock `ws_manager`** for WebSocket event assertions
+- **`_setup_base()` helpers** for investigation + evidence + claims setup
+
+---
+
+## 12. File Manifest
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `backend/services/domain_filter_validator.py` | Domain filter enforcement (pure functions) |
+| `backend/services/stop_condition_orchestrator.py` | Automatic stop condition evaluation |
+| `backend/services/certificate_lifecycle_service.py` | READY/ANCHORED/ISSUED state machine + batch anchor |
+| `backend/alembic/versions/c021_certificate_lifecycle.py` | Migration for 7 new columns |
+| `backend/tests/test_c021_domain_filter_validator.py` | Domain filter tests |
+| `backend/tests/test_c021_stop_condition_orchestrator.py` | Stop condition orchestrator tests |
+| `backend/tests/test_c021_certificate_lifecycle.py` | Certificate lifecycle + batch anchor tests |
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `backend/database/models.py` | Add 3 columns to Investigation, 4 columns to InvestigationCertificateRecord |
+| `backend/api/investigation_routes.py` | Add domain filter validation to evidence/counter-signal endpoints; refactor certificate endpoint; add build, batch, readiness endpoints |
+| `backend/database/repositories/investigation_repository.py` | Add `persist_certificate_as_ready()` method |
+| `backend/websockets/realtime_manager.py` | Add 3 new broadcast methods for investigation certificate events |
+
+### Unchanged Files
+
+| File | Why Unchanged |
+|------|--------------|
+| `backend/investigation/certificate.py` | Certificate builder logic unchanged; lifecycle is external |
+| `backend/investigation/stop_conditions.py` | Evaluator unchanged; orchestrator wraps it |
+| `backend/investigation/signal_scanner.py` | Scanner unchanged; validator imports its mapping |
+| `backend/investigation/commitment_monitor.py` | Monitor unchanged; orchestrator reads its state |
+| `backend/investigation/toolset.py` | Toolset unchanged; rebuild_from_persisted works as-is |
+
+---
+
+## 13. Risks & Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Existing template seeders have null JSON config fields | Runs fail with validation errors | Sprint 1 updates seeders with valid configs; CATALOG_ONLY templates exempt |
-| Primitive evaluator contracts may not cover all seeded template variations | Edge case branch selection failures | Comprehensive unit tests per primitive; fail-fast with clear error messages |
-| Paradox risk orchestrator adds latency to mutation paths | Slower API responses | Fire-and-forget pattern; orchestrator runs async, does not block response |
-| Backward compat for `can_spawn_theatre` boolean | Legacy templates break | Explicit fallback: no spawn_rule + can_spawn=True -> spawn unconditionally |
-| State vector accumulation may be expensive for long checkpoint chains | Memory/performance concern | State vector is a small dict; checkpoint chains are bounded by template design |
+| Domain filter validation rejects legitimate evidence with ambiguous source_id | Medium | Meta-methods (automated_osint, human_submitted) always pass through; empty filters = no enforcement |
+| Stop condition evaluation adds latency to every mutation | Low | Evaluation is lightweight: rebuild toolset + pure function. No additional DB queries beyond the eager-loaded investigation |
+| Certificate GET behavior change breaks existing consumers | Medium | GET still works, returns current state. Build is now POST. Document migration path for Alexander |
+| Batch anchor clock sensitivity | Low | Batch is idempotent; manual trigger available; timestamp is parameterizable for testing |
+| Migration on production DB with existing certificates | Low | New columns are nullable or have defaults. Existing certificates get `certificate_status='READY'` default, which is semantically correct (they can be re-issued via batch) |
 
 ---
 
-## 11. Out of Scope
+## 14. Future Considerations
 
-- New evaluator primitives beyond the 5 defined
-- New Scenario Pack template families
-- Frontend changes (Alexander handles)
-- Agent breeding / genealogy
-- Historical paradox risk charting
-- New inquiry classes
+**Out of scope for C021 but noted:**
+
+- **Blockchain anchoring** — `batch_anchor_hash` is a local SHA-256 for v1. Future cycles could submit to a blockchain and store the tx hash in `anchoring_tx_hash`.
+- **Certificate revocation** — no revocation mechanism exists. ISSUED is final.
+- **Batch scheduling** — v1 uses manual trigger. Future: cron job or scheduled task at 00:00 UTC.
+- **Channel-scoped WS events** — current events use `broadcast_global`. Future: scope to `investigation:{id}` channel for targeted delivery.

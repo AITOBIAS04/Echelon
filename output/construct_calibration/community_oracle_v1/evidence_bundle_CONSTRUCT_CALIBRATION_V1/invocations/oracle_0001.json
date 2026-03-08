@@ -1,0 +1,41 @@
+{
+  "request": {
+    "episode_id": "oracle_0001",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "pr_diff": "diff --git a/src/auth/login.py\n- def login(user, pwd):\n+ def login(user, pwd, mfa_token=None):\n+     if mfa_token:\n+         verify_mfa(user, mfa_token)\n      validate_credentials(user, pwd)",
+      "construct_summary": "Adds optional MFA token parameter to login function. When provided, verifies MFA before credential validation. No changes to existing login flow without MFA.",
+      "followup_qa": [
+        {
+          "question": "Does this break existing callers?",
+          "answer": "No, mfa_token defaults to None so existing calls work unchanged."
+        },
+        {
+          "question": "Is the MFA check order correct?",
+          "answer": "Yes, MFA is verified before credentials per NIST 800-63B guidelines."
+        },
+        {
+          "question": "Are there tests?",
+          "answer": "The diff shows test additions for both MFA and non-MFA paths."
+        },
+        {
+          "question": "What happens if MFA fails?",
+          "answer": "verify_mfa raises AuthError which propagates to the caller."
+        },
+        {
+          "question": "Is rate limiting applied?",
+          "answer": "Yes, the existing rate limiter covers the login endpoint."
+        }
+      ],
+      "episode_id": "oracle_0001"
+    },
+    "scores": {
+      "precision": 0.8,
+      "recall": 0.75,
+      "reply_accuracy": 0.8
+    },
+    "composite": 0.7800000000000001
+  }
+}
