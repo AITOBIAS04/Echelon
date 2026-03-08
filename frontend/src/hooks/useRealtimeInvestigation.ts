@@ -26,6 +26,7 @@ interface WsEvent {
   data?: {
     investigation_id?: string;
     timeline_id?: string;
+    certificate_id?: string;
     [key: string]: unknown;
   };
 }
@@ -44,6 +45,23 @@ const EVENT_QUERY_MAP: Record<string, string[][]> = {
   position_update: [['user', 'positions'], ['user', 'portfolio', 'summary']],
   alert: [['opsDashboard']],
   investigation_event: [['investigations']],
+  // Cycle 019-021: Investigation lifecycle events
+  investigation_stop_condition_met: [['investigations']],
+  investigation_certificate_ready: [['investigations']],
+  investigation_certificate_issued: [['investigations']],
+  // Cycle 018-020: Scenario pack events
+  scenario_run_status: [['scenario-packs']],
+  checkpoint_resolved: [['scenario-packs']],
+  // Cycle 019: Agent deployment events
+  agent_deployed: [['agent-deployments']],
+  agent_withdrawn: [['agent-deployments']],
+  // Cycle 020: Paradox risk events
+  paradox_risk_changed: [['opsDashboard']],
+  // Cycle 021: Coherence gate and routing events
+  coherence_gate_transition: [['investigations'], ['certificate-gallery']],
+  routing_decision: [['certificate-gallery']],
+  // Cycle 017: Theatre events
+  theatre_spawned: [['butterfly', 'timelines'], ['opsDashboard']],
 };
 
 export function useRealtimeInvalidation(channel = 'platform') {
@@ -64,9 +82,43 @@ export function useRealtimeInvalidation(channel = 'platform') {
       }
 
       // For investigation events, also invalidate the specific investigation
-      if (normalisedType === 'investigation_event' && event.data?.investigation_id) {
+      if (event.data?.investigation_id) {
+        const invId = event.data.investigation_id;
+        queryClient.invalidateQueries({ queryKey: ['investigation', invId] });
+
+        if (normalisedType === 'investigation_stop_condition_met') {
+          queryClient.invalidateQueries({ queryKey: ['investigation', invId, 'readiness'] });
+        }
+        if (
+          normalisedType === 'investigation_certificate_ready' ||
+          normalisedType === 'investigation_certificate_issued'
+        ) {
+          queryClient.invalidateQueries({ queryKey: ['investigation', invId, 'readiness'] });
+          queryClient.invalidateQueries({ queryKey: ['investigation', invId, 'certificate'] });
+        }
+      }
+
+      // For scenario pack events, invalidate specific run/pack
+      if (event.data?.run_id) {
+        queryClient.invalidateQueries({ queryKey: ['run-tree'] });
+      }
+
+      // For agent deployment events, invalidate specific deployment
+      if (event.data?.deployment_id) {
         queryClient.invalidateQueries({
-          queryKey: ['investigation', event.data.investigation_id],
+          queryKey: ['agent-deployment', event.data.deployment_id],
+        });
+      }
+
+      // For paradox risk changes, invalidate the specific theatre
+      if (normalisedType === 'paradox_risk_changed' && event.data?.timeline_id) {
+        queryClient.invalidateQueries({ queryKey: ['theatre', event.data.timeline_id] });
+      }
+
+      // For coherence gate transitions, invalidate the specific certificate
+      if (normalisedType === 'coherence_gate_transition' && event.data?.certificate_id) {
+        queryClient.invalidateQueries({
+          queryKey: ['certificate', event.data.certificate_id],
         });
       }
     },
