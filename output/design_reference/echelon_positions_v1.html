@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Portfolio / Positions</title>
+<!--
+  ═══════════════════════════════════════════════════════════
+  MOCK DATA ANNOTATIONS — for engineering team, not UI
+  ═══════════════════════════════════════════════════════════
+  Mock values pending endpoint confirmation:
+  - Position P&L (GET /api/v1/positions)
+  - Entry/current prices per share
+  - Risk flag aggregation (paradox, stale, low-liq)
+  - Settlement certificate links
+  - Theatre type metadata for position side display
+
+  All structure is production-ready. Wire real data from
+  position API endpoints when confirmed.
+
+  POSITION MODEL:
+  Position = user's exposure in a specific theatre
+  ├── Theatre Type determines "side" display:
+  │   ├── BINARY    → Yes / No
+  │   ├── TEMPORAL  → time bucket (e.g. "Q2 2026")
+  │   ├── CONTINUOUS → scalar range (e.g. ">$150K")
+  │   └── COMPOSITE → compound expression (e.g. "Rate Cut + CPI <3%")
+  ├── Status: ACTIVE | SETTLED
+  ├── Risk flags (additive): Paradox, Low Liquidity, Stale, Urgent, Ending Soon, Disputed
+  └── Outcome (settled only): Won / Lost
+
+  PAGE STATE MACHINE (3 mutually exclusive states):
+  if (total === 0)              → EMPTY state
+  else if (atRiskCount > 0)     → ALERT state (orange, at-risk positions flagged)
+  else                          → ACTIVE state (green, all positions nominal)
+
+  All elements — banner, KPIs, table, right rail — derive from
+  the same pageState variable. No mixing states.
+
+  ROW ACTIONS (locked):
+  Active position:   "Open Market →" (link to theatre detail)
+  Settled position:  "View Certificate" (link to certificate)
+  No "Close" action on any row.
+  ═══════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   TASTE TOKENS v1.0
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER (locked) ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR (locked) ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.nav-badge.warn{background:oklch(0.540 0.150 85/0.10);color:oklch(0.430 0.130 85);border:1px solid oklch(0.540 0.150 85/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN + PAGE CHROME
+   ═══════════════════════════════════════════════════════════ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-5)}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:2px}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-ghost:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.btn-sm{height:28px;padding:0 var(--space-3);font-size:11px;border-radius:var(--radius-sm)}
+
+/* ═══════════════════════════════════════════════════════════
+   TAB BAR — Active / All / Settled toggle
+   ═══════════════════════════════════════════════════════════ */
+.tab-bar{display:flex;align-items:center;gap:var(--space-1);margin-bottom:var(--space-4);border-bottom:1px solid var(--border-secondary);padding-bottom:0}
+.tab-item{padding:var(--space-2) var(--space-4);font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;border:none;background:none;font-family:var(--font-sans);position:relative;margin-bottom:-1px;border-bottom:2px solid transparent;transition:color var(--duration-instant) ease}
+.tab-item:hover{color:var(--text-secondary)}
+.tab-item.active{color:var(--purple-700);font-weight:600;border-bottom-color:var(--purple-500)}
+.tab-item .tab-count{font-family:var(--font-mono);font-size:11px;font-weight:600;margin-left:4px;color:var(--text-disabled)}
+.tab-item.active .tab-count{color:var(--purple-400)}
+
+/* ═══════════════════════════════════════════════════════════
+   ATTENTION STRIP — state-driven (orange/green/empty)
+   3 states only: EMPTY | ACTIVE | ALERT
+   ═══════════════════════════════════════════════════════════ */
+.attention-strip{display:flex;align-items:center;gap:var(--space-4);padding:var(--space-3) var(--space-5);border-radius:var(--radius-md);margin-bottom:var(--space-4);font-size:13px;line-height:20px}
+.attention-strip.alert-state{background:oklch(0.610 0.185 62/0.06);border:1px solid oklch(0.610 0.185 62/0.18)}
+.attention-strip.alert-state .attention-icon{color:var(--orange-600)}
+.attention-strip.alert-state .attention-label{color:var(--orange-700)}
+.attention-strip.active-state{background:oklch(0.545 0.170 152/0.06);border:1px solid oklch(0.545 0.170 152/0.18)}
+.attention-strip.active-state .attention-icon{color:var(--green-600)}
+.attention-strip.active-state .attention-label{color:var(--green-700)}
+.attention-strip.empty-state{display:none}
+.attention-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.attention-label{font-weight:600;white-space:nowrap}
+.attention-items{display:flex;align-items:center;gap:var(--space-1);flex-wrap:wrap;flex:1}
+.attention-item{display:inline-flex;align-items:center;gap:4px;color:var(--text-secondary);font-size:13px;text-decoration:none;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background var(--duration-instant) ease}
+.attention-item:hover{color:var(--text-primary);background:oklch(0.20 0.01 265/0.04)}
+.attention-item .attn-count{font-family:var(--font-mono);font-weight:700;font-variant-numeric:tabular-nums}
+.attention-item.risk .attn-count{color:var(--orange-600)}
+.attention-item.danger .attn-count{color:var(--status-danger)}
+.attention-sep{color:var(--border-primary);margin:0 var(--space-1);user-select:none}
+.attention-all-clear{color:var(--green-700);font-weight:500;display:flex;align-items:center;gap:var(--space-2)}
+
+/* ═══════════════════════════════════════════════════════════
+   SUMMARY STRIP — KPI metrics for portfolio
+   ═══════════════════════════════════════════════════════════ */
+.port-summary{display:flex;gap:var(--space-3);margin-bottom:var(--space-4)}
+.port-kpi{flex:1;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:2px}
+.port-kpi-top{display:flex;align-items:center;justify-content:space-between}
+.port-kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);line-height:16px}
+.port-kpi-window{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-disabled);background:var(--bg-sunken);padding:1px 5px;border-radius:3px;border:1px solid var(--border-secondary)}
+.port-kpi-row{display:flex;align-items:baseline;gap:var(--space-2)}
+.port-kpi-value{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:32px;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.port-kpi-value.success{color:var(--green-600)}
+.port-kpi-value.warning{color:var(--orange-600)}
+.port-kpi-value.danger{color:var(--status-danger)}
+.port-kpi-value.zero{color:var(--text-disabled)}
+.port-kpi-unit{font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--text-muted)}
+.port-kpi-sub{font-size:10px;color:var(--text-disabled);font-family:var(--font-mono);font-weight:500;margin-top:2px;font-variant-numeric:tabular-nums}
+.port-kpi.kpi-alert{border-color:oklch(0.610 0.185 62/0.25);background:var(--orange-50)}
+.port-kpi.kpi-alert .port-kpi-value{color:var(--orange-600)}
+.port-kpi-interp{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;padding:1px 6px;border-radius:3px;margin-top:var(--space-1);display:inline-flex;align-self:flex-start}
+.port-kpi-interp.positive{color:var(--green-700);background:var(--green-50)}
+.port-kpi-interp.negative{color:var(--status-danger);background:var(--red-50)}
+.port-kpi-interp.warn{color:oklch(0.430 0.130 85);background:oklch(0.540 0.150 85/0.08)}
+
+/* ═══════════════════════════════════════════════════════════
+   POSITIONS LAYOUT — table + right rail
+   ═══════════════════════════════════════════════════════════ */
+.port-layout{display:grid;grid-template-columns:1fr 300px;gap:var(--space-4);align-items:start}
+
+/* ═══════════════════════════════════════════════════════════
+   FILTER BAR
+   ═══════════════════════════════════════════════════════════ */
+.filter-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-3);gap:var(--space-3)}
+.filter-left{display:flex;align-items:center;gap:var(--space-2)}
+.filter-select{height:30px;padding:0 26px 0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 3.75l2.5 2.5 2.5-2.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+.filter-search{height:30px;width:200px;padding:0 var(--space-3) 0 28px;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:12px;color:var(--text-primary);outline:none}
+.filter-search:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12)}
+.filter-search-wrap{position:relative}
+.filter-search-wrap .search-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.filter-count{font-size:12px;color:var(--text-muted);font-weight:500}
+
+/* ═══════════════════════════════════════════════════════════
+   POSITIONS TABLE — dense operational view
+   ═══════════════════════════════════════════════════════════ */
+.positions-panel{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+
+.pos-table{width:100%;border-collapse:collapse}
+.pos-table th{position:sticky;top:0;background:var(--bg-sunken);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);padding:var(--space-2) var(--space-3);text-align:left;white-space:nowrap;border-bottom:1px solid var(--border-primary);z-index:1}
+.pos-table th.right{text-align:right}
+
+.pos-table td{padding:var(--space-2) var(--space-3);font-size:13px;border-bottom:1px solid var(--border-secondary);vertical-align:middle;white-space:nowrap}
+.pos-table tr:last-child td{border-bottom:none}
+.pos-table tr{transition:background var(--duration-instant) ease}
+.pos-table tbody tr:hover{background:var(--bg-hover)}
+
+/* Settled rows — visually quieter */
+.pos-table tr.row-settled{opacity:0.65}
+.pos-table tr.row-settled:hover{opacity:0.85}
+
+/* At-risk rows get orange left accent */
+.pos-table tr.row-risk{background:oklch(0.610 0.185 62/0.03)}
+.pos-table tr.row-risk td:first-child{box-shadow:inset 3px 0 0 var(--orange-500)}
+
+/* Paradox rows get red accent */
+.pos-table tr.row-paradox{background:oklch(0.545 0.185 25/0.03)}
+.pos-table tr.row-paradox td:first-child{box-shadow:inset 3px 0 0 var(--status-danger)}
+
+/* Theatre name + type */
+.pos-theatre{display:flex;flex-direction:column;gap:1px;max-width:220px}
+.pos-theatre-name{font-size:13px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pos-theatre-type{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-disabled)}
+
+/* Side badge — position direction */
+.pos-side{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:2px 8px;border-radius:4px;line-height:16px}
+.pos-side.yes{color:var(--green-700);background:var(--green-50);border:1px solid oklch(0.545 0.170 152/0.15)}
+.pos-side.no{color:oklch(0.470 0.170 25);background:var(--red-50);border:1px solid oklch(0.545 0.185 25/0.15)}
+.pos-side.temporal{color:var(--purple-700);background:var(--purple-50);border:1px solid oklch(0.530 0.230 295/0.15)}
+.pos-side.continuous{color:oklch(0.420 0.140 260);background:oklch(0.525 0.155 260/0.06);border:1px solid oklch(0.525 0.155 260/0.15)}
+.pos-side.composite{color:var(--orange-700);background:var(--orange-50);border:1px solid oklch(0.610 0.185 62/0.15)}
+
+/* Prices */
+.pos-price{font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.pos-price-sub{font-size:10px;color:var(--text-disabled);font-family:var(--font-mono);font-variant-numeric:tabular-nums;display:block;margin-top:1px}
+
+/* Quantity */
+.pos-qty{font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+
+/* P&L */
+.pos-pnl{font-family:var(--font-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.pos-pnl.positive{color:var(--green-600)}
+.pos-pnl.negative{color:var(--red-500)}
+.pos-pnl.zero{color:var(--text-muted)}
+.pos-pnl-pct{font-size:10px;font-weight:500;display:block;margin-top:1px}
+.pos-pnl-pct.positive{color:var(--green-600)}
+.pos-pnl-pct.negative{color:var(--red-500)}
+
+/* Risk chips — from taste.md s11 locked vocabulary */
+.chips{display:flex;align-items:center;gap:3px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:1px 5px;border-radius:3px;white-space:nowrap;line-height:14px}
+.chip-live{color:var(--green-600)}.chip-live::before{content:'';width:5px;height:5px;border-radius:9999px;background:var(--status-success)}
+.chip-settled{color:var(--text-muted)}
+.chip-disputed{color:var(--status-danger);background:oklch(0.545 0.185 25/0.08);border:1px solid oklch(0.545 0.185 25/0.15)}
+.chip-low-liq{color:var(--text-muted);background:var(--bg-sunken);border:1px solid var(--border-secondary)}
+.chip-paradox{color:var(--status-danger);background:oklch(0.545 0.185 25/0.08);border:1px solid oklch(0.545 0.185 25/0.15)}
+.chip-stale{color:oklch(0.430 0.130 85);background:oklch(0.540 0.150 85/0.08);border:1px solid oklch(0.540 0.150 85/0.15)}
+.chip-urgent{color:var(--status-danger);background:var(--red-50)}
+.chip-ending-soon{color:var(--orange-600);background:var(--orange-50)}
+.chip-time-default{color:var(--text-muted)}
+
+/* Outcome badge (settled rows) */
+.outcome-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:2px 8px;border-radius:4px;line-height:14px}
+.outcome-badge.won{color:var(--green-700);background:var(--green-50);border:1px solid oklch(0.545 0.170 152/0.15)}
+.outcome-badge.lost{color:oklch(0.470 0.170 25);background:var(--red-50);border:1px solid oklch(0.545 0.185 25/0.15)}
+
+/* Row actions */
+.row-action{font-size:12px;font-weight:600;color:var(--text-muted);text-decoration:none;white-space:nowrap;transition:color var(--duration-instant) ease}
+.row-action:hover{color:var(--purple-600)}
+
+/* ═══════════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════════ */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:var(--space-12) var(--space-8);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs)}
+.empty-state-icon{width:64px;height:64px;border-radius:var(--radius-lg);background:var(--bg-sunken);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-5);color:var(--text-disabled)}
+.empty-state-title{font-size:17px;font-weight:700;color:var(--text-primary);margin-bottom:var(--space-2)}
+.empty-state-desc{font-size:13px;color:var(--text-muted);max-width:340px;line-height:20px;margin-bottom:var(--space-5)}
+.empty-rail-msg{font-size:12px;color:var(--text-disabled);padding:var(--space-4);text-align:center;font-style:italic}
+
+/* ═══════════════════════════════════════════════════════════
+   RIGHT RAIL — allocation, risk, settlements
+   ═══════════════════════════════════════════════════════════ */
+.rail{display:flex;flex-direction:column;gap:var(--space-4)}
+.rail-panel{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.rail-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-secondary)}
+.rail-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.rail-body{padding:var(--space-3) var(--space-4)}
+
+/* Allocation breakdown */
+.alloc-row{display:flex;align-items:center;justify-content:space-between;padding:var(--space-1) 0}
+.alloc-row + .alloc-row{border-top:1px solid var(--border-secondary)}
+.alloc-label{font-size:12px;color:var(--text-secondary);display:flex;align-items:center;gap:var(--space-2)}
+.alloc-dot{width:8px;height:8px;border-radius:var(--radius-full);flex-shrink:0}
+.alloc-value{font-family:var(--font-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.alloc-pct{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-left:var(--space-1)}
+.alloc-bar-wrap{margin-top:var(--space-2)}
+.alloc-bar{width:100%;height:8px;background:var(--bg-sunken);border-radius:4px;overflow:hidden;display:flex}
+.alloc-bar-seg{height:100%;transition:width 0.3s var(--ease-out)}
+
+/* Risk summary */
+.risk-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0}
+.risk-row + .risk-row{border-top:1px solid var(--border-secondary)}
+.risk-label{font-size:12px;color:var(--text-secondary)}
+.risk-count{font-family:var(--font-mono);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.risk-count.active{color:var(--orange-600)}
+.risk-count.danger{color:var(--status-danger)}
+.risk-count.none{color:var(--text-disabled)}
+
+/* Settlement outcomes */
+.settle-row{display:flex;align-items:center;gap:var(--space-3);padding:6px 0}
+.settle-row + .settle-row{border-top:1px solid var(--border-secondary)}
+.settle-theatre{font-size:12px;color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.settle-pnl{font-family:var(--font-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.settle-pnl.positive{color:var(--green-600)}
+.settle-pnl.negative{color:var(--red-500)}
+
+/* ═══════════════════════════════════════════════════════════
+   STATE TOGGLE (demo)
+   ═══════════════════════════════════════════════════════════ */
+.state-toggle{position:fixed;bottom:var(--space-5);right:var(--space-5);display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-full);box-shadow:var(--shadow-md);font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer;z-index:100}
+.state-toggle:hover{border-color:var(--purple-200);color:var(--text-primary)}
+.state-toggle-dot{width:8px;height:8px;border-radius:var(--radius-full)}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+@media(max-width:1400px){.port-layout{grid-template-columns:1fr 260px}.port-summary{flex-wrap:wrap}.port-kpi{min-width:calc(33.33% - var(--space-3))}}
+@media(max-width:1024px){.sidebar{width:64px}.sidebar .nav-item-label,.sidebar .nav-badge{display:none}.sidebar .nav-group-label{font-size:0;padding:var(--space-2) var(--space-4)}.sidebar .nav-group-label::after{content:'';display:block;width:16px;height:1px;background:var(--border-primary);margin:0 auto}.sidebar .nav-item{padding:0;justify-content:center;margin:1px var(--space-1);width:calc(100% - var(--space-2))}.main{margin-left:64px}.port-layout{grid-template-columns:1fr}}
+@media(max-width:768px){.sidebar{display:none}.main{margin-left:0;padding:var(--space-4)}.port-layout{grid-template-columns:1fr}.port-summary{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<!-- HEADER (locked) -->
+<header class="header">
+  <div class="header-left">
+    <a href="#" class="header-logo"><div class="header-logo-mark">E</div><span class="header-logo-text">Echelon</span><span class="header-logo-version">v2</span></a>
+    <button class="sidebar-toggle"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4.5h12M3 9h12M3 13.5h12"/></svg></button>
+  </div>
+  <div class="header-center"><div class="header-search"><span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg></span><input type="text" placeholder="Search theatres, agents, investigations..."><span class="header-search-kbd">/</span></div></div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span>Base</div>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 12.73A6 6 0 0 0 15 9V7.5a6 6 0 1 0-12 0V9a6 6 0 0 0 1.27 3.73L3 15h12l-1.27-2.27z"/><path d="M7.5 15a1.5 1.5 0 0 0 3 0"/></svg><span class="header-badge">3</span></button>
+    <button class="wallet-btn"><div class="wallet-balance"><div class="wallet-balance-item"><span class="wallet-balance-label">ETH</span>2.45</div><span class="wallet-divider"></span><div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span>1,250</div></div><div class="wallet-avatar"></div></button>
+  </div>
+</header>
+
+<!-- SIDEBAR (locked) -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group"><div class="nav-group-label">Command</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg></span><span class="nav-item-label">Dashboard</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Markets</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14l4-5 3 3 5-7"/><path d="M11 5h3v3"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">5</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Intelligence</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge warn">2</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="14" height="14" rx="1"/><path d="M2 6h14M6 2v14M10 2v14M2 10h14"/></svg></span><span class="nav-item-label">Signal Map</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="3"/><circle cx="9" cy="9" r="1"/></svg></span><span class="nav-item-label">WorldMonitor</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Verification</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l2.5 2.5L13 6"/><circle cx="9" cy="9" r="7"/></svg></span><span class="nav-item-label">Verify</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="12" height="14" rx="1"/><path d="M7 6h4M7 9h4M7 12h2"/></svg></span><span class="nav-item-label">Certificates</span><span class="nav-badge warn">4</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Portfolio</div><a href="#" class="nav-item active"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4z"/><path d="M2 7h14"/><path d="M12 11h2"/></svg></span><span class="nav-item-label">Positions</span><span class="nav-badge count" id="nav-positions-badge">8</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Agents</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="6" r="3"/><path d="M3 15a6 6 0 0 1 12 0"/></svg></span><span class="nav-item-label">Fleet</span><span class="nav-badge live">34</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Operations</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">3</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 14V4M7 14V8M11 14V6M15 14V2"/></svg></span><span class="nav-item-label">Analytics</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Data Products</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h10v2H4zM4 8h10v2H4zM4 12h10v2H4z"/></svg></span><span class="nav-item-label">RLMF Exports</span></a></div>
+  </div>
+  <div class="sidebar-footer"><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M14.5 9a5.5 5.5 0 0 0-.4-1.5l1.5-1.2-1-1.7-1.8.6A5.5 5.5 0 0 0 11.5 4l.2-1.9h-2L9.5 4a5.5 5.5 0 0 0-1.3 1.2l-1.8-.6-1 1.7 1.5 1.2A5.5 5.5 0 0 0 6.5 9a5.5 5.5 0 0 0 .4 1.5l-1.5 1.2 1 1.7 1.8-.6a5.5 5.5 0 0 0 1.3 1.2l-.2 1.9h2l.2-1.9a5.5 5.5 0 0 0 1.3-1.2l1.8.6 1-1.7-1.5-1.2A5.5 5.5 0 0 0 14.5 9z"/></svg></span><span class="nav-item-label">Settings</span></a></div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PORTFOLIO / POSITIONS — 3 mutually exclusive states
+     State variable drives: banner, KPIs, table, right rail
+     ═══════════════════════════════════════════════════════════ -->
+
+<main class="main">
+
+  <div class="page-header">
+    <div>
+      <div class="page-breadcrumb"><span>Portfolio</span><span class="page-breadcrumb-sep">/</span><span class="page-breadcrumb-current">Positions</span></div>
+      <h1 class="page-title">Positions</h1>
+    </div>
+    <div style="display:flex;gap:var(--space-2)">
+      <button class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 12V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M2 8h12"/><path d="M8 2v12"/></svg>Export</button>
+    </div>
+  </div>
+
+  <!-- Tab bar: Active / All / Settled -->
+  <div class="tab-bar" id="tab-bar">
+    <button class="tab-item active">Active<span class="tab-count" id="tab-active-count">8</span></button>
+    <button class="tab-item">All<span class="tab-count" id="tab-all-count">11</span></button>
+    <button class="tab-item">Settled<span class="tab-count" id="tab-settled-count">3</span></button>
+  </div>
+
+  <!-- ═══ ATTENTION STRIP ═══ -->
+  <div class="attention-strip" id="attention-strip"></div>
+
+  <!-- ═══ SUMMARY STRIP ═══ -->
+  <div class="port-summary" id="port-summary"></div>
+
+  <!-- ═══ POSITIONS LAYOUT: Table + Right Rail ═══ -->
+  <div class="port-layout" id="port-layout">
+
+    <!-- LEFT: Positions Table (or empty state) -->
+    <div id="positions-area"></div>
+
+    <!-- RIGHT RAIL -->
+    <div class="rail" id="right-rail"></div>
+
+  </div>
+
+</main>
+
+<!-- State toggle (demo) — cycles through all 3 page states -->
+<button class="state-toggle" onclick="cycleState()">
+  <span class="state-toggle-dot" id="toggle-dot"></span>
+  <span id="toggle-label"></span>
+</button>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// PAGE STATE MACHINE
+// Single variable drives ALL page elements.
+// 3 states: 'empty' | 'active' | 'alert'
+// ═══════════════════════════════════════════════════════════
+
+const STATES = ['alert', 'active', 'empty'];
+let stateIdx = 0;
+
+function setPageState(state) {
+  renderAttentionStrip(state);
+  renderKPIs(state);
+  renderPositionsArea(state);
+  renderRightRail(state);
+  renderNavBadge(state);
+  renderTabCounts(state);
+  renderToggleButton(state);
+}
+
+// ── ATTENTION STRIP ──
+function renderAttentionStrip(state) {
+  const strip = document.getElementById('attention-strip');
+
+  if (state === 'alert') {
+    strip.className = 'attention-strip alert-state';
+    strip.innerHTML = `
+      <div class="attention-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 2L1.5 15h15L9 2z"/><path d="M9 7v3M9 12.5v.5"/></svg></div>
+      <span class="attention-label">Attention</span>
+      <div class="attention-items">
+        <a class="attention-item danger"><span class="attn-count">1</span> paradox active</a>
+        <span class="attention-sep">\u00b7</span>
+        <a class="attention-item risk"><span class="attn-count">2</span> positions at risk</a>
+        <span class="attention-sep">\u00b7</span>
+        <a class="attention-item risk"><span class="attn-count">$1,840</span> exposure flagged</a>
+      </div>`;
+  } else if (state === 'active') {
+    strip.className = 'attention-strip active-state';
+    strip.innerHTML = `
+      <div class="attention-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l3 3 5-5"/><circle cx="9" cy="9" r="7"/></svg></div>
+      <span class="attention-label">All Clear</span>
+      <div class="attention-items">
+        <span class="attention-all-clear"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3.5 7l2.5 2.5 4.5-4.5"/></svg>All positions nominal \u2014 no risk flags</span>
+      </div>`;
+  } else {
+    strip.className = 'attention-strip empty-state';
+    strip.innerHTML = '';
+  }
+}
+
+// ── KPI CARDS ──
+function renderKPIs(state) {
+  const el = document.getElementById('port-summary');
+
+  if (state === 'empty') {
+    el.innerHTML = `
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Portfolio Value</span><span class="port-kpi-window">total</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value zero">$0</span></div>
+      </div>
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Unrealised P&amp;L</span><span class="port-kpi-window">open</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value zero">$0</span></div>
+      </div>
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Open Positions</span><span class="port-kpi-window">active</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value zero">0</span></div>
+      </div>
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Settled</span><span class="port-kpi-window">30d</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value zero">0</span></div>
+      </div>
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Win Rate</span><span class="port-kpi-window">all time</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value zero">\u2014</span></div>
+      </div>
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Exposure at Risk</span><span class="port-kpi-window">flagged</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value zero">$0</span></div>
+      </div>`;
+    return;
+  }
+
+  if (state === 'active') {
+    el.innerHTML = `
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Portfolio Value</span><span class="port-kpi-window">total</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value">$4,280</span></div>
+        <div class="port-kpi-sub">cost basis $3,640</div>
+      </div>
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Unrealised P&amp;L</span><span class="port-kpi-window">open</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value success">+$640</span></div>
+        <span class="port-kpi-interp positive">+17.6%</span>
+      </div>
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Open Positions</span><span class="port-kpi-window">active</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value">6</span></div>
+        <div class="port-kpi-sub">across 5 theatres</div>
+      </div>
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Settled</span><span class="port-kpi-window">30d</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value">3</span></div>
+        <div class="port-kpi-sub">realised +$420</div>
+      </div>
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Win Rate</span><span class="port-kpi-window">all time</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value success">67%</span></div>
+        <div class="port-kpi-sub">6 won \u00b7 3 lost</div>
+      </div>
+      <div class="port-kpi">
+        <div class="port-kpi-top"><span class="port-kpi-label">Exposure at Risk</span><span class="port-kpi-window">flagged</span></div>
+        <div class="port-kpi-row"><span class="port-kpi-value success">$0</span></div>
+      </div>`;
+    return;
+  }
+
+  // alert — has at-risk positions
+  el.innerHTML = `
+    <div class="port-kpi">
+      <div class="port-kpi-top"><span class="port-kpi-label">Portfolio Value</span><span class="port-kpi-window">total</span></div>
+      <div class="port-kpi-row"><span class="port-kpi-value">$5,120</span></div>
+      <div class="port-kpi-sub">cost basis $4,380</div>
+    </div>
+    <div class="port-kpi">
+      <div class="port-kpi-top"><span class="port-kpi-label">Unrealised P&amp;L</span><span class="port-kpi-window">open</span></div>
+      <div class="port-kpi-row"><span class="port-kpi-value success">+$740</span></div>
+      <span class="port-kpi-interp positive">+16.9%</span>
+    </div>
+    <div class="port-kpi">
+      <div class="port-kpi-top"><span class="port-kpi-label">Open Positions</span><span class="port-kpi-window">active</span></div>
+      <div class="port-kpi-row"><span class="port-kpi-value">8</span></div>
+      <div class="port-kpi-sub">across 7 theatres</div>
+    </div>
+    <div class="port-kpi">
+      <div class="port-kpi-top"><span class="port-kpi-label">Settled</span><span class="port-kpi-window">30d</span></div>
+      <div class="port-kpi-row"><span class="port-kpi-value">3</span></div>
+      <div class="port-kpi-sub">realised +$420</div>
+    </div>
+    <div class="port-kpi">
+      <div class="port-kpi-top"><span class="port-kpi-label">Win Rate</span><span class="port-kpi-window">all time</span></div>
+      <div class="port-kpi-row"><span class="port-kpi-value success">67%</span></div>
+      <div class="port-kpi-sub">6 won \u00b7 3 lost</div>
+    </div>
+    <div class="port-kpi kpi-alert">
+      <div class="port-kpi-top"><span class="port-kpi-label">Exposure at Risk</span><span class="port-kpi-window">flagged</span></div>
+      <div class="port-kpi-row"><span class="port-kpi-value warning">$1,840</span></div>
+      <span class="port-kpi-interp warn">2 positions flagged</span>
+    </div>`;
+}
+
+// ── POSITIONS TABLE (or empty state) ──
+function renderPositionsArea(state) {
+  const el = document.getElementById('positions-area');
+
+  if (state === 'empty') {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <path d="M4 8a2 2 0 0 1 2-2h20a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"/>
+            <path d="M4 12h24"/>
+            <path d="M20 18h4"/>
+          </svg>
+        </div>
+        <div class="empty-state-title">No positions yet</div>
+        <div class="empty-state-desc">Open a position in any theatre to start building your portfolio. Your active and settled positions will appear here.</div>
+        <a href="#" class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14l4-5 3 3 5-7"/><path d="M11 5h3v3"/></svg>Browse Theatres</a>
+      </div>`;
+    return;
+  }
+
+  const filterBar = `
+    <div class="filter-bar">
+      <div class="filter-left">
+        <div class="filter-search-wrap">
+          <svg class="search-icon" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="5" r="3.5"/><path d="M8 8l2.5 2.5"/></svg>
+          <input type="text" class="filter-search" placeholder="Search positions...">
+        </div>
+        <select class="filter-select">
+          <option>All Types</option><option>Binary</option><option>Temporal</option><option>Continuous</option><option>Composite</option>
+        </select>
+        <select class="filter-select">
+          <option>All Risk</option><option>At Risk</option><option>Nominal</option>
+        </select>
+        <span class="filter-count">${state === 'alert' ? '8 active \u00b7 3 settled' : '6 active \u00b7 3 settled'}</span>
+      </div>
+    </div>`;
+
+  const tableHead = `
+    <table class="pos-table"><thead><tr>
+      <th>Theatre</th><th>Side</th><th>Entry</th><th>Current</th><th class="right">Qty</th><th class="right">P&amp;L</th><th>Risk</th><th style="width:120px">Action</th>
+    </tr></thead><tbody>`;
+
+  let rows = '';
+
+  if (state === 'alert') {
+    // ── At-risk positions sorted to top ──
+
+    // 1. Binary + Paradox active (red accent)
+    rows += `
+      <tr class="row-paradox">
+        <td><div class="pos-theatre"><span class="pos-theatre-name">Taiwan Strait Crisis</span><span class="pos-theatre-type">Binary</span></div></td>
+        <td><span class="pos-side no">No</span></td>
+        <td><span class="pos-price">42\u00a2<span class="pos-price-sub">avg entry</span></span></td>
+        <td><span class="pos-price">38\u00a2<span class="pos-price-sub">last trade</span></span></td>
+        <td class="right"><span class="pos-qty">120</span></td>
+        <td class="right"><span class="pos-pnl negative">-$48<span class="pos-pnl-pct negative">-9.5%</span></span></td>
+        <td><div class="chips"><span class="chip chip-paradox">Paradox</span><span class="chip chip-ending-soon">6d</span></div></td>
+        <td><a href="#" class="row-action">Open Market \u2192</a></td>
+      </tr>`;
+
+    // 2. Continuous + Low Liquidity + Stale (orange accent)
+    rows += `
+      <tr class="row-risk">
+        <td><div class="pos-theatre"><span class="pos-theatre-name">BTC End-of-Year Price</span><span class="pos-theatre-type">Continuous</span></div></td>
+        <td><span class="pos-side continuous">&gt;$150K</span></td>
+        <td><span class="pos-price">28\u00a2<span class="pos-price-sub">avg entry</span></span></td>
+        <td><span class="pos-price">32\u00a2<span class="pos-price-sub">last trade</span></span></td>
+        <td class="right"><span class="pos-qty">200</span></td>
+        <td class="right"><span class="pos-pnl positive">+$80<span class="pos-pnl-pct positive">+14.3%</span></span></td>
+        <td><div class="chips"><span class="chip chip-low-liq">Low Liquidity</span><span class="chip chip-stale">Stale</span></div></td>
+        <td><a href="#" class="row-action">Open Market \u2192</a></td>
+      </tr>`;
+  }
+
+  // ── Nominal active positions ──
+
+  // Binary — Yes side
+  rows += `
+    <tr>
+      <td><div class="pos-theatre"><span class="pos-theatre-name">Fed Rate Cut by June</span><span class="pos-theatre-type">Binary</span></div></td>
+      <td><span class="pos-side yes">Yes</span></td>
+      <td><span class="pos-price">54\u00a2<span class="pos-price-sub">avg entry</span></span></td>
+      <td><span class="pos-price">67\u00a2<span class="pos-price-sub">last trade</span></span></td>
+      <td class="right"><span class="pos-qty">300</span></td>
+      <td class="right"><span class="pos-pnl positive">+$390<span class="pos-pnl-pct positive">+24.1%</span></span></td>
+      <td><div class="chips"><span class="chip chip-live">Live</span></div></td>
+      <td><a href="#" class="row-action">Open Market \u2192</a></td>
+    </tr>`;
+
+  // Temporal — time bucket side
+  rows += `
+    <tr>
+      <td><div class="pos-theatre"><span class="pos-theatre-name">US CPI Peak Quarter</span><span class="pos-theatre-type">Temporal</span></div></td>
+      <td><span class="pos-side temporal">Q2 2026</span></td>
+      <td><span class="pos-price">31\u00a2<span class="pos-price-sub">avg entry</span></span></td>
+      <td><span class="pos-price">38\u00a2<span class="pos-price-sub">last trade</span></span></td>
+      <td class="right"><span class="pos-qty">150</span></td>
+      <td class="right"><span class="pos-pnl positive">+$105<span class="pos-pnl-pct positive">+22.6%</span></span></td>
+      <td><div class="chips"><span class="chip chip-live">Live</span></div></td>
+      <td><a href="#" class="row-action">Open Market \u2192</a></td>
+    </tr>`;
+
+  // Composite — compound expression side
+  rows += `
+    <tr>
+      <td><div class="pos-theatre"><span class="pos-theatre-name">Rate Cut + CPI &lt;3%</span><span class="pos-theatre-type">Composite</span></div></td>
+      <td><span class="pos-side composite">Both True</span></td>
+      <td><span class="pos-price">18\u00a2<span class="pos-price-sub">avg entry</span></span></td>
+      <td><span class="pos-price">22\u00a2<span class="pos-price-sub">last trade</span></span></td>
+      <td class="right"><span class="pos-qty">400</span></td>
+      <td class="right"><span class="pos-pnl positive">+$160<span class="pos-pnl-pct positive">+22.2%</span></span></td>
+      <td><div class="chips"><span class="chip chip-live">Live</span><span class="chip chip-ending-soon">5d</span></div></td>
+      <td><a href="#" class="row-action">Open Market \u2192</a></td>
+    </tr>`;
+
+  // Binary — No side
+  rows += `
+    <tr>
+      <td><div class="pos-theatre"><span class="pos-theatre-name">SpaceX Orbital Refuel</span><span class="pos-theatre-type">Binary</span></div></td>
+      <td><span class="pos-side no">No</span></td>
+      <td><span class="pos-price">62\u00a2<span class="pos-price-sub">avg entry</span></span></td>
+      <td><span class="pos-price">58\u00a2<span class="pos-price-sub">last trade</span></span></td>
+      <td class="right"><span class="pos-qty">80</span></td>
+      <td class="right"><span class="pos-pnl negative">-$32<span class="pos-pnl-pct negative">-6.5%</span></span></td>
+      <td><div class="chips"><span class="chip chip-live">Live</span></div></td>
+      <td><a href="#" class="row-action">Open Market \u2192</a></td>
+    </tr>`;
+
+  if (state === 'alert') {
+    // Continuous — another nominal position
+    rows += `
+      <tr>
+        <td><div class="pos-theatre"><span class="pos-theatre-name">EU AI Act Compliance %</span><span class="pos-theatre-type">Continuous</span></div></td>
+        <td><span class="pos-side continuous">&gt;60%</span></td>
+        <td><span class="pos-price">45\u00a2<span class="pos-price-sub">avg entry</span></span></td>
+        <td><span class="pos-price">51\u00a2<span class="pos-price-sub">last trade</span></span></td>
+        <td class="right"><span class="pos-qty">100</span></td>
+        <td class="right"><span class="pos-pnl positive">+$60<span class="pos-pnl-pct positive">+13.3%</span></span></td>
+        <td><div class="chips"><span class="chip chip-live">Live</span></div></td>
+        <td><a href="#" class="row-action">Open Market \u2192</a></td>
+      </tr>`;
+
+    // Temporal — another
+    rows += `
+      <tr>
+        <td><div class="pos-theatre"><span class="pos-theatre-name">Next US Recession Start</span><span class="pos-theatre-type">Temporal</span></div></td>
+        <td><span class="pos-side temporal">H2 2026</span></td>
+        <td><span class="pos-price">22\u00a2<span class="pos-price-sub">avg entry</span></span></td>
+        <td><span class="pos-price">25\u00a2<span class="pos-price-sub">last trade</span></span></td>
+        <td class="right"><span class="pos-qty">250</span></td>
+        <td class="right"><span class="pos-pnl positive">+$75<span class="pos-pnl-pct positive">+13.6%</span></span></td>
+        <td><div class="chips"><span class="chip chip-live">Live</span></div></td>
+        <td><a href="#" class="row-action">Open Market \u2192</a></td>
+      </tr>`;
+  }
+
+  // ── Settled positions (visually quieter) ──
+  // Won
+  rows += `
+    <tr class="row-settled">
+      <td><div class="pos-theatre"><span class="pos-theatre-name">ETH Shanghai Upgrade</span><span class="pos-theatre-type">Binary</span></div></td>
+      <td><span class="pos-side yes">Yes</span></td>
+      <td><span class="pos-price">71\u00a2</span></td>
+      <td><span class="pos-price">$1.00</span></td>
+      <td class="right"><span class="pos-qty">200</span></td>
+      <td class="right"><span class="pos-pnl positive">+$580<span class="pos-pnl-pct positive">Won</span></span></td>
+      <td><span class="outcome-badge won">Won</span></td>
+      <td><a href="#" class="row-action">View Certificate</a></td>
+    </tr>`;
+
+  // Lost
+  rows += `
+    <tr class="row-settled">
+      <td><div class="pos-theatre"><span class="pos-theatre-name">OPEC+ Output Cut</span><span class="pos-theatre-type">Binary</span></div></td>
+      <td><span class="pos-side yes">Yes</span></td>
+      <td><span class="pos-price">55\u00a2</span></td>
+      <td><span class="pos-price">$0.00</span></td>
+      <td class="right"><span class="pos-qty">100</span></td>
+      <td class="right"><span class="pos-pnl negative">-$550<span class="pos-pnl-pct negative">Lost</span></span></td>
+      <td><span class="outcome-badge lost">Lost</span></td>
+      <td><a href="#" class="row-action">View Certificate</a></td>
+    </tr>`;
+
+  // Won — temporal
+  rows += `
+    <tr class="row-settled">
+      <td><div class="pos-theatre"><span class="pos-theatre-name">UK Election Month</span><span class="pos-theatre-type">Temporal</span></div></td>
+      <td><span class="pos-side temporal">Jul 2025</span></td>
+      <td><span class="pos-price">34\u00a2</span></td>
+      <td><span class="pos-price">$1.00</span></td>
+      <td class="right"><span class="pos-qty">150</span></td>
+      <td class="right"><span class="pos-pnl positive">+$390<span class="pos-pnl-pct positive">Won</span></span></td>
+      <td><span class="outcome-badge won">Won</span></td>
+      <td><a href="#" class="row-action">View Certificate</a></td>
+    </tr>`;
+
+  el.innerHTML = filterBar + '<div class="positions-panel">' + tableHead + rows + '</tbody></table></div>';
+}
+
+// ── RIGHT RAIL ──
+function renderRightRail(state) {
+  const el = document.getElementById('right-rail');
+
+  if (state === 'empty') {
+    el.innerHTML = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Allocation</span></div>
+        <div class="empty-rail-msg">No positions to display.</div>
+      </div>
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Risk Summary</span></div>
+        <div class="empty-rail-msg">No active risk flags.</div>
+      </div>
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Recent Settlements</span></div>
+        <div class="empty-rail-msg">No settlements yet.</div>
+      </div>`;
+    return;
+  }
+
+  // ── Allocation panel ──
+  const allocData = state === 'alert'
+    ? { fed: '$1,620', fedPct: '32%', fedW: '32%', btc: '$560', btcPct: '11%', btcW: '11%', taiwan: '$504', taiwanPct: '10%', taiwanW: '10%', cpi: '$465', cpiPct: '9%', cpiW: '9%', other: '$1,971', otherPct: '38%', otherW: '38%' }
+    : { fed: '$1,620', fedPct: '38%', fedW: '38%', btc: '$0', btcPct: '0%', btcW: '0%', taiwan: '$0', taiwanPct: '0%', taiwanW: '0%', cpi: '$465', cpiPct: '11%', cpiW: '11%', other: '$2,195', otherPct: '51%', otherW: '51%' };
+
+  let allocation = `
+    <div class="rail-panel">
+      <div class="rail-header"><span class="rail-title">Allocation by Theatre</span></div>
+      <div class="rail-body">
+        <div class="alloc-bar-wrap">
+          <div class="alloc-bar">
+            <div class="alloc-bar-seg" style="width:${allocData.fedW};background:var(--purple-400)"></div>
+            <div class="alloc-bar-seg" style="width:${allocData.cpiW};background:var(--green-400)"></div>
+            <div class="alloc-bar-seg" style="width:${allocData.otherW};background:var(--orange-400)"></div>
+            ${state === 'alert' ? '<div class="alloc-bar-seg" style="width:' + allocData.btcW + ';background:oklch(0.525 0.155 260/0.5)"></div><div class="alloc-bar-seg" style="width:' + allocData.taiwanW + ';background:oklch(0.545 0.185 25/0.5)"></div>' : ''}
+          </div>
+        </div>
+        <div style="margin-top:var(--space-3)">
+          <div class="alloc-row">
+            <span class="alloc-label"><span class="alloc-dot" style="background:var(--purple-400)"></span>Fed Rate Cut</span>
+            <span><span class="alloc-value">${allocData.fed}</span><span class="alloc-pct">${allocData.fedPct}</span></span>
+          </div>
+          <div class="alloc-row">
+            <span class="alloc-label"><span class="alloc-dot" style="background:var(--green-400)"></span>US CPI Peak</span>
+            <span><span class="alloc-value">${allocData.cpi}</span><span class="alloc-pct">${allocData.cpiPct}</span></span>
+          </div>`;
+
+  if (state === 'alert') {
+    allocation += `
+          <div class="alloc-row">
+            <span class="alloc-label"><span class="alloc-dot" style="background:oklch(0.525 0.155 260/0.5)"></span>BTC EOY Price</span>
+            <span><span class="alloc-value">${allocData.btc}</span><span class="alloc-pct">${allocData.btcPct}</span></span>
+          </div>
+          <div class="alloc-row">
+            <span class="alloc-label"><span class="alloc-dot" style="background:oklch(0.545 0.185 25/0.5)"></span>Taiwan Strait</span>
+            <span><span class="alloc-value">${allocData.taiwan}</span><span class="alloc-pct">${allocData.taiwanPct}</span></span>
+          </div>`;
+  }
+
+  allocation += `
+          <div class="alloc-row">
+            <span class="alloc-label"><span class="alloc-dot" style="background:var(--orange-400)"></span>Other</span>
+            <span><span class="alloc-value">${allocData.other}</span><span class="alloc-pct">${allocData.otherPct}</span></span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  // ── Risk Summary panel ──
+  let risk = '';
+  if (state === 'alert') {
+    risk = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Risk Summary</span></div>
+        <div class="rail-body">
+          <div class="risk-row"><span class="risk-label">Paradox Active</span><span class="risk-count danger">1</span></div>
+          <div class="risk-row"><span class="risk-label">Low Liquidity</span><span class="risk-count active">1</span></div>
+          <div class="risk-row"><span class="risk-label">Stale Investigation</span><span class="risk-count active">1</span></div>
+          <div class="risk-row"><span class="risk-label">Ending Soon (&lt;7d)</span><span class="risk-count active">2</span></div>
+          <div class="risk-row"><span class="risk-label">Disputed Certificate</span><span class="risk-count none">0</span></div>
+        </div>
+      </div>`;
+  } else {
+    risk = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Risk Summary</span></div>
+        <div class="rail-body">
+          <div class="risk-row"><span class="risk-label">Paradox Active</span><span class="risk-count none">0</span></div>
+          <div class="risk-row"><span class="risk-label">Low Liquidity</span><span class="risk-count none">0</span></div>
+          <div class="risk-row"><span class="risk-label">Stale Investigation</span><span class="risk-count none">0</span></div>
+          <div class="risk-row"><span class="risk-label">Ending Soon (&lt;7d)</span><span class="risk-count active">1</span></div>
+          <div class="risk-row"><span class="risk-label">Disputed Certificate</span><span class="risk-count none">0</span></div>
+        </div>
+      </div>`;
+  }
+
+  // ── Recent Settlements ──
+  const settlements = `
+    <div class="rail-panel">
+      <div class="rail-header"><span class="rail-title">Recent Settlements</span><span style="font-size:11px;color:var(--text-muted);font-weight:500">30d</span></div>
+      <div class="rail-body">
+        <div class="settle-row">
+          <span class="outcome-badge won" style="flex-shrink:0">Won</span>
+          <span class="settle-theatre">ETH Shanghai Upgrade</span>
+          <span class="settle-pnl positive">+$580</span>
+        </div>
+        <div class="settle-row">
+          <span class="outcome-badge lost" style="flex-shrink:0">Lost</span>
+          <span class="settle-theatre">OPEC+ Output Cut</span>
+          <span class="settle-pnl negative">-$550</span>
+        </div>
+        <div class="settle-row">
+          <span class="outcome-badge won" style="flex-shrink:0">Won</span>
+          <span class="settle-theatre">UK Election Month</span>
+          <span class="settle-pnl positive">+$390</span>
+        </div>
+      </div>
+    </div>`;
+
+  el.innerHTML = allocation + risk + settlements;
+}
+
+// ── NAV BADGE ──
+function renderNavBadge(state) {
+  const badge = document.getElementById('nav-positions-badge');
+  if (state === 'empty') {
+    badge.textContent = '0';
+    badge.className = 'nav-badge count';
+  } else if (state === 'alert') {
+    badge.textContent = '8';
+    badge.className = 'nav-badge warn';
+  } else {
+    badge.textContent = '6';
+    badge.className = 'nav-badge count';
+  }
+}
+
+// ── TAB COUNTS ──
+function renderTabCounts(state) {
+  const active = document.getElementById('tab-active-count');
+  const all = document.getElementById('tab-all-count');
+  const settled = document.getElementById('tab-settled-count');
+  if (state === 'empty') {
+    active.textContent = '0'; all.textContent = '0'; settled.textContent = '0';
+  } else if (state === 'alert') {
+    active.textContent = '8'; all.textContent = '11'; settled.textContent = '3';
+  } else {
+    active.textContent = '6'; all.textContent = '9'; settled.textContent = '3';
+  }
+}
+
+// ── TOGGLE BUTTON ──
+function renderToggleButton(state) {
+  const dot = document.getElementById('toggle-dot');
+  const label = document.getElementById('toggle-label');
+  if (state === 'alert') {
+    dot.style.background = 'var(--orange-500)';
+    label.textContent = 'Alert (click to cycle)';
+  } else if (state === 'active') {
+    dot.style.background = 'var(--green-500)';
+    label.textContent = 'Active (click to cycle)';
+  } else {
+    dot.style.background = 'var(--text-disabled)';
+    label.textContent = 'Empty (click to cycle)';
+  }
+}
+
+function cycleState() {
+  stateIdx = (stateIdx + 1) % STATES.length;
+  setPageState(STATES[stateIdx]);
+}
+
+// Initialize on alert state (shows all features)
+setPageState(STATES[0]);
+</script>
+
+</body>
+</html>

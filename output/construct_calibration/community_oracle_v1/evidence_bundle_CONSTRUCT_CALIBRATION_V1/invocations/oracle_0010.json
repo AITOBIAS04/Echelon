@@ -1,0 +1,41 @@
+{
+  "request": {
+    "episode_id": "oracle_0010",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "pr_diff": "diff --git a/tests/test_auth.py\n+ def test_login_valid_credentials():\n+     response = client.post('/login', json={'user': 'test', 'pwd': 'pass123'})\n+     assert response.status_code == 200\n+     assert 'token' in response.json()\n+ \n+ def test_login_invalid_password():\n+     response = client.post('/login', json={'user': 'test', 'pwd': 'wrong'})\n+     assert response.status_code == 401",
+      "construct_summary": "Adds two authentication tests: successful login returning a token, and failed login returning 401. Uses the test client fixture for HTTP calls.",
+      "followup_qa": [
+        {
+          "question": "Is the test user pre-seeded?",
+          "answer": "Yes, the conftest.py seeds a test user with known credentials."
+        },
+        {
+          "question": "What token format?",
+          "answer": "JWT token with user_id and expiry claims."
+        },
+        {
+          "question": "Is HTTPS enforced?",
+          "answer": "Not in tests. Production enforces HTTPS via reverse proxy."
+        },
+        {
+          "question": "Rate limiting tested?",
+          "answer": "Not in this PR. Rate limiting tests are in test_middleware.py."
+        },
+        {
+          "question": "Token expiry tested?",
+          "answer": "No, but token TTL is set to 1 hour in the auth module."
+        }
+      ],
+      "episode_id": "oracle_0010"
+    },
+    "scores": {
+      "precision": 0.6,
+      "recall": 0.5,
+      "reply_accuracy": 1.0
+    },
+    "composite": 0.64
+  }
+}

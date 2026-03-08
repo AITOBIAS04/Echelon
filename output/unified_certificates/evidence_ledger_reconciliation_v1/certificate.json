@@ -1,0 +1,65 @@
+{
+  "all_criteria_passed": true,
+  "certificate_id": "ed1e0428-d57d-4fa6-ae6f-89755ca1cbd9",
+  "certificate_version": "1.0.0",
+  "commitment_hash": "da437722670dbe35b0a52dc5e8b4bb8eec2ce125f73cf3626939ae2e29a8472a",
+  "composite_score": 0.8933333333333332,
+  "corroboration_met": false,
+  "counter_signals_checked": 0,
+  "counter_signals_found": 0,
+  "criterion_scores": [
+    {
+      "criterion_id": "bank_ref_match",
+      "detail": "bank_ref_match: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "bucket_sum_matches_gross",
+      "detail": "bucket_sum_matches_gross: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "bucket_destination_valid",
+      "detail": "bucket_destination_valid: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "event_log_complete",
+      "detail": "event_log_complete: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "exceptions_correct",
+      "detail": "exceptions_correct: 0.6667 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.6666666666666666
+    }
+  ],
+  "distinct_upstream_count": 0,
+  "evidence_bundle_hash": "e62d607163183000700daa2a662494e8909b1b2ade07f4d33ee2a75b2281630b",
+  "execution_path": "replay",
+  "inquiry_class": "INSPECTION",
+  "issued_at": "2026-03-01T20:33:48.843095Z",
+  "oracle_id": "replay_ledger_reconciliation_v1",
+  "pipeline_version": "0.7.0",
+  "sources_failed": 0,
+  "sources_queried": 15,
+  "sources_succeeded": 15,
+  "target_entity": {
+    "construct_id": "two_rail_marketplace_core",
+    "dataset_id": "reconciliation_v0_2_16",
+    "record_count": 15,
+    "template_id": "ledger_reconciliation_v1"
+  },
+  "theatre_id": "ledger_reconciliation_v1",
+  "verification_tier": "UNVERIFIED"
+}

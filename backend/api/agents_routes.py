@@ -12,9 +12,11 @@ Endpoints:
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional, List
 from pydantic import BaseModel
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
+from ..database.models import AgentDeployment
 from ..database.repositories.agent_repository import AgentRepository
 from ..dependencies import get_db
 
@@ -47,6 +49,9 @@ class AgentResponse(BaseModel):
     genome: dict = {}
     parent_agent_ids: List[str] = []
 
+    # Deployments
+    active_deployments_count: int = 0
+
     # Timestamps
     created_at: datetime
     updated_at: datetime
@@ -58,7 +63,7 @@ class AgentListResponse(BaseModel):
     total: int
 
 
-def _agent_to_response(agent) -> AgentResponse:
+def _agent_to_response(agent, active_deployments_count: int = 0) -> AgentResponse:
     """Convert ORM Agent to response model."""
     return AgentResponse(
         id=agent.id,
@@ -76,6 +81,7 @@ def _agent_to_response(agent) -> AgentResponse:
         trades_count=getattr(agent, 'trades_count', 0),
         genome=getattr(agent, 'genome', {}),
         parent_agent_ids=getattr(agent, 'parent_agent_ids', []) or [],
+        active_deployments_count=active_deployments_count,
         created_at=getattr(agent, 'created_at', datetime.utcnow()),
         updated_at=getattr(agent, 'updated_at', datetime.utcnow()),
     )
@@ -110,8 +116,22 @@ async def list_agents(
     total = len(agents)
     agents = agents[offset:offset + limit]
 
+    # Batch-fetch active deployment counts for all agents in page (Cycle 019)
+    agent_ids = [a.id for a in agents]
+    counts_map: dict[str, int] = {}
+    if agent_ids:
+        count_result = await db_session.execute(
+            select(AgentDeployment.agent_id, func.count())
+            .where(
+                AgentDeployment.agent_id.in_(agent_ids),
+                AgentDeployment.status == "ACTIVE",
+            )
+            .group_by(AgentDeployment.agent_id)
+        )
+        counts_map = dict(count_result.all())
+
     return AgentListResponse(
-        agents=[_agent_to_response(a) for a in agents],
+        agents=[_agent_to_response(a, active_deployments_count=counts_map.get(a.id, 0)) for a in agents],
         total=total
     )
 
@@ -132,4 +152,11 @@ async def get_agent(
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
 
-    return _agent_to_response(agent)
+    count_result = await db_session.execute(
+        select(func.count())
+        .select_from(AgentDeployment)
+        .where(AgentDeployment.agent_id == agent_id, AgentDeployment.status == "ACTIVE")
+    )
+    active_count = count_result.scalar() or 0
+
+    return _agent_to_response(agent, active_deployments_count=active_count)

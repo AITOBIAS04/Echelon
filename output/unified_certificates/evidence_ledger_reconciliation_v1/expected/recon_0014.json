@@ -1,0 +1,23 @@
+{
+  "criteria_verdicts": {
+    "bank_ref_match": true,
+    "bucket_destination_valid": true,
+    "bucket_sum_matches_gross": true,
+    "event_log_complete": false,
+    "exceptions_correct": true
+  },
+  "reconciliation_result": {
+    "exceptions": [
+      {
+        "bucket": "noi_pool",
+        "expected_events": 2,
+        "observed_events": 1,
+        "type": "missing_event"
+      }
+    ],
+    "ledger_events_expected": 2,
+    "ledger_events_observed": 1,
+    "match_reason": "reference_and_amount_match",
+    "matched": true
+  }
+}

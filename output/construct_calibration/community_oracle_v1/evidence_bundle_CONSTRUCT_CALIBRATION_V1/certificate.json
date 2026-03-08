@@ -1,0 +1,43 @@
+{
+  "certificate_id": "a64c7236-d229-5c6d-acb5-b4f6dfc2cd22",
+  "theatre_id": "product_replay_engine_v1",
+  "template_id": "CONSTRUCT_CALIBRATION_V1",
+  "construct_id": "community_oracle_v1",
+  "criteria": {
+    "criteria_ids": [
+      "precision",
+      "recall",
+      "reply_accuracy"
+    ],
+    "criteria_human": "Precision: fraction of oracle claims supported by PR diff. Recall: fraction of important changes surfaced. Reply Accuracy: factual grounding of follow-up responses.",
+    "weights": {
+      "precision": 0.4,
+      "recall": 0.4,
+      "reply_accuracy": 0.2
+    }
+  },
+  "scores": {
+    "precision": 0.7999999999999999,
+    "recall": 0.5416666666666666,
+    "reply_accuracy": 0.7999999999999999
+  },
+  "composite_score": 0.6966666666666667,
+  "precision": 0.7999999999999999,
+  "recall": 0.5416666666666666,
+  "reply_accuracy": 0.7999999999999999,
+  "replay_count": 12,
+  "evidence_bundle_hash": "cabd0288dc5386fbdc8748b8ce6931b1eb6aca2aeadb32a14afaa133788b36c2",
+  "ground_truth_hash": "c3a95cf1063f95180f13bd7aa477878337a0390d4bda61b492ad99d985e25b8b",
+  "construct_version": "8714daab947dd3b94391265046ee110cd2751461e06e70721a1184357538604f",
+  "scorer_version": "construct-calibration-v1.0",
+  "methodology_version": "1.0.0",
+  "dataset_hash": "c3a95cf1063f95180f13bd7aa477878337a0390d4bda61b492ad99d985e25b8b",
+  "verification_tier": "UNVERIFIED",
+  "commitment_hash": "1d258c8ce6070b43cd00e1ebe8cc96d0eeba4ccd13162a32ddf5873c18084287",
+  "issued_at": "2026-03-01T00:00:00",
+  "expires_at": "2099-12-31T23:59:59",
+  "theatre_committed_at": "2026-03-01T00:00:00",
+  "theatre_resolved_at": "2026-03-01T00:00:00",
+  "ground_truth_source": "DETERMINISTIC_COMPUTATION",
+  "execution_path": "replay"
+}

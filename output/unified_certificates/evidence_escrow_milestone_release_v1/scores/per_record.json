@@ -1,0 +1,112 @@
+[
+  {
+    "record_id": "escrow_0001",
+    "scores": {
+      "idempotency": 1.0,
+      "release_amount_correct": 1.0,
+      "required_evidence_present": 1.0,
+      "signature_policy_satisfied": 1.0,
+      "validity_window_respected": 1.0
+    }
+  },
+  {
+    "record_id": "escrow_0002",
+    "scores": {
+      "idempotency": 1.0,
+      "release_amount_correct": 1.0,
+      "required_evidence_present": 1.0,
+      "signature_policy_satisfied": 1.0,
+      "validity_window_respected": 1.0
+    }
+  },
+  {
+    "record_id": "escrow_0003",
+    "scores": {
+      "idempotency": 1.0,
+      "release_amount_correct": 1.0,
+      "required_evidence_present": 1.0,
+      "signature_policy_satisfied": 1.0,
+      "validity_window_respected": 1.0
+    }
+  },
+  {
+    "record_id": "escrow_0004",
+    "scores": {
+      "idempotency": 1.0,
+      "release_amount_correct": 1.0,
+      "required_evidence_present": 1.0,
+      "signature_policy_satisfied": 1.0,
+      "validity_window_respected": 1.0
+    }
+  },
+  {
+    "record_id": "escrow_0005",
+    "scores": {
+      "idempotency": 1.0,
+      "release_amount_correct": 1.0,
+      "required_evidence_present": 1.0,
+      "signature_policy_satisfied": 1.0,
+      "validity_window_respected": 1.0
+    }
+  },
+  {
+    "record_id": "escrow_0006",
+    "scores": {
+      "idempotency": 1.0,
+      "release_amount_correct": 1.0,
+      "required_evidence_present": 1.0,
+      "signature_policy_satisfied": 1.0,
+      "validity_window_respected": 1.0
+    }
+  },
+  {
+    "record_id": "escrow_0007",
+    "scores": {
+      "idempotency": 1.0,
+      "release_amount_correct": 0.0,
+      "required_evidence_present": 0.0,
+      "signature_policy_satisfied": 1.0,
+      "validity_window_respected": 1.0
+    }
+  },
+  {
+    "record_id": "escrow_0008",
+    "scores": {
+      "idempotency": 1.0,
+      "release_amount_correct": 0.0,
+      "required_evidence_present": 1.0,
+      "signature_policy_satisfied": 0.0,
+      "validity_window_respected": 1.0
+    }
+  },
+  {
+    "record_id": "escrow_0009",
+    "scores": {
+      "idempotency": 1.0,
+      "release_amount_correct": 0.0,
+      "required_evidence_present": 1.0,
+      "signature_policy_satisfied": 1.0,
+      "validity_window_respected": 1.0
+    }
+  },
+  {
+    "record_id": "escrow_0010",
+    "scores": {
+      "idempotency": 1.0,
+      "release_amount_correct": 0.0,
+      "required_evidence_present": 1.0,
+      "signature_policy_satisfied": 1.0,
+      "validity_window_respected": 1.0
+    }
+  },
+  {
+    "record_id": "escrow_0011",
+    "scores": {
+      "idempotency": 1.0,
+      "release_amount_correct": 0.0,
+      "required_evidence_present": 1.0,
+      "signature_policy_satisfied": 1.0,
+      "validity_window_respected": 1.0
+    }
+  }
+]

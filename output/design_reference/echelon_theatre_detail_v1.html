@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Theatre Detail</title>
+<!--
+  ═══════════════════════════════════════════════════════════
+  MOCK DATA ANNOTATIONS — for engineering team, not UI
+  ═══════════════════════════════════════════════════════════
+  This is the most important page in the product.
+  It is the full trade flow — replaces all inline card trading.
+
+  Mock values pending endpoint confirmation:
+  - Real-time price feed (WebSocket /ws/theatre/{id}/price)
+  - LMSR price impact curve (GET /api/v1/theatres/{id}/impact?side=yes&amounts=50,100,500,1000)
+  - Slippage calculation (server-side, derived from LMSR pool state)
+  - Evidence/investigation links (GET /api/v1/theatres/{id}/investigations)
+  - Agent activity feed (GET /api/v1/theatres/{id}/agents)
+
+  THEATRE TYPE determines layout variant:
+  ├── BINARY     → Yes/No price bars, side selector, line chart
+  ├── TEMPORAL   → Bucket selector, probability distribution
+  ├── CONTINUOUS → Range selector, percentile band, forecast distribution
+  └── COMPOSITE  → Sub-condition breakdown, explanatory only (v1)
+
+  NAVIGATION CONTRACT:
+  - From Theatres card "Yes" shortcut → opens with ?side=yes preselected
+  - From Theatres card "No" shortcut → opens with ?side=no preselected
+  - From Theatres card "View Market →" → opens neutral (no preselection)
+  - From Positions table "Open Market →" → opens with existing position shown
+
+  PAGE STATE MACHINE (4 mutually exclusive states):
+  if (composite)                → COMPOSITE state (explanatory, no order form)
+  else if (settled)             → SETTLED state (archival, no order form)
+  else if (paradox || stale)    → ALERT state (warnings, order form with risk context)
+  else                          → TRADING state (green, clean execution)
+
+  All elements — header, market context, execution panel, evidence —
+  derive from the same pageState variable. No mixing states.
+
+  EXECUTION PANEL RULES:
+  - TRADING: Full order form (side selector, size, cost, slippage, CTA)
+  - ALERT: Full order form WITH risk warnings above CTA + existing position
+  - SETTLED: No order form. Show resolution outcome, certificate, P&L.
+  - COMPOSITE: No order form. Show sub-conditions + route to sub-markets.
+
+  RISK & TRUST VOCABULARY (locked from taste.md s11):
+  - Paradox: "Healthy" / "Paradox Active"
+  - Evidence: "Fresh (Xh)" / "Stale (Xh)"
+  - Liquidity: "Healthy" / "Low Liquidity"
+  - Verification: "On Track" / "Under Review" / "Disputed"
+  - Time: raw value + Urgent (<24h) / Ending Soon (<7d) chips
+
+  EVIDENCE MODULE:
+  Single compact card mirroring Investigation card data shape:
+  evidence count, claims bar, counter-signals, drift events.
+  Same layout regardless of inquiry class — content varies, container stays.
+
+  EXISTING POSITION RULES:
+  When user holds a position in this theatre:
+  - Show position summary above order form
+  - Preview resulting position with explicit text:
+    "You hold 300 Yes @ 54¢. This order adds 149 Yes @ 67¢ → new avg 57¢, total 449 shares."
+  - If offsetting: "You hold 300 Yes. Buying No reduces net exposure."
+  ═══════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   TASTE TOKENS v1.0
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;--duration-slow:300ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER (locked) ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR (locked) ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.nav-badge.warn{background:oklch(0.540 0.150 85/0.10);color:oklch(0.430 0.130 85);border:1px solid oklch(0.540 0.150 85/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN + PAGE CHROME
+   ═══════════════════════════════════════════════════════════ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:var(--space-2)}
+.page-breadcrumb a{color:var(--text-muted);text-decoration:none}.page-breadcrumb a:hover{color:var(--purple-600)}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-ghost:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.btn-sm{height:28px;padding:0 var(--space-3);font-size:11px;border-radius:var(--radius-sm)}
+
+/* ═══════════════════════════════════════════════════════════
+   MARKET HEADER
+   ═══════════════════════════════════════════════════════════ */
+.market-header{margin-bottom:var(--space-5)}
+.market-title{font-size:24px;line-height:32px;font-weight:700;margin-bottom:var(--space-2)}
+.market-meta{display:flex;align-items:center;gap:var(--space-3);flex-wrap:wrap}
+.market-type-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:2px 8px;border-radius:4px;line-height:16px;color:var(--purple-700);background:var(--purple-50);border:1px solid oklch(0.530 0.230 295/0.15)}
+.market-type-badge.composite{color:var(--orange-700);background:var(--orange-50);border-color:oklch(0.610 0.185 62/0.15)}
+.market-meta-sep{color:var(--border-primary)}
+.market-meta-item{font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:4px}
+.market-meta-item strong{font-weight:600;color:var(--text-primary);font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.market-meta-item a{color:var(--purple-600);text-decoration:none;font-weight:600}.market-meta-item a:hover{text-decoration:underline}
+
+/* Status chips — from taste.md s11 */
+.chip{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:1px 5px;border-radius:3px;white-space:nowrap;line-height:14px}
+.chip-live{color:var(--green-600)}.chip-live::before{content:'';width:5px;height:5px;border-radius:9999px;background:var(--status-success)}
+.chip-settled{color:var(--text-muted);background:var(--bg-sunken);border:1px solid var(--border-secondary)}
+.chip-paradox{color:var(--status-danger);background:oklch(0.545 0.185 25/0.08);border:1px solid oklch(0.545 0.185 25/0.15)}
+.chip-stale{color:oklch(0.430 0.130 85);background:oklch(0.540 0.150 85/0.08);border:1px solid oklch(0.540 0.150 85/0.15)}
+.chip-low-liq{color:var(--text-muted);background:var(--bg-sunken);border:1px solid var(--border-secondary)}
+.chip-ending-soon{color:var(--orange-600);background:var(--orange-50)}
+.chip-urgent{color:var(--status-danger);background:var(--red-50)}
+
+/* ═══════════════════════════════════════════════════════════
+   TWO-COLUMN LAYOUT
+   ═══════════════════════════════════════════════════════════ */
+.detail-layout{display:grid;grid-template-columns:1fr 380px;gap:var(--space-5);align-items:start}
+
+/* ═══════════════════════════════════════════════════════════
+   LEFT COLUMN — Market Context
+   ═══════════════════════════════════════════════════════════ */
+.context-col{display:flex;flex-direction:column;gap:var(--space-4)}
+
+/* Section card */
+.section-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.section-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-5);border-bottom:1px solid var(--border-secondary)}
+.section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.section-body{padding:var(--space-5)}
+
+/* Market overview */
+.market-question{font-size:17px;font-weight:600;line-height:24px;color:var(--text-primary);margin-bottom:var(--space-3)}
+.market-resolution{font-size:13px;color:var(--text-secondary);line-height:20px;padding:var(--space-3) var(--space-4);background:var(--bg-sunken);border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.market-resolution-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-1);display:block}
+
+/* Price display — binary */
+.price-display{display:flex;gap:var(--space-3);margin-top:var(--space-5)}
+.price-block{flex:1;padding:var(--space-4);border-radius:var(--radius-md);text-align:center}
+.price-block.yes-block{background:oklch(0.545 0.170 152/0.04);border:1px solid oklch(0.545 0.170 152/0.15)}
+.price-block.no-block{background:oklch(0.545 0.185 25/0.04);border:1px solid oklch(0.545 0.185 25/0.15)}
+.price-block-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:var(--space-1)}
+.price-block.yes-block .price-block-label{color:var(--green-600)}
+.price-block.no-block .price-block-label{color:var(--red-500)}
+.price-block-value{font-family:var(--font-mono);font-size:30px;font-weight:700;line-height:36px;font-variant-numeric:tabular-nums}
+.price-block.yes-block .price-block-value{color:var(--green-700)}
+.price-block.no-block .price-block-value{color:oklch(0.470 0.170 25)}
+.price-block-sub{font-size:11px;color:var(--text-muted);margin-top:2px}
+
+/* Price chart placeholder */
+.chart-placeholder{height:200px;background:var(--bg-sunken);border-radius:var(--radius-sm);border:1px solid var(--border-secondary);display:flex;align-items:center;justify-content:center;color:var(--text-disabled);font-size:13px;font-weight:500;margin-top:var(--space-4);position:relative;overflow:hidden}
+.chart-placeholder::before{content:'';position:absolute;bottom:0;left:0;right:0;height:140px;background:linear-gradient(180deg,transparent 0%,oklch(0.545 0.170 152/0.06) 100%)}
+.chart-line{position:absolute;bottom:20px;left:20px;right:20px;top:20px}
+.chart-line svg{width:100%;height:100%}
+
+/* ═══════════════════════════════════════════════════════════
+   EVIDENCE MODULE — compressed investigation card
+   Single card, mirrors investigation card data shape
+   ═══════════════════════════════════════════════════════════ */
+.evidence-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.evidence-card.archival{opacity:0.7}.evidence-card.archival .section-header{background:var(--bg-sunken)}
+.evidence-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-3)}
+.evidence-stats{display:flex;gap:var(--space-5)}
+.ev-stat{display:flex;flex-direction:column;gap:1px}
+.ev-stat-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.ev-stat-value{font-family:var(--font-mono);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--text-primary);line-height:20px}
+.ev-stat-value.warn{color:var(--orange-600)}
+.ev-stat-delta{font-family:var(--font-mono);font-size:10px;color:var(--green-600);font-weight:600}
+.claims-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;gap:1px;margin-bottom:var(--space-1)}
+.claims-seg{height:100%;border-radius:2px}
+.claims-seg.supported{background:var(--green-400)}
+.claims-seg.partial{background:var(--orange-400)}
+.claims-seg.contradicted{background:var(--red-400)}
+.claims-seg.unconfirmed{background:var(--border-primary)}
+.claims-legend{font-size:11px;color:var(--text-muted);line-height:16px}
+.evidence-footer{display:flex;align-items:center;justify-content:space-between;margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--border-secondary)}
+.evidence-freshness{display:flex;align-items:center;gap:var(--space-2);font-size:12px;color:var(--text-secondary)}
+.freshness-dot{width:6px;height:6px;border-radius:var(--radius-full)}
+.freshness-dot.fresh{background:var(--green-500)}
+.freshness-dot.stale{background:var(--status-warning)}
+.evidence-link{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--purple-600);text-decoration:none}.evidence-link:hover{text-decoration:underline}
+
+/* ═══════════════════════════════════════════════════════════
+   RISK & TRUST — status dashboard, not description list
+   Uses locked vocabulary from taste.md s11
+   ═══════════════════════════════════════════════════════════ */
+.risk-grid{display:flex;flex-direction:column;gap:0}
+.risk-item{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) 0}
+.risk-item + .risk-item{border-top:1px solid var(--border-secondary)}
+.risk-item-label{font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:var(--space-2)}
+.risk-status{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700}
+.risk-status .status-dot{width:7px;height:7px;border-radius:var(--radius-full);flex-shrink:0}
+.risk-status.healthy{color:var(--green-600)}.risk-status.healthy .status-dot{background:var(--green-500)}
+.risk-status.watch{color:oklch(0.430 0.130 85)}.risk-status.watch .status-dot{background:var(--status-warning)}
+.risk-status.danger{color:var(--status-danger)}.risk-status.danger .status-dot{background:var(--status-danger)}
+.risk-status.muted{color:var(--text-muted)}.risk-status.muted .status-dot{background:var(--text-disabled)}
+.risk-status-sub{font-size:10px;font-weight:500;color:var(--text-disabled);margin-left:4px;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+/* Price impact ladder (LMSR AMM — no real order book) */
+.impact-table{width:100%;border-collapse:collapse}
+.impact-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);padding:0 0 var(--space-2);text-align:left}
+.impact-table th:last-child{text-align:right}
+.impact-table th.center{text-align:center}
+.impact-row{font-family:var(--font-mono);font-size:12px;font-variant-numeric:tabular-nums}
+.impact-row td{padding:4px 0;border-top:1px solid var(--border-secondary)}
+.impact-row td:last-child{text-align:right}
+.impact-row td.center{text-align:center}
+.impact-size{font-weight:600;color:var(--text-primary)}
+.impact-price{font-weight:600}
+.impact-price.yes{color:var(--green-600)}
+.impact-price.no{color:var(--red-500)}
+.impact-slip{color:var(--text-muted);font-size:11px}
+.impact-slip.warn{color:var(--orange-600)}
+.impact-note{font-size:11px;color:var(--text-disabled);margin-top:var(--space-2);line-height:16px}
+.trade-item{display:flex;align-items:center;gap:var(--space-2);padding:4px 0;font-size:12px}
+.trade-item + .trade-item{border-top:1px solid var(--border-secondary)}
+.trade-side{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;width:28px}
+.trade-side.buy{color:var(--green-600)}.trade-side.sell{color:var(--red-500)}
+.trade-price{font-family:var(--font-mono);font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.trade-size{font-family:var(--font-mono);font-variant-numeric:tabular-nums;color:var(--text-secondary);flex:1;text-align:right}
+.trade-time{font-family:var(--font-mono);font-size:10px;color:var(--text-disabled);font-variant-numeric:tabular-nums;flex-shrink:0}
+.agent-activity-item{display:flex;align-items:center;gap:var(--space-2);padding:4px 0;font-size:12px}
+.agent-activity-item + .agent-activity-item{border-top:1px solid var(--border-secondary)}
+.agent-name-sm{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text-primary)}
+.agent-action-sm{color:var(--text-secondary);flex:1}
+.agent-time-sm{font-family:var(--font-mono);font-size:10px;color:var(--text-disabled);font-variant-numeric:tabular-nums;flex-shrink:0}
+
+/* ═══════════════════════════════════════════════════════════
+   RIGHT COLUMN — Execution Panel
+   ═══════════════════════════════════════════════════════════ */
+.exec-col{position:sticky;top:calc(var(--header-height) + var(--space-6))}
+.exec-panel{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);overflow:hidden}
+.exec-header{padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-secondary);display:flex;align-items:center;justify-content:space-between}
+.exec-title{font-size:13px;font-weight:700;color:var(--text-primary)}
+.exec-body{padding:var(--space-5)}
+
+/* Side selector */
+.side-selector{display:flex;gap:var(--space-2);margin-bottom:var(--space-5)}
+.side-btn{flex:1;height:44px;border-radius:var(--radius-md);font-family:var(--font-sans);font-size:15px;font-weight:700;cursor:pointer;border:2px solid transparent;transition:all var(--duration-fast) ease;display:flex;align-items:center;justify-content:center;gap:var(--space-2);background:transparent}
+.side-btn:active{transform:scale(0.97)}
+.side-btn.yes-btn{color:var(--green-600);border-color:oklch(0.545 0.170 152/0.20);background:oklch(0.545 0.170 152/0.04)}
+.side-btn.yes-btn:hover,.side-btn.yes-btn.selected{background:var(--green-500);color:var(--text-inverse);border-color:var(--green-500)}
+.side-btn.no-btn{color:var(--red-500);border-color:oklch(0.545 0.185 25/0.20);background:oklch(0.545 0.185 25/0.04)}
+.side-btn.no-btn:hover,.side-btn.no-btn.selected{background:var(--red-500);color:var(--text-inverse);border-color:var(--red-500)}
+.side-price{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+/* Form fields */
+.form-group{margin-bottom:var(--space-4)}
+.form-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-1);display:block}
+.form-input{width:100%;height:40px;padding:0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-mono);font-size:15px;font-weight:500;color:var(--text-primary);outline:none;font-variant-numeric:tabular-nums}
+.form-input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12)}
+.form-input-wrap{position:relative}
+.form-input-unit{position:absolute;right:var(--space-3);top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:var(--text-muted)}
+.form-hint{font-size:11px;color:var(--text-disabled);margin-top:var(--space-1)}
+
+/* Order summary */
+.order-summary{background:var(--bg-sunken);border-radius:var(--radius-sm);padding:var(--space-3) var(--space-4);margin-bottom:var(--space-4);border:1px solid var(--border-secondary)}
+.order-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0}
+.order-row + .order-row{border-top:1px solid var(--border-secondary);padding-top:6px;margin-top:3px}
+.order-label{font-size:12px;color:var(--text-secondary)}
+.order-value{font-family:var(--font-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.order-value.highlight{color:var(--green-600)}
+.order-value.warn{color:var(--orange-600)}
+
+/* Execute CTA */
+.exec-cta{width:100%;height:48px;border-radius:var(--radius-md);font-family:var(--font-sans);font-size:15px;font-weight:700;cursor:pointer;border:none;display:flex;align-items:center;justify-content:center;gap:var(--space-2);transition:all var(--duration-fast) ease}
+.exec-cta:active{transform:scale(0.97)}
+.exec-cta.cta-yes{background:var(--green-500);color:var(--text-inverse)}.exec-cta.cta-yes:hover{background:var(--green-400)}
+.exec-cta.cta-no{background:var(--red-500);color:var(--text-inverse)}.exec-cta.cta-no:hover{background:var(--red-400)}
+.exec-cta.cta-neutral{background:var(--purple-500);color:var(--text-inverse)}.exec-cta.cta-neutral:hover{background:var(--purple-400)}
+.exec-cta:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+/* Risk warnings in execution panel */
+.exec-warnings{display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-4)}
+.exec-warning{display:flex;align-items:flex-start;gap:var(--space-2);padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);font-size:12px;line-height:16px}
+.exec-warning.warn-orange{background:oklch(0.610 0.185 62/0.08);border:1px solid oklch(0.610 0.185 62/0.15);color:var(--orange-700)}
+.exec-warning.warn-red{background:oklch(0.545 0.185 25/0.08);border:1px solid oklch(0.545 0.185 25/0.15);color:oklch(0.470 0.170 25)}
+.exec-warning-icon{flex-shrink:0;margin-top:1px}
+
+/* Existing position module */
+.position-module{background:var(--purple-50);border:1px solid oklch(0.530 0.230 295/0.15);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);margin-bottom:var(--space-4)}
+.position-module-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2)}
+.position-module-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--purple-700)}
+.position-module-link{font-size:11px;font-weight:600;color:var(--purple-600);text-decoration:none}.position-module-link:hover{text-decoration:underline}
+.position-row{display:flex;align-items:center;justify-content:space-between;padding:2px 0}
+.position-label{font-size:12px;color:var(--text-secondary)}
+.position-value{font-family:var(--font-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.position-value.positive{color:var(--green-600)}
+.position-value.negative{color:var(--red-500)}
+
+/* After-trade preview — explicit additive/offsetting */
+.trade-preview{background:var(--bg-sunken);border:1px dashed var(--border-primary);border-radius:var(--radius-sm);padding:var(--space-3);margin-top:var(--space-3)}
+.trade-preview-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-2)}
+.trade-preview-text{font-size:12px;line-height:18px;color:var(--text-secondary)}
+.trade-preview-text strong{color:var(--text-primary);font-weight:600}
+.trade-preview-text .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600}
+
+/* Wallet display */
+.exec-wallet{display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) 0;margin-top:var(--space-3);border-top:1px solid var(--border-secondary)}
+.exec-wallet-label{font-size:11px;color:var(--text-muted)}
+.exec-wallet-value{font-family:var(--font-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+
+/* ═══════════════════════════════════════════════════════════
+   SETTLED STATE — replaces execution panel
+   ═══════════════════════════════════════════════════════════ */
+.settled-panel{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);overflow:hidden}
+.settled-outcome{text-align:center;padding:var(--space-6) var(--space-5)}
+.settled-outcome-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-2)}
+.settled-outcome-value{font-size:24px;font-weight:700;line-height:32px}
+.settled-outcome-value.yes{color:var(--green-700)}.settled-outcome-value.no{color:oklch(0.470 0.170 25)}
+.settled-cert-link{display:flex;align-items:center;justify-content:center;gap:var(--space-2);margin-top:var(--space-4)}
+.settled-cert-link a{font-size:13px;font-weight:600;color:var(--purple-600);text-decoration:none;display:flex;align-items:center;gap:4px}.settled-cert-link a:hover{text-decoration:underline}
+.settled-position{padding:var(--space-4) var(--space-5);border-top:1px solid var(--border-secondary)}
+.settled-position-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin-bottom:var(--space-3)}
+.settled-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0}
+.settled-row-label{font-size:13px;color:var(--text-secondary)}
+.settled-row-value{font-family:var(--font-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.settled-row-value.positive{color:var(--green-600)}.settled-row-value.negative{color:var(--red-500)}
+.settled-payout{text-align:center;padding:var(--space-4) var(--space-5);background:var(--green-50);border-top:1px solid oklch(0.545 0.170 152/0.15)}
+.settled-payout-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--green-700);margin-bottom:var(--space-1)}
+.settled-payout-value{font-family:var(--font-mono);font-size:24px;font-weight:700;color:var(--green-700);font-variant-numeric:tabular-nums}
+
+/* Archival section treatment */
+.section-card.archival{opacity:0.7}.section-card.archival .section-header{background:var(--bg-sunken)}
+
+/* ═══════════════════════════════════════════════════════════
+   COMPOSITE STATE — explanatory, no order form
+   ═══════════════════════════════════════════════════════════ */
+.composite-panel{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);overflow:hidden}
+.composite-body{padding:var(--space-5)}
+.sub-condition{padding:var(--space-4);border:1px solid var(--border-secondary);border-radius:var(--radius-sm);margin-bottom:var(--space-3)}
+.sub-condition:last-child{margin-bottom:0}
+.sub-condition-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2)}
+.sub-condition-name{font-size:14px;font-weight:600;color:var(--text-primary)}
+.sub-condition-status{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:2px 8px;border-radius:4px}
+.sub-condition-status.active{color:var(--green-600);background:var(--green-50)}
+.sub-condition-status.pending{color:var(--text-muted);background:var(--bg-sunken)}
+.sub-condition-status.resolved{color:var(--purple-700);background:var(--purple-50)}
+.sub-condition-price{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.sub-condition-link{font-size:12px;font-weight:600;color:var(--purple-600);text-decoration:none;display:flex;align-items:center;gap:4px;margin-top:var(--space-2)}.sub-condition-link:hover{text-decoration:underline}
+.composite-expression{padding:var(--space-4);background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-sm);margin-bottom:var(--space-4)}
+.composite-expression-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-1)}
+.composite-expression-value{font-family:var(--font-mono);font-size:15px;font-weight:700;color:var(--text-primary)}
+.composite-note{font-size:13px;color:var(--text-secondary);line-height:20px;text-align:center;padding:var(--space-5);border-top:1px solid var(--border-secondary)}
+.composite-note strong{color:var(--text-primary)}
+
+/* ═══════════════════════════════════════════════════════════
+   STATE TOGGLE (demo)
+   ═══════════════════════════════════════════════════════════ */
+.state-toggle{position:fixed;bottom:var(--space-5);right:var(--space-5);display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-full);box-shadow:var(--shadow-md);font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer;z-index:100}
+.state-toggle:hover{border-color:var(--purple-200);color:var(--text-primary)}
+.state-toggle-dot{width:8px;height:8px;border-radius:var(--radius-full)}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+@media(max-width:1280px){.detail-layout{grid-template-columns:1fr 340px}}
+@media(max-width:1024px){.sidebar{width:64px}.sidebar .nav-item-label,.sidebar .nav-badge{display:none}.sidebar .nav-group-label{font-size:0;padding:var(--space-2) var(--space-4)}.sidebar .nav-group-label::after{content:'';display:block;width:16px;height:1px;background:var(--border-primary);margin:0 auto}.sidebar .nav-item{padding:0;justify-content:center;margin:1px var(--space-1);width:calc(100% - var(--space-2))}.main{margin-left:64px}.detail-layout{grid-template-columns:1fr}}
+@media(max-width:768px){.sidebar{display:none}.main{margin-left:0;padding:var(--space-4)}.detail-layout{grid-template-columns:1fr}.exec-col{position:static}}
+</style>
+</head>
+<body>
+
+<!-- HEADER (locked) -->
+<header class="header">
+  <div class="header-left">
+    <a href="#" class="header-logo"><div class="header-logo-mark">E</div><span class="header-logo-text">Echelon</span><span class="header-logo-version">v2</span></a>
+    <button class="sidebar-toggle"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4.5h12M3 9h12M3 13.5h12"/></svg></button>
+  </div>
+  <div class="header-center"><div class="header-search"><span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg></span><input type="text" placeholder="Search theatres, agents, investigations..."><span class="header-search-kbd">/</span></div></div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span>Base</div>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 12.73A6 6 0 0 0 15 9V7.5a6 6 0 1 0-12 0V9a6 6 0 0 0 1.27 3.73L3 15h12l-1.27-2.27z"/><path d="M7.5 15a1.5 1.5 0 0 0 3 0"/></svg><span class="header-badge">3</span></button>
+    <button class="wallet-btn"><div class="wallet-balance"><div class="wallet-balance-item"><span class="wallet-balance-label">ETH</span>2.45</div><span class="wallet-divider"></span><div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span>1,250</div></div><div class="wallet-avatar"></div></button>
+  </div>
+</header>
+
+<!-- SIDEBAR (locked) -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group"><div class="nav-group-label">Command</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg></span><span class="nav-item-label">Dashboard</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Markets</div><a href="#" class="nav-item active"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14l4-5 3 3 5-7"/><path d="M11 5h3v3"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">5</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Intelligence</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge warn">2</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="14" height="14" rx="1"/><path d="M2 6h14M6 2v14M10 2v14M2 10h14"/></svg></span><span class="nav-item-label">Signal Map</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="3"/><circle cx="9" cy="9" r="1"/></svg></span><span class="nav-item-label">WorldMonitor</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Verification</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l2.5 2.5L13 6"/><circle cx="9" cy="9" r="7"/></svg></span><span class="nav-item-label">Verify</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="12" height="14" rx="1"/><path d="M7 6h4M7 9h4M7 12h2"/></svg></span><span class="nav-item-label">Certificates</span><span class="nav-badge warn">4</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Portfolio</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4z"/><path d="M2 7h14"/><path d="M12 11h2"/></svg></span><span class="nav-item-label">Positions</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Agents</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="6" r="3"/><path d="M3 15a6 6 0 0 1 12 0"/></svg></span><span class="nav-item-label">Fleet</span><span class="nav-badge live">34</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Operations</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">3</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 14V4M7 14V8M11 14V6M15 14V2"/></svg></span><span class="nav-item-label">Analytics</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Data Products</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h10v2H4zM4 8h10v2H4zM4 12h10v2H4z"/></svg></span><span class="nav-item-label">RLMF Exports</span></a></div>
+  </div>
+  <div class="sidebar-footer"><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M14.5 9a5.5 5.5 0 0 0-.4-1.5l1.5-1.2-1-1.7-1.8.6A5.5 5.5 0 0 0 11.5 4l.2-1.9h-2L9.5 4a5.5 5.5 0 0 0-1.3 1.2l-1.8-.6-1 1.7 1.5 1.2A5.5 5.5 0 0 0 6.5 9a5.5 5.5 0 0 0 .4 1.5l-1.5 1.2 1 1.7 1.8-.6a5.5 5.5 0 0 0 1.3 1.2l-.2 1.9h2l.2-1.9a5.5 5.5 0 0 0 1.3-1.2l1.8.6 1-1.7-1.5-1.2A5.5 5.5 0 0 0 14.5 9z"/></svg></span><span class="nav-item-label">Settings</span></a></div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     THEATRE DETAIL — 4 mutually exclusive states
+     State variable drives: header, left context, right execution
+     ═══════════════════════════════════════════════════════════ -->
+
+<main class="main">
+  <div class="page-breadcrumb">
+    <a href="#">Theatres</a>
+    <span class="page-breadcrumb-sep">/</span>
+    <span class="page-breadcrumb-current" id="breadcrumb-title">Fed Rate Cut by June</span>
+  </div>
+  <div class="market-header" id="market-header"></div>
+  <div class="detail-layout">
+    <div class="context-col" id="context-col"></div>
+    <div class="exec-col" id="exec-col"></div>
+  </div>
+</main>
+
+<button class="state-toggle" onclick="cycleState()">
+  <span class="state-toggle-dot" id="toggle-dot"></span>
+  <span id="toggle-label"></span>
+</button>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// PAGE STATE MACHINE — 4 mutually exclusive states
+// 'trading' | 'alert' | 'settled' | 'composite'
+// ═══════════════════════════════════════════════════════════
+
+const STATES = ['trading', 'alert', 'settled', 'composite'];
+let stateIdx = 0;
+
+function setPageState(state) {
+  renderMarketHeader(state);
+  renderContextCol(state);
+  renderExecCol(state);
+  renderToggleButton(state);
+}
+
+// ── SVG helpers ──
+const iconWarn = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 1.5L1 12h12L7 1.5z"/><path d="M7 5.5v3M7 10.5v.5"/></svg>';
+const iconInfo = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><path d="M7 4v3M7 9.5v.5"/></svg>';
+const iconClock = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5.5"/><path d="M7 4v3l2 1.5"/></svg>';
+const iconCert = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="1.5" width="10" height="11" rx="1"/><path d="M5 4.5h4M5 7h4M5 9.5h2"/></svg>';
+
+// ── MARKET HEADER ──
+function renderMarketHeader(state) {
+  const el = document.getElementById('market-header');
+  const bc = document.getElementById('breadcrumb-title');
+
+  if (state === 'settled') {
+    bc.textContent = 'ETH Shanghai Upgrade';
+    el.innerHTML = '<h1 class="market-title">Will Ethereum complete the Shanghai upgrade by Q2 2026?</h1><div class="market-meta"><span class="market-type-badge">Binary</span><span class="chip chip-settled">Settled</span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item">Resolved <strong>14 Feb 2026</strong></span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item">Volume <strong>$48,200</strong></span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item"><a href="#">View Certificate</a></span></div>';
+  } else if (state === 'composite') {
+    bc.textContent = 'Rate Cut + CPI <3%';
+    el.innerHTML = '<h1 class="market-title">Will the Fed cut rates AND CPI fall below 3% by Q2 2026?</h1><div class="market-meta"><span class="market-type-badge composite">Composite</span><span class="chip chip-live">Live</span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item">Expires <strong>30 Jun 2026</strong></span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item">Volume <strong>$8,400</strong></span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item">2 sub-conditions</span></div>';
+  } else if (state === 'alert') {
+    bc.textContent = 'Fed Rate Cut by June';
+    el.innerHTML = '<h1 class="market-title">Will the Federal Reserve cut rates by June 2026?</h1><div class="market-meta"><span class="market-type-badge">Binary</span><span class="chip chip-live">Live</span><span class="chip chip-paradox">Paradox</span><span class="chip chip-stale">Stale</span><span class="chip chip-ending-soon">6d</span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item">Expires <strong>12 Mar 2026</strong></span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item">Volume <strong>$34,100</strong></span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item">Agents <strong>7</strong></span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item"><a href="#">INV-0042</a></span></div>';
+  } else {
+    bc.textContent = 'Fed Rate Cut by June';
+    el.innerHTML = '<h1 class="market-title">Will the Federal Reserve cut rates by June 2026?</h1><div class="market-meta"><span class="market-type-badge">Binary</span><span class="chip chip-live">Live</span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item">Expires <strong>12 Mar 2026</strong></span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item">Volume <strong>$34,100</strong></span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item">Agents <strong>7</strong></span><span class="market-meta-sep">\u00b7</span><span class="market-meta-item"><a href="#">INV-0042</a></span></div>';
+  }
+}
+
+// ── LEFT COLUMN ──
+function renderContextCol(state) {
+  const el = document.getElementById('context-col');
+
+  if (state === 'composite') {
+    el.innerHTML = buildCompositeContext();
+    return;
+  }
+
+  const isSettled = state === 'settled';
+  el.innerHTML = buildOverview(state) + buildEvidenceModule(state) + buildRiskPanel(state) + (isSettled ? '' : buildDepthAndTrades());
+}
+
+function buildOverview(state) {
+  if (state === 'settled') {
+    return `
+    <div class="section-card">
+      <div class="section-header"><span class="section-title">Market Overview</span></div>
+      <div class="section-body">
+        <div class="market-question">Will Ethereum complete the Shanghai upgrade by Q2 2026?</div>
+        <div class="market-resolution"><span class="market-resolution-label">Resolution Criteria</span>Resolves Yes if the Ethereum Foundation confirms Shanghai upgrade activation on mainnet before 30 June 2026 23:59 UTC. Resolves No otherwise.</div>
+        <div class="price-display">
+          <div class="price-block yes-block"><div class="price-block-label">Resolved</div><div class="price-block-value" style="color:var(--green-700)">Yes</div><div class="price-block-sub">Settled at $1.00 on 14 Feb 2026</div></div>
+        </div>
+        <div class="chart-placeholder"><div class="chart-line"><svg viewBox="0 0 600 160" preserveAspectRatio="none"><polyline fill="none" stroke="oklch(0.545 0.170 152/0.5)" stroke-width="2" points="0,130 60,125 120,110 180,100 240,85 300,80 360,70 420,55 480,30 540,10 570,5 600,5"/><polyline fill="oklch(0.545 0.170 152/0.06)" stroke="none" points="0,160 0,130 60,125 120,110 180,100 240,85 300,80 360,70 420,55 480,30 540,10 570,5 600,5 600,160"/><line x1="570" y1="0" x2="570" y2="160" stroke="var(--text-disabled)" stroke-width="1" stroke-dasharray="4 2"/></svg></div><span style="position:relative;z-index:1;font-size:11px">Full price history \u2014 resolved 14 Feb</span></div>
+      </div>
+    </div>`;
+  }
+
+  return `
+  <div class="section-card">
+    <div class="section-header"><span class="section-title">Market Overview</span></div>
+    <div class="section-body">
+      <div class="market-question">Will the Federal Reserve cut the federal funds rate by at least 25 basis points before 30 June 2026?</div>
+      <div class="market-resolution"><span class="market-resolution-label">Resolution Criteria</span>Resolves Yes if the FOMC announces a rate reduction of \u226525bp at any scheduled or emergency meeting before 30 June 2026 23:59 UTC. Resolves No otherwise. Source: Federal Reserve press release.</div>
+      <div class="price-display">
+        <div class="price-block yes-block"><div class="price-block-label">Yes</div><div class="price-block-value">67\u00a2</div><div class="price-block-sub">implied 67% probability</div></div>
+        <div class="price-block no-block"><div class="price-block-label">No</div><div class="price-block-value">33\u00a2</div><div class="price-block-sub">implied 33% probability</div></div>
+      </div>
+      <div class="chart-placeholder"><div class="chart-line"><svg viewBox="0 0 600 160" preserveAspectRatio="none"><polyline fill="none" stroke="oklch(0.545 0.170 152/0.5)" stroke-width="2" points="0,120 40,115 80,110 120,100 160,105 200,90 240,85 280,75 320,80 360,70 400,65 440,60 480,55 520,52 560,50 600,53"/><polyline fill="oklch(0.545 0.170 152/0.06)" stroke="none" points="0,160 0,120 40,115 80,110 120,100 160,105 200,90 240,85 280,75 320,80 360,70 400,65 440,60 480,55 520,52 560,50 600,53 600,160"/></svg></div><span style="position:relative;z-index:1;font-size:11px">30-day price history (Yes)</span></div>
+    </div>
+  </div>`;
+}
+
+// ── Fix 2: Compressed evidence module — single card, mirrors investigation card shape ──
+function buildEvidenceModule(state) {
+  const archival = state === 'settled' ? ' archival' : '';
+  const invId = state === 'settled' ? 'INV-0031' : 'INV-0042';
+  const invLabel = state === 'settled' ? 'Investigation (Archived)' : 'Evidence &amp; Investigation';
+
+  if (state === 'settled') {
+    return `
+    <div class="evidence-card${archival}">
+      <div class="section-header"><span class="section-title">${invLabel}</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted);font-weight:600">${invId}</span></div>
+      <div class="section-body">
+        <div class="evidence-stats">
+          <div class="ev-stat"><span class="ev-stat-label">Evidence</span><span class="ev-stat-value">22</span></div>
+          <div class="ev-stat"><span class="ev-stat-label">Claims</span><span class="ev-stat-value">11</span></div>
+          <div class="ev-stat"><span class="ev-stat-label">Counter-Signals</span><span class="ev-stat-value">0</span></div>
+          <div class="ev-stat"><span class="ev-stat-label">Drift Events</span><span class="ev-stat-value">1</span></div>
+        </div>
+        <div class="claims-bar"><div class="claims-seg supported" style="flex:9"></div><div class="claims-seg partial" style="flex:2"></div></div>
+        <div class="claims-legend">9 supported \u00b7 2 partial</div>
+        <div class="evidence-footer">
+          <div class="evidence-freshness"><span class="freshness-dot" style="background:var(--text-disabled)"></span><span>Final evidence submitted 14 Feb 2026</span></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (state === 'alert') {
+    return `
+    <div class="evidence-card">
+      <div class="section-header"><span class="section-title">${invLabel}</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--purple-600);font-weight:600">${invId}</span></div>
+      <div class="section-body">
+        <div class="evidence-stats">
+          <div class="ev-stat"><span class="ev-stat-label">Evidence</span><span class="ev-stat-value">18</span><span class="ev-stat-delta">+3 / 24h</span></div>
+          <div class="ev-stat"><span class="ev-stat-label">Claims</span><span class="ev-stat-value">8</span></div>
+          <div class="ev-stat"><span class="ev-stat-label">Counter-Signals</span><span class="ev-stat-value warn">3</span></div>
+          <div class="ev-stat"><span class="ev-stat-label">Drift Events</span><span class="ev-stat-value">2</span></div>
+        </div>
+        <div class="claims-bar"><div class="claims-seg supported" style="flex:4"></div><div class="claims-seg partial" style="flex:2"></div><div class="claims-seg contradicted" style="flex:1"></div><div class="claims-seg unconfirmed" style="flex:1"></div></div>
+        <div class="claims-legend">4 supported \u00b7 2 partial \u00b7 1 contradicted \u00b7 1 unconfirmed</div>
+        <div class="evidence-footer">
+          <div class="evidence-freshness"><span class="freshness-dot stale"></span><span>Last evidence <strong style="color:oklch(0.430 0.130 85)">72h ago \u2014 stale</strong></span></div>
+          <a href="#" class="evidence-link">Open Investigation \u2192</a>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // trading — healthy
+  return `
+  <div class="evidence-card">
+    <div class="section-header"><span class="section-title">${invLabel}</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--purple-600);font-weight:600">${invId}</span></div>
+    <div class="section-body">
+      <div class="evidence-stats">
+        <div class="ev-stat"><span class="ev-stat-label">Evidence</span><span class="ev-stat-value">14</span><span class="ev-stat-delta">+2 / 24h</span></div>
+        <div class="ev-stat"><span class="ev-stat-label">Claims</span><span class="ev-stat-value">8</span></div>
+        <div class="ev-stat"><span class="ev-stat-label">Counter-Signals</span><span class="ev-stat-value">1</span></div>
+        <div class="ev-stat"><span class="ev-stat-label">Drift Events</span><span class="ev-stat-value">0</span></div>
+      </div>
+      <div class="claims-bar"><div class="claims-seg supported" style="flex:5"></div><div class="claims-seg partial" style="flex:2"></div><div class="claims-seg unconfirmed" style="flex:1"></div></div>
+      <div class="claims-legend">5 supported \u00b7 2 partial \u00b7 1 unconfirmed</div>
+      <div class="evidence-footer">
+        <div class="evidence-freshness"><span class="freshness-dot fresh"></span><span>Last evidence <strong style="color:var(--green-600)">4h ago \u2014 fresh</strong></span></div>
+        <a href="#" class="evidence-link">Open Investigation \u2192</a>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Fix 1: Risk & Trust with locked vocabulary ──
+function buildRiskPanel(state) {
+  const archival = state === 'settled' ? ' archival' : '';
+  const title = state === 'settled' ? 'Risk &amp; Trust (Final)' : 'Risk &amp; Trust';
+
+  if (state === 'settled') {
+    return `
+    <div class="section-card${archival}">
+      <div class="section-header"><span class="section-title">${title}</span></div>
+      <div class="section-body" style="padding-top:var(--space-2);padding-bottom:var(--space-2)">
+        <div class="risk-grid">
+          <div class="risk-item"><span class="risk-item-label">Paradox</span><span class="risk-status healthy"><span class="status-dot"></span>Healthy</span></div>
+          <div class="risk-item"><span class="risk-item-label">Verification</span><span class="risk-status healthy"><span class="status-dot"></span>Certificate Issued</span></div>
+          <div class="risk-item"><span class="risk-item-label">Dispute Status</span><span class="risk-status muted"><span class="status-dot"></span>No Disputes</span></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if (state === 'alert') {
+    return `
+    <div class="section-card">
+      <div class="section-header"><span class="section-title">${title}</span></div>
+      <div class="section-body" style="padding-top:var(--space-2);padding-bottom:var(--space-2)">
+        <div class="risk-grid">
+          <div class="risk-item"><span class="risk-item-label">Paradox</span><span class="risk-status danger"><span class="status-dot"></span>Paradox Active<span class="risk-status-sub">OSINT conflict</span></span></div>
+          <div class="risk-item"><span class="risk-item-label">Evidence</span><span class="risk-status watch"><span class="status-dot"></span>Stale<span class="risk-status-sub">72h</span></span></div>
+          <div class="risk-item"><span class="risk-item-label">Liquidity</span><span class="risk-status healthy"><span class="status-dot"></span>Healthy<span class="risk-status-sub">$34.1K vol</span></span></div>
+          <div class="risk-item"><span class="risk-item-label">Verification</span><span class="risk-status healthy"><span class="status-dot"></span>On Track</span></div>
+          <div class="risk-item"><span class="risk-item-label">Time to Expiry</span><span class="risk-status watch"><span class="status-dot"></span>Ending Soon<span class="risk-status-sub">6d</span></span></div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // trading — all healthy
+  return `
+  <div class="section-card">
+    <div class="section-header"><span class="section-title">${title}</span></div>
+    <div class="section-body" style="padding-top:var(--space-2);padding-bottom:var(--space-2)">
+      <div class="risk-grid">
+        <div class="risk-item"><span class="risk-item-label">Paradox</span><span class="risk-status healthy"><span class="status-dot"></span>Healthy</span></div>
+        <div class="risk-item"><span class="risk-item-label">Evidence</span><span class="risk-status healthy"><span class="status-dot"></span>Fresh<span class="risk-status-sub">4h</span></span></div>
+        <div class="risk-item"><span class="risk-item-label">Liquidity</span><span class="risk-status healthy"><span class="status-dot"></span>Healthy<span class="risk-status-sub">$34.1K vol</span></span></div>
+        <div class="risk-item"><span class="risk-item-label">Verification</span><span class="risk-status healthy"><span class="status-dot"></span>On Track</span></div>
+        <div class="risk-item"><span class="risk-item-label">Time to Expiry</span><span class="risk-status muted"><span class="status-dot"></span>6d</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildDepthAndTrades() {
+  return `
+  <div class="section-card">
+    <div class="section-header"><span class="section-title">Price Impact</span><span style="font-size:11px;color:var(--text-muted);font-weight:500">LMSR</span></div>
+    <div class="section-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-5)">
+        <div>
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--green-600);margin-bottom:var(--space-2)">Buy Yes</div>
+          <table class="impact-table"><thead><tr><th>Amount</th><th class="center">Est. Fill</th><th>Slippage</th></tr></thead><tbody>
+            <tr class="impact-row"><td class="impact-size">$50</td><td class="center"><span class="impact-price yes">67.0\u00a2</span></td><td class="impact-slip">\u22480.0%</td></tr>
+            <tr class="impact-row"><td class="impact-size">$100</td><td class="center"><span class="impact-price yes">67.4\u00a2</span></td><td class="impact-slip">0.6%</td></tr>
+            <tr class="impact-row"><td class="impact-size">$500</td><td class="center"><span class="impact-price yes">69.1\u00a2</span></td><td class="impact-slip warn">3.1%</td></tr>
+            <tr class="impact-row"><td class="impact-size">$1,000</td><td class="center"><span class="impact-price yes">72.3\u00a2</span></td><td class="impact-slip warn">7.9%</td></tr>
+          </tbody></table>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--red-500);margin-bottom:var(--space-2)">Buy No</div>
+          <table class="impact-table"><thead><tr><th>Amount</th><th class="center">Est. Fill</th><th>Slippage</th></tr></thead><tbody>
+            <tr class="impact-row"><td class="impact-size">$50</td><td class="center"><span class="impact-price no">33.0\u00a2</span></td><td class="impact-slip">\u22480.0%</td></tr>
+            <tr class="impact-row"><td class="impact-size">$100</td><td class="center"><span class="impact-price no">33.4\u00a2</span></td><td class="impact-slip">1.2%</td></tr>
+            <tr class="impact-row"><td class="impact-size">$500</td><td class="center"><span class="impact-price no">35.8\u00a2</span></td><td class="impact-slip warn">8.5%</td></tr>
+            <tr class="impact-row"><td class="impact-size">$1,000</td><td class="center"><span class="impact-price no">40.2\u00a2</span></td><td class="impact-slip warn">21.8%</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+      <div class="impact-note">Prices set by LMSR automated market maker. Larger orders move the price further. Slippage is approximate and depends on pool liquidity at execution time.</div>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-header"><span class="section-title">Recent Trades</span></div>
+    <div class="section-body" style="padding:var(--space-2) var(--space-5)">
+      <div class="trade-item"><span class="trade-side buy">Buy</span><span class="trade-price">67\u00a2</span><span class="trade-size">$120 Yes</span><span class="trade-time">2m ago</span></div>
+      <div class="trade-item"><span class="trade-side sell">Sell</span><span class="trade-price">67\u00a2</span><span class="trade-size">$80 Yes</span><span class="trade-time">8m ago</span></div>
+      <div class="trade-item"><span class="trade-side buy">Buy</span><span class="trade-price">66\u00a2</span><span class="trade-size">$200 Yes</span><span class="trade-time">14m ago</span></div>
+      <div class="trade-item"><span class="trade-side sell">Sell</span><span class="trade-price">34\u00a2</span><span class="trade-size">$150 No</span><span class="trade-time">21m ago</span></div>
+      <div class="trade-item"><span class="trade-side buy">Buy</span><span class="trade-price">65\u00a2</span><span class="trade-size">$300 Yes</span><span class="trade-time">35m ago</span></div>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-header"><span class="section-title">Agent Activity</span><span style="font-size:11px;color:var(--text-muted);font-weight:500">7 assigned</span></div>
+    <div class="section-body" style="padding:var(--space-2) var(--space-5)">
+      <div class="agent-activity-item"><span class="agent-name-sm">CARDINAL-07</span><span class="agent-action-sm">Bought Yes @ 67\u00a2</span><span class="agent-time-sm">2m</span></div>
+      <div class="agent-activity-item"><span class="agent-name-sm">SHARK-14</span><span class="agent-action-sm">Sold No @ 33\u00a2</span><span class="agent-time-sm">1h</span></div>
+      <div class="agent-activity-item"><span class="agent-name-sm">SHADOW-01</span><span class="agent-action-sm">Flagged paradox: OSINT</span><span class="agent-time-sm">14m</span></div>
+      <div class="agent-activity-item"><span class="agent-name-sm">LEVIATHAN-04</span><span class="agent-action-sm">Bought $850 Yes @ 66\u00a2</span><span class="agent-time-sm">21m</span></div>
+    </div>
+  </div>`;
+}
+
+// ── Fix 5: Composite context ──
+function buildCompositeContext() {
+  return `
+  <div class="section-card">
+    <div class="section-header"><span class="section-title">Market Overview</span></div>
+    <div class="section-body">
+      <div class="market-question">This composite market resolves Yes only if <strong>both</strong> sub-conditions resolve Yes independently.</div>
+      <div class="composite-expression"><span class="composite-expression-label">Combined Expression</span><span class="composite-expression-value">Fed Rate Cut = Yes AND CPI &lt;3% = Yes</span></div>
+      <div class="market-resolution"><span class="market-resolution-label">Resolution Criteria</span>Resolves Yes if both sub-markets resolve Yes before their respective deadlines. Resolves No if either sub-market resolves No. Partial resolution is not possible.</div>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-header"><span class="section-title">Sub-Conditions</span><span style="font-size:11px;color:var(--text-muted);font-weight:500">2 required</span></div>
+    <div class="section-body">
+      <div class="sub-condition">
+        <div class="sub-condition-header"><span class="sub-condition-name">Fed Rate Cut by June</span><span class="sub-condition-status active">Active</span></div>
+        <div class="sub-condition-price">Current: Yes 67\u00a2 / No 33\u00a2</div>
+        <a href="#" class="sub-condition-link">Trade this market \u2192</a>
+      </div>
+      <div class="sub-condition">
+        <div class="sub-condition-header"><span class="sub-condition-name">US CPI Below 3% by Q2</span><span class="sub-condition-status active">Active</span></div>
+        <div class="sub-condition-price">Current: Yes 45\u00a2 / No 55\u00a2</div>
+        <a href="#" class="sub-condition-link">Trade this market \u2192</a>
+      </div>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-header"><span class="section-title">Risk &amp; Trust</span></div>
+    <div class="section-body" style="padding-top:var(--space-2);padding-bottom:var(--space-2)">
+      <div class="risk-grid">
+        <div class="risk-item"><span class="risk-item-label">Paradox</span><span class="risk-status healthy"><span class="status-dot"></span>Healthy</span></div>
+        <div class="risk-item"><span class="risk-item-label">Evidence</span><span class="risk-status healthy"><span class="status-dot"></span>Fresh<span class="risk-status-sub">2h</span></span></div>
+        <div class="risk-item"><span class="risk-item-label">Liquidity</span><span class="risk-status watch"><span class="status-dot"></span>Low Liquidity<span class="risk-status-sub">$8.4K vol</span></span></div>
+        <div class="risk-item"><span class="risk-item-label">Verification</span><span class="risk-status healthy"><span class="status-dot"></span>On Track</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── RIGHT COLUMN ──
+function renderExecCol(state) {
+  const el = document.getElementById('exec-col');
+
+  if (state === 'settled') {
+    el.innerHTML = buildSettledPanel();
+    return;
+  }
+
+  if (state === 'composite') {
+    el.innerHTML = buildCompositePanel();
+    return;
+  }
+
+  // trading or alert
+  el.innerHTML = buildExecPanel(state);
+}
+
+// ── Fix 4: Settled panel ──
+function buildSettledPanel() {
+  return `
+  <div class="settled-panel">
+    <div class="exec-header"><span class="exec-title">Settlement Outcome</span></div>
+    <div class="settled-outcome">
+      <div class="settled-outcome-label">Resolved As</div>
+      <div class="settled-outcome-value yes">Yes</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:var(--space-2);line-height:20px">Shanghai upgrade confirmed on mainnet<br>14 February 2026 at 14:32 UTC</div>
+      <div class="settled-cert-link"><a href="#">${iconCert} View Certificate</a></div>
+    </div>
+    <div class="settled-position">
+      <div class="settled-position-title">Your Position</div>
+      <div class="settled-row"><span class="settled-row-label">Side</span><span class="settled-row-value" style="color:var(--green-600)">Yes</span></div>
+      <div class="settled-row"><span class="settled-row-label">Quantity</span><span class="settled-row-value">200 shares</span></div>
+      <div class="settled-row"><span class="settled-row-label">Avg Entry</span><span class="settled-row-value">71\u00a2</span></div>
+      <div class="settled-row"><span class="settled-row-label">Settlement Price</span><span class="settled-row-value">$1.00</span></div>
+      <div class="settled-row"><span class="settled-row-label">Cost Basis</span><span class="settled-row-value">$142.00</span></div>
+      <div class="settled-row"><span class="settled-row-label">Realised P&amp;L</span><span class="settled-row-value positive">+$58.00 (+40.8%)</span></div>
+    </div>
+    <div class="settled-payout">
+      <div class="settled-payout-label">Payout Received</div>
+      <div class="settled-payout-value">$200.00</div>
+    </div>
+  </div>`;
+}
+
+// ── Fix 5: Composite panel ──
+function buildCompositePanel() {
+  return `
+  <div class="composite-panel">
+    <div class="exec-header"><span class="exec-title">Composite Market</span><span style="font-size:11px;color:var(--text-muted)">v1</span></div>
+    <div class="composite-body">
+      <div class="composite-expression"><span class="composite-expression-label">Current Implied Price</span><span class="composite-expression-value">22\u00a2</span></div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:20px;margin-bottom:var(--space-5)">
+        This composite market combines multiple conditions into a single outcome. In the current version, <strong style="color:var(--text-primary)">composite markets cannot be traded directly</strong>.
+      </div>
+      <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin-bottom:var(--space-3)">Trade Sub-Markets Directly</div>
+      <a href="#" style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-sm);text-decoration:none;color:var(--text-primary);font-size:13px;font-weight:600;margin-bottom:var(--space-2);transition:border-color var(--duration-instant) ease" onmouseover="this.style.borderColor='var(--purple-200)'" onmouseout="this.style.borderColor='var(--border-secondary)'">
+        <span>Fed Rate Cut by June</span>
+        <span style="font-family:var(--font-mono);color:var(--green-600);font-variant-numeric:tabular-nums">Yes 67\u00a2</span>
+      </a>
+      <a href="#" style="display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-sm);text-decoration:none;color:var(--text-primary);font-size:13px;font-weight:600;transition:border-color var(--duration-instant) ease" onmouseover="this.style.borderColor='var(--purple-200)'" onmouseout="this.style.borderColor='var(--border-secondary)'">
+        <span>US CPI Below 3%</span>
+        <span style="font-family:var(--font-mono);color:var(--orange-600);font-variant-numeric:tabular-nums">Yes 45\u00a2</span>
+      </a>
+    </div>
+    <div class="composite-note">Composite execution is a <strong>planned feature</strong>. Trade the underlying sub-markets to express this thesis.</div>
+  </div>`;
+}
+
+// ── Fix 3: Execution panel with explicit position preview ──
+function buildExecPanel(state) {
+  const isAlert = state === 'alert';
+  const hasPosition = isAlert;
+
+  // Existing position module
+  let positionModule = '';
+  if (hasPosition) {
+    positionModule = `
+      <div class="position-module">
+        <div class="position-module-header">
+          <span class="position-module-title">Current Position</span>
+          <a href="#" class="position-module-link">View in Portfolio</a>
+        </div>
+        <div class="position-row"><span class="position-label">Side</span><span class="position-value" style="color:var(--green-600)">Yes</span></div>
+        <div class="position-row"><span class="position-label">Quantity</span><span class="position-value">300 shares</span></div>
+        <div class="position-row"><span class="position-label">Avg Entry</span><span class="position-value">54\u00a2</span></div>
+        <div class="position-row"><span class="position-label">Current Mark</span><span class="position-value">67\u00a2</span></div>
+        <div class="position-row"><span class="position-label">Unrealised P&amp;L</span><span class="position-value positive">+$39.00 (+24.1%)</span></div>
+      </div>`;
+  }
+
+  // Risk warnings
+  let warnings = '';
+  if (isAlert) {
+    warnings = `
+      <div class="exec-warnings">
+        <div class="exec-warning warn-red">
+          <span class="exec-warning-icon">${iconWarn}</span>
+          <span><strong>Paradox Active</strong> \u2014 Conflicting OSINT signals detected. Evidence may be unreliable.</span>
+        </div>
+        <div class="exec-warning warn-orange">
+          <span class="exec-warning-icon">${iconInfo}</span>
+          <span><strong>Stale</strong> \u2014 No new evidence for 72 hours.</span>
+        </div>
+        <div class="exec-warning warn-orange">
+          <span class="exec-warning-icon">${iconClock}</span>
+          <span><strong>Ending Soon</strong> \u2014 Market expires in 6 days.</span>
+        </div>
+      </div>`;
+  }
+
+  // After-trade preview with explicit additive/offsetting text
+  let tradePreview = '';
+  if (hasPosition) {
+    tradePreview = `
+      <div class="trade-preview">
+        <div class="trade-preview-title">After This Trade</div>
+        <div class="trade-preview-text">
+          You hold <span class="mono">300 Yes @ 54\u00a2</span>. This order <strong>adds</strong> <span class="mono">149 Yes @ 67\u00a2</span> \u2192 new avg <span class="mono">57\u00a2</span>, total <span class="mono">449 shares</span>.
+        </div>
+      </div>`;
+  }
+
+  // Order summary
+  let orderSummary = '';
+  if (isAlert) {
+    orderSummary = `
+      <div class="order-summary">
+        <div class="order-row"><span class="order-label">Side</span><span class="order-value" style="color:var(--green-600)">Yes</span></div>
+        <div class="order-row"><span class="order-label">Price</span><span class="order-value">67\u00a2 / share</span></div>
+        <div class="order-row"><span class="order-label">Shares</span><span class="order-value">149</span></div>
+        <div class="order-row"><span class="order-label">Cost</span><span class="order-value">$100.00</span></div>
+        <div class="order-row"><span class="order-label">Est. Slippage</span><span class="order-value warn">0.4\u00a2 (0.6%)</span></div>
+        <div class="order-row"><span class="order-label">Fee</span><span class="order-value">$0.20</span></div>
+        <div class="order-row"><span class="order-label">Max Payout</span><span class="order-value highlight">$149.00</span></div>
+      </div>`;
+  } else {
+    orderSummary = `
+      <div class="order-summary">
+        <div class="order-row"><span class="order-label">Side</span><span class="order-value" style="color:var(--text-muted)">Select a side</span></div>
+        <div class="order-row"><span class="order-label">Price</span><span class="order-value" style="color:var(--text-disabled)">\u2014</span></div>
+        <div class="order-row"><span class="order-label">Shares</span><span class="order-value" style="color:var(--text-disabled)">\u2014</span></div>
+        <div class="order-row"><span class="order-label">Est. Slippage</span><span class="order-value" style="color:var(--text-disabled)">\u2014</span></div>
+        <div class="order-row"><span class="order-label">Max Payout</span><span class="order-value" style="color:var(--text-disabled)">\u2014</span></div>
+      </div>`;
+  }
+
+  return `
+  <div class="exec-panel">
+    <div class="exec-header">
+      <span class="exec-title">Place Order</span>
+      <span style="font-size:11px;color:var(--text-muted)">Binary</span>
+    </div>
+    <div class="exec-body">
+      ${positionModule}
+      <div class="side-selector">
+        <button class="side-btn yes-btn ${isAlert ? 'selected' : ''}" onclick="selectSide('yes')">Yes <span class="side-price">67\u00a2</span></button>
+        <button class="side-btn no-btn" onclick="selectSide('no')">No <span class="side-price">33\u00a2</span></button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amount</label>
+        <div class="form-input-wrap">
+          <input type="text" class="form-input" value="${isAlert ? '100' : ''}" placeholder="0.00">
+          <span class="form-input-unit">USDC</span>
+        </div>
+        <div class="form-hint">Min $1.00 \u00b7 Max $5,000</div>
+      </div>
+      ${orderSummary}
+      ${warnings}
+      ${tradePreview}
+      ${isAlert
+        ? '<button class="exec-cta cta-yes">Buy Yes \u2014 $100.00</button>'
+        : '<button class="exec-cta cta-neutral" disabled>Select Side &amp; Amount</button>'}
+      <div class="exec-wallet">
+        <span class="exec-wallet-label">Available Balance</span>
+        <span class="exec-wallet-value">1,250.00 USDC</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Side selection (visual demo) ──
+function selectSide(side) {
+  document.querySelectorAll('.side-btn').forEach(function(b) { b.classList.remove('selected'); });
+  document.querySelector(side === 'yes' ? '.yes-btn' : '.no-btn').classList.add('selected');
+}
+
+// ── TOGGLE BUTTON ──
+function renderToggleButton(state) {
+  const dot = document.getElementById('toggle-dot');
+  const label = document.getElementById('toggle-label');
+  var colors = { trading: 'var(--green-500)', alert: 'var(--orange-500)', settled: 'var(--text-disabled)', composite: 'var(--purple-400)' };
+  var labels = { trading: 'Trading (click to cycle)', alert: 'Alert + Position (click to cycle)', settled: 'Settled (click to cycle)', composite: 'Composite (click to cycle)' };
+  dot.style.background = colors[state];
+  label.textContent = labels[state];
+}
+
+function cycleState() {
+  stateIdx = (stateIdx + 1) % STATES.length;
+  setPageState(STATES[stateIdx]);
+}
+
+setPageState(STATES[0]);
+</script>
+
+</body>
+</html>

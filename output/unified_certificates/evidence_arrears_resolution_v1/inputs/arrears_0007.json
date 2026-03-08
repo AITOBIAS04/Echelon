@@ -1,0 +1,76 @@
+{
+  "accrual_schedule": {
+    "billing_cycles_in_scope": 4,
+    "billing_frequency": "monthly",
+    "first_due_date": "2026-03-01",
+    "rent_amount": 1500.0,
+    "total_rent_due": 6000.0
+  },
+  "arrears_policy": {
+    "arrears_threshold": 1500.0,
+    "grace_period_days": 5
+  },
+  "current_date": "2026-06-01",
+  "lease_state": {
+    "accrued_ladder_balance": 450.0,
+    "currency": "GBP",
+    "deposit_amount": 2500.0,
+    "ladder_contribution": 150.0,
+    "ladder_plan_active": true,
+    "lease_id": "lease_007",
+    "payment_due_date": "2026-03-01",
+    "rent_amount": 1500.0,
+    "tenant_id": "tenant_007"
+  },
+  "payment_events": [
+    {
+      "amount": 1750.0,
+      "currency": "GBP",
+      "note": "April rent (1500) + plan instalment 1 (250)",
+      "payment_id": "pay_arr_007a",
+      "received_at": "2026-04-01T10:00:00Z",
+      "settlement_reference": "BANKREF-arr_007a"
+    },
+    {
+      "amount": 1750.0,
+      "currency": "GBP",
+      "note": "May rent (1500) + plan instalment 2 (250)",
+      "payment_id": "pay_arr_007b",
+      "received_at": "2026-05-01T10:00:00Z",
+      "settlement_reference": "BANKREF-arr_007b"
+    },
+    {
+      "amount": 1750.0,
+      "currency": "GBP",
+      "note": "June rent (1500) + plan instalment 3 (250)",
+      "payment_id": "pay_arr_007c",
+      "received_at": "2026-06-01T10:00:00Z",
+      "settlement_reference": "BANKREF-arr_007c"
+    }
+  ],
+  "payment_plan": {
+    "agreed_at": "2026-03-20T14:00:00Z",
+    "breach_threshold_missed_instalments": 2,
+    "instalments": [
+      {
+        "amount": 250.0,
+        "due_date": "2026-04-01",
+        "instalment_id": 1
+      },
+      {
+        "amount": 250.0,
+        "due_date": "2026-05-01",
+        "instalment_id": 2
+      },
+      {
+        "amount": 250.0,
+        "due_date": "2026-06-01",
+        "instalment_id": 3
+      }
+    ],
+    "plan_id": "plan_007",
+    "total_arrears": 750.0
+  },
+  "prior_outstanding": 750.0,
+  "prior_state": "ARREARS"
+}

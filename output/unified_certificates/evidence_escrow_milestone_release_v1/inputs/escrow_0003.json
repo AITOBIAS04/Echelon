@@ -1,0 +1,65 @@
+{
+  "escrow_state": {
+    "balance": 175333.33,
+    "currency": "GBP",
+    "escrow_id": "escrow_003",
+    "funding_reference": "BANKREF-pay_0003"
+  },
+  "evidence_bundle": {
+    "attestations": [
+      {
+        "role": "quantity_surveyor",
+        "signature": "e35518b0f4b54166cc0767b276b4d7f2b2c11640ed1689c7ed3382c1d178dad1",
+        "signer_id": "qs_003"
+      },
+      {
+        "role": "engineer",
+        "signature": "053ae286dfe09ccdc7a49d9b8ddc41292c68578bc087450cda34e7b8e6908a2e",
+        "signer_id": "eng_003"
+      },
+      {
+        "role": "administrator",
+        "signature": "ac102d2f520d6cc5f382cf0188f4f1bb3981a56dce631c6f2e41243d015f30ce",
+        "signer_id": "admin_001"
+      }
+    ],
+    "documents": [
+      {
+        "doc_hash": "a75df7c1385c005c0dcb58dbb1653d63a8512683e6d51b0d0f85af81f085fb50",
+        "doc_type": "qs_report"
+      },
+      {
+        "doc_hash": "5ef8f06c277350a46268de29e789892e3bdfa0e503262472aeecbf970f7b790f",
+        "doc_type": "engineer_signoff"
+      }
+    ],
+    "evidence_timestamp": "2026-06-10T14:00:00Z"
+  },
+  "milestone_schedule": {
+    "milestones": [
+      {
+        "evidence_required": [
+          "qs_report",
+          "engineer_signoff"
+        ],
+        "milestone_id": "ms_003_mep_complete",
+        "release_pct": 0.15,
+        "required_signer_roles": [
+          "quantity_surveyor",
+          "engineer",
+          "administrator"
+        ],
+        "validity_window": {
+          "closes_at": "2026-08-01T00:00:00Z",
+          "opens_at": "2026-05-01T00:00:00Z"
+        }
+      }
+    ],
+    "rounding_policy": {
+      "currency": "GBP",
+      "mode": "half_up",
+      "precision": 2
+    }
+  },
+  "prior_releases": []
+}

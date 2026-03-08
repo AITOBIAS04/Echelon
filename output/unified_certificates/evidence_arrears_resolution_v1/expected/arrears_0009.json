@@ -1,0 +1,32 @@
+{
+  "accrued_ladder_balance": 0.0,
+  "criteria_verdicts": {
+    "distribution_adjustment": true,
+    "grace_period_enforcement": true,
+    "ladder_balance_protection": true,
+    "ladder_redirection_arithmetic": true,
+    "reserve_fund_impact": true,
+    "state_transition_validity": true
+  },
+  "distribution_adjustment": {
+    "adjusted_distribution_per_token": 0.0072,
+    "investor_reduction": 0.0,
+    "loss_waterfall_applied": true,
+    "note": "Reserve fund covers shortfall; investor distributions maintained this period",
+    "operator_fee_absorbed": 75.0,
+    "platform_fee_absorbed": 30.0,
+    "reserve_fund_drawdown": 1500.0
+  },
+  "final_state": "ARREARS",
+  "ladder_action": "not_applicable",
+  "ladder_balance_protected": true,
+  "ladder_equity_purchased": 0.0,
+  "outstanding_balance": 6000.0,
+  "reserve_fund_impact": {
+    "drawdown_amount": 1500.0,
+    "drawdown_reason": "distribution_smoothing",
+    "minimum_coverage_breached": false,
+    "reserve_after_drawdown": 7500.0
+  },
+  "state_transitions": []
+}

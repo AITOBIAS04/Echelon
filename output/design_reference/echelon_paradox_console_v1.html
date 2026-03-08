@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Paradox Console</title>
+<!--
+  ═══════════════════════════════════════════════════════════
+  MOCK DATA ANNOTATIONS — for engineering team, not UI
+  ═══════════════════════════════════════════════════════════
+  Data sources pending endpoint confirmation:
+  - Active paradoxes (GET /api/v1/paradoxes?status=active)
+  - Linked theatre/investigation entities (resolved via entity IDs)
+  - Agent flagging data (GET /api/v1/paradoxes/:id/agents)
+  - Detonation window timers (computed from paradox.created_at + severity_window)
+  - Evidence/signal context per paradox
+
+  PARADOX SPAWN THRESHOLDS:
+  - logic_gap > 0.40 OR stability < 0.30 triggers paradox
+  - Detonation windows by severity: Critical=2h, Urgent=4h, Watch=8h, default=24h
+
+  PAGE STATE MACHINE (3 mutually exclusive states):
+  if (active_paradoxes === 0)        → CLEAR state (calm confirmation)
+  else if (critical + urgent >= 2)   → CRITICAL state (red attention, escalated)
+  else                               → ACTIVE state (amber attention, mixed)
+
+  All elements — attention strip, KPIs, roster, right rail —
+  derive from the same pageState variable. No mixing states.
+
+  COUNTDOWN ESCALATION TIERS:
+  >50% time remaining  → normal timer, standard card
+  <50% time remaining  → amber timer, subtle border emphasis
+  <25% time remaining  → red timer, elevated card, sorts to top
+  <1h remaining        → strongest emphasis, pulsing timer, act-now treatment
+
+  ACTION VOCABULARY BY URGENCY:
+  Normal:   Open · Assign · Silence · Open Investigation · Open Theatre
+  Urgent:   Intervene · Extract · Assign · Open Theatre
+  Critical: Intervene · Extract (primary, red emphasis)
+
+  STATUS VOCABULARY (locked):
+  - Paradox Active
+  - Watch / Critical / Urgent
+  - Evidence Stale
+  - Under Review
+  - Assigned
+  - Resolved
+  ═══════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   TASTE TOKENS v1.0
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;--duration-slow:300ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER (locked) ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR (locked) ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.nav-badge.warn{background:oklch(0.540 0.150 85/0.10);color:oklch(0.430 0.130 85);border:1px solid oklch(0.540 0.150 85/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN + PAGE CHROME
+   ═══════════════════════════════════════════════════════════ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-5)}
+.page-header-left{display:flex;flex-direction:column;gap:2px}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:2px}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700}
+.page-header-right{display:flex;align-items:center;gap:var(--space-2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-ghost:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.btn-sm{height:28px;padding:0 var(--space-3);font-size:11px;border-radius:var(--radius-sm)}
+.btn-danger{background:var(--status-danger);color:var(--text-inverse)}.btn-danger:hover{background:var(--red-400)}
+.btn-danger-outline{background:transparent;color:var(--status-danger);border-color:oklch(0.545 0.185 25/0.30)}.btn-danger-outline:hover{background:var(--red-50);border-color:var(--status-danger)}
+.filter-select{height:36px;padding:0 28px 0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 3.75l2.5 2.5 2.5-2.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+
+/* ═══════════════════════════════════════════════════════════
+   ATTENTION STRIP
+   ═══════════════════════════════════════════════════════════ */
+.attention-strip{display:flex;align-items:center;gap:var(--space-4);padding:var(--space-3) var(--space-5);border-radius:var(--radius-md);margin-bottom:var(--space-4);font-size:13px;line-height:20px}
+.attention-strip.critical-state{background:oklch(0.545 0.185 25/0.06);border:1px solid oklch(0.545 0.185 25/0.18)}
+.attention-strip.critical-state .attention-icon{color:var(--status-danger)}
+.attention-strip.critical-state .attention-label{color:var(--status-danger)}
+.attention-strip.active-state{background:oklch(0.540 0.150 85/0.06);border:1px solid oklch(0.540 0.150 85/0.18)}
+.attention-strip.active-state .attention-icon{color:oklch(0.430 0.130 85)}
+.attention-strip.active-state .attention-label{color:oklch(0.430 0.130 85)}
+.attention-strip.clear-state{background:oklch(0.545 0.170 152/0.06);border:1px solid oklch(0.545 0.170 152/0.18)}
+.attention-strip.clear-state .attention-icon{color:var(--green-600)}
+.attention-strip.clear-state .attention-label{color:var(--green-700)}
+.attention-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.attention-label{font-weight:600;white-space:nowrap}
+.attention-items{display:flex;align-items:center;gap:var(--space-1);flex-wrap:wrap;flex:1}
+.attention-item{display:inline-flex;align-items:center;gap:4px;color:var(--text-secondary);font-size:13px;padding:2px 6px;border-radius:4px}
+.attention-item .attn-count{font-family:var(--font-mono);font-weight:700;font-variant-numeric:tabular-nums}
+.attention-item.critical .attn-count{color:var(--status-danger)}
+.attention-item.warning .attn-count{color:oklch(0.430 0.130 85)}
+.attention-sep{color:var(--border-primary);margin:0 var(--space-1);user-select:none}
+.attention-clear-msg{color:var(--green-700);font-weight:500;display:flex;align-items:center;gap:var(--space-2)}
+
+/* ═══════════════════════════════════════════════════════════
+   KPI STRIP
+   ═══════════════════════════════════════════════════════════ */
+.px-summary{display:flex;gap:var(--space-3);margin-bottom:var(--space-4)}
+.px-kpi{flex:1;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:2px}
+.px-kpi-top{display:flex;align-items:center;justify-content:space-between}
+.px-kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);line-height:16px}
+.px-kpi-window{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-disabled);background:var(--bg-sunken);padding:1px 5px;border-radius:3px;border:1px solid var(--border-secondary)}
+.px-kpi-row{display:flex;align-items:baseline;gap:var(--space-2)}
+.px-kpi-value{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:32px;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.px-kpi-value.danger{color:var(--status-danger)}
+.px-kpi-value.warning{color:oklch(0.430 0.130 85)}
+.px-kpi-value.success{color:var(--green-600)}
+.px-kpi-value.zero{color:var(--text-disabled)}
+.px-kpi.kpi-alert{border-color:oklch(0.545 0.185 25/0.25);background:var(--red-50)}
+.px-kpi.kpi-alert .px-kpi-value{color:var(--status-danger)}
+
+/* ═══════════════════════════════════════════════════════════
+   LAYOUT — roster + rail
+   ═══════════════════════════════════════════════════════════ */
+.px-layout{display:grid;grid-template-columns:1fr 300px;gap:var(--space-4);align-items:start}
+
+/* ═══════════════════════════════════════════════════════════
+   PARADOX ROSTER — stacked cards
+   ═══════════════════════════════════════════════════════════ */
+.px-roster{display:flex;flex-direction:column;gap:var(--space-3)}
+
+.px-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden;transition:border-color var(--duration-normal) ease,box-shadow var(--duration-normal) ease}
+.px-card:hover{box-shadow:var(--shadow-sm)}
+
+/* Severity-driven card borders */
+.px-card.sev-critical{border-color:oklch(0.545 0.185 25/0.35);border-left:3px solid var(--status-danger)}
+.px-card.sev-urgent{border-color:oklch(0.545 0.185 25/0.25);border-left:3px solid var(--status-danger)}
+.px-card.sev-watch{border-color:oklch(0.540 0.150 85/0.25);border-left:3px solid var(--status-warning)}
+.px-card.sev-assigned{border-left:3px solid var(--status-info)}
+
+/* Countdown escalation tiers */
+.px-card.esc-50{border-color:oklch(0.540 0.150 85/0.30)}
+.px-card.esc-25{border-color:oklch(0.545 0.185 25/0.40);background:oklch(0.545 0.185 25/0.02)}
+.px-card.esc-critical{border-color:var(--status-danger);background:oklch(0.545 0.185 25/0.04);box-shadow:0 0 0 1px oklch(0.545 0.185 25/0.12),var(--shadow-sm)}
+
+/* Card internal layout */
+.px-card-header{display:flex;align-items:flex-start;justify-content:space-between;padding:var(--space-4) var(--space-5) var(--space-3);gap:var(--space-4)}
+.px-card-header-left{display:flex;flex-direction:column;gap:var(--space-1);min-width:0;flex:1}
+.px-card-title-row{display:flex;align-items:center;gap:var(--space-3)}
+.px-card-title{font-size:15px;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.px-card-id{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted)}
+
+/* The one-liner "why this is a paradox" — most prominent after title */
+.px-card-contradiction{font-size:14px;font-weight:600;color:var(--status-danger);line-height:20px;margin-top:2px}
+.px-card.sev-watch .px-card-contradiction{color:oklch(0.430 0.130 85)}
+.px-card.sev-assigned .px-card-contradiction{color:var(--status-info)}
+
+/* Severity + timer cluster */
+.px-card-header-right{display:flex;flex-direction:column;align-items:flex-end;gap:var(--space-1);flex-shrink:0}
+.px-sev-chip{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:2px 7px;border-radius:3px;white-space:nowrap;line-height:14px}
+.px-sev-chip.critical{color:var(--text-inverse);background:var(--status-danger)}
+.px-sev-chip.urgent{color:var(--status-danger);background:oklch(0.545 0.185 25/0.10);border:1px solid oklch(0.545 0.185 25/0.20)}
+.px-sev-chip.watch{color:oklch(0.430 0.130 85);background:oklch(0.540 0.150 85/0.08);border:1px solid oklch(0.540 0.150 85/0.15)}
+.px-sev-chip.assigned{color:var(--status-info);background:oklch(0.525 0.155 260/0.08);border:1px solid oklch(0.525 0.155 260/0.15)}
+
+/* Timer */
+.px-timer{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.px-timer.normal{color:var(--text-secondary)}
+.px-timer.amber{color:oklch(0.430 0.130 85)}
+.px-timer.red{color:var(--status-danger)}
+.px-timer.critical-pulse{color:var(--status-danger);animation:timer-pulse 1.2s ease-in-out infinite}
+@keyframes timer-pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.px-timer-icon{width:14px;height:14px;display:flex;align-items:center;justify-content:center}
+
+/* Card body — context grid */
+.px-card-body{padding:0 var(--space-5) var(--space-3);display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3) var(--space-6)}
+
+.px-context-block{display:flex;flex-direction:column;gap:var(--space-1)}
+.px-context-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.px-context-value{font-size:13px;font-weight:500;color:var(--text-primary);line-height:18px}
+.px-context-value .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-weight:600}
+.px-context-value.stale{color:oklch(0.430 0.130 85)}
+
+/* Linked entities row */
+.px-entity-row{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}
+.px-entity-chip{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;white-space:nowrap;cursor:pointer;text-decoration:none}
+.px-entity-chip.theatre{color:var(--purple-700);background:var(--purple-50);border:1px solid oklch(0.530 0.230 295/0.12)}
+.px-entity-chip.investigation{color:var(--orange-700);background:var(--orange-50);border:1px solid oklch(0.610 0.185 62/0.12)}
+.px-entity-chip.agent{color:var(--text-secondary);background:var(--bg-sunken);border:1px solid var(--border-secondary)}
+
+/* Evidence context mini-stats */
+.px-evidence-row{display:flex;align-items:center;gap:var(--space-4)}
+.px-ev-stat{display:flex;flex-direction:column;gap:1px}
+.px-ev-stat-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted)}
+.px-ev-stat-value{font-family:var(--font-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.px-ev-stat-value.warn{color:oklch(0.430 0.130 85)}
+.px-ev-stat-value.danger{color:var(--status-danger)}
+
+/* Card footer — actions */
+.px-card-footer{display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) var(--space-5) var(--space-3);border-top:1px solid var(--border-secondary);margin-top:var(--space-1)}
+.px-card-actions{display:flex;align-items:center;gap:var(--space-2)}
+.px-card-meta{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:var(--space-2)}
+.px-card-status{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em}
+.px-card-status.active{color:var(--status-danger)}
+.px-card-status.active::before{content:'';width:5px;height:5px;border-radius:var(--radius-full);background:var(--status-danger)}
+.px-card-status.review{color:var(--status-info)}
+.px-card-status.review::before{content:'';width:5px;height:5px;border-radius:var(--radius-full);background:var(--status-info)}
+.px-card-status.assigned{color:var(--status-info)}
+.px-card-status.assigned::before{content:'';width:5px;height:5px;border-radius:var(--radius-full);background:var(--status-info)}
+
+/* ═══════════════════════════════════════════════════════════
+   ZERO STATE — calm confirmation
+   ═══════════════════════════════════════════════════════════ */
+.px-zero-state{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-lg);box-shadow:var(--shadow-xs);padding:var(--space-12) var(--space-8);text-align:center;display:flex;flex-direction:column;align-items:center;gap:var(--space-4)}
+.px-zero-icon{width:48px;height:48px;background:var(--green-50);border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;color:var(--green-600)}
+.px-zero-title{font-size:17px;font-weight:600;color:var(--text-primary)}
+.px-zero-desc{font-size:13px;color:var(--text-muted);max-width:380px;line-height:20px}
+
+/* Resolved log (shown in zero state) */
+.px-resolved-list{width:100%;max-width:520px;margin-top:var(--space-4);text-align:left}
+.px-resolved-header{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);padding-bottom:var(--space-2);border-bottom:1px solid var(--border-secondary);margin-bottom:var(--space-2)}
+.px-resolved-row{display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) 0;border-bottom:1px solid var(--border-secondary);opacity:0.6}
+.px-resolved-row:last-child{border-bottom:none}
+.px-resolved-title{font-size:12px;font-weight:500;color:var(--text-secondary)}
+.px-resolved-time{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+/* ═══════════════════════════════════════════════════════════
+   RIGHT RAIL
+   ═══════════════════════════════════════════════════════════ */
+.rail-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);margin-bottom:var(--space-3)}
+.rail-card-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-secondary)}
+.rail-card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.rail-card-body{padding:var(--space-3) var(--space-4)}
+
+/* Severity distribution */
+.sev-dist-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border-secondary)}
+.sev-dist-row:last-child{border-bottom:none}
+.sev-dist-left{display:flex;align-items:center;gap:var(--space-2)}
+.sev-dist-dot{width:8px;height:8px;border-radius:var(--radius-full)}
+.sev-dist-dot.critical{background:var(--status-danger)}
+.sev-dist-dot.urgent{background:var(--red-400)}
+.sev-dist-dot.watch{background:var(--status-warning)}
+.sev-dist-dot.assigned{background:var(--status-info)}
+.sev-dist-label{font-size:12px;font-weight:500;color:var(--text-secondary)}
+.sev-dist-count{font-family:var(--font-mono);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.sev-dist-count.danger{color:var(--status-danger)}
+.sev-dist-count.warning{color:oklch(0.430 0.130 85)}
+
+/* Countdown queue */
+.countdown-item{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-secondary)}
+.countdown-item:last-child{border-bottom:none}
+.countdown-left{display:flex;flex-direction:column;gap:1px;min-width:0}
+.countdown-title{font-size:12px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.countdown-sev{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em}
+.countdown-sev.critical{color:var(--status-danger)}
+.countdown-sev.urgent{color:var(--status-danger)}
+.countdown-sev.watch{color:oklch(0.430 0.130 85)}
+.countdown-time{font-family:var(--font-mono);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.countdown-time.red{color:var(--status-danger)}
+.countdown-time.amber{color:oklch(0.430 0.130 85)}
+.countdown-time.normal{color:var(--text-secondary)}
+
+/* Agent involvement */
+.agent-inv-item{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border-secondary)}
+.agent-inv-item:last-child{border-bottom:none}
+.agent-inv-name{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text-primary)}
+.agent-inv-count{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+/* Recently resolved */
+.resolved-item{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border-secondary);opacity:0.7}
+.resolved-item:last-child{border-bottom:none}
+.resolved-title{font-size:12px;font-weight:500;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.resolved-time{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+/* ═══════════════════════════════════════════════════════════
+   STATE TOGGLE
+   ═══════════════════════════════════════════════════════════ */
+.state-toggle{position:fixed;bottom:var(--space-6);right:var(--space-6);z-index:100;display:flex;align-items:center;gap:var(--space-2);background:var(--bg-elevated);border:1px solid var(--border-primary);border-radius:var(--radius-full);padding:4px 6px;box-shadow:var(--shadow-md)}
+.state-toggle-btn{height:28px;padding:0 var(--space-3);border:none;background:transparent;font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);border-radius:var(--radius-full);cursor:pointer;white-space:nowrap}
+.state-toggle-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.state-toggle-btn.active-btn{background:var(--purple-500);color:var(--text-inverse)}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition-duration:0s!important;animation-duration:0s!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header class="header">
+  <div class="header-left">
+    <a class="header-logo" href="#">
+      <div class="header-logo-mark">E</div>
+      <span class="header-logo-text">Echelon</span>
+      <span class="header-logo-version">v4.2</span>
+    </a>
+    <button class="sidebar-toggle">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="header-center">
+    <div class="header-search">
+      <span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+      <input type="text" placeholder="Search paradoxes, theatres...">
+      <span class="header-search-kbd">⌘K</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span> Mainnet</div>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="header-badge">3</span></button>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
+    <div class="wallet-btn">
+      <div class="wallet-balance">
+        <div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span> 12,847</div>
+        <div class="wallet-divider"></div>
+        <div class="wallet-balance-item"><span class="wallet-balance-label">ECH</span> 3,291</div>
+      </div>
+      <div class="wallet-avatar"></div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ SIDEBAR ═══ -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group">
+      <div class="nav-group-label">Operations</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span class="nav-item-label">Dashboard</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">23</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span class="nav-item-label">Positions</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Intelligence</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></span><span class="nav-item-label">WorldMonitor</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="nav-item-label">Signal Map</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge count">7</span></a>
+      <a class="nav-item active" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">2</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Fleet</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg></span><span class="nav-item-label">Agents</span><span class="nav-badge live">34</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Analytics</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="nav-item-label">Analytics</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span><span class="nav-item-label">RLMF Exports</span></a>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span><span class="nav-item-label">Settings</span></a>
+    <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span class="nav-item-label">Help</span></a>
+  </div>
+</nav>
+
+<!-- ═══ MAIN CONTENT ═══ -->
+<main class="main">
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-breadcrumb">
+        <span>Intelligence</span>
+        <span class="page-breadcrumb-sep">/</span>
+        <span class="page-breadcrumb-current">Paradox Console</span>
+      </div>
+      <h1 class="page-title">Paradox Console</h1>
+    </div>
+    <div class="page-header-right">
+      <select class="filter-select">
+        <option>All Severities</option>
+        <option>Critical</option>
+        <option>Urgent</option>
+        <option>Watch</option>
+      </select>
+      <select class="filter-select">
+        <option>Active Only</option>
+        <option>All Statuses</option>
+        <option>Under Review</option>
+        <option>Assigned</option>
+        <option>Resolved</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Attention strip -->
+  <div class="attention-strip" id="attentionStrip"></div>
+
+  <!-- KPI strip -->
+  <div class="px-summary" id="kpiStrip"></div>
+
+  <!-- Main layout -->
+  <div class="px-layout">
+    <div id="rosterArea"></div>
+    <div id="rightRail"></div>
+  </div>
+</main>
+
+<!-- State toggle -->
+<div class="state-toggle">
+  <button class="state-toggle-btn active-btn" onclick="setPageState('critical')">Critical</button>
+  <button class="state-toggle-btn" onclick="setPageState('active')">Active</button>
+  <button class="state-toggle-btn" onclick="setPageState('clear')">All Clear</button>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   STATE MACHINE
+   3 mutually exclusive states: critical | active | clear
+   ═══════════════════════════════════════════════════════════ */
+const STATES = ['critical','active','clear'];
+let currentState = 'critical';
+
+const timerIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+const warningIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+const checkIcon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+
+/* ═══ MOCK DATA ═══ */
+const PARADOXES = {
+  critical: [
+    {
+      id:'PX-0087', title:'TSMC Supply Chain Disruption',
+      contradiction:'OSINT contradicts market price — satellite imagery shows resumed production, market at 34¢ (implies disruption)',
+      severity:'critical', status:'active', escTier:'critical',
+      timer:'0h 47m', timerClass:'critical-pulse',
+      theatre:{name:'TSMC Supply Chain',prob:'34¢'},
+      investigation:{id:'INV-0041',name:'TSMC Sat Imagery'},
+      agent:'SHADOW-01',
+      evidence:{count:14,counterSignals:4,driftEvents:3,freshness:'2h'},
+      marketVsEvidence:'Market 34¢ · Evidence implies >72¢',
+      spawned:'2h 13m ago'
+    },
+    {
+      id:'PX-0085', title:'Fed Rate Decision Consensus Break',
+      contradiction:'Agent consensus divergence — 4 agents bullish, 2 bearish, stability index 0.24',
+      severity:'urgent', status:'active', escTier:'25',
+      timer:'1h 12m', timerClass:'red',
+      theatre:{name:'Fed Rate Cut Q2 2026',prob:'67¢'},
+      investigation:null,
+      agent:'CARDINAL-03',
+      evidence:{count:22,counterSignals:3,driftEvents:2,freshness:'4h'},
+      marketVsEvidence:'Stability 0.24 · Threshold 0.30',
+      spawned:'2h 48m ago'
+    },
+    {
+      id:'PX-0083', title:'EU AI Compliance Evidence Stale',
+      contradiction:'No new evidence in 72h — market still actively trading at 71¢',
+      severity:'watch', status:'assigned', escTier:'50',
+      timer:'3h 40m', timerClass:'amber',
+      theatre:{name:'EU AI Compliance',prob:'71¢'},
+      investigation:{id:'INV-0038',name:'EU AI Enforcement'},
+      agent:'DIPLOMAT-02',
+      evidence:{count:8,counterSignals:1,driftEvents:0,freshness:'72h'},
+      marketVsEvidence:'Last evidence 72h ago · Threshold 48h',
+      spawned:'4h 20m ago'
+    },
+    {
+      id:'PX-0081', title:'Brent Crude Conflicting Sources',
+      contradiction:'Conflicting corroboration clusters — OPEC sources vs IEA data show 12% supply estimate divergence',
+      severity:'watch', status:'review', escTier:'normal',
+      timer:'5h 15m', timerClass:'normal',
+      theatre:{name:'Brent >$95 by Q3',prob:'52¢'},
+      investigation:null,
+      agent:'TITAN-01',
+      evidence:{count:19,counterSignals:2,driftEvents:1,freshness:'6h'},
+      marketVsEvidence:'OPEC: -1.2M bbl/d · IEA: -0.4M bbl/d',
+      spawned:'18h 42m ago'
+    }
+  ],
+  active: [
+    {
+      id:'PX-0083', title:'EU AI Compliance Evidence Stale',
+      contradiction:'No new evidence in 72h — market still actively trading at 71¢',
+      severity:'watch', status:'assigned', escTier:'normal',
+      timer:'5h 20m', timerClass:'normal',
+      theatre:{name:'EU AI Compliance',prob:'71¢'},
+      investigation:{id:'INV-0038',name:'EU AI Enforcement'},
+      agent:'DIPLOMAT-02',
+      evidence:{count:8,counterSignals:1,driftEvents:0,freshness:'72h'},
+      marketVsEvidence:'Last evidence 72h ago · Threshold 48h',
+      spawned:'4h 20m ago'
+    },
+    {
+      id:'PX-0081', title:'Brent Crude Conflicting Sources',
+      contradiction:'Conflicting corroboration clusters — OPEC sources vs IEA data show 12% supply estimate divergence',
+      severity:'watch', status:'review', escTier:'normal',
+      timer:'6h 45m', timerClass:'normal',
+      theatre:{name:'Brent >$95 by Q3',prob:'52¢'},
+      investigation:null,
+      agent:'TITAN-01',
+      evidence:{count:19,counterSignals:2,driftEvents:1,freshness:'6h'},
+      marketVsEvidence:'OPEC: -1.2M bbl/d · IEA: -0.4M bbl/d',
+      spawned:'18h 42m ago'
+    }
+  ],
+  clear: []
+};
+
+/* ═══ RENDER ═══ */
+
+function setPageState(state) {
+  currentState = state;
+  document.querySelectorAll('.state-toggle-btn').forEach(b => {
+    b.classList.toggle('active-btn', b.textContent.toLowerCase().replace(' ','') === state || (state==='clear' && b.textContent==='All Clear'));
+  });
+  renderAttentionStrip(state);
+  renderKPIs(state);
+  renderRoster(state);
+  renderRightRail(state);
+}
+
+function renderAttentionStrip(state) {
+  const el = document.getElementById('attentionStrip');
+  if (state === 'critical') {
+    el.className = 'attention-strip critical-state';
+    el.innerHTML = `
+      <div class="attention-icon">${warningIcon}</div>
+      <span class="attention-label">4 Active Paradoxes</span>
+      <div class="attention-items">
+        <span class="attention-item critical"><span class="attn-count">1</span> Critical</span>
+        <span class="attention-sep">·</span>
+        <span class="attention-item critical"><span class="attn-count">1</span> Urgent</span>
+        <span class="attention-sep">·</span>
+        <span class="attention-item warning"><span class="attn-count">2</span> Watch</span>
+        <span class="attention-sep">·</span>
+        <span class="attention-item critical"><span class="attn-count">1</span> detonation in &lt;1h</span>
+      </div>`;
+  } else if (state === 'active') {
+    el.className = 'attention-strip active-state';
+    el.innerHTML = `
+      <div class="attention-icon">${warningIcon}</div>
+      <span class="attention-label">2 Active Paradoxes</span>
+      <div class="attention-items">
+        <span class="attention-item warning"><span class="attn-count">2</span> Watch</span>
+        <span class="attention-sep">·</span>
+        <span class="attention-item"><span class="attn-count">1</span> Assigned</span>
+        <span class="attention-sep">·</span>
+        <span class="attention-item"><span class="attn-count">1</span> Under review</span>
+      </div>`;
+  } else {
+    el.className = 'attention-strip clear-state';
+    el.innerHTML = `
+      <div class="attention-icon">${checkIcon}</div>
+      <span class="attention-label">All Clear</span>
+      <div class="attention-items">
+        <span class="attention-clear-msg">No active contradictions — all markets within expected parameters</span>
+      </div>`;
+  }
+}
+
+function renderKPIs(state) {
+  const el = document.getElementById('kpiStrip');
+  const d = {
+    critical: { active:4,acClass:'danger',critical:1,crClass:'danger',watch:2,wClass:'warning',theatres:4,invs:2,urgent:2,uClass:'danger',resolved:1 },
+    active:   { active:2,acClass:'warning',critical:0,crClass:'zero',watch:2,wClass:'warning',theatres:2,invs:1,urgent:0,uClass:'zero',resolved:3 },
+    clear:    { active:0,acClass:'zero',critical:0,crClass:'zero',watch:0,wClass:'zero',theatres:0,invs:0,urgent:0,uClass:'zero',resolved:5 }
+  }[state];
+
+  el.innerHTML = `
+    <div class="px-kpi${d.acClass==='danger'?' kpi-alert':''}">
+      <div class="px-kpi-top"><span class="px-kpi-label">Active</span><span class="px-kpi-window">now</span></div>
+      <div class="px-kpi-row"><span class="px-kpi-value ${d.acClass}">${d.active}</span></div>
+    </div>
+    <div class="px-kpi${d.crClass==='danger'?' kpi-alert':''}">
+      <div class="px-kpi-top"><span class="px-kpi-label">Critical</span><span class="px-kpi-window">now</span></div>
+      <div class="px-kpi-row"><span class="px-kpi-value ${d.crClass}">${d.critical}</span></div>
+    </div>
+    <div class="px-kpi">
+      <div class="px-kpi-top"><span class="px-kpi-label">Watch</span><span class="px-kpi-window">now</span></div>
+      <div class="px-kpi-row"><span class="px-kpi-value ${d.wClass}">${d.watch}</span></div>
+    </div>
+    <div class="px-kpi">
+      <div class="px-kpi-top"><span class="px-kpi-label">Linked Theatres</span><span class="px-kpi-window">linked</span></div>
+      <div class="px-kpi-row"><span class="px-kpi-value">${d.theatres}</span></div>
+    </div>
+    <div class="px-kpi">
+      <div class="px-kpi-top"><span class="px-kpi-label">Investigations</span><span class="px-kpi-window">linked</span></div>
+      <div class="px-kpi-row"><span class="px-kpi-value">${d.invs}</span></div>
+    </div>
+    <div class="px-kpi${d.uClass==='danger'?' kpi-alert':''}">
+      <div class="px-kpi-top"><span class="px-kpi-label">Detonation Windows</span><span class="px-kpi-window">now</span></div>
+      <div class="px-kpi-row"><span class="px-kpi-value ${d.uClass}">${d.urgent}</span></div>
+    </div>
+    <div class="px-kpi">
+      <div class="px-kpi-top"><span class="px-kpi-label">Resolved</span><span class="px-kpi-window">today</span></div>
+      <div class="px-kpi-row"><span class="px-kpi-value success">${d.resolved}</span></div>
+    </div>`;
+}
+
+function renderRoster(state) {
+  const el = document.getElementById('rosterArea');
+  const paradoxes = PARADOXES[state];
+
+  if (paradoxes.length === 0) {
+    el.innerHTML = `
+      <div class="px-zero-state">
+        <div class="px-zero-icon">${checkIcon}</div>
+        <div class="px-zero-title">No Active Contradictions</div>
+        <div class="px-zero-desc">All markets are operating within expected parameters. No signal contradictions, evidence gaps, or consensus divergences require attention.</div>
+        <div class="px-resolved-list">
+          <div class="px-resolved-header">Recently Resolved</div>
+          <div class="px-resolved-row"><span class="px-resolved-title">Argentina Peso — Evidence freshness restored</span><span class="px-resolved-time">2h ago</span></div>
+          <div class="px-resolved-row"><span class="px-resolved-title">Swiss Banking — Source conflict resolved</span><span class="px-resolved-time">4h ago</span></div>
+          <div class="px-resolved-row"><span class="px-resolved-title">GBP/INR — Agent consensus re-aligned</span><span class="px-resolved-time">8h ago</span></div>
+          <div class="px-resolved-row"><span class="px-resolved-title">UK Energy — Stale evidence updated</span><span class="px-resolved-time">14h ago</span></div>
+          <div class="px-resolved-row"><span class="px-resolved-title">Fed Funds — Logic gap closed via INV-0035</span><span class="px-resolved-time">22h ago</span></div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `<div class="px-roster">${paradoxes.map(px => {
+    // Determine escalation CSS class
+    let escClass = '';
+    if (px.escTier === 'critical') escClass = ' esc-critical';
+    else if (px.escTier === '25') escClass = ' esc-25';
+    else if (px.escTier === '50') escClass = ' esc-50';
+
+    // Determine severity card class
+    let sevCardClass = px.status === 'assigned' ? 'sev-assigned' : `sev-${px.severity}`;
+
+    // Action buttons based on urgency
+    let actions = '';
+    if (px.severity === 'critical' || px.escTier === 'critical') {
+      actions = `<button class="btn btn-sm btn-danger">Intervene</button><button class="btn btn-sm btn-danger-outline">Extract</button>`;
+    } else if (px.severity === 'urgent' || px.escTier === '25') {
+      actions = `<button class="btn btn-sm btn-danger-outline">Intervene</button><button class="btn btn-sm btn-secondary">Assign</button>`;
+    } else if (px.status === 'assigned') {
+      actions = `<button class="btn btn-sm btn-secondary">Open</button><button class="btn btn-sm btn-ghost">Silence</button>`;
+    } else {
+      actions = `<button class="btn btn-sm btn-secondary">Open</button><button class="btn btn-sm btn-secondary">Assign</button><button class="btn btn-sm btn-ghost">Silence</button>`;
+    }
+
+    // Status display
+    let statusClass = px.status === 'active' ? 'active' : (px.status === 'review' ? 'review' : 'assigned');
+    let statusLabel = px.status === 'active' ? 'Paradox Active' : (px.status === 'review' ? 'Under Review' : 'Assigned');
+
+    // Linked entities
+    let entitiesHtml = `<span class="px-entity-chip theatre">▸ ${px.theatre.name}</span>`;
+    if (px.investigation) entitiesHtml += `<span class="px-entity-chip investigation">◈ ${px.investigation.id}</span>`;
+    entitiesHtml += `<span class="px-entity-chip agent">⬡ ${px.agent}</span>`;
+
+    return `
+      <div class="px-card ${sevCardClass}${escClass}">
+        <div class="px-card-header">
+          <div class="px-card-header-left">
+            <div class="px-card-title-row">
+              <span class="px-card-title">${px.title}</span>
+              <span class="px-card-id">${px.id}</span>
+            </div>
+            <div class="px-card-contradiction">${px.contradiction}</div>
+          </div>
+          <div class="px-card-header-right">
+            <span class="px-sev-chip ${px.severity}">${px.severity === 'critical' ? '⚠ ' : ''}${px.severity.charAt(0).toUpperCase()+px.severity.slice(1)}</span>
+            <div class="px-timer ${px.timerClass}">
+              <span class="px-timer-icon">${timerIcon}</span>
+              ${px.timer}
+            </div>
+          </div>
+        </div>
+
+        <div class="px-card-body">
+          <div class="px-context-block">
+            <span class="px-context-label">Linked Entities</span>
+            <div class="px-entity-row">${entitiesHtml}</div>
+          </div>
+          <div class="px-context-block">
+            <span class="px-context-label">Market vs Evidence</span>
+            <span class="px-context-value"><span class="mono">${px.marketVsEvidence}</span></span>
+          </div>
+          <div class="px-context-block">
+            <span class="px-context-label">Evidence Context</span>
+            <div class="px-evidence-row">
+              <div class="px-ev-stat"><span class="px-ev-stat-label">Evidence</span><span class="px-ev-stat-value">${px.evidence.count}</span></div>
+              <div class="px-ev-stat"><span class="px-ev-stat-label">Counter</span><span class="px-ev-stat-value${px.evidence.counterSignals>=3?' danger':''}">${px.evidence.counterSignals}</span></div>
+              <div class="px-ev-stat"><span class="px-ev-stat-label">Drift</span><span class="px-ev-stat-value${px.evidence.driftEvents>=2?' warn':''}">${px.evidence.driftEvents}</span></div>
+              <div class="px-ev-stat"><span class="px-ev-stat-label">Fresh</span><span class="px-ev-stat-value${parseInt(px.evidence.freshness)>=48?' warn':''}">${px.evidence.freshness}</span></div>
+            </div>
+          </div>
+          <div class="px-context-block">
+            <span class="px-context-label">Theatre Price</span>
+            <span class="px-context-value"><span class="mono">${px.theatre.prob}</span> · ${px.theatre.name}</span>
+          </div>
+        </div>
+
+        <div class="px-card-footer">
+          <div class="px-card-meta">
+            <span class="px-card-status ${statusClass}">${statusLabel}</span>
+            <span style="color:var(--border-primary)">·</span>
+            <span style="font-size:11px;color:var(--text-muted)">Spawned ${px.spawned}</span>
+          </div>
+          <div class="px-card-actions">${actions}</div>
+        </div>
+      </div>`;
+  }).join('')}</div>`;
+}
+
+function renderRightRail(state) {
+  const rail = document.getElementById('rightRail');
+  let html = '';
+
+  if (state === 'critical') {
+    // Countdown queue
+    html += `<div class="rail-card" style="border-color:oklch(0.545 0.185 25/0.25)">
+      <div class="rail-card-header"><span class="rail-card-title" style="color:var(--status-danger)">Detonation Queue</span></div>
+      <div class="rail-card-body">
+        <div class="countdown-item">
+          <div class="countdown-left">
+            <span class="countdown-title">TSMC Supply Chain</span>
+            <span class="countdown-sev critical">Critical</span>
+          </div>
+          <span class="countdown-time red">0h 47m</span>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-left">
+            <span class="countdown-title">Fed Rate Consensus</span>
+            <span class="countdown-sev urgent">Urgent</span>
+          </div>
+          <span class="countdown-time red">1h 12m</span>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-left">
+            <span class="countdown-title">EU AI Compliance</span>
+            <span class="countdown-sev watch">Watch</span>
+          </div>
+          <span class="countdown-time amber">3h 40m</span>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-left">
+            <span class="countdown-title">Brent Crude Sources</span>
+            <span class="countdown-sev watch">Watch</span>
+          </div>
+          <span class="countdown-time normal">5h 15m</span>
+        </div>
+      </div>
+    </div>`;
+
+    // Severity distribution
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Severity Distribution</span></div>
+      <div class="rail-card-body">
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-dot critical"></span><span class="sev-dist-label">Critical</span></div><span class="sev-dist-count danger">1</span></div>
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-dot urgent"></span><span class="sev-dist-label">Urgent</span></div><span class="sev-dist-count danger">1</span></div>
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-dot watch"></span><span class="sev-dist-label">Watch</span></div><span class="sev-dist-count warning">2</span></div>
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-dot assigned"></span><span class="sev-dist-label">Assigned</span></div><span class="sev-dist-count">1</span></div>
+      </div>
+    </div>`;
+
+    // Agent involvement
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Agent Involvement</span></div>
+      <div class="rail-card-body">
+        <div class="agent-inv-item"><span class="agent-inv-name">SHADOW-01</span><span class="agent-inv-count">1 paradox · flagged</span></div>
+        <div class="agent-inv-item"><span class="agent-inv-name">CARDINAL-03</span><span class="agent-inv-count">1 paradox · flagged</span></div>
+        <div class="agent-inv-item"><span class="agent-inv-name">DIPLOMAT-02</span><span class="agent-inv-count">1 paradox · assigned</span></div>
+        <div class="agent-inv-item"><span class="agent-inv-name">TITAN-01</span><span class="agent-inv-count">1 paradox · flagged</span></div>
+      </div>
+    </div>`;
+
+    // Source categories
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Paradox Sources</span></div>
+      <div class="rail-card-body">
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-label">OSINT conflict</span></div><span class="sev-dist-count">1</span></div>
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-label">Consensus divergence</span></div><span class="sev-dist-count">1</span></div>
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-label">Evidence stale</span></div><span class="sev-dist-count">1</span></div>
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-label">Source conflict</span></div><span class="sev-dist-count">1</span></div>
+      </div>
+    </div>`;
+
+    // Recently resolved
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Recently Resolved</span><span style="font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-disabled)">24h</span></div>
+      <div class="rail-card-body">
+        <div class="resolved-item"><span class="resolved-title">Argentina Peso Evidence</span><span class="resolved-time">2h ago</span></div>
+      </div>
+    </div>`;
+
+  } else if (state === 'active') {
+    // Countdown queue (calmer)
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Detonation Queue</span></div>
+      <div class="rail-card-body">
+        <div class="countdown-item">
+          <div class="countdown-left">
+            <span class="countdown-title">EU AI Compliance</span>
+            <span class="countdown-sev watch">Watch</span>
+          </div>
+          <span class="countdown-time normal">5h 20m</span>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-left">
+            <span class="countdown-title">Brent Crude Sources</span>
+            <span class="countdown-sev watch">Watch</span>
+          </div>
+          <span class="countdown-time normal">6h 45m</span>
+        </div>
+      </div>
+    </div>`;
+
+    // Severity distribution
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Severity Distribution</span></div>
+      <div class="rail-card-body">
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-dot critical"></span><span class="sev-dist-label">Critical</span></div><span class="sev-dist-count" style="color:var(--text-disabled)">0</span></div>
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-dot urgent"></span><span class="sev-dist-label">Urgent</span></div><span class="sev-dist-count" style="color:var(--text-disabled)">0</span></div>
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-dot watch"></span><span class="sev-dist-label">Watch</span></div><span class="sev-dist-count warning">2</span></div>
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-dot assigned"></span><span class="sev-dist-label">Assigned</span></div><span class="sev-dist-count">1</span></div>
+      </div>
+    </div>`;
+
+    // Agent involvement
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Agent Involvement</span></div>
+      <div class="rail-card-body">
+        <div class="agent-inv-item"><span class="agent-inv-name">DIPLOMAT-02</span><span class="agent-inv-count">1 paradox · assigned</span></div>
+        <div class="agent-inv-item"><span class="agent-inv-name">TITAN-01</span><span class="agent-inv-count">1 paradox · flagged</span></div>
+      </div>
+    </div>`;
+
+    // Recently resolved
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Recently Resolved</span><span style="font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-disabled)">24h</span></div>
+      <div class="rail-card-body">
+        <div class="resolved-item"><span class="resolved-title">Argentina Peso Evidence</span><span class="resolved-time">2h ago</span></div>
+        <div class="resolved-item"><span class="resolved-title">Swiss Banking Transparency</span><span class="resolved-time">4h ago</span></div>
+        <div class="resolved-item"><span class="resolved-title">GBP/INR Consensus</span><span class="resolved-time">8h ago</span></div>
+      </div>
+    </div>`;
+
+  } else {
+    // Clear state — minimal rail
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Severity Distribution</span></div>
+      <div class="rail-card-body">
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-dot critical"></span><span class="sev-dist-label">Critical</span></div><span class="sev-dist-count" style="color:var(--text-disabled)">0</span></div>
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-dot urgent"></span><span class="sev-dist-label">Urgent</span></div><span class="sev-dist-count" style="color:var(--text-disabled)">0</span></div>
+        <div class="sev-dist-row"><div class="sev-dist-left"><span class="sev-dist-dot watch"></span><span class="sev-dist-label">Watch</span></div><span class="sev-dist-count" style="color:var(--text-disabled)">0</span></div>
+      </div>
+    </div>`;
+
+    html += `<div class="rail-card">
+      <div class="rail-card-header"><span class="rail-card-title">Recently Resolved</span><span style="font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-disabled)">24h</span></div>
+      <div class="rail-card-body">
+        <div class="resolved-item"><span class="resolved-title">TSMC Supply Chain</span><span class="resolved-time">1h ago</span></div>
+        <div class="resolved-item"><span class="resolved-title">Fed Rate Consensus</span><span class="resolved-time">3h ago</span></div>
+        <div class="resolved-item"><span class="resolved-title">Argentina Peso Evidence</span><span class="resolved-time">5h ago</span></div>
+        <div class="resolved-item"><span class="resolved-title">Swiss Banking Transparency</span><span class="resolved-time">8h ago</span></div>
+        <div class="resolved-item"><span class="resolved-title">GBP/INR Consensus</span><span class="resolved-time">14h ago</span></div>
+      </div>
+    </div>`;
+  }
+
+  rail.innerHTML = html;
+}
+
+/* ═══ INIT ═══ */
+setPageState('critical');
+</script>
+</body>
+</html>

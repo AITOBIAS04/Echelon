@@ -1,27 +1,36 @@
-import { useState, useEffect } from 'react';
+/**
+ * AgentRoster — Fleet page with roster table, KPI cards, attention strip, right rail.
+ *
+ * Surfaces real agent + deployment data from:
+ *   GET /api/v1/agents           — roster with active_deployments_count
+ *   GET /api/v1/agent-deployments — deployment list with filters
+ *
+ * Design ref: echelon_fleet_v1.html
+ *
+ * Backend limitations surfaced honestly:
+ *   - No theatre list endpoint — Fleet-page deploy shows unavailable modal
+ *   - No scheduler API — Scheduler panel deferred
+ *   - No restart/decommission endpoints — Failed row actions deferred
+ *   - No "degraded" signal — status derived from is_alive + deployments only
+ */
+
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   User,
-  TrendingUp,
-  Activity,
   Search,
-  Copy,
-  Briefcase,
   Users,
-  MapPin,
-  History,
+  Activity,
+  Heart,
+  Rocket,
+  Clock,
   AlertTriangle,
-  AlertCircle,
-  CheckCircle,
-  ArrowRight,
-  ArrowLeft,
-  Zap,
-  Flame,
-  ShieldAlert,
+  ChevronDown,
+  Eye,
+  ArrowDownToLine,
 } from 'lucide-react';
-import { useAgents } from '../../hooks/useAgents';
-import { AgentSanityIndicator } from './AgentSanityIndicator';
-import { TaskAgentModal } from './TaskAgentModal';
+import { useAgentRoster } from '../../hooks/useAgents';
+import { useDeploymentList, useWithdrawDeployment } from '../../hooks/useAgentDeployments';
 import { DeployAgentModal } from './DeployAgentModal';
 import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { useAgentsUi } from '../../contexts/AgentsUiContext';
@@ -29,75 +38,57 @@ import { LocalErrorBoundary } from '../common/LocalErrorBoundary';
 import { EmptyState } from '../empty-states/EmptyState';
 import { clsx } from 'clsx';
 import { getArchetypeTheme } from '../../theme/agentsTheme';
+import type { EnrichedAgent } from '../../hooks/useAgents';
 
-// Mock data for Global Intelligence dashboard
-const mockStats = {
-  totalAgents: 12,
-  deployedAgents: 8,
-  movements24h: 47,
-  activeConflicts: 3,
-};
+// ── Derived agent status from backend truth ──────────────────────────
 
-const mockTheatres = [
-  { name: 'ORB_SALVAGE_F7', agents: 12, activity: 'high', stability: 87, volume: '$142K', gap: 12 },
-  { name: 'VEN_OIL_TANKER', agents: 8, activity: 'medium', stability: 92, volume: '$89K', gap: 8 },
-  { name: 'FED_RATE_DECISION', agents: 15, activity: 'high', stability: 78, volume: '$215K', gap: 18 },
-  { name: 'TAIWAN_STRAIT', agents: 5, activity: 'low', stability: 95, volume: '$45K', gap: 5 },
-  { name: 'NVDA_EARNINGS', agents: 9, activity: 'medium', stability: 84, volume: '$128K', gap: 14 },
-  { name: 'BTC_HALVING', agents: 4, activity: 'low', stability: 97, volume: '$32K', gap: 3 },
-];
+type AgentStatus = 'FAILED' | 'DEPLOYED' | 'IDLE';
 
-const mockMovements = [
-  { time: '14:32:45', agent: 'LEVIATHAN', action: 'deployed to', theatre: 'ORB_SALVAGE_F7', velocity: '+3', type: 'deploy' as const },
-  { time: '14:32:42', agent: 'VIPER', action: 'withdrew from', theatre: 'VEN_OIL_TANKER', velocity: '-2', type: 'withdraw' as const },
-  { time: '14:32:38', agent: 'CHAOS', action: 'deployed to', theatre: 'FED_RATE_DECISION', velocity: '+4', type: 'deploy' as const },
-  { time: '14:32:35', agent: 'AMBASSADOR', action: 'deployed to', theatre: 'TAIWAN_STRAIT', velocity: '+2', type: 'deploy' as const },
-  { time: '14:32:30', agent: 'CARDINAL', action: 'withdrew from', theatre: 'ORB_SALVAGE_F7', velocity: '-1', type: 'withdraw' as const },
-  { time: '14:32:25', agent: 'TITAN', action: 'shifted to', theatre: 'conservative strategy', velocity: '~0', type: 'strategy' as const },
-  { time: '14:32:20', agent: 'SHADOW', action: 'deployed to', theatre: 'NVDA_EARNINGS', velocity: '+1', type: 'deploy' as const },
-];
-
-const mockClusters = [
-  { name: 'SHARK', archetype: 'SHARK', count: 12, focus: 'High-volatility', avgPosition: '$8,450', winRate: 68 },
-  { name: 'DIPLOMAT', archetype: 'DIPLOMAT', count: 8, focus: 'Stability', avgPosition: '$4,200', winRate: 72 },
-  { name: 'SABOTEUR', archetype: 'SABOTEUR', count: 6, focus: 'Adversarial', avgPosition: '$3,800', winRate: 42 },
-];
-
-const mockConflicts = [
-  { severity: 'high' as const, agents: ['VIPER', 'CHAOS'], theatre: 'ORB_SALVAGE_F7', positions: '$12,450 vs $8,200', impact: -15 },
-  { severity: 'medium' as const, agents: ['LEVIATHAN', 'TITAN'], theatre: 'FED_RATE_DECISION', positions: '$24,500 vs $18,200', impact: 8 },
-  { severity: 'low' as const, agents: ['AEGIS', 'SABOTEUR'], theatre: 'VEN_OIL_TANKER', positions: '$6,800 vs $5,200', impact: -5 },
-];
-
-/** Render an archetype icon from the centralized theme */
-function ArchetypeIcon({ archetype, className }: { archetype: string; className?: string }) {
-  const theme = getArchetypeTheme(archetype);
-  const Icon = theme.icon;
-  return <Icon className={className} />;
+function deriveStatus(agent: EnrichedAgent): AgentStatus {
+  if (!agent.is_alive) return 'FAILED';
+  if (agent.active_deployments_count > 0) return 'DEPLOYED';
+  return 'IDLE';
 }
 
-// Mock lineage data for demo
-const getMockLineage = (agentName: string) => {
-  const lineages: Record<string, { gen: number; parents: string }> = {
-    'MEGALODON': { gen: 1, parents: 'GENESIS' },
-    'CARDINAL': { gen: 2, parents: 'MEGALODON × PHANTOM' },
-    'ENVOY': { gen: 1, parents: 'GENESIS' },
-    'VIPER': { gen: 3, parents: 'CARDINAL × SPECTER' },
-    'ORACLE': { gen: 2, parents: 'ENVOY × CARDINAL' },
-    'LEVIATHAN': { gen: 1, parents: 'GENESIS' },
-  };
-  return lineages[agentName] || { gen: 1, parents: 'GENESIS' };
-};
+function statusDot(status: AgentStatus): string {
+  switch (status) {
+    case 'FAILED': return 'bg-status-failure';
+    case 'DEPLOYED': return 'bg-status-success';
+    case 'IDLE': return 'bg-terminal-text-muted';
+  }
+}
+
+function statusLabel(status: AgentStatus): string {
+  switch (status) {
+    case 'FAILED': return 'Failed';
+    case 'DEPLOYED': return 'Healthy';
+    case 'IDLE': return 'Idle';
+  }
+}
+
+// ── Page state machine (design ref) ──────────────────────────────────
+
+type PageState = 'EMPTY' | 'CRITICAL' | 'HEALTHY';
+
+function derivePageState(agents: EnrichedAgent[]): PageState {
+  if (agents.length === 0) return 'EMPTY';
+  if (agents.some(a => !a.is_alive)) return 'CRITICAL';
+  return 'HEALTHY';
+}
+
+// ── Component ────────────────────────────────────────────────────────
 
 export function AgentRoster() {
-  const { data: agentsData, isLoading } = useAgents();
-  const agents = agentsData?.agents || [];
-  const [taskingAgent, setTaskingAgent] = useState<any | null>(null);
+  const { agents, isLoading } = useAgentRoster();
+  const { deployments } = useDeploymentList({ status: 'ACTIVE' });
+  const withdrawDeployment = useWithdrawDeployment();
   const [deployModalOpen, setDeployModalOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const { activeTab, setActiveTab } = useAgentsUi();
-  const [movementFilter, setMovementFilter] = useState<string>('all');
-  const [movements, setMovements] = useState(mockMovements);
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [archetypeFilter, setArchetypeFilter] = useState<string>('all');
 
   // Register TopActionBar action handlers
   useRegisterTopActionBarActions({
@@ -106,64 +97,78 @@ export function AgentRoster() {
     deployAgent: () => setDeployModalOpen(true),
   });
 
-  // Auto-dismiss toast
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timer = setTimeout(() => setToastMessage(null), 3000);
-    return () => clearTimeout(timer);
-  }, [toastMessage]);
+  // Build deployment lookup: agent_id → theatre_ids
+  const deploymentsByAgent = useMemo(() => {
+    const map = new Map<string, Array<{ id: string; theatre_id: string; strategy_profile: string }>>();
+    for (const d of deployments) {
+      const list = map.get(d.agent_id) ?? [];
+      list.push({ id: d.id, theatre_id: d.theatre_id, strategy_profile: d.strategy_profile });
+      map.set(d.agent_id, list);
+    }
+    return map;
+  }, [deployments]);
 
-  // Simulate live movement feed updates
-  useEffect(() => {
-    if (activeTab !== 'intel') return;
+  // Derive KPI stats from real data
+  const kpis = useMemo(() => {
+    const total = agents.length;
+    const alive = agents.filter(a => a.is_alive).length;
+    const deployed = agents.filter(a => a.is_alive && a.active_deployments_count > 0).length;
+    const idle = agents.filter(a => a.is_alive && a.active_deployments_count === 0).length;
+    const failed = agents.filter(a => !a.is_alive).length;
+    return { total, alive, deployed, idle, failed };
+  }, [agents]);
 
-    const interval = setInterval(() => {
-      if (Math.random() > 0.5) {
-        const newMovement = {
-          time: new Date().toISOString().slice(11, 19),
-          agent: ['LEVIATHAN', 'VIPER', 'TITAN', 'SHADOW', 'CHAOS', 'AMBASSADOR'][Math.floor(Math.random() * 6)],
-          action: ['deployed to', 'withdrew from', 'shifted to'][Math.floor(Math.random() * 3)],
-          theatre: ['ORB_SALVAGE_F7', 'VEN_OIL_TANKER', 'FED_RATE_DECISION', 'NVDA_EARNINGS'][Math.floor(Math.random() * 4)],
-          velocity: ['+1', '+2', '+3', '+4', '-1', '-2', '~0'][Math.floor(Math.random() * 7)],
-          type: ['deploy', 'withdraw', 'strategy'][Math.floor(Math.random() * 3)] as 'deploy' | 'withdraw' | 'strategy',
-        };
-        setMovements(prev => [newMovement, ...prev.slice(0, 19)]);
-      }
-    }, 5000);
+  const pageState = useMemo(() => derivePageState(agents), [agents]);
 
-    return () => clearInterval(interval);
-  }, [activeTab]);
+  // Archetype distribution for right rail
+  const archetypeDistribution = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const a of agents) {
+      counts[a.archetype] = (counts[a.archetype] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([archetype, count]) => ({ archetype, count, pct: agents.length > 0 ? Math.round((count / agents.length) * 100) : 0 }))
+      .sort((a, b) => b.count - a.count);
+  }, [agents]);
 
-  const handleTaskAgent = (agent: any, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setTaskingAgent(agent);
+  // Filter agents
+  const filteredAgents = useMemo(() => {
+    let result = [...agents];
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(a => a.name.toLowerCase().includes(q) || a.archetype.toLowerCase().includes(q));
+    }
+
+    if (statusFilter !== 'all') {
+      result = result.filter(a => deriveStatus(a) === statusFilter);
+    }
+
+    if (archetypeFilter !== 'all') {
+      result = result.filter(a => a.archetype === archetypeFilter);
+    }
+
+    // Sort: failed first, then deployed, then idle
+    const order: Record<AgentStatus, number> = { FAILED: 0, DEPLOYED: 1, IDLE: 2 };
+    result.sort((a, b) => order[deriveStatus(a)] - order[deriveStatus(b)]);
+
+    return result;
+  }, [agents, searchQuery, statusFilter, archetypeFilter]);
+
+  // Unique archetypes for filter
+  const archetypes = useMemo(
+    () => [...new Set(agents.map(a => a.archetype))].sort(),
+    [agents],
+  );
+
+  const handleRecall = (deploymentId: string) => {
+    withdrawDeployment.mutate(deploymentId);
   };
-
-  const handleCopyAgent = (_agent: any, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setToastMessage('Copy trading coming soon — connect wallet');
-  };
-
-  const handleHireAgent = (_agent: any, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setToastMessage('Agent hiring coming soon — connect wallet');
-  };
-
-  const filteredMovements = movements.filter(m => {
-    if (movementFilter === 'all') return true;
-    if (movementFilter === 'deploy') return m.type === 'deploy';
-    if (movementFilter === 'withdraw') return m.type === 'withdraw';
-    if (movementFilter === 'strategy') return m.type === 'strategy';
-    return true;
-  });
 
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-cyan-400 animate-pulse">Loading agents...</div>
+        <div className="text-terminal-text-muted animate-pulse text-sm">Loading fleet...</div>
       </div>
     );
   }
@@ -173,15 +178,8 @@ export function AgentRoster() {
       <EmptyState
         type="ZERO_STATE"
         icon={<User className="w-7 h-7" />}
-        title="No agents deployed"
-        description="Agents appear here once they are deployed to theatres. Deploy your first agent to begin trading."
-        actions={[
-          {
-            label: 'Deploy Agent',
-            onClick: () => setDeployModalOpen(true),
-            variant: 'primary',
-          },
-        ]}
+        title="No agents provisioned"
+        description="Agents appear here once provisioned. To deploy an agent, open a theatre detail page and use the Deploy Agent action — the theatre context is required."
       />
     );
   }
@@ -191,455 +189,383 @@ export function AgentRoster() {
       className="h-full flex flex-col"
       data-testid={activeTab === 'roster' ? 'agents-tab-roster' : 'agents-tab-intel'}
     >
-      {/* Agent Roster View */}
+      {/* ── Roster Tab ─────────────────────────────────────────────── */}
       {activeTab === 'roster' && (
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-echelon-cyan flex items-center gap-3">
-                <User className="w-6 h-6" />
-                AGENT ROSTER
-              </h1>
-              <span className="text-terminal-muted text-sm">
-                {agents.length} agents active
-              </span>
+          <div className="max-w-7xl mx-auto">
+
+            {/* ── Attention Strip ──────────────────────────────────── */}
+            <AttentionStrip pageState={pageState} kpis={kpis} />
+
+            {/* ── KPI Cards ────────────────────────────────────────── */}
+            <div className="flex gap-3 mb-4">
+              <KpiCard label="Total" value={kpis.total} />
+              <KpiCard label="Alive" value={kpis.alive} total={kpis.total} variant={kpis.alive === kpis.total ? 'success' : undefined} />
+              <KpiCard label="Deployed" value={kpis.deployed} />
+              <KpiCard label="Idle" value={kpis.idle} variant={kpis.idle > 0 ? 'warning' : undefined} />
+              <KpiCard label="Failed" value={kpis.failed} variant={kpis.failed > 0 ? 'danger' : 'zero'} />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {agents.map((agent) => {
-                const sanity = agent.sanity || 75;
-                const maxSanity = agent.max_sanity || 100;
-const sanityPercent = (sanity / maxSanity) * 100;
-                const lineage = getMockLineage(agent.name);
+            {/* ── Main Grid: Table + Right Rail ────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+              {/* Left: Filter + Table */}
+              <div>
+                {/* Filter bar */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="relative flex-1 max-w-xs">
+                    <Search className="w-3.5 h-3.5 text-terminal-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search agents..."
+                      className="w-full h-8 pl-9 pr-3 bg-terminal-bg border border-terminal-border rounded-lg text-xs text-terminal-text placeholder:text-terminal-text-muted focus:border-echelon-cyan/40 outline-none"
+                    />
+                  </div>
+                  <FilterDropdown
+                    label="Status"
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    options={[
+                      { value: 'all', label: 'All' },
+                      { value: 'DEPLOYED', label: 'Deployed' },
+                      { value: 'IDLE', label: 'Idle' },
+                      { value: 'FAILED', label: 'Failed' },
+                    ]}
+                  />
+                  <FilterDropdown
+                    label="Archetype"
+                    value={archetypeFilter}
+                    onChange={setArchetypeFilter}
+                    options={[
+                      { value: 'all', label: 'All' },
+                      ...archetypes.map(a => ({ value: a, label: a })),
+                    ]}
+                  />
+                  <span className="text-xs text-terminal-text-muted ml-auto">
+                    {filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
 
-                return (
-                  <div
-                    key={agent.id}
-                    className={clsx(
-                      'bg-terminal-panel border rounded-lg p-4 transition-all group relative overflow-hidden',
-                      sanityPercent > 40
-                        ? 'border-terminal-border hover:border-echelon-cyan/50'
-                        : sanityPercent > 20
-                          ? 'border-echelon-amber/30 hover:border-echelon-amber/50'
-                          : 'border-echelon-red/50 hover:border-echelon-red animate-pulse',
-                      // Glitch effect for critical sanity
-                      sanityPercent <= 20 && 'relative overflow-hidden'
-                    )}
-                  >
-                    {/* Glitch overlay for critical agents */}
-                    {sanityPercent <= 20 && (
-                      <div
-                        className="absolute inset-0 pointer-events-none opacity-20"
-                        style={{
-                          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,0,0.1) 2px, rgba(255,0,0,0.1) 4px)',
-                          animation: 'glitch 0.3s infinite'
-                        }}
-                      />
-                    )}
-
-                    <Link
-                      to={`/fleet/${agent.id}`}
-                      className="block"
-                    >
-                      <div className="flex items-start justify-between mb-3 relative z-10">
-                        <div className="flex items-center gap-3">
-                          <div className={clsx(
-                            'w-9 h-9 rounded-lg flex items-center justify-center border',
-                            getArchetypeTheme(agent.archetype).bgClass,
-                            getArchetypeTheme(agent.archetype).borderClass,
-                            sanityPercent <= 20 && 'animate-pulse'
-                          )}>
-                            <ArchetypeIcon
-                              archetype={agent.archetype}
-                              className={clsx('w-5 h-5', getArchetypeTheme(agent.archetype).textClass)}
+                {/* Roster Table */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-terminal-border bg-terminal-surface">
+                        <th className="text-left px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Status</th>
+                        <th className="text-left px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Name</th>
+                        <th className="text-left px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Archetype</th>
+                        <th className="text-left px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Deployed To</th>
+                        <th className="text-left px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">P&L</th>
+                        <th className="text-right px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAgents.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="py-8">
+                            <EmptyState
+                              type="NO_RESULTS"
+                              filterDescription={searchQuery || statusFilter !== 'all' ? `${searchQuery} ${statusFilter}` : undefined}
+                              onClearFilters={() => { setSearchQuery(''); setStatusFilter('all'); setArchetypeFilter('all'); }}
                             />
-                          </div>
-                          <div>
-                            <h3 className={clsx(
-                              'font-bold transition',
-                              sanityPercent <= 20 ? 'text-echelon-red' : 'text-terminal-text group-hover:text-echelon-cyan'
-                            )}>
-                              {agent.name}
-                            </h3>
-                            <span className="text-xs text-terminal-muted uppercase">
-                              {agent.archetype}
-                            </span>
-                          </div>
-                        </div>
-                        <span className={clsx(
-                          'text-lg font-mono font-bold',
-                          (agent.total_pnl_usd || 0) >= 0 ? 'text-echelon-green' : 'text-echelon-red'
-                        )}>
-                          ${(agent.total_pnl_usd || 0).toLocaleString()}
-                        </span>
-                      </div>
-                    </Link>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredAgents.map((agent) => {
+                          const status = deriveStatus(agent);
+                          const agentDeployments = deploymentsByAgent.get(agent.id) ?? [];
 
-                    {/* Genealogy Metadata */}
-                    <div className="flex items-center gap-2 mt-2 text-xs relative z-10">
-                      <span className="bg-echelon-purple/20 border border-echelon-purple/30 px-2 py-0.5 rounded text-echelon-purple font-mono">
-                        GEN {lineage.gen}
-                      </span>
-                      <span className="text-terminal-muted">•</span>
-                      <span className="text-terminal-muted">
-                        {lineage.parents === 'GENESIS' ? (
-                          <span className="text-echelon-cyan/60">GENESIS AGENT</span>
-                        ) : (
-                          <>LINEAGE: <span className="text-echelon-purple">{lineage.parents}</span></>
-                        )}
-                      </span>
-                    </div>
+                          return (
+                            <tr
+                              key={agent.id}
+                              className="border-b border-terminal-border/50 hover:bg-terminal-card/50 transition-colors"
+                            >
+                              {/* Status */}
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <span className={clsx('w-2 h-2 rounded-full', statusDot(status))} />
+                                  <span className={clsx(
+                                    'text-[10px] font-semibold uppercase',
+                                    status === 'FAILED' && 'text-status-failure',
+                                    status === 'DEPLOYED' && 'text-status-success',
+                                    status === 'IDLE' && 'text-terminal-text-muted',
+                                  )}>
+                                    {statusLabel(status)}
+                                  </span>
+                                </div>
+                              </td>
 
-                    <div className="flex items-center justify-between text-xs text-terminal-muted mb-3 mt-2 relative z-10">
-                      <span className="flex items-center gap-1">
-                        <Activity className="w-3 h-3" />
-                        {agent.actions || 0} actions
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" />
-                        {((agent.win_rate || 0) * 100).toFixed(0)}% win rate
-                      </span>
-                    </div>
+                              {/* Name */}
+                              <td className="px-4 py-3">
+                                <Link
+                                  to={`/fleet/${agent.id}`}
+                                  className="font-semibold text-terminal-text hover:text-echelon-cyan transition-colors"
+                                >
+                                  {agent.name}
+                                </Link>
+                              </td>
 
-                    {/* Sanity Indicator */}
-                    <div className="relative z-10">
-                      <AgentSanityIndicator
-                        sanity={sanity}
-                        maxSanity={maxSanity}
-                        name={agent.name}
-                      />
-                    </div>
+                              {/* Archetype */}
+                              <td className="px-4 py-3">
+                                <span className={clsx(
+                                  'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold',
+                                  getArchetypeTheme(agent.archetype).bgClass,
+                                  getArchetypeTheme(agent.archetype).textClass,
+                                )}>
+                                  {agent.archetype}
+                                </span>
+                              </td>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 mt-4 pt-3 border-t border-terminal-border relative z-10">
-                      {/* Task Button - Primary for Spies and Sharks */}
-                      {(agent.archetype === 'SPY' || agent.archetype === 'SHARK') && (
-                        <button
-                          onClick={(e) => handleTaskAgent(agent, e)}
-                          className="flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2 bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30"
-                        >
-                          <Search className="w-4 h-4" />
-                          TASK
-                        </button>
+                              {/* Deployed To */}
+                              <td className="px-4 py-3">
+                                {agentDeployments.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {agentDeployments.map(d => (
+                                      <span key={d.id} className="font-mono text-[10px] text-echelon-cyan bg-echelon-cyan/10 px-1.5 py-0.5 rounded">
+                                        {d.theatre_id.slice(0, 8)}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-terminal-text-muted">—</span>
+                                )}
+                              </td>
+
+                              {/* P&L */}
+                              <td className="px-4 py-3">
+                                <span className={clsx(
+                                  'font-mono font-semibold',
+                                  agent.total_pnl_usd >= 0 ? 'text-status-success' : 'text-status-failure',
+                                )}>
+                                  {agent.total_pnl_usd >= 0 ? '+' : ''}${Math.abs(agent.total_pnl_usd).toLocaleString()}
+                                </span>
+                              </td>
+
+                              {/* Actions */}
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center gap-1.5 justify-end">
+                                  <Link
+                                    to={`/fleet/${agent.id}`}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-terminal-surface border border-terminal-border text-terminal-text-muted hover:text-terminal-text hover:border-terminal-text-muted transition-colors"
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    View
+                                  </Link>
+                                  {status === 'DEPLOYED' && agentDeployments.length > 0 && (
+                                    <button
+                                      onClick={() => handleRecall(agentDeployments[0].id)}
+                                      disabled={withdrawDeployment.isPending}
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold text-terminal-text-muted hover:text-status-failure hover:bg-status-failure/10 transition-colors"
+                                    >
+                                      <ArrowDownToLine className="w-3 h-3" />
+                                      Recall
+                                    </button>
+                                  )}
+                                  {status === 'IDLE' && (
+                                    <span
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold text-terminal-text-muted/50 cursor-not-allowed"
+                                      title="Deploy from a theatre detail page where theatre_id is known"
+                                    >
+                                      <Rocket className="w-3 h-3" />
+                                      Deploy
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-                      {/* Copy Button - For social trading */}
-                      <button
-                        onClick={(e) => handleCopyAgent(agent, e)}
-                        className="flex-1 px-3 py-2 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all flex items-center justify-center gap-2"
-                      >
-                        <Copy className="w-4 h-4" />
-                        COPY
-                      </button>
-
-                      {/* Hire Button */}
-                      <button
-                        onClick={(e) => handleHireAgent(agent, e)}
-                        className="px-3 py-2 bg-echelon-amber/20 border border-echelon-amber/50 text-echelon-amber rounded text-sm font-bold hover:bg-echelon-amber/30 transition-all"
-                      >
-                        <Briefcase className="w-4 h-4" />
-                      </button>
+              {/* ── Right Rail ───────────────────────────────────────── */}
+              <div className="space-y-4">
+                {/* Scheduler Status — deferred (no API) */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface">
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">
+                      Scheduler Status
+                    </h3>
+                  </div>
+                  <div className="p-4">
+                    <div className="text-xs text-terminal-text-muted text-center py-4">
+                      No scheduler API available
                     </div>
                   </div>
-                );
-              })}
+                </div>
+
+                {/* Archetype Distribution — real data */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface">
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">
+                      Archetype Distribution
+                    </h3>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    {archetypeDistribution.length > 0 ? (
+                      archetypeDistribution.map(({ archetype, count, pct }) => (
+                        <div key={archetype} className="flex items-center gap-2">
+                          <span className={clsx(
+                            'text-[10px] font-mono font-semibold w-16',
+                            getArchetypeTheme(archetype).textClass,
+                          )}>
+                            {archetype}
+                          </span>
+                          <div className="flex-1 h-2 bg-terminal-bg rounded-full overflow-hidden">
+                            <div
+                              className={clsx('h-full rounded-full', getArchetypeTheme(archetype).bgClass)}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] font-mono text-terminal-text-muted w-6 text-right">
+                            {count}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-terminal-text-muted text-center py-2">No agents</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Recent Events Feed — deferred without WebSocket */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface">
+                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">
+                      Recent Events
+                    </h3>
+                  </div>
+                  <div className="p-4">
+                    <EmptyState
+                      type="SPARSE_DATA"
+                      description="Event feed requires WebSocket integration. Deployment actions are polled every 15s."
+                      className="min-h-0 bg-transparent p-0"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Global Intelligence View */}
+      {/* ── Intelligence Tab — Real data with sparse states ──────── */}
       {activeTab === 'intel' && (
         <LocalErrorBoundary name="Global Intelligence">
           <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
-            {/* Stats Row - KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-cyan/20 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-echelon-cyan" />
+            <div className="max-w-7xl mx-auto">
+              {/* KPI row from real data */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Users className="w-4 h-4 text-terminal-text-muted" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Total</span>
                   </div>
-                  <span className="text-xs text-echelon-green">+2 this week</span>
+                  <div className="text-2xl font-bold font-mono text-terminal-text">{kpis.total}</div>
                 </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.totalAgents}</div>
-                <div className="text-sm text-terminal-muted">Total Agents</div>
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Rocket className="w-4 h-4 text-terminal-text-muted" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Deployed</span>
+                  </div>
+                  <div className="text-2xl font-bold font-mono text-terminal-text">{kpis.deployed}</div>
+                  <div className="text-[10px] text-terminal-text-muted">
+                    {kpis.total > 0 ? Math.round((kpis.deployed / kpis.total) * 100) : 0}% utilization
+                  </div>
+                </div>
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-4 h-4 text-terminal-text-muted" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Idle</span>
+                  </div>
+                  <div className="text-2xl font-bold font-mono text-terminal-text">{kpis.idle}</div>
+                </div>
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-terminal-text-muted" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Failed</span>
+                  </div>
+                  <div className={clsx('text-2xl font-bold font-mono', kpis.failed > 0 ? 'text-status-failure' : 'text-terminal-text')}>
+                    {kpis.failed}
+                  </div>
+                </div>
               </div>
 
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-green/20 flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-echelon-green" />
+              {/* Deployment Heat Map — sparse state (no theatre list) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface flex items-center gap-2">
+                    <Activity className="w-3.5 h-3.5 text-terminal-text-muted" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Deployment Heat Map</span>
                   </div>
-                  <span className="text-xs text-terminal-muted">67% utilization</span>
+                  <div className="p-4">
+                    <EmptyState
+                      type="SPARSE_DATA"
+                      description="Heat map requires a theatre list endpoint (GET /api/v1/theatres) which is not yet available. Theatre data will populate automatically when the endpoint ships."
+                      className="min-h-0 bg-transparent p-0"
+                    />
+                  </div>
                 </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.deployedAgents}</div>
-                <div className="text-sm text-terminal-muted">Deployed</div>
+
+                {/* Movement Feed — sparse state */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface flex items-center gap-2">
+                    <Activity className="w-3.5 h-3.5 text-terminal-text-muted" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Movement Feed</span>
+                  </div>
+                  <div className="p-4">
+                    <EmptyState
+                      type="SPARSE_DATA"
+                      description="Live movement feed requires WebSocket event integration (AGENT_DEPLOYED, AGENT_WITHDRAWN). Deployment data is polled every 15s via React Query."
+                      className="min-h-0 bg-transparent p-0"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-purple/20 flex items-center justify-center">
-                    <History className="w-5 h-5 text-echelon-purple" />
-                  </div>
-                  <span className="text-xs text-echelon-green">+12 from yesterday</span>
-                </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.movements24h}</div>
-                <div className="text-sm text-terminal-muted">Movements (24h)</div>
-              </div>
-
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-red/20 flex items-center justify-center">
-                    <AlertTriangle className="w-5 h-5 text-echelon-red" />
-                  </div>
-                  <span className="text-xs text-echelon-green">-1 from yesterday</span>
-                </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.activeConflicts}</div>
-                <div className="text-sm text-terminal-muted">Active Conflicts</div>
-              </div>
-            </div>
-
-            {/* Dashboard Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              {/* Deployment Heat Map */}
+              {/* Archetype Distribution — real data */}
               <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-echelon-cyan" />
-                    <span className="font-semibold text-terminal-text">Deployment Heat Map</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-echelon-green animate-pulse"></span>
-                      <span className="text-xs text-terminal-muted">LIVE</span>
-                    </span>
-                  </div>
+                <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface flex items-center gap-2">
+                  <Heart className="w-3.5 h-3.5 text-terminal-text-muted" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Archetype Distribution</span>
                 </div>
                 <div className="p-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    {mockTheatres.map((theatre) => (
-                      <div
-                        key={theatre.name}
-                        className={clsx(
-                          'rounded border p-3 transition-all',
-                          theatre.activity === 'high' && 'border-echelon-red/50 bg-echelon-red/10',
-                          theatre.activity === 'medium' && 'border-echelon-amber/50 bg-echelon-amber/10',
-                          theatre.activity === 'low' && 'border-echelon-green/50 bg-echelon-green/10'
-                        )}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-mono text-xs text-terminal-text">{theatre.name}</span>
-                          <span className={clsx(
-                            'text-xs font-medium flex items-center',
-                            theatre.activity === 'high' && 'text-echelon-red',
-                            theatre.activity === 'medium' && 'text-echelon-amber',
-                            theatre.activity === 'low' && 'text-echelon-green'
-                          )}>
-                            {theatre.activity === 'high' && <Flame className="w-3.5 h-3.5" />}
-                            {theatre.activity === 'medium' && <AlertCircle className="w-3.5 h-3.5" />}
-                            {theatre.activity === 'low' && <CheckCircle className="w-3.5 h-3.5" />}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-terminal-muted">
-                          <span>{theatre.agents} agents</span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-2 text-xs">
-                          <span><span className="text-terminal-muted">Stab</span> <span className="text-terminal-text">{theatre.stability}%</span></span>
-                          <span><span className="text-terminal-muted">Vol</span> <span className="text-terminal-text">{theatre.volume}</span></span>
-                          <span><span className="text-terminal-muted">Gap</span> <span className="text-terminal-text">{theatre.gap}%</span></span>
-                        </div>
+                  {archetypeDistribution.length > 0 ? (
+                    <div className="space-y-3">
+                      {/* Stacked bar */}
+                      <div className="flex h-6 rounded-lg overflow-hidden">
+                        {archetypeDistribution.map(({ archetype, pct }) => (
+                          <div
+                            key={archetype}
+                            className={clsx('h-full', getArchetypeTheme(archetype).bgClass)}
+                            style={{ width: `${pct}%` }}
+                            title={`${archetype}: ${pct}%`}
+                          />
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Movement Feed */}
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
-                  <div className="flex items-center gap-2">
-                    <History className="w-4 h-4 text-echelon-purple" />
-                    <span className="font-semibold text-terminal-text">Movement Feed</span>
-                  </div>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-echelon-green animate-pulse"></span>
-                    <span className="text-xs text-terminal-muted">LIVE</span>
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 px-4 py-2 border-b border-terminal-border">
-                  <button
-                    onClick={() => setMovementFilter('all')}
-                    className={clsx(
-                      'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'all' ? 'bg-echelon-cyan/20 text-echelon-cyan' : 'text-terminal-muted hover:text-terminal-text'
-                    )}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setMovementFilter('deploy')}
-                    className={clsx(
-                      'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'deploy' ? 'bg-echelon-green/20 text-echelon-green' : 'text-terminal-muted hover:text-terminal-text'
-                    )}
-                  >
-                    Deploy
-                  </button>
-                  <button
-                    onClick={() => setMovementFilter('withdraw')}
-                    className={clsx(
-                      'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'withdraw' ? 'bg-echelon-red/20 text-echelon-red' : 'text-terminal-muted hover:text-terminal-text'
-                    )}
-                  >
-                    Withdraw
-                  </button>
-                  <button
-                    onClick={() => setMovementFilter('strategy')}
-                    className={clsx(
-                      'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'strategy' ? 'bg-echelon-amber/20 text-echelon-amber' : 'text-terminal-muted hover:text-terminal-text'
-                    )}
-                  >
-                    Strategy
-                  </button>
-                </div>
-                <div className="max-h-80 overflow-y-auto">
-                  {filteredMovements.map((movement, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-3 px-4 py-2 border-b border-terminal-border/50 hover:bg-terminal-card/50 transition-colors"
-                    >
-                      <span className="font-mono text-xs text-terminal-muted w-16">{movement.time}</span>
-                      <div className={clsx(
-                        'w-6 h-6 rounded flex items-center justify-center text-xs font-bold',
-                        movement.type === 'deploy' && 'bg-echelon-green/20 text-echelon-green',
-                        movement.type === 'withdraw' && 'bg-echelon-red/20 text-echelon-red',
-                        movement.type === 'strategy' && 'bg-echelon-amber/20 text-echelon-amber'
-                      )}>
-                        {movement.type === 'deploy' && <ArrowRight className="w-3 h-3" />}
-                        {movement.type === 'withdraw' && <ArrowLeft className="w-3 h-3" />}
-                        {movement.type === 'strategy' && <Zap className="w-3 h-3" />}
+                      {/* Legend */}
+                      <div className="flex flex-wrap gap-3">
+                        {archetypeDistribution.map(({ archetype, count, pct }) => (
+                          <div key={archetype} className="flex items-center gap-1.5">
+                            <span className={clsx('w-2.5 h-2.5 rounded-sm', getArchetypeTheme(archetype).bgClass)} />
+                            <span className="text-[10px] font-mono text-terminal-text-muted">
+                              {archetype} ({count}, {pct}%)
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium text-terminal-text">{movement.agent}</span>
-                        <span className="text-terminal-muted text-xs"> {movement.action} </span>
-                        <span className="text-echelon-cyan text-xs">{movement.theatre}</span>
-                      </div>
-                      <span className={clsx(
-                        'text-xs font-mono font-bold',
-                        movement.velocity.includes('+') && 'text-echelon-green',
-                        movement.velocity.includes('-') && 'text-echelon-red',
-                        movement.velocity === '~0' && 'text-terminal-muted'
-                      )}>
-                        {movement.velocity}
-                      </span>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="text-xs text-terminal-text-muted text-center py-4">No agents</div>
+                  )}
                 </div>
-              </div>
-            </div>
-
-            {/* Strategy Clusters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-              {mockClusters.map((cluster) => (
-                <div key={cluster.name} className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
-                    <div className="flex items-center gap-2">
-                      <ArchetypeIcon
-                        archetype={cluster.archetype}
-                        className={clsx('w-4 h-4', getArchetypeTheme(cluster.archetype).textClass)}
-                      />
-                      <span className="font-semibold text-terminal-text">{cluster.name} Cluster</span>
-                    </div>
-                    <span className="text-xs text-terminal-muted">{cluster.count} agents</span>
-                  </div>
-                  <div className="p-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-terminal-muted">Focus</span>
-                      <span className="text-terminal-text">{cluster.focus}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-terminal-muted">Avg Position</span>
-                      <span className="text-terminal-text">{cluster.avgPosition}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-terminal-muted">Win Rate</span>
-                      <span className={clsx(
-                        'font-bold',
-                        cluster.winRate >= 60 ? 'text-echelon-green' : cluster.winRate >= 40 ? 'text-echelon-amber' : 'text-echelon-red'
-                      )}>
-                        {cluster.winRate}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Agent Conflicts & Interactions */}
-            <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-terminal-border">
-                <AlertTriangle className="w-4 h-4 text-echelon-red" />
-                <span className="font-semibold text-terminal-text">Agent Conflicts & Interactions</span>
-              </div>
-              <div className="p-4 space-y-3">
-                {mockConflicts.map((conflict, idx) => (
-                  <div
-                    key={idx}
-                    className={clsx(
-                      'rounded border p-4',
-                      conflict.severity === 'high' && 'border-echelon-red/50 bg-echelon-red/5',
-                      conflict.severity === 'medium' && 'border-echelon-amber/50 bg-echelon-amber/5',
-                      conflict.severity === 'low' && 'border-echelon-green/50 bg-echelon-green/5'
-                    )}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={clsx(
-                        'text-xs font-bold px-2 py-0.5 rounded flex items-center gap-1',
-                        conflict.severity === 'high' && 'bg-echelon-red/20 text-echelon-red',
-                        conflict.severity === 'medium' && 'bg-echelon-amber/20 text-echelon-amber',
-                        conflict.severity === 'low' && 'bg-echelon-green/20 text-echelon-green'
-                      )}>
-                        {conflict.severity === 'high' && <><AlertTriangle className="w-3 h-3" /> HIGH IMPACT</>}
-                        {conflict.severity === 'medium' && <><AlertCircle className="w-3 h-3" /> MEDIUM</>}
-                        {conflict.severity === 'low' && <><CheckCircle className="w-3 h-3" /> LOW</>}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-terminal-text">
-                        <span className="font-semibold">{conflict.agents[0]}</span>
-                        <span className="text-terminal-muted mx-1">vs</span>
-                        <span className="font-semibold">{conflict.agents[1]}</span>
-                      </span>
-                      <span className="text-xs text-echelon-cyan">{conflict.theatre}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-terminal-muted">Opposing positions: <span className="text-terminal-text">{conflict.positions}</span></span>
-                      <span className={clsx(
-                        'font-medium',
-                        conflict.impact > 0 ? 'text-echelon-green' : 'text-echelon-red'
-                      )}>
-                        Stability impact: {conflict.impact > 0 ? '+' : ''}{conflict.impact}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
-        </div>
-      </LocalErrorBoundary>
-      )}
-
-      {/* Task Agent Modal */}
-      {taskingAgent && (
-        <TaskAgentModal
-          agent={taskingAgent}
-          isOpen={!!taskingAgent}
-          onClose={() => setTaskingAgent(null)}
-        />
+        </LocalErrorBoundary>
       )}
 
       {/* Deploy Agent Modal */}
@@ -647,15 +573,122 @@ const sanityPercent = (sanity / maxSanity) * 100;
         open={deployModalOpen}
         onClose={() => setDeployModalOpen(false)}
       />
+    </div>
+  );
+}
 
-      {/* Coming Soon Toast */}
-      {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] animate-fade-in">
-          <div className="bg-terminal-panel border border-echelon-cyan/30 rounded-lg px-4 py-3 shadow-lg flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-echelon-cyan flex-shrink-0" />
-            <span className="text-sm text-terminal-text font-sans">{toastMessage}</span>
-          </div>
+// ── Attention Strip ──────────────────────────────────────────────────
+
+function AttentionStrip({ pageState, kpis }: { pageState: PageState; kpis: { failed: number; total: number; alive: number } }) {
+  if (pageState === 'EMPTY') return null; // Zero state handled upstream
+
+  return (
+    <div
+      className={clsx(
+        'flex items-center gap-3 px-4 py-2.5 rounded-lg mb-4 text-xs',
+        pageState === 'CRITICAL' && 'bg-status-failure/[0.06] border border-status-failure/[0.18]',
+        pageState === 'HEALTHY' && 'bg-status-success/[0.06] border border-status-success/[0.18]',
+      )}
+    >
+      <span className={clsx(
+        'w-2 h-2 rounded-full flex-shrink-0',
+        pageState === 'CRITICAL' && 'bg-status-failure',
+        pageState === 'HEALTHY' && 'bg-status-success',
+      )} />
+      <span className={clsx(
+        'font-semibold',
+        pageState === 'CRITICAL' && 'text-status-failure',
+        pageState === 'HEALTHY' && 'text-status-success',
+      )}>
+        {pageState === 'CRITICAL'
+          ? `${kpis.failed} agent${kpis.failed !== 1 ? 's' : ''} failed — requires intervention`
+          : `All ${kpis.alive} agents healthy — scheduler nominal`
+        }
+      </span>
+    </div>
+  );
+}
+
+// ── KPI Card ─────────────────────────────────────────────────────────
+
+function KpiCard({
+  label,
+  value,
+  total,
+  variant,
+}: {
+  label: string;
+  value: number;
+  total?: number;
+  variant?: 'success' | 'warning' | 'danger' | 'zero';
+}) {
+  return (
+    <div className="flex-1 bg-terminal-panel border border-terminal-border rounded-lg p-3">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted mb-1">
+        {label}
+      </div>
+      <div className={clsx(
+        'text-xl font-mono font-bold tabular-nums',
+        variant === 'success' && 'text-status-success',
+        variant === 'warning' && 'text-status-warning',
+        variant === 'danger' && value > 0 && 'text-status-failure',
+        variant === 'zero' && value === 0 && 'text-terminal-text-muted',
+        !variant && 'text-terminal-text',
+      )}>
+        {value}
+      </div>
+      {total != null && (
+        <div className="text-[10px] font-mono text-terminal-text-muted">
+          {total > 0 ? Math.round((value / total) * 100) : 0}%
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Filter Dropdown ──────────────────────────────────────────────────
+
+function FilterDropdown({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: Array<{ value: string; label: string }>;
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedLabel = options.find(o => o.value === value)?.label ?? label;
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 h-8 px-3 bg-terminal-bg border border-terminal-border rounded-lg text-xs text-terminal-text-muted hover:text-terminal-text transition-colors"
+      >
+        <span>{value === 'all' ? label : selectedLabel}</span>
+        <ChevronDown className={clsx('w-3 h-3 transition', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 w-36 bg-terminal-panel border border-terminal-border rounded-lg shadow-lg z-20 py-1">
+            {options.map(o => (
+              <button
+                key={o.value}
+                onClick={() => { onChange(o.value); setOpen(false); }}
+                className={clsx(
+                  'w-full text-left px-3 py-1.5 text-xs hover:bg-terminal-card/50 transition-colors',
+                  value === o.value ? 'text-echelon-cyan' : 'text-terminal-text',
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

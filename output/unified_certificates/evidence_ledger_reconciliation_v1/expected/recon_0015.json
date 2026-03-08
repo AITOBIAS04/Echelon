@@ -1,0 +1,25 @@
+{
+  "criteria_verdicts": {
+    "bank_ref_match": true,
+    "bucket_destination_valid": true,
+    "bucket_sum_matches_gross": true,
+    "event_log_complete": true,
+    "exceptions_correct": false
+  },
+  "reconciliation_result": {
+    "exception_policy": {
+      "rule": "If matched == true and all splits/destinations/amounts are valid, exceptions list must be empty. A non-empty exceptions list with matched == true indicates a false positive, which fails exceptions_correct."
+    },
+    "exceptions": [
+      {
+        "description": "False positive: system flagged pay_0015 as duplicate despite unique reference and first occurrence",
+        "payment_id": "pay_0015",
+        "type": "duplicate_payment"
+      }
+    ],
+    "ledger_events_expected": 2,
+    "ledger_events_observed": 2,
+    "match_reason": "reference_and_amount_match",
+    "matched": true
+  }
+}

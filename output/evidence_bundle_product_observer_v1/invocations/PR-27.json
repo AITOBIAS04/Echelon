@@ -1,0 +1,36 @@
+{
+  "request": {
+    "episode_id": "PR-27",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "summary": "This PR updates color theming across the application by replacing hardcoded colors with CSS utility classes, improves the MarketCard component with a 3D flip interaction for betting, adds build metadata display, and makes various visual refinements to borders and styling.",
+      "key_claims": [
+        "Replaced hardcoded color values with Tailwind CSS utility classes in BreachDetail.tsx and BreachList.tsx",
+        "Converted getSeverityColor() and getCategoryColor() functions to return CSS class objects instead of color strings",
+        "Added a 3D flip animation to MarketCard component that shows betting form on the back face",
+        "Added build timestamp and hash display to TopActionBar component",
+        "Created new TypeScript declarations for __BUILD_ID__ and __BUILD_HASH__ globals",
+        "Updated Vite config to define build metadata constants",
+        "Added CSS classes for card flip animation with perspective and backface-visibility",
+        "Added 'canary-active' class to AppLayout for deployment verification",
+        "Updated terminal border colors in tailwind.config.js from 0.1/0.2 opacity to 0.13/0.22",
+        "Added CSS styling for terminal panels with updated border colors and box shadows"
+      ],
+      "follow_up_question": "What new function was added to handle evidence change type styling, and what are the three possible changeType values it accepts?",
+      "follow_up_response": "Based on the diff content, a new function called `getChangeTypeClasses` was added to handle evidence change type styling.\n\nThe function accepts three possible changeType values:\n1. `'added'`\n2. `'removed'` \n3. `'contradicted'`\n\nThe function returns an object with `bg`, `text`, and `icon` properties containing CSS classes for styling each change type:\n- `'added'` returns green styling classes (`bg-echelon-green/15`, `text-echelon-green`, `text-echelon-green`)\n- `'removed'` returns red styling classes (`bg-echelon-red/15`, `text-echelon-red`, `text-echelon-red`)  \n- `'contradicted'` returns amber styling classes (`bg-echelon-amber/15`, `text-echelon-amber`, `text-echelon-amber`)",
+      "episode_id": "PR-27",
+      "metadata": {
+        "model": "claude-sonnet-4-20250514",
+        "latency_ms": 12925
+      }
+    },
+    "scores": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "reply_accuracy": 1.0
+    },
+    "composite": 0.8
+  }
+}

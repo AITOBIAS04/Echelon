@@ -1,0 +1,37 @@
+{
+  "accrual_schedule": {
+    "billing_cycles_in_scope": 4,
+    "billing_frequency": "monthly",
+    "first_due_date": "2026-03-01",
+    "rent_amount": 1500.0,
+    "total_rent_due": 6000.0
+  },
+  "arrears_policy": {
+    "arrears_threshold": 1500.0,
+    "grace_period_days": 5
+  },
+  "asset_financials": {
+    "monthly_gross_income_actual": 25500.0,
+    "monthly_gross_income_expected": 30000.0,
+    "reserve_fund_balance": 9000.0,
+    "reserve_fund_minimum": 7500.0,
+    "shortfall": 4500.0,
+    "total_units": 20,
+    "units_in_arrears": 3
+  },
+  "current_date": "2026-06-01",
+  "lease_state": {
+    "accrued_ladder_balance": 0.0,
+    "currency": "GBP",
+    "deposit_amount": 2500.0,
+    "ladder_contribution": 0.0,
+    "ladder_plan_active": false,
+    "lease_id": "lease_009",
+    "payment_due_date": "2026-03-01",
+    "rent_amount": 1500.0,
+    "tenant_id": "tenant_009"
+  },
+  "payment_events": [],
+  "prior_outstanding": 4500.0,
+  "prior_state": "ARREARS"
+}

@@ -1,0 +1,65 @@
+{
+  "escrow_state": {
+    "balance": 100000.0,
+    "currency": "GBP",
+    "escrow_id": "escrow_001",
+    "funding_reference": "BANKREF-pay_0001"
+  },
+  "evidence_bundle": {
+    "attestations": [
+      {
+        "role": "quantity_surveyor",
+        "signature": "3be3a2fff1d21c4dec7851650cf8a08423e02e88e5f8168325d57fec9848dfc0",
+        "signer_id": "qs_001"
+      },
+      {
+        "role": "engineer",
+        "signature": "a43de4ba305e841998f869c3835d1dbb038d42f71d9fd72bd0f0058cb3251d9b",
+        "signer_id": "eng_001"
+      },
+      {
+        "role": "administrator",
+        "signature": "3116b642d767177543d650be7560f0f5a0cd041d13691f0bad951ea2dff5b585",
+        "signer_id": "admin_001"
+      }
+    ],
+    "documents": [
+      {
+        "doc_hash": "f5760c25fbaf3c17309c11273cce9844b12029aef859e7cebe632570c5820957",
+        "doc_type": "qs_report"
+      },
+      {
+        "doc_hash": "c67e086b1df5e0a9b721ef318dda33d8d5d439c2e2f0820fb2b225b876bbaa8d",
+        "doc_type": "engineer_signoff"
+      }
+    ],
+    "evidence_timestamp": "2026-02-20T12:00:00Z"
+  },
+  "milestone_schedule": {
+    "milestones": [
+      {
+        "evidence_required": [
+          "qs_report",
+          "engineer_signoff"
+        ],
+        "milestone_id": "ms_001_foundation_complete",
+        "release_pct": 0.1,
+        "required_signer_roles": [
+          "quantity_surveyor",
+          "engineer",
+          "administrator"
+        ],
+        "validity_window": {
+          "closes_at": "2026-04-01T00:00:00Z",
+          "opens_at": "2026-02-01T00:00:00Z"
+        }
+      }
+    ],
+    "rounding_policy": {
+      "currency": "GBP",
+      "mode": "half_up",
+      "precision": 2
+    }
+  },
+  "prior_releases": []
+}

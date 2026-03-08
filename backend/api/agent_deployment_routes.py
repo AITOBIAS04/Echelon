@@ -24,6 +24,7 @@ from backend.services.agent_deployment_service import (
     AgentDeploymentService,
     DeploymentGuardError,
 )
+from backend.websockets.realtime_manager import manager as ws_manager
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,12 @@ async def create_deployment(
             config_json=body.config_json,
         )
         await db.commit()
+        await ws_manager.broadcast_agent_deployed(
+            agent_id=body.agent_id,
+            theatre_id=body.theatre_id,
+            strategy_profile=body.strategy_profile,
+            deployed_by=user.user_id,
+        )
         return deployment
     except DeploymentGuardError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message)
@@ -104,6 +111,11 @@ async def withdraw_deployment(
     try:
         deployment = await svc.withdraw_deployment(deployment_id, user.user_id)
         await db.commit()
+        await ws_manager.broadcast_agent_withdrawn(
+            agent_id=deployment.agent_id,
+            theatre_id=deployment.theatre_id,
+            withdrawn_by=user.user_id,
+        )
         return deployment
     except DeploymentGuardError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message)

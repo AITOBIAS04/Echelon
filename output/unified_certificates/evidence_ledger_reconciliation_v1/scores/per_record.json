@@ -1,0 +1,152 @@
+[
+  {
+    "record_id": "recon_0001",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 1.0
+    }
+  },
+  {
+    "record_id": "recon_0002",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 1.0
+    }
+  },
+  {
+    "record_id": "recon_0003",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 1.0
+    }
+  },
+  {
+    "record_id": "recon_0004",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 1.0
+    }
+  },
+  {
+    "record_id": "recon_0005",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 1.0
+    }
+  },
+  {
+    "record_id": "recon_0006",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 1.0
+    }
+  },
+  {
+    "record_id": "recon_0007",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 1.0
+    }
+  },
+  {
+    "record_id": "recon_0008",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 1.0
+    }
+  },
+  {
+    "record_id": "recon_0009",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 1.0
+    }
+  },
+  {
+    "record_id": "recon_0010",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 1.0
+    }
+  },
+  {
+    "record_id": "recon_0011",
+    "scores": {
+      "bank_ref_match": 0.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 0.0
+    }
+  },
+  {
+    "record_id": "recon_0012",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 0.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 0.0
+    }
+  },
+  {
+    "record_id": "recon_0013",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 0.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 0.0
+    }
+  },
+  {
+    "record_id": "recon_0014",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 0.0,
+      "exceptions_correct": 0.0
+    }
+  },
+  {
+    "record_id": "recon_0015",
+    "scores": {
+      "bank_ref_match": 1.0,
+      "bucket_destination_valid": 1.0,
+      "bucket_sum_matches_gross": 1.0,
+      "event_log_complete": 1.0,
+      "exceptions_correct": 0.0
+    }
+  }
+]

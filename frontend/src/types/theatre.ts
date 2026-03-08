@@ -37,6 +37,8 @@ export interface TheatreResponse {
   certificate_id: string | null;
   stop_condition: string | null;
   stop_config: Record<string, unknown> | null;
+  paradox_risk_level: string | null;
+  paradox_risk_factors_json: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }

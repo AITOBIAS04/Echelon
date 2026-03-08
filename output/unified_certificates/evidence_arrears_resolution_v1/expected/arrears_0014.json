@@ -1,0 +1,23 @@
+{
+  "accrued_ladder_balance": 2400.0,
+  "criteria_verdicts": {
+    "distribution_adjustment": false,
+    "grace_period_enforcement": true,
+    "ladder_balance_protection": true,
+    "ladder_redirection_arithmetic": true,
+    "reserve_fund_impact": true,
+    "state_transition_validity": true
+  },
+  "distribution_adjustment": "none",
+  "final_state": "RECOVERY",
+  "ladder_action": "fully_redirected",
+  "ladder_balance_protected": true,
+  "ladder_equity_purchased": 0.0,
+  "outstanding_balance": 6000.0,
+  "reserve_fund_impact": {
+    "drawdown_amount": 0.0,
+    "minimum_coverage_breached": false,
+    "reserve_after_drawdown": null
+  },
+  "state_transitions": []
+}

@@ -1,0 +1,41 @@
+{
+  "accrued_ladder_balance": 0.0,
+  "criteria_verdicts": {
+    "distribution_adjustment": true,
+    "grace_period_enforcement": true,
+    "ladder_balance_protection": true,
+    "ladder_redirection_arithmetic": true,
+    "reserve_fund_impact": true,
+    "state_transition_validity": true
+  },
+  "distribution_adjustment": "shortfall_absorbed_per_loss_waterfall",
+  "final_state": "LEASE_TERMINATED",
+  "ladder_action": "redeemed_at_nav",
+  "ladder_balance_protected": true,
+  "ladder_equity_purchased": 0.0,
+  "outstanding_balance": 10000.0,
+  "reserve_fund_impact": {
+    "drawdown_amount": 0.0,
+    "minimum_coverage_breached": false,
+    "reserve_after_drawdown": null
+  },
+  "settlement_calculation": {
+    "deposit_offset": 2500.0,
+    "ladder_balance_redeemed_at_nav": true,
+    "ladder_balance_status": "protected",
+    "ladder_redemption_note": "Ladder balance redeemed at current NAV and paid to tenant. NOT seized to cover arrears unless explicitly contracted.",
+    "ladder_redemption_value": 4500.0,
+    "net_debt_to_recover": 7500.0,
+    "recovery_method": "debt_collection_or_county_court_judgment",
+    "remaining_after_deposit": 7500.0,
+    "total_owed": 10000.0
+  },
+  "state_transitions": [
+    {
+      "from": "EVICTION_PROCESS",
+      "timestamp": "2026-06-15T10:00:00Z",
+      "to": "LEASE_TERMINATED",
+      "trigger": "possession_order_executed"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "commitment_hash": "57dcd06ce1bfc24307898c05a02169d0df7d37bcc6cf84c9eef249e9cf62a9fc",
+  "construct_id": "community_oracle_v1",
+  "created_at": "2026-02-20T23:28:24.852697",
+  "execution_path": "replay",
+  "file_inventory": {
+    "commitment_receipt.json": "5480a20ee1d6b10a592bfcc5219f4aded661da87417bd8d48186093c771d4a3e",
+    "ground_truth/observer_prs.jsonl": "33d355b733c16448b549ea844614703d5264dac8826eefaf71e70c528c4c6e65",
+    "invocations/PR-23.json": "d0016ab5637e5cbff90692a1e6b90715fe5e5fa3c4fd15a0b3b67fb9416ca859",
+    "invocations/PR-24.json": "cb8e3bae4eefccdc75b88fb08e533a0109505f55541ca0eb50d75f4affc6c398",
+    "invocations/PR-25.json": "0478957b45523d9144d7228f4a16bc149b959261a79ba8b376b4378b98a35be1",
+    "invocations/PR-26.json": "815d6ecca4e1584398e932de65ec36ec23773d21bef02a85daefdfc4339b8d9c",
+    "invocations/PR-27.json": "f3ce32c17a633f988467b9ecfbdec80c773902c4eed9706eaccce52758a51b7a",
+    "invocations/PR-28.json": "de6597d03a0f63286372ae58539a9fe2c1de44decc20b0b35ade5022efc0da94",
+    "invocations/PR-29.json": "de907ea3804416622d76972b058faef3dd24d24f0767c41e678f72a5e829714b",
+    "invocations/PR-30.json": "6d1eba38c67c96b1f782eca1f377aa10ac0f7a3fe59c465cbd895764723b6ee5",
+    "invocations/PR-31.json": "feffac70cc5ccd888bfd6eca43823c72660b11c79bf8d4ca741c576bfc578c6c",
+    "invocations/PR-32.json": "70248b7a3c57b34be5c452ba03473465632f303e2aa20cf05e2ceee3977efedb",
+    "rlmf_export.jsonl": "0c7781d857adf248fe54bc2dd192f1ef178a381c2c68176c086f7cf48632803b",
+    "scores/aggregate.json": "c34bd241aa26fe9a4f303fab1ca128bcbf009948997bdeaee8dc9e013c757562",
+    "scores/per_episode.jsonl": "107719d748a82cf7f7e3f05d6c56edd3a7f6bfed40d6a491d9c3326cee441157",
+    "template.json": "88fad349af60e919f8d4d661d15ac3a36b731fc3e7e3b56ece46b09d03b25c3d"
+  },
+  "template_id": "product_observer_v1",
+  "theatre_id": "product_replay_engine_v1"
+}

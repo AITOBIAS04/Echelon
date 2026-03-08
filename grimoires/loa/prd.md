@@ -1,348 +1,224 @@
-# PRD — Cycle-020: Scenario Pack Evaluator v2 + Paradox Risk Orchestration
+# PRD — Cycle-021: Investigation Certificate Lifecycle + Domain Filter Enforcement
 
-**Cycle:** cycle-020
+**Cycle:** cycle-021
 **Date:** 7 March 2026
-**Depends on:** Cycle-019 (Agent Deployment + Investigation Persistence + Paradox Risk), Cycle-018 (Scenario Packs Engine), Cycle-017 (Policy Surface)
-**Sprints:** 6 (0-5)
-**Builder:** Loa (backend/runtime only -- Alexander handles frontend scenario lifecycle UI)
+**Depends on:** Cycle-020 (Scenario Pack Evaluator v2 + Paradox Risk Orchestration), Cycle-019 (Investigation Persistence + Paradox Risk), Cycle-014c (Investigation Toolset)
+**Builder:** Loa (backend/runtime only — Alexander consumes APIs)
+**Scope:** 4 items, narrowly focused on the investigation certificate pipeline
+
+> Sources: echelon_cycle_021.md:61,122-123,178-181,212-214,219-222,288-290; codebase exploration of investigation/, api/investigation_routes.py, database/models.py
 
 ---
 
 ## 1. Problem Statement
 
-Two backend systems shipped in honest-but-staged posture need hardening before release:
+Investigations can be created, evidence submitted, claims registered, and certificates built. But the certificate pipeline has 4 production gaps:
+
+1. **Domain filters are stored but not enforced.** Evidence submitted to an investigation is accepted regardless of whether the source domain matches the committed domain filters. The commitment surface is incomplete — a committed investigation can silently ingest out-of-scope evidence.
+
+2. **Drift is a routing signal but not a stop condition input.** Material drift forces REVIEW_REQUIRED at certificate build time, but it doesn't trigger automated stop condition evaluation. Drift can occur at any time, but the system only notices it when someone manually requests a certificate.
+
+3. **Certificate lifecycle has no intermediate states.** Calling `GET /certificate` immediately builds, persists, and completes the investigation in one step. There is no readiness check, no separation between "ready to issue" and "issued", and no operator confirmation gate.
 
-### 1.1 Checkpoint Evaluator Is Hash-Based, Not Schema-Driven
+4. **No batch anchor.** Certificate issuance is instantaneous. The product requires that `issued_at` only be set during the daily batch anchor window at 00:00 UTC. Readiness may precede issuance by hours.
 
-Cycle-018 shipped the Scenario Packs engine with a checkpoint evaluator (`backend/services/checkpoint_evaluator.py`) that uses deterministic hash-based branch selection. The schema columns exist (`trigger_condition_json`, `branch_rule_json`, `evaluator_type`, `theatre_spawn_rule_json`, `reward_mapping_json`) but are STAGED -- the runtime ignores them and selects branches via `_deterministic_branch_index()`.
+## 2. Goals & Success Metrics
 
-This was acceptable for the initial shipping posture. It is not acceptable for release:
-
-- `RUNNABLE` templates cannot claim schema-driven evaluation while using hash branching
-- Branch resolution depends only on checkpoint ID hash, not agent action, environment seed, or evaluator config
-- Theatre spawning uses `can_spawn_theatre` boolean only, ignoring `theatre_spawn_rule_json`
-- No environment randomness contract -- agents and environment share the same implicit randomness
-
-### 1.2 Paradox Risk Is Passive, Not Orchestrated
-
-Cycle-019 shipped paradox risk as a computed field on theatre detail reads. The `ParadoxRiskEvaluator` (`backend/services/paradox_risk_evaluator.py`) computes risk and `persist_risk_to_theatre()` saves it, but:
-
-- Recomputation only happens on-read when the cached value is missing or stale (>1 hour)
-- No backend mutation triggers recalculation -- risk drifts silently between reads
-- `PARADOX_RISK_CHANGED` WebSocket event contract exists in `realtime_manager.py` but is never emitted from live mutation paths
-- No orchestrator service centralizes recalculation decisions
-
-> Source: echelon_cycle_020.md, codebase grounding (checkpoint_evaluator.py, paradox_risk_evaluator.py, theatre_spawner.py, scenario_seed_manager.py, models.py)
-
----
-
-## 2. Product Contracts
-
-### 2.1 Scenario Packs Are Real Runtime Surfaces
-
-For `RUNNABLE` templates, the engine must execute the stored checkpoint graph as the source of truth:
-
-- No bespoke Python per pack
-- No hash-only branch selection pretending to be schema-driven
-- No agent-driven randomness
-- No hidden divergence between stored checkpoint config and runtime behavior
-
-### 2.2 Checkpoint Evaluation Contract
-
-Every runnable checkpoint must be executable from stored configuration:
-
-- `trigger_condition_json`
-- `decision_window_sec`
-- `evaluator_type`
-- `branch_rule_json`
-- `reward_mapping_json`
-- Optional `theatre_spawn_rule_json`
-
-Branch resolution must be deterministic given: (agent action, checkpoint state, environment seed, evaluator config).
-
-### 2.3 Environment Randomness Contract
-
-Agents provide actions, policies, and strategy. They do NOT provide randomness.
-
-Randomness comes from the environment via explicit seeded RNG:
-- Event rolls
-- Hidden state variation
-- Saboteur deck draws
-- Bounded uncertainty / noise sampling
-
-Run modes:
-- `TRAINING`: stochastic, varying seeds
-- `EVALUATION`: controlled stochasticity from a fixed seed set (shares TRAINING code path with pinned seeds)
-- `CALIBRATION`: canonical seed set for comparability (shares TRAINING code path with canonical seeds)
-- `REPLAY`: exact recorded path, no fresh randomness
-
-`ScenarioSeedManager` already exists with `allocate_seed()` supporting all 4 modes. CALIBRATION_SEEDS = [42, 137, 256, 512, 1024]. EVALUATION_SEEDS = [7, 13, 23, 31, 47, 59, 67, 73, 89, 97].
-
-### 2.4 Paradox Risk Contract
-
-Paradox risk is a live policy signal, not a static field.
-
-It must:
-- Recalculate from real theatre/investigation/paradox mutations
-- Persist the latest assessed state for efficient reads
-- Emit `PARADOX_RISK_CHANGED` only on material delta
-- Remain inquiry-class-aware
-
-Theatre language: `LOW`, `WATCH`, `HIGH`.
-
-Explanations: Evidence weak, Counter-signals rising, Logic gap widening, Stale investigation, Paradox active.
-
----
-
-## 3. Functional Requirements
-
-### FR-1: Schema-Driven Checkpoint Evaluation
-
-Replace hash-only branching with true evaluator-driven resolution.
-
-`CheckpointEvaluator` must consume `trigger_condition_json`, `branch_rule_json`, `reward_mapping_json`, and `theatre_spawn_rule_json` from stored checkpoint configuration.
-
-Branch selection must evaluate checkpoint state + agent action + seed + primitive config. Invalid/malformed runnable checkpoint configs must fail fast with explicit error states. `CATALOG_ONLY` templates remain non-runnable.
-
-### FR-2: Five Evaluator Primitives
-
-All 5 primitives ship as full set (4 runnable packs need all 5):
-
-| Primitive | Purpose | Key Branch Logic |
-|-----------|---------|-----------------|
-| `BINARY_RISK_GATE` | Yes/no risk threshold | Action crosses configured threshold -> branch A, else branch B |
-| `RESOURCE_DEPLETION` | Resource management under constraint | Remaining resources vs depletion curve determine branch |
-| `DETECTION_EVENT` | Stealth/detection scenario | Detection probability from action + noise -> caught or safe |
-| `TIMING_BREACH` | Time-critical decisions | Action timing vs deadline + drift -> on-time or breach |
-| `MISSION_COMPLETION` | Multi-objective completion | Objective completion set vs required set -> success branches |
-
-Each primitive defines its own `trigger_condition_json` and `branch_rule_json` contract.
-
-### FR-3: Environment RNG + Mode Semantics
-
-Introduce explicit environment randomness separation.
-
-- `ScenarioSeedManager` (already exists) becomes the canonical seed allocator
-- Environment stochasticity uses seeded RNG from `ScenarioSeedManager`
-- Agent action selection is separate from environment randomness
-- TRAINING = random seeds, EVALUATION = pinned seed set (same code path), CALIBRATION = canonical seed set (same code path), REPLAY = recorded seed, no fresh randomness
-- Persist enough state to replay branch outcomes exactly
-
-### FR-4: Schema-Driven Theatre Spawning
-
-Replace `can_spawn_theatre` boolean with evaluation of `theatre_spawn_rule_json`.
-
-Spawn guards:
-- Branch outcome type
-- Minimum reward threshold
-- Checkpoint class
-- Run mode restrictions
-
-Persist spawn provenance with run-scoped uniqueness.
-
-### FR-5: Paradox Risk Orchestration
-
-Promote paradox risk from read-time calculation to live backend orchestration.
-
-Recalculate after:
-1. Paradox task updates theatre/timeline stability or active paradox state
-2. Material counter-signal ingestion
-3. Investigation evidence freshness crossing configured threshold bands
-4. Certificate/policy transitions that materially affect deployability interpretation
-
-New service: `ParadoxRiskOrchestrator` (`backend/services/paradox_risk_orchestrator.py`) to centralize recalculation + persistence + event gating.
-
-Keep on-read recompute as fallback only when missing/stale.
-
-### FR-6: WebSocket Event Emission
-
-Wire the release-ready runtime surfaces into live events:
-
-| Event Type | Trigger | Payload |
-|------------|---------|---------|
-| `CHECKPOINT_RESOLVED` | Checkpoint resolves from schema evaluation | pack_id, run_id, checkpoint_id, selected_branch_id, reward, seed |
-| `THEATRE_SPAWNED` | Derived theatre from checkpoint spawn rule | pack_id, run_id, checkpoint_id, theatre_id |
-| `PARADOX_RISK_CHANGED` | Material risk delta after orchestrated recompute | theatre_id, old_level, new_level, factors, reason |
-
----
-
-## 4. Scope Summary
-
-| Area | What Ships | What Doesn't |
-|------|-----------|--------------|
-| Checkpoint Evaluator | Schema-driven evaluation, 5 primitives, branch rule contracts | New template families |
-| Environment RNG | Seed separation, mode semantics, replay determinism | New run modes beyond the 4 |
-| Theatre Spawning | Schema-driven spawn rules from `theatre_spawn_rule_json` | Rich spawn analytics |
-| Paradox Risk | Live orchestration, 4 trigger paths, material WS emission | Historical risk charting, new inquiry classes |
-| WebSocket | CHECKPOINT_RESOLVED, THEATRE_SPAWNED, PARADOX_RISK_CHANGED | Frontend event handling |
-| Frontend | Nothing (backend only) | All UI work deferred to Alexander |
-
----
-
-## 5. Success Criteria
-
-### Sprint 0: Runtime Contract Tightening
-- [ ] All checkpoint schema fields verified present and typed consistently
-- [ ] Evaluator primitive set frozen: BINARY_RISK_GATE, RESOURCE_DEPLETION, DETECTION_EVENT, TIMING_BREACH, MISSION_COMPLETION
-- [ ] `branch_rule_json` contract defined per primitive
-- [ ] `trigger_condition_json` contract defined per primitive
-- [ ] `theatre_spawn_rule_json` contract defined
-- [ ] `PARADOX_RISK_CHANGED` materiality rule defined
-- [ ] Stale-cache policy for paradox risk persistence locked
-
-### Sprint 1: Schema-Driven Checkpoint Evaluation
-- [ ] `CheckpointEvaluator` consumes trigger_condition_json, branch_rule_json, reward_mapping_json, theatre_spawn_rule_json
-- [ ] Branch selection evaluates checkpoint state + agent action + seed + primitive config
-- [ ] Determinism holds for identical (run config, agent actions, seed, checkpoint graph)
-- [ ] Invalid/malformed runnable checkpoint configs fail fast with explicit error states
-- [ ] CATALOG_ONLY templates remain non-runnable
-
-### Sprint 2: Environment RNG + Mode Semantics
-- [ ] ScenarioSeedManager is canonical seed allocator for all run paths
-- [ ] Agent action selection separated from environment stochasticity
-- [ ] Saboteur draws, hidden state, uncertainty sampling use seeded RNG
-- [ ] Enough state persisted to replay branch outcomes exactly
-- [ ] Parity tests: repeated runs with same seed, varying seeds in training, canonical seeds in calibration, exact replay
-
-### Sprint 3: Derived Theatre Rules + Run Integrity
-- [ ] `can_spawn_theatre` boolean replaced with `theatre_spawn_rule_json` evaluation
-- [ ] Spawn guards: branch outcome type, minimum reward threshold, checkpoint class, run mode restrictions
-- [ ] Spawn provenance persisted with run-scoped uniqueness
-- [ ] Derived theatres scoped to originating pack/run lineage
-
-### Sprint 4: Paradox Risk Orchestration
-- [ ] `ParadoxRiskOrchestrator` service created
-- [ ] Risk recalculates after: paradox state change, material counter-signal, evidence freshness threshold, certificate/policy transition
-- [ ] Persisted risk snapshot on theatre updated
-- [ ] On-read recompute kept as fallback only
-- [ ] Material delta detection prevents event spam
-
-### Sprint 5: WebSocket Emission + Integration + E2E
-- [ ] `CHECKPOINT_RESOLVED` emitted on schema-driven evaluation
-- [ ] `THEATRE_SPAWNED` emitted on derived theatre creation
-- [ ] `PARADOX_RISK_CHANGED` emitted on material delta only
-- [ ] Integration: runnable template -> create pack -> commit -> run with fixed seed -> checkpoint resolves from schema -> derived theatre spawns when rule passes -> replay reproduces exact path
-- [ ] Integration: theatre/investigation mutation -> paradox risk updates -> material change emits WS event -> non-material recompute does not spam
-- [ ] Regression against Cycle-019 APIs and Cycle-018 template catalog
-
----
-
-## 6. Codebase Grounding
-
-### Existing Infrastructure
-
-| Component | Location | Current State |
-|-----------|----------|---------------|
-| Checkpoint evaluator | `backend/services/checkpoint_evaluator.py` | Hash-based branching, STAGED schema fields |
-| ScenarioSeedManager | `backend/services/scenario_seed_manager.py` | Present, allocate_seed() with 4 modes |
-| Theatre spawner | `backend/services/theatre_spawner.py` | Uses `can_spawn_theatre` boolean only |
-| ParadoxRiskEvaluator | `backend/services/paradox_risk_evaluator.py` | 5 inquiry-class configs, on-read only |
-| ScenarioCheckpoint model | `backend/database/models.py` (line ~795) | trigger_condition_json, theatre_spawn_rule_json, evaluator_type present |
-| CheckpointBranch model | `backend/database/models.py` (line ~826) | branch_rule_json, outcome_type present |
-| ScenarioRun model | `backend/database/models.py` (line ~886) | environment_seed, run_mode present |
-| RunCheckpointResult model | `backend/database/models.py` (line ~918) | state_vector_json, spawned_theatre_id present |
-| WS broadcast_checkpoint_resolved | `backend/websockets/realtime_manager.py` (line ~207) | Exists, not wired from live paths |
-| WS broadcast_paradox_risk_changed | `backend/websockets/realtime_manager.py` (line ~252) | Exists, not wired from live paths |
-| Scenario pack routes | `backend/api/scenario_pack_routes.py` | Template catalog, pack lifecycle, run/replay endpoints |
-| Pack lifecycle service | `backend/services/scenario_pack_lifecycle.py` | Present |
-| Theatre model | `backend/database/models.py` | paradox_risk_level, paradox_risk_factors_json, paradox_risk_updated_at present |
-
-### EVALUATOR_PRIMITIVES (Already Defined)
-
-```python
-EVALUATOR_PRIMITIVES = {
-    "BINARY_RISK_GATE",
-    "RESOURCE_DEPLETION",
-    "DETECTION_EVENT",
-    "TIMING_BREACH",
-    "MISSION_COMPLETION",
-}
-```
-
----
-
-## 7. New / Updated Backend Services
+| Goal | Metric |
+|------|--------|
+| Domain filter enforcement | Evidence/signal submission to a committed investigation rejects or explicitly flags items from sources outside the committed domain scope. Zero silent ingestion of out-of-scope items. |
+| Drift-triggered stop evaluation | Material drift events from `CommitmentMonitor` trigger automated stop condition evaluation. If drift causes a stop condition change, the investigation's stop status updates without manual intervention. |
+| Three-state certificate lifecycle | Certificate records transition through READY → ANCHORED → ISSUED with persisted timestamps and reasons at each stage. No state can be skipped. |
+| Daily batch anchor | `issued_at` is only set during the 00:00 UTC batch window. Certificates that become READY at 14:00 UTC are not ISSUED until 00:00 UTC. The batch job is idempotent. |
+
+**Success bar:** All 4 items must be verifiable with tests. No staged behavior — each item either works in production or the docs say it doesn't.
+
+## 3. Users & Stakeholders
+
+| Persona | Interaction |
+|---------|-------------|
+| Investigation operator | Submits evidence, registers claims, monitors stop conditions. Expects domain filter violations to be caught, not silently accepted. |
+| Certificate consumer | Receives issued certificates. Expects READY/ANCHORED/ISSUED to mean what they say. |
+| Automated pipeline | Evaluates stop conditions after mutations. Runs daily batch anchor. |
+| Alexander (frontend) | Consumes certificate readiness state and lifecycle transitions via API + WebSocket. |
+
+## 4. Functional Requirements
+
+### FR-1: Domain Filter Enforcement at Ingestion
+
+**What exists:** `Investigation.domain_filters_json` stores committed domain filters. `SignalScanner` uses them for OSINT scans. Evidence submission endpoint does not check them.
+
+**What must change:**
+
+- When evidence is submitted to a committed investigation (via `POST /{id}/evidence`), validate that the evidence source is within the committed domain filters
+- "Committed" means the investigation has `domain_filters_json` set and non-empty
+- If domain filters are empty or the investigation has no commitment surface, evidence passes through (backward compatible)
+- If evidence source falls outside committed domain filters: reject with 422 and clear error message
+- Domain filter validation must also apply to signal ingestion paths (counter-signals, scanner output)
+- The validation function must be reusable — not duplicated across endpoints
+
+**Acceptance criteria:**
+- Evidence from in-scope domain: accepted
+- Evidence from out-of-scope domain: rejected with 422
+- Evidence to investigation with empty domain filters: accepted (no enforcement)
+- Signal from out-of-scope domain: rejected with 422
+- Domain filter set is part of commitment hash (already true — verify)
+
+### FR-2: Drift as First-Class Stop Condition Input
+
+**What exists:** `CommitmentMonitor.has_material_drift()` returns True when any drift event has MATERIAL impact. Certificate builder checks this for REVIEW_REQUIRED routing. `InvestigationStopConditionEvaluator` exists but is never called automatically.
+
+**What must change:**
+
+- After a drift event is logged (via `POST /{id}/drift` or internal drift detection), automatically evaluate stop conditions
+- Material drift is an additional stop condition input: if material drift is present, the stop condition evaluation must include it as a factor
+- Stop condition evaluation result must be persisted on the investigation record
+- If stop condition evaluation determines the investigation is ready for resolution, transition the investigation to a "ready for certificate" state
+- Stop condition evaluation must also run after: evidence submission, claim status change, counter-signal ingestion (all material mutation paths)
+- Readiness reasoning must record whether drift, evidence, or outcome state triggered readiness
+
+**Acceptance criteria:**
+- Material drift event triggers stop condition evaluation
+- Stop condition evaluation result is persisted (ready/not-ready + reason)
+- Readiness reasoning includes drift state when drift is material
+- Evidence submission triggers stop condition evaluation
+- Counter-signal ingestion triggers stop condition evaluation
+- Non-material drift does not force readiness
+
+### FR-3: Certificate Lifecycle READY → ANCHORED → ISSUED
+
+**What exists:** `InvestigationCertificateRecord` has `anchoring_status` ("pending"/"anchored"). Certificate is built and investigation is COMPLETED in a single endpoint call.
+
+**What must change:**
+
+- Add `certificate_status` field to `InvestigationCertificateRecord` with three states:
+  - `READY` — stop conditions satisfied, certificate hash computed, awaiting batch anchor
+  - `ANCHORED` — certificate included in daily batch, anchor hash confirmed
+  - `ISSUED` — `issued_at` set, certificate is final and immutable
+- `READY` transition: happens when stop conditions are satisfied AND certificate is built
+  - Sets `ready_at` timestamp
+  - Does NOT set `issued_at`
+  - Investigation status becomes `CERTIFICATE_READY` (not `COMPLETED`)
+- `ANCHORED` transition: happens during the daily batch anchor job
+  - Sets `anchored_at` timestamp
+  - Sets batch_anchor_hash for v1 local anchor
+- `ISSUED` transition: happens after anchoring confirms
+  - Sets `issued_at` timestamp
+  - Investigation status becomes `COMPLETED`
+- Existing certificate endpoint must be refactored: `GET /{id}/certificate` returns current state; `POST /{id}/certificate/build` triggers the READY transition
+- No state can be skipped: READY → ANCHORED → ISSUED is the only valid path
+
+**Acceptance criteria:**
+- Certificate can be in READY state without being ISSUED
+- READY certificates have `ready_at` but no `issued_at`
+- ANCHORED certificates have `anchored_at` and anchor hash
+- ISSUED certificates have `issued_at`
+- Investigation is COMPLETED only after ISSUED
+- Attempting to skip states raises ValueError
+
+### FR-4: Daily Batch Anchor at 00:00 UTC
+
+**What exists:** Nothing. Certificates are issued immediately.
+
+**What must change:**
+
+- Implement a batch anchor service that processes all READY certificates
+- The batch runs at 00:00 UTC (or is triggered manually for v1)
+- Batch job:
+  1. Query all certificates with `certificate_status = 'READY'`
+  2. Compute batch anchor hash (SHA-256 of sorted certificate hashes)
+  3. Transition each certificate to ANCHORED with the batch anchor hash
+  4. Transition each certificate to ISSUED with `issued_at` = batch run timestamp
+  5. Mark investigations as COMPLETED
+- The batch job must be idempotent: running it twice in the same window produces the same result
+- For v1, the batch anchor is a local hash anchor (not blockchain). The `anchoring_tx_hash` field stores the batch anchor hash.
+- Emit `INVESTIGATION_CERTIFICATE_ISSUED` WebSocket event for each issued certificate
+
+**Acceptance criteria:**
+- READY certificates are not ISSUED until batch runs
+- Batch computes anchor hash from all READY certificate hashes
+- Batch transitions READY → ANCHORED → ISSUED atomically
+- Batch is idempotent (second run is a no-op)
+- `issued_at` is within the batch window, not certificate build time
+- WebSocket event emitted per issued certificate
+
+## 5. Technical & Non-Functional Requirements
+
+### Database Changes
+
+- Add `certificate_status` column to `investigation_certificate_records` (String, default 'READY')
+- Add `ready_at` column (DateTime, nullable)
+- Add `anchored_at` column (DateTime, nullable)
+- Add `batch_anchor_hash` column (String, nullable)
+- Add `stop_condition_status` column to `investigations` (String, nullable) — persists evaluation result
+- Add `stop_condition_reason` column to `investigations` (String, nullable)
+- Add `stop_condition_evaluated_at` column to `investigations` (DateTime, nullable)
+- Alembic migration required
+
+### New Services
 
 | Service | File | Purpose |
 |---------|------|---------|
-| CheckpointEvaluator | `backend/services/checkpoint_evaluator.py` | Upgrade to true schema-driven checkpoint execution |
-| ScenarioRunStateBuilder | `backend/services/scenario_run_state_builder.py` | Normalize checkpoint state vector input for evaluators |
-| ParadoxRiskOrchestrator | `backend/services/paradox_risk_orchestrator.py` | Centralized recompute + persistence + event gating |
+| DomainFilterValidator | `backend/services/domain_filter_validator.py` | Reusable domain filter enforcement for evidence/signal ingestion |
+| StopConditionOrchestrator | `backend/services/stop_condition_orchestrator.py` | Automatic stop condition evaluation after material mutations |
+| CertificateLifecycleService | `backend/services/certificate_lifecycle_service.py` | READY/ANCHORED/ISSUED state machine + batch anchor |
 
-`ScenarioSeedManager` already exists and needs no structural changes.
+### API Changes
 
----
+| Endpoint | Change |
+|----------|--------|
+| `POST /{id}/evidence` | Add domain filter validation before acceptance |
+| `POST /{id}/counter-signals` | Add domain filter validation |
+| `POST /{id}/drift` | Trigger stop condition evaluation after persistence |
+| `GET /{id}/certificate` | Return current certificate state (READY/ANCHORED/ISSUED) without building |
+| `POST /{id}/certificate/build` | Build certificate and transition to READY (replaces current GET behavior) |
+| `POST /certificates/anchor-batch` | Trigger daily batch anchor (admin/cron) |
+| `GET /{id}/readiness` | Return stop condition evaluation status |
 
-## 8. API / Runtime Changes
+### WebSocket Events
 
-### Scenario Packs
+| Event | Trigger |
+|-------|---------|
+| `INVESTIGATION_STOP_CONDITION_MET` | Stop condition evaluator determines readiness |
+| `INVESTIGATION_CERTIFICATE_READY` | Certificate transitions to READY |
+| `INVESTIGATION_CERTIFICATE_ISSUED` | Certificate transitions to ISSUED via batch |
 
-- `POST /api/v1/scenario-packs` remains restricted to `RUNNABLE` templates
-- `POST /api/v1/scenario-packs/{id}/run` must fail if template checkpoint graph is not executable under v2 schema contract
-- `GET /api/v1/scenario-packs/{id}/runs/{run_id}/tree` must reflect rule-evaluated branches
-- `GET /api/v1/scenario-packs/{id}/runs/{run_id}/replay` must replay exact recorded path and environment outcomes
+## 6. Scope & Prioritization
 
-### Theatre / Paradox Risk
+### In Scope (4 items only)
 
-- `GET /api/v1/theatres/{id}` returns paradox risk from persisted orchestrated state (on-read fallback only)
-- Theatre list/detail responses may expose freshness metadata for debugging
+1. Domain filter enforcement at evidence/signal ingestion
+2. Drift as automated stop condition input
+3. Certificate lifecycle READY → ANCHORED → ISSUED
+4. Daily batch anchor at 00:00 UTC
 
----
+### Explicitly Out of Scope
 
-## 9. WebSocket Event Additions
+- Deployment operations (Fleet summaries, interventions, telemetry)
+- Live Signal Scanner collector integrations
+- Entity Resolver enrichment
+- New investigation endpoints beyond what's needed for the 4 items
+- Frontend implementation (Alexander-owned)
+- Blockchain anchoring (v1 uses local hash anchor)
+- New OSINT collector integrations
+- Agent deployment lifecycle changes
 
-| Event Type | Trigger | Payload |
-|------------|---------|---------|
-| `CHECKPOINT_RESOLVED` | Checkpoint resolves from schema-driven evaluation | pack_id, run_id, checkpoint_id, selected_branch_id, reward, seed |
-| `THEATRE_SPAWNED` | Derived theatre created from checkpoint spawn rule | pack_id, run_id, checkpoint_id, theatre_id |
-| `PARADOX_RISK_CHANGED` | Material risk delta after orchestrated recompute | theatre_id, old_level, new_level, factors, reason |
+## 7. Risks & Dependencies
 
----
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Domain filter enforcement breaks existing evidence submission workflows | Medium | Empty domain filters = no enforcement (backward compatible) |
+| Certificate lifecycle refactor breaks existing certificate consumers | Medium | Existing `GET /certificate` continues to work, returns current state |
+| Batch anchor timing sensitivity | Low | Batch is idempotent; manual trigger available for v1 |
+| Stop condition evaluation performance on every mutation | Low | Evaluation is lightweight (pure function on in-memory state) |
 
-## 10. Test Targets
+## 8. Dependencies on Prior Cycles
 
-Release-hardening cycle, not small polish pass.
-
-| Sprint | Tests | Focus |
-|--------|-------|-------|
-| 0 | 4 | Schema contract verification, primitive definitions, JSON contracts |
-| 1 | 7 | Schema-driven evaluation, determinism, fail-fast, primitive branch logic |
-| 2 | 6 | Seed reproducibility, mode semantics, replay parity |
-| 3 | 5 | Spawn rule gating, provenance, mode restrictions |
-| 4 | 6 | Paradox risk triggers, materiality, orchestrator service |
-| 5 | 7 | WS emission, integration tests, regression |
-
-Target: ~35 new tests. Post-020 expected: existing baseline + 35.
-
----
-
-## 11. NFRs
-
-1. **Determinism**: Identical (run config, agent actions, seed, checkpoint graph) must always produce identical branch outcomes.
-2. **Fail-fast**: Invalid/malformed runnable checkpoint configs must produce explicit error states, not silent fallbacks.
-3. **Performance**: Paradox risk recompute must not block API response paths. Orchestrator calls are fire-and-forget or background.
-4. **Backward compatibility**: CATALOG_ONLY templates unaffected. Existing pack lifecycle endpoints unchanged. Existing theatre API responses unchanged (additive only).
-5. **Material emission**: `PARADOX_RISK_CHANGED` emits only on material risk-level or material-factor delta, not every recompute.
-6. **Separation**: Environment randomness from `ScenarioSeedManager`, not agent-provided. Agent actions are deterministic inputs, not randomness sources.
-
----
-
-## 12. Release Decisions Frozen In This Cycle
-
-1. `RUNNABLE` Scenario Pack templates must use true schema-driven evaluation.
-2. Hash-only branch selection is no longer an acceptable shipping posture for runnable templates.
-3. `CATALOG_ONLY` templates remain browseable but cannot run.
-4. Paradox risk recomputation must be event-driven from backend mutation paths, not only on theatre detail reads.
-5. `PARADOX_RISK_CHANGED` emits only on material risk-level or material-factor delta, not every recompute.
-
----
-
-## 13. Out of Scope
-
-- Frontend Scenario Pack lifecycle UI beyond what Alexander is implementing
-- New Scenario Pack template families
-- Agent breeding / genealogy work
-- Rich visual family-tree or replay visualizer frontend work
-- New inquiry classes
-- Historical paradox-risk charting beyond current event/persistence needs
-- Any frontend work (Alexander brief handles UI)
+| Dependency | Cycle | Status |
+|------------|-------|--------|
+| Investigation persistence | 019 | Shipped |
+| Certificate builder + routing | 014c | Shipped |
+| Stop condition evaluator | 014c | Shipped |
+| Domain filter enum + scanner | 014c | Shipped |
+| Commitment monitor + drift events | 014c | Shipped |
+| Paradox risk orchestration (for recompute on cert) | 020 | Shipped |

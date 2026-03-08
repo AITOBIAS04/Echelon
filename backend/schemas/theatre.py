@@ -210,6 +210,8 @@ class TheatreResponse(BaseModel):
     certificate_id: Optional[str]
     stop_condition: Optional[str] = None
     stop_config: Optional[dict] = None
+    paradox_risk_level: Optional[str] = None
+    paradox_risk_factors_json: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)

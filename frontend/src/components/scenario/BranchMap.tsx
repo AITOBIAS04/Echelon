@@ -14,9 +14,9 @@ interface EpisodeNode {
   sequence_num: number;
   trigger: string;
   market_question: string;
-  selected_branch: string;
-  outcome_type: string;
-  reward: number;
+  selected_branch: string | null;
+  outcome_type: string | null;
+  reward: number | null;
   spawned_theatre_id: string | null;
 }
 
@@ -35,8 +35,8 @@ const COLOURS = {
 function getNodeColour(node: EpisodeNode, isFirst: boolean, isLast: boolean): string {
   if (isFirst) return COLOURS.start;
   if (isLast) {
-    if (node.reward > 0) return COLOURS.success;
-    if (node.reward < 0) return COLOURS.failure;
+    if (node.reward != null && node.reward > 0) return COLOURS.success;
+    if (node.reward != null && node.reward < 0) return COLOURS.failure;
     return COLOURS.partial;
   }
   return COLOURS.checkpoint;
@@ -63,7 +63,7 @@ export function BranchMap({ nodes }: BranchMapProps) {
         const isFirst = idx === 0;
         const isLast = idx === nodes.length - 1;
         const colour = getNodeColour(node, isFirst, isLast);
-        const edgeColour = getEdgeColour(node.reward);
+        const edgeColour = getEdgeColour(node.reward ?? 0);
 
         return (
           <div key={node.checkpoint_id} className="flex items-stretch gap-3">
@@ -96,10 +96,10 @@ export function BranchMap({ nodes }: BranchMapProps) {
                   className="font-mono px-1 py-0.5 rounded"
                   style={{ backgroundColor: `${colour}20`, color: colour }}
                 >
-                  {node.selected_branch}
+                  {node.selected_branch ?? '—'}
                 </span>
                 <span className="text-terminal-text-muted">
-                  reward: {node.reward}
+                  reward: {node.reward ?? '—'}
                 </span>
                 {node.spawned_theatre_id && (
                   <span className="text-status-success">spawned theatre</span>

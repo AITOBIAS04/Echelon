@@ -1,27 +1,23 @@
 /**
- * ScenarioPacksPage — Scenario Packs browser (Alpamayo Studio).
+ * ScenarioPacksPage -- Scenario Packs catalog.
  *
- * Wired to GET /api/v1/scenario-pack-templates for real catalog data.
- * Shows template cards with family badge, checkpoint count, fork range,
- * and RUNNABLE vs CATALOG_ONLY status.
+ * Aligned to: echelon_scenario_packs_catalog_v2.html
  *
  * PRODUCT DISTINCTION:
  *   - Theatre Templates = live market contracts (Create Theatre flow)
  *   - Scenario Packs = branching RL / telemetry environments (THIS PAGE)
- *   - Alpamayo = recommendation + scenario-construction intelligence
- *   - RLMF Exports = downstream data products
  *
- * DESIGN REF: output/design_reference/echelon_scenario_packs_v1.html
+ * Backend: GET /api/v1/scenario-pack-templates
+ * template_status: RUNNABLE | CATALOG_ONLY
  */
 
-import { useEffect, useState } from 'react';
-import { Boxes, GitBranch, BarChart3, Play, Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Boxes, Loader2, Search, X, Play, Eye, GitBranch } from 'lucide-react';
 import { EmptyState } from '../components/empty-states/EmptyState';
-import {
-  scenarioPackApi,
-  type ScenarioPackTemplateSummary,
-} from '../api/scenarioPacks';
+import { useTemplateList } from '../hooks/useScenarioPacks';
 
+/** Human-readable family labels */
 const FAMILY_LABELS: Record<string, string> = {
   NAV_UNC: 'Navigation',
   SOC_NAV: 'Social',
@@ -34,134 +30,165 @@ const FAMILY_LABELS: Record<string, string> = {
   PREC_MAN: 'Precision',
 };
 
+const FAMILIES = Object.keys(FAMILY_LABELS);
+
 export function ScenarioPacksPage() {
-  const [templates, setTemplates] = useState<ScenarioPackTemplateSummary[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [familyFilter, setFamilyFilter] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const [familyFilter, setFamilyFilter] = useState<string | undefined>();
+  const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
+  const { templates, total, isLoading, error } = useTemplateList({
+    family: familyFilter,
+    status: statusFilter,
+  });
 
-    scenarioPackApi
-      .listTemplates({
-        family: familyFilter ?? undefined,
-        limit: 50,
-      })
-      .then((res) => {
-        if (!cancelled) {
-          setTemplates(res.templates);
-          setTotal(res.total);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err.message || 'Failed to load templates');
-          setLoading(false);
-        }
-      });
+  const filtered = search
+    ? templates.filter(
+        (t) =>
+          t.name.toLowerCase().includes(search.toLowerCase()) ||
+          (t.description ?? '').toLowerCase().includes(search.toLowerCase()),
+      )
+    : templates;
 
-    return () => {
-      cancelled = true;
-    };
-  }, [familyFilter]);
+  const runnableCount = templates.filter((t) => t.template_status === 'RUNNABLE').length;
+  const catalogCount = templates.filter((t) => t.template_status === 'CATALOG_ONLY').length;
 
-  // Get unique families for filter tabs
-  const families = Object.keys(FAMILY_LABELS);
+  // Max branch depth across all templates (derived from fork_points_max)
+  const maxBranchDepth = useMemo(
+    () => (templates.length > 0 ? Math.max(...templates.map((t) => t.fork_points_max)) : 0),
+    [templates],
+  );
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-5">
+    <div className="p-6 max-w-[960px] mx-auto space-y-5">
       {/* Page header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-xs text-terminal-text-muted mb-0.5">
-            Alpamayo Studio
-          </div>
-          <h1 className="text-lg font-bold text-terminal-text">Scenario Packs</h1>
-          <p className="text-xs text-terminal-text-secondary mt-1">
-            Branching environments for RLMF telemetry and agent learning.
-          </p>
+      <div>
+        <div className="text-[11px] font-mono text-terminal-text-muted mb-0.5 uppercase tracking-wider">
+          Operations / Scenario Packs
         </div>
+        <h1 className="text-2xl font-bold text-terminal-text">Scenario Packs</h1>
+        <p className="text-[13px] text-terminal-text-secondary mt-0.5">
+          Branching simulation environments for RLMF, agent training, and replay analysis
+        </p>
       </div>
 
       {/* Stats bar */}
-      <div className="flex gap-4 p-3 bg-terminal-surface border border-terminal-border rounded-lg flex-wrap">
+      <div className="flex gap-4 p-3 px-5 bg-terminal-surface rounded-lg border border-terminal-border flex-wrap">
         {[
-          { label: 'Templates', value: loading ? '...' : String(total) },
-          {
-            label: 'Runnable',
-            value: loading
-              ? '...'
-              : String(templates.filter((t) => t.template_status === 'RUNNABLE').length),
-          },
-          {
-            label: 'Catalog Only',
-            value: loading
-              ? '...'
-              : String(templates.filter((t) => t.template_status === 'CATALOG_ONLY').length),
-          },
+          { label: 'Scenario\nPacks', value: isLoading ? '...' : String(total) },
+          { label: 'Runnable', value: isLoading ? '...' : String(runnableCount), color: 'text-status-success' },
+          { label: 'Catalog\nOnly', value: isLoading ? '...' : String(catalogCount) },
+          { label: 'Max Branch\nDepth', value: isLoading ? '...' : String(maxBranchDepth) },
         ].map((stat) => (
           <div
             key={stat.label}
             className="flex items-center gap-2 pr-4 border-r border-terminal-border/50 last:border-r-0 last:pr-0"
           >
-            <span className="font-mono text-base font-bold text-terminal-text-muted">
+            <span className={`font-mono text-[17px] font-bold tabular-nums ${stat.color ?? 'text-terminal-text'}`}>
               {stat.value}
             </span>
-            <span className="text-[11px] text-terminal-text-muted leading-tight">
+            <span className="text-[11px] font-medium text-terminal-text-muted leading-[14px] whitespace-pre-line">
               {stat.label}
             </span>
           </div>
         ))}
       </div>
 
-      {/* Family filter tabs */}
-      <div className="flex items-center gap-1 flex-wrap">
-        <button
-          onClick={() => setFamilyFilter(null)}
-          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-            familyFilter === null
-              ? 'bg-terminal-surface text-terminal-text shadow-sm border border-terminal-border'
-              : 'text-terminal-text-muted hover:text-terminal-text'
-          }`}
-        >
-          All
-        </button>
-        {families.map((f) => (
+      {/* Filter bar */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-0.5 bg-terminal-panel rounded-lg p-[3px] border border-terminal-border/50">
+          {[
+            { label: 'All', value: undefined, count: total },
+            { label: 'Runnable', value: 'RUNNABLE', count: runnableCount },
+            { label: 'Catalog Only', value: 'CATALOG_ONLY', count: catalogCount },
+          ].map((tab) => (
+            <button
+              key={tab.label}
+              onClick={() => setStatusFilter(tab.value)}
+              className={`flex items-center gap-[5px] px-3 py-[5px] rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+                statusFilter === tab.value
+                  ? 'bg-terminal-surface text-terminal-text font-semibold shadow-sm'
+                  : 'text-terminal-text-secondary hover:text-terminal-text'
+              }`}
+            >
+              {tab.label}
+              <span
+                className={`font-mono text-[10px] font-semibold ${
+                  statusFilter === tab.value ? 'text-purple-500' : 'text-terminal-text-muted'
+                }`}
+              >
+                {isLoading ? '...' : tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Family filter pills */}
+        <div className="flex items-center gap-1 flex-wrap">
           <button
-            key={f}
-            onClick={() => setFamilyFilter(f)}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-              familyFilter === f
-                ? 'bg-terminal-surface text-terminal-text shadow-sm border border-terminal-border'
+            onClick={() => setFamilyFilter(undefined)}
+            className={`px-2.5 py-1 rounded text-[10px] font-mono font-semibold transition-colors ${
+              !familyFilter
+                ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20'
                 : 'text-terminal-text-muted hover:text-terminal-text'
             }`}
           >
-            {FAMILY_LABELS[f] || f}
+            All Families
           </button>
-        ))}
+          {FAMILIES.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFamilyFilter(f === familyFilter ? undefined : f)}
+              className={`px-2.5 py-1 rounded text-[10px] font-mono font-semibold transition-colors ${
+                familyFilter === f
+                  ? 'bg-purple-500/10 text-purple-500 border border-purple-500/20'
+                  : 'text-terminal-text-muted hover:text-terminal-text'
+              }`}
+            >
+              {FAMILY_LABELS[f]}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-terminal-text-muted" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-48 bg-terminal-bg border border-terminal-border rounded-lg pl-8 pr-7 py-1.5 text-xs text-terminal-text font-mono placeholder:text-terminal-text-muted/50 focus:outline-none focus:border-purple-500/50"
+            placeholder="Filter packs..."
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-terminal-text-muted hover:text-terminal-text"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Loading state */}
-      {loading && (
+      {/* Loading */}
+      {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 text-terminal-text-muted animate-spin" />
+          <Loader2 className="w-5 h-5 text-terminal-text-muted animate-spin" />
         </div>
       )}
 
-      {/* Error state */}
-      {error && !loading && (
-        <div className="p-4 bg-status-failure/10 border border-status-failure/30 rounded-lg text-xs text-status-failure">
-          {error}
+      {/* Error */}
+      {error && !isLoading && (
+        <div className="flex items-center gap-2 p-3 bg-status-failure/10 border border-status-failure/30 rounded-lg">
+          <span className="text-xs text-status-failure">
+            {(error as Error)?.message ?? 'Failed to load templates'}
+          </span>
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && !error && templates.length === 0 && (
+      {/* Zero state */}
+      {!isLoading && !error && templates.length === 0 && (
         <EmptyState
           type="ZERO_STATE"
           icon={<Boxes className="w-7 h-7" />}
@@ -171,52 +198,156 @@ export function ScenarioPacksPage() {
         />
       )}
 
-      {/* Template grid */}
-      {!loading && !error && templates.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {templates.map((t) => (
-            <div
-              key={t.id}
-              className="bg-terminal-surface border border-terminal-border rounded-lg p-4 hover:border-terminal-text/20 transition-colors"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-2">
-                <div className="text-sm font-semibold text-terminal-text">{t.name}</div>
-                <span
-                  className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                    t.template_status === 'RUNNABLE'
-                      ? 'bg-status-success/15 text-status-success'
-                      : 'bg-terminal-panel text-terminal-text-muted'
-                  }`}
-                >
-                  {t.template_status}
-                </span>
-              </div>
+      {/* No results */}
+      {!isLoading && !error && templates.length > 0 && filtered.length === 0 && (
+        <div className="py-8 text-center">
+          <div className="text-[13px] text-terminal-text-muted mb-1">
+            No packs match current filters
+          </div>
+          <button
+            onClick={() => {
+              setSearch('');
+              setFamilyFilter(undefined);
+              setStatusFilter(undefined);
+            }}
+            className="text-xs text-purple-500 hover:underline"
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
 
-              {/* Family badge */}
-              <div className="text-[10px] font-mono text-terminal-text-muted mb-2">
-                {FAMILY_LABELS[t.family] || t.family} ({t.family})
-              </div>
+      {/* Pack grid — 3 columns per reference */}
+      {!isLoading && !error && filtered.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((t) => {
+            const isRunnable = t.template_status === 'RUNNABLE';
 
-              {/* Description */}
-              {t.description && (
-                <div className="text-[11px] text-terminal-text-secondary mb-3 line-clamp-2">
-                  {t.description}
+            return (
+              <div
+                key={t.id}
+                className="bg-terminal-surface border border-terminal-border rounded-lg overflow-hidden flex flex-col hover:border-purple-300/40 hover:shadow-sm transition-all cursor-pointer group"
+              >
+                {/* Card header: badges + status */}
+                <div className="px-4 pt-4 flex items-start justify-between gap-3">
+                  <div className="flex gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded bg-purple-500/10 text-purple-500">
+                      {FAMILY_LABELS[t.family] ?? t.family}
+                    </span>
+                  </div>
+                  <span
+                    className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide shrink-0 ${
+                      isRunnable ? 'text-status-success' : 'text-terminal-text-muted'
+                    }`}
+                  >
+                    <span
+                      className={`w-[5px] h-[5px] rounded-full ${
+                        isRunnable ? 'bg-status-success' : 'bg-terminal-text-muted/40'
+                      }`}
+                    />
+                    {isRunnable ? 'Runnable' : 'Catalog Only'}
+                  </span>
                 </div>
-              )}
 
-              {/* Stats row */}
-              <div className="flex items-center gap-3 text-[10px] text-terminal-text-muted">
-                <span className="flex items-center gap-1">
-                  <GitBranch className="w-3 h-3" />
-                  {t.checkpoint_count} checkpoints
-                </span>
-                <span>
-                  {t.fork_points_min}–{t.fork_points_max} forks
-                </span>
+                {/* Card body: name + premise */}
+                <div className="px-4 pt-3 flex-1">
+                  <div className="text-[15px] font-semibold text-terminal-text leading-[22px] mb-1">
+                    {t.name}
+                  </div>
+                  {t.description && (
+                    <div className="text-[13px] text-terminal-text-secondary leading-5 line-clamp-2">
+                      {t.description}
+                    </div>
+                  )}
+                </div>
+
+                {/* Mini branch preview */}
+                <div className="px-4 py-3 mt-3">
+                  <div className="flex items-center gap-2 h-7">
+                    {/* Start node */}
+                    <div className="w-2 h-2 rounded-full bg-purple-500 shrink-0" />
+                    <div className="flex-1 h-0.5 bg-purple-300/40" />
+                    {/* Checkpoint nodes */}
+                    {Array.from({ length: Math.min(t.checkpoint_count, 5) }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-orange-500 border-2 border-orange-200 shrink-0" />
+                        <div className="flex-1 h-0.5 bg-terminal-border min-w-[8px]" />
+                      </div>
+                    ))}
+                    {t.checkpoint_count > 5 && (
+                      <span className="text-[9px] text-terminal-text-muted font-mono">+{t.checkpoint_count - 5}</span>
+                    )}
+                    {/* Fork indicator */}
+                    <div className="flex flex-col gap-0.5 -mx-1">
+                      <div className="w-3 h-0.5 rounded bg-status-success -rotate-[15deg]" />
+                      <div className="w-3 h-0.5 rounded bg-status-failure rotate-[15deg]" />
+                    </div>
+                    <div className="flex-1 h-0.5 bg-terminal-border" />
+                    {/* End node */}
+                    <div className="w-2 h-2 rounded-full bg-status-success shrink-0" />
+                  </div>
+                </div>
+
+                {/* Metrics strip — 4 columns per reference */}
+                <div className="grid grid-cols-4 gap-px bg-terminal-border/50 border-t border-terminal-border/50 mt-auto">
+                  {[
+                    { value: t.checkpoint_count, label: 'Checkpoints' },
+                    { value: t.fork_points_max, label: 'Branch Depth' },
+                    { value: '—', label: 'Outcomes' },
+                    { value: '—', label: 'Events' },
+                  ].map((m) => (
+                    <div key={m.label} className="bg-terminal-surface py-2 px-3 text-center">
+                      <span className="font-mono text-[13px] font-bold tabular-nums text-terminal-text block">
+                        {m.value}
+                      </span>
+                      <span className="text-[9px] font-semibold uppercase tracking-wide text-terminal-text-muted">
+                        {m.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Card actions — 3 buttons per reference */}
+                <div className="flex gap-px bg-terminal-border/50 border-t border-terminal-border/50">
+                  <Link
+                    to={`/scenario-packs/${t.id}`}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-semibold text-terminal-text-secondary bg-terminal-surface hover:text-purple-500 hover:bg-purple-500/5 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Eye className="w-3 h-3" />
+                    Open Pack
+                  </Link>
+                  {isRunnable ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/scenario-packs/${t.id}?launch=true`);
+                      }}
+                      className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-semibold text-terminal-text-secondary bg-terminal-surface hover:text-purple-500 hover:bg-purple-500/5 transition-colors"
+                    >
+                      <Play className="w-3 h-3" />
+                      Launch
+                    </button>
+                  ) : (
+                    <button
+                      disabled
+                      className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-semibold text-terminal-text-muted/40 bg-terminal-surface cursor-not-allowed"
+                    >
+                      Catalog Only
+                    </button>
+                  )}
+                  <Link
+                    to={`/scenario-packs/${t.id}#branch-map`}
+                    className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-semibold text-terminal-text-secondary bg-terminal-surface hover:text-purple-500 hover:bg-purple-500/5 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <GitBranch className="w-3 h-3" />
+                    Branch Map
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

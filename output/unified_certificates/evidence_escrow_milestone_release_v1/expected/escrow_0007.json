@@ -1,0 +1,17 @@
+{
+  "criteria_verdicts": {
+    "idempotency": true,
+    "release_amount_correct": true,
+    "required_evidence_present": false,
+    "signature_policy_satisfied": true,
+    "validity_window_respected": true
+  },
+  "release_instruction": {
+    "milestone_id": "ms_007_foundation_complete",
+    "missing_documents": [
+      "engineer_signoff"
+    ],
+    "rejection_reason": "MISSING_EVIDENCE",
+    "release_allowed": false
+  }
+}
