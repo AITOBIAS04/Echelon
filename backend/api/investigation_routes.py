@@ -398,11 +398,11 @@ async def create_investigation(
         explicitly_set = request.model_fields_set
         if "inquiry_class" not in explicitly_set:
             inquiry_class = template.inquiry_class
-        if "domain_filters" not in explicitly_set or not domain_filters:
+        if "domain_filters" not in explicitly_set:
             domain_filters = template.domain_filters_json or []
         if "stop_condition" not in explicitly_set:
             stop_condition = template.default_stop_condition
-        if "stop_config" not in explicitly_set or not stop_config:
+        if "stop_config" not in explicitly_set:
             if template.default_time_window_days is not None:
                 stop_config = {"time_window_days": template.default_time_window_days}
 
@@ -427,7 +427,9 @@ async def create_investigation(
         committed_sources=committed_sources,
     )
     await db.commit()
-    await db.refresh(inv)
+    await db.refresh(inv, attribute_names=[
+        "evidence_items", "claim_nodes", "counter_signals", "drift_events",
+    ])
     return _build_summary_from_db(inv)
 
 
