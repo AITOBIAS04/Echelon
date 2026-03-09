@@ -168,6 +168,13 @@ async def client(seeded_app):
         yield c
 
 
+@pytest_asyncio.fixture
+async def db_read(async_session_factory):
+    """Async session for reading back persisted records after POST."""
+    async with async_session_factory() as session:
+        yield session
+
+
 # ── Test 1: Template defaults applied via real POST ──
 
 
@@ -258,9 +265,9 @@ async def test_explicit_overrides_preserved_via_real_post(client):
 
 
 @pytest.mark.asyncio
-async def test_explicit_empty_domain_filters_preserved(client):
+async def test_explicit_empty_domain_filters_preserved(client, db_read):
     """POST with explicit domain_filters=[] alongside a template that has
-    3 default filters — the explicit empty list MUST be preserved."""
+    3 default filters — the explicit empty list MUST be preserved in the DB."""
     resp = await client.post("/api/v1/investigations/", json={
         "theatre_id": "theatre-003",
         "construct_id": "construct-003",
@@ -268,20 +275,32 @@ async def test_explicit_empty_domain_filters_preserved(client):
         "domain_filters": [],
     })
     assert resp.status_code == 201, resp.text
+    inv_id = resp.json()["id"]
 
-    # The investigation was created — if domain_filters were overwritten
-    # to the template's 3 filters, committed_sources would be resolved.
-    # With explicit empty [], no domain filters means no source resolution.
-    # We verify by checking the DB record directly isn't possible via response,
-    # but a 201 with the explicit empty filters means the route didn't crash
-    # trying to validate template's 3 filters (which we didn't explicitly send).
+    # Read persisted record directly from DB
+    from sqlalchemy import select as sa_select
+    row = (await db_read.execute(
+        sa_select(Investigation).where(Investigation.id == inv_id)
+    )).scalar_one()
+
+    # domain_filters MUST be empty — NOT overwritten to template's 3 filters
+    assert row.domain_filters_json == [], (
+        f"Expected empty domain_filters but got {row.domain_filters_json}"
+    )
+    # committed_sources should be None (no domain filters → no source resolution)
+    assert row.committed_sources_json is None
+
+    # stop_condition gets template default since not explicitly set
+    assert row.stop_condition == "EVIDENCE_THRESHOLD"
+    # stop_config gets template default since not explicitly set
+    assert row.stop_config_json == {"time_window_days": 90}
 
 
 # ── Test 7: Explicit empty stop_config={} preserved ──
 
 
 @pytest.mark.asyncio
-async def test_explicit_empty_stop_config_preserved(client):
+async def test_explicit_empty_stop_config_preserved(client, db_read):
     """POST with explicit stop_config={} alongside a template that has
     default_time_window_days=90 — the explicit empty dict MUST be preserved."""
     resp = await client.post("/api/v1/investigations/", json={
@@ -291,6 +310,22 @@ async def test_explicit_empty_stop_config_preserved(client):
         "stop_config": {},
     })
     assert resp.status_code == 201, resp.text
+    inv_id = resp.json()["id"]
+
+    # Read persisted record directly from DB
+    from sqlalchemy import select as sa_select
+    row = (await db_read.execute(
+        sa_select(Investigation).where(Investigation.id == inv_id)
+    )).scalar_one()
+
+    # stop_config MUST be empty — NOT overwritten to {"time_window_days": 90}
+    assert row.stop_config_json == {}, (
+        f"Expected empty stop_config but got {row.stop_config_json}"
+    )
+    # stop_condition gets template default since not explicitly set
+    assert row.stop_condition == "EVIDENCE_THRESHOLD"
+    # domain_filters get template defaults since not explicitly set
+    assert row.domain_filters_json == ["corporate_and_entity", "court_and_legal", "property_and_land"]
 
 
 # ── Test 8: Certificate metadata includes provenance ──
