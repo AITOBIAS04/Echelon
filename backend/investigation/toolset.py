@@ -194,7 +194,12 @@ class InvestigationToolset:
 
     # ---- Certificate ----
 
-    def build_certificate(self) -> InvestigationCertificate:
+    def build_certificate(
+        self,
+        template_id: str | None = None,
+        template_name: str | None = None,
+        committed_sources: list | None = None,
+    ) -> InvestigationCertificate:
         """Build the terminal InvestigationCertificate from all tool state."""
         return self._certificate_builder.build(
             theatre_id=self._theatre_id,
@@ -207,4 +212,7 @@ class InvestigationToolset:
             counter_signal_feed=self._counter_signal_feed,
             commitment_monitor=self._commitment_monitor,
             investigation_started_at=self._started_at,
+            template_id=template_id,
+            template_name=template_name,
+            committed_sources=committed_sources,
         )

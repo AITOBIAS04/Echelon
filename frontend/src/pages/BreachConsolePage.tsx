@@ -1,41 +1,21 @@
-/**
- * Paradox Console — Operations intelligence surface for market contradictions.
- *
- * Design ref: output/design_reference/echelon_paradox_console_v1.html
- *
- * Page state machine (3 mutually exclusive states):
- *   CLEAR:    active_paradoxes === 0  → green "All Clear"
- *   ACTIVE:   mixed severity          → amber attention strip
- *   CRITICAL: critical + urgent >= 2  → red escalated strip
- *
- * Data source: GET /api/v1/paradox/active (real API via useParadoxConsole)
- * Actions: Extract / Abandon wired to real mutations
- * Unsupported: Assign / Silence / Intervene — omitted (no backend)
- *
- * Backend limitations:
- *   - No resolved paradoxes endpoint → "Resolved" KPI shows 0, zero state has no recently resolved list
- *   - No per-paradox evidence context → evidence context block deferred
- *   - No per-paradox agent involvement → agent involvement rail deferred
- *   - Theatre price cross-reference not in paradox response → theatre ID only
- */
-
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { clsx } from 'clsx';
 import {
   AlertTriangle,
+  ArrowUpRight,
   CheckCircle2,
+  Clock3,
   Loader2,
   Shield,
+  Siren,
   Trash2,
-  Clock,
-  Link as LinkIcon,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useParadoxConsole } from '../hooks/useParadoxConsole';
 import type { Paradox, SeverityClass } from '../types';
 
-// ── Severity helpers ──────────────────────────────────────────────────────
-
-type Severity = 'CRITICAL' | 'URGENT' | 'WATCH' | 'ASSIGNED';
+type Severity = 'CRITICAL' | 'URGENT' | 'WATCH';
+type PageState = 'CLEAR' | 'ACTIVE' | 'CRITICAL';
 
 function severityFromClass(cls: SeverityClass): Severity {
   if (cls === 'CLASS_1_CRITICAL') return 'CRITICAL';
@@ -43,83 +23,47 @@ function severityFromClass(cls: SeverityClass): Severity {
   return 'WATCH';
 }
 
-const SEVERITY_STYLES: Record<Severity, { border: string; chip: string; text: string }> = {
-  CRITICAL: {
-    border: 'border-l-[3px] border-l-status-failure',
-    chip: 'bg-status-failure text-white',
-    text: 'text-status-failure',
-  },
-  URGENT: {
-    border: 'border-l-[3px] border-l-status-failure/60',
-    chip: 'bg-status-failure/10 text-status-failure border border-status-failure/30',
-    text: 'text-status-failure',
-  },
-  WATCH: {
-    border: 'border-l-[3px] border-l-status-warning',
-    chip: 'bg-status-warning/10 text-status-warning border border-status-warning/30',
-    text: 'text-status-warning',
-  },
-  ASSIGNED: {
-    border: 'border-l-[3px] border-l-echelon-cyan',
-    chip: 'bg-echelon-cyan/10 text-echelon-cyan border border-echelon-cyan/30',
-    text: 'text-echelon-cyan',
-  },
-};
-
-// ── Time formatting ───────────────────────────────────────────────────────
-
 function formatCountdown(seconds: number): string {
   if (seconds <= 0) return '0s';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${secs}s`;
+  return `${secs}s`;
 }
 
 function timeAgo(iso: string): string {
-  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
-/** Countdown escalation tier (>50% normal, <50% amber, <25% red, <1h critical) */
-function countdownTier(p: Paradox): 'normal' | 'amber' | 'red' | 'critical' {
-  if (p.time_remaining_seconds <= 3600) return 'critical';
-  // Estimate total window from spawned_at to detonation_time
-  const totalWindow = (new Date(p.detonation_time).getTime() - new Date(p.spawned_at).getTime()) / 1000;
+function countdownTier(paradox: Paradox): 'normal' | 'amber' | 'red' | 'critical' {
+  if (paradox.time_remaining_seconds <= 3600) return 'critical';
+
+  const totalWindow =
+    (new Date(paradox.detonation_time).getTime() - new Date(paradox.spawned_at).getTime()) /
+    1000;
+
   if (totalWindow <= 0) return 'critical';
-  const ratio = p.time_remaining_seconds / totalWindow;
+
+  const ratio = paradox.time_remaining_seconds / totalWindow;
   if (ratio < 0.25) return 'red';
   if (ratio < 0.5) return 'amber';
   return 'normal';
 }
 
-const TIMER_STYLES: Record<string, string> = {
-  normal: 'text-terminal-text',
-  amber: 'text-status-warning',
-  red: 'text-status-failure',
-  critical: 'text-status-failure animate-pulse font-bold',
-};
-
-// ── Page state ────────────────────────────────────────────────────────────
-
-type PageState = 'CLEAR' | 'ACTIVE' | 'CRITICAL';
-
 function derivePageState(paradoxes: Paradox[]): PageState {
   if (paradoxes.length === 0) return 'CLEAR';
-  const criticalCount = paradoxes.filter((p) => p.severity_class === 'CLASS_1_CRITICAL').length;
-  const urgentCount = paradoxes.filter((p) => p.severity_class === 'CLASS_2_SEVERE').length;
-  if (criticalCount + urgentCount >= 2) return 'CRITICAL';
-  return 'ACTIVE';
+  const criticalCount = paradoxes.filter((item) => item.severity_class === 'CLASS_1_CRITICAL').length;
+  const urgentCount = paradoxes.filter((item) => item.severity_class === 'CLASS_2_SEVERE').length;
+  return criticalCount + urgentCount >= 2 ? 'CRITICAL' : 'ACTIVE';
 }
-
-// ── Attention Strip ───────────────────────────────────────────────────────
 
 function AttentionStrip({
   pageState,
@@ -128,42 +72,152 @@ function AttentionStrip({
   pageState: PageState;
   paradoxes: Paradox[];
 }) {
-  if (pageState === 'CLEAR') return null;
+  if (pageState === 'CLEAR') {
+    return (
+      <div className="flex items-center gap-3 rounded-lg border border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[color:oklch(0.545_0.170_152_/_0.08)] px-5 py-3 text-[13px] leading-5">
+        <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--e-green-600)]" />
+        <span className="font-semibold text-[var(--e-green-700)]">All Clear</span>
+        <span className="text-[var(--e-text-secondary)]">
+          No active contradictions. Markets are operating within expected parameters.
+        </span>
+      </div>
+    );
+  }
 
-  const criticalCount = paradoxes.filter((p) => p.severity_class === 'CLASS_1_CRITICAL').length;
-  const urgentCount = paradoxes.filter((p) => p.severity_class === 'CLASS_2_SEVERE').length;
-  const watchCount = paradoxes.filter((p) => p.severity_class === 'CLASS_3_MODERATE' || p.severity_class === 'CLASS_4_MINOR').length;
-  const imminentCount = paradoxes.filter((p) => p.time_remaining_seconds <= 3600).length;
-
-  const isCritical = pageState === 'CRITICAL';
-  const bgClass = isCritical ? 'bg-status-failure/10 border-status-failure/20' : 'bg-status-warning/10 border-status-warning/20';
-  const textClass = isCritical ? 'text-status-failure' : 'text-status-warning';
-  const iconClass = isCritical ? 'text-status-failure' : 'text-status-warning';
+  const criticalCount = paradoxes.filter((item) => item.severity_class === 'CLASS_1_CRITICAL').length;
+  const urgentCount = paradoxes.filter((item) => item.severity_class === 'CLASS_2_SEVERE').length;
+  const watchCount = paradoxes.filter(
+    (item) =>
+      item.severity_class === 'CLASS_3_MODERATE' || item.severity_class === 'CLASS_4_MINOR',
+  ).length;
+  const imminentCount = paradoxes.filter((item) => item.time_remaining_seconds <= 3600).length;
+  const critical = pageState === 'CRITICAL';
 
   return (
-    <div className={`flex items-center gap-3 px-5 py-2.5 rounded-lg border ${bgClass}`}>
-      <AlertTriangle className={`w-4 h-4 shrink-0 ${iconClass}`} />
-      <span className={`text-[13px] font-semibold ${textClass}`}>
-        {paradoxes.length} Active Paradox{paradoxes.length !== 1 ? 'es' : ''}
-      </span>
-      <span className="text-[12px] text-terminal-text-muted">
-        {criticalCount > 0 && <span className="text-status-failure font-semibold">{criticalCount} Critical</span>}
-        {criticalCount > 0 && (urgentCount > 0 || watchCount > 0) && ' · '}
-        {urgentCount > 0 && <span className="text-status-failure">{urgentCount} Urgent</span>}
-        {urgentCount > 0 && watchCount > 0 && ' · '}
-        {watchCount > 0 && <span className="text-status-warning">{watchCount} Watch</span>}
-        {imminentCount > 0 && (
-          <>
-            {' · '}
-            <span className="text-status-failure font-semibold">{imminentCount} detonation in &lt;1h</span>
-          </>
+    <div
+      className={clsx(
+        'flex flex-wrap items-center gap-3 rounded-lg border px-5 py-3 text-[13px] leading-5',
+        critical
+          ? 'border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)]'
+          : 'border-[color:oklch(0.708_0.136_62_/_0.20)] bg-[color:oklch(0.708_0.136_62_/_0.10)]',
+      )}
+    >
+      <AlertTriangle
+        className={clsx(
+          'h-4 w-4 shrink-0',
+          critical ? 'text-[var(--e-red-600)]' : 'text-[var(--e-orange-600)]',
         )}
+      />
+      <span
+        className={clsx(
+          'font-semibold',
+          critical ? 'text-[var(--e-red-600)]' : 'text-[var(--e-orange-600)]',
+        )}
+      >
+        {paradoxes.length} Active Paradoxes
+      </span>
+      <span className="text-[var(--e-text-secondary)]">
+        {criticalCount > 0 ? `${criticalCount} Critical` : null}
+        {criticalCount > 0 && urgentCount > 0 ? ' · ' : null}
+        {urgentCount > 0 ? `${urgentCount} Urgent` : null}
+        {(criticalCount > 0 || urgentCount > 0) && watchCount > 0 ? ' · ' : null}
+        {watchCount > 0 ? `${watchCount} Watch` : null}
+        {imminentCount > 0 ? ` · ${imminentCount} detonation in <1h` : null}
       </span>
     </div>
   );
 }
 
-// ── Paradox Card ──────────────────────────────────────────────────────────
+function StatCard({
+  label,
+  value,
+  tone,
+  windowLabel,
+}: {
+  label: string;
+  value: string | number;
+  tone?: 'danger' | 'warning' | 'success';
+  windowLabel?: string;
+}) {
+  return (
+    <div
+      className={clsx(
+        'rounded-lg border bg-[var(--e-bg-card)] px-4 py-3 shadow-[var(--e-shadow-xs)]',
+        tone === 'danger'
+          ? 'border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)]'
+          : 'border-[var(--e-border-primary)]',
+      )}
+    >
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+          {label}
+        </div>
+        {windowLabel ? (
+          <span className="rounded bg-[var(--e-bg-sunken)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--e-text-muted)]">
+            {windowLabel}
+          </span>
+        ) : null}
+      </div>
+      <div
+        className={clsx(
+          'font-mono text-[24px] font-bold leading-8 tabular-nums',
+          tone === 'danger'
+            ? 'text-[var(--e-red-600)]'
+            : tone === 'warning'
+              ? 'text-[var(--e-orange-600)]'
+              : tone === 'success'
+                ? 'text-[var(--e-green-600)]'
+                : 'text-[var(--e-text-primary)]',
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function SeverityChip({ severity }: { severity: Severity }) {
+  return (
+    <span
+      className={clsx(
+        'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em]',
+        severity === 'CRITICAL'
+          ? 'border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] text-[var(--e-red-600)]'
+          : severity === 'URGENT'
+            ? 'border-[color:oklch(0.545_0.185_25_/_0.14)] bg-[color:oklch(0.545_0.185_25_/_0.06)] text-[var(--e-red-600)]'
+            : 'border-[color:oklch(0.708_0.136_62_/_0.20)] bg-[color:oklch(0.708_0.136_62_/_0.10)] text-[var(--e-orange-600)]',
+      )}
+    >
+      {severity}
+    </span>
+  );
+}
+
+function Countdown({
+  paradox,
+}: {
+  paradox: Paradox;
+}) {
+  const tier = countdownTier(paradox);
+
+  return (
+    <div
+      className={clsx(
+        'inline-flex items-center gap-1.5 rounded-full px-2 py-1 font-mono text-[11px] font-semibold tabular-nums',
+        tier === 'critical'
+          ? 'bg-[color:oklch(0.545_0.185_25_/_0.10)] text-[var(--e-red-600)]'
+          : tier === 'red'
+            ? 'bg-[color:oklch(0.545_0.185_25_/_0.06)] text-[var(--e-red-600)]'
+            : tier === 'amber'
+              ? 'bg-[color:oklch(0.708_0.136_62_/_0.10)] text-[var(--e-orange-600)]'
+              : 'bg-[var(--e-bg-sunken)] text-[var(--e-text-secondary)]',
+      )}
+    >
+      <Clock3 className={clsx('h-3.5 w-3.5', tier === 'critical' ? 'animate-pulse' : undefined)} />
+      {formatCountdown(paradox.time_remaining_seconds)}
+    </div>
+  );
+}
 
 function ParadoxCard({
   paradox,
@@ -178,270 +232,308 @@ function ParadoxCard({
   isExtracting: boolean;
   isAbandoning: boolean;
 }) {
-  const sev = severityFromClass(paradox.severity_class);
-  const style = SEVERITY_STYLES[sev];
-  const tier = countdownTier(paradox);
-  const timerStyle = TIMER_STYLES[tier];
-  const gapPct = Math.round(paradox.logic_gap * 100);
-
-  // Card elevation for high-urgency
-  const cardElevation = tier === 'critical' || tier === 'red'
-    ? 'shadow-sm'
-    : '';
+  const severity = severityFromClass(paradox.severity_class);
+  const countdown = countdownTier(paradox);
+  const logicGapPct = Math.round(paradox.logic_gap * 100);
 
   return (
-    <div
-      className={`bg-terminal-surface border border-terminal-border rounded-lg overflow-hidden ${style.border} ${cardElevation}`}
+    <article
+      className={clsx(
+        'overflow-hidden rounded-xl border bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)] transition hover:shadow-[var(--e-shadow-md)]',
+        severity === 'CRITICAL'
+          ? 'border-[color:oklch(0.545_0.185_25_/_0.22)]'
+          : severity === 'URGENT'
+            ? 'border-[color:oklch(0.545_0.185_25_/_0.16)]'
+            : 'border-[var(--e-border-primary)]',
+        countdown === 'critical'
+          ? 'ring-1 ring-[color:oklch(0.545_0.185_25_/_0.12)]'
+          : undefined,
+      )}
     >
-      {/* Header */}
-      <div className="px-4 py-3 flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="text-[14px] font-semibold text-terminal-text leading-tight">
-              {paradox.timeline_name}
-            </span>
-            <span className="font-mono text-[10px] text-terminal-text-muted">
-              {paradox.id.slice(0, 12)}
-            </span>
-          </div>
-          <div className="text-[12px] text-terminal-text-secondary leading-tight">
-            Logic gap {gapPct}% — Decay {paradox.decay_multiplier}x
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${style.chip}`}>
-            {sev}
-          </span>
-          <div className="flex items-center gap-1">
-            <Clock className={`w-3 h-3 ${timerStyle}`} />
-            <span className={`font-mono text-[12px] font-semibold tabular-nums ${timerStyle}`}>
-              {formatCountdown(paradox.time_remaining_seconds)}
-            </span>
-          </div>
-        </div>
-      </div>
+      <div
+        className={clsx(
+          'h-1',
+          severity === 'CRITICAL'
+            ? 'bg-[var(--e-red-600)]'
+            : severity === 'URGENT'
+              ? 'bg-[color:oklch(0.545_0.185_25_/_0.70)]'
+              : 'bg-[var(--e-orange-500)]',
+        )}
+      />
 
-      {/* Body — 2-column context grid */}
-      <div className="px-4 pb-3">
-        <div className="grid grid-cols-2 gap-3 text-[11px]">
-          {/* Linked Entities */}
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted mb-1.5">
+      <div className="space-y-4 px-5 py-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--e-text-primary)]">
+                {paradox.timeline_name}
+              </h2>
+              <span className="font-mono text-[11px] text-[var(--e-text-muted)]">
+                {paradox.id.slice(0, 12)}
+              </span>
+            </div>
+            <div
+              className={clsx(
+                'text-[14px] font-semibold leading-6',
+                severity === 'WATCH' ? 'text-[var(--e-orange-600)]' : 'text-[var(--e-red-600)]',
+              )}
+            >
+              Logic gap {logicGapPct}% against expected consensus.
+            </div>
+            <div className="mt-1 text-[13px] text-[var(--e-text-secondary)]">
+              Detonation path amplified by {paradox.decay_multiplier}x decay pressure.
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end gap-2">
+            <SeverityChip severity={severity} />
+            <Countdown paradox={paradox} />
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <section className="rounded-lg border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
               Linked Entities
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-2">
               <Link
                 to={`/theatre/${paradox.timeline_id}`}
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-purple-500/8 text-purple-500 border border-purple-500/20 hover:bg-purple-500/15 transition-colors"
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-2.5 py-1 text-[11px] font-medium text-[var(--e-purple-700)] no-underline transition hover:bg-[color:oklch(0.760_0.140_295_/_0.14)]"
               >
-                <LinkIcon className="w-2.5 h-2.5" />
-                {paradox.timeline_id.slice(0, 10)}
+                Theatre {paradox.timeline_id.slice(0, 10)}
               </Link>
-              {paradox.carrier_agent_name && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-terminal-panel text-terminal-text-muted border border-terminal-border">
-                  {paradox.carrier_agent_name}
+              {paradox.carrier_agent_name ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-card)] px-2.5 py-1 text-[11px] font-medium text-[var(--e-text-secondary)]">
+                  Agent {paradox.carrier_agent_name}
                 </span>
-              )}
+              ) : null}
             </div>
-          </div>
+          </section>
 
-          {/* Connected Timelines */}
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted mb-1.5">
-              Connected
+          <section className="rounded-lg border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+              Connected Timelines
             </div>
-            {paradox.connected_timelines.length > 0 ? (
-              <span className="font-mono text-terminal-text tabular-nums">
-                {paradox.connected_timelines.length} timeline{paradox.connected_timelines.length !== 1 ? 's' : ''}
-              </span>
-            ) : (
-              <span className="text-terminal-text-muted">—</span>
-            )}
-          </div>
+            <div className="text-[13px] text-[var(--e-text-secondary)]">
+              {paradox.connected_timelines.length > 0
+                ? `${paradox.connected_timelines.length} linked timeline${paradox.connected_timelines.length === 1 ? '' : 's'}`
+                : 'No linked timelines surfaced'}
+            </div>
+          </section>
 
-          {/* Extraction Cost */}
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted mb-1.5">
+          <section className="rounded-lg border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+              Evidence Context
+            </div>
+            <div className="text-[12px] leading-5 text-[var(--e-text-muted)]">
+              Per-paradox evidence freshness and counter-signal context are not included in the active paradox response.
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
               Extraction Cost
             </div>
-            <div className="font-mono text-terminal-text tabular-nums">
+            <div className="font-mono text-[13px] font-semibold text-[var(--e-text-primary)] tabular-nums">
               {paradox.extraction_cost_usdc.toLocaleString()} USDC
             </div>
-            <div className="font-mono text-terminal-text-muted tabular-nums text-[10px]">
-              {paradox.extraction_cost_echelon.toLocaleString()} ECH · {paradox.carrier_sanity_cost} sanity
+            <div className="mt-1 font-mono text-[11px] text-[var(--e-text-muted)] tabular-nums">
+              {paradox.extraction_cost_echelon.toLocaleString()} ECH · {paradox.carrier_sanity_cost}{' '}
+              sanity
             </div>
+          </section>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--e-border-secondary)] pt-4">
+          <div className="flex flex-wrap items-center gap-3 text-[12px] text-[var(--e-text-secondary)]">
+            <span
+              className={clsx(
+                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em]',
+                paradox.status === 'EXTRACTING'
+                  ? 'bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+                  : severity === 'WATCH'
+                    ? 'bg-[color:oklch(0.708_0.136_62_/_0.10)] text-[var(--e-orange-600)]'
+                    : 'bg-[var(--e-red-50)] text-[var(--e-red-600)]',
+              )}
+            >
+              {paradox.status === 'EXTRACTING' ? 'Extracting' : 'Paradox Active'}
+            </span>
+            <span>spawned {timeAgo(paradox.spawned_at)}</span>
+            <span className="font-mono text-[var(--e-text-muted)]">
+              detonation {new Date(paradox.detonation_time).toLocaleString()}
+            </span>
           </div>
 
-          {/* Detonation */}
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted mb-1.5">
-              Detonation
-            </div>
-            <div className="font-mono text-terminal-text tabular-nums text-[10px]">
-              {new Date(paradox.detonation_time).toLocaleString()}
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {paradox.status === 'ACTIVE' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onExtract(paradox.id)}
+                  disabled={isExtracting}
+                  className={clsx(
+                    'inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-[12px] font-semibold transition',
+                    severity === 'CRITICAL'
+                      ? 'bg-[var(--e-red-600)] text-white hover:opacity-90'
+                      : 'border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-secondary)] hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]',
+                  )}
+                >
+                  {isExtracting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Shield className="h-3.5 w-3.5" />
+                  )}
+                  Extract
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAbandon(paradox.id)}
+                  disabled={isAbandoning}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-secondary)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
+                >
+                  {isAbandoning ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                  Abandon
+                </button>
+              </>
+            ) : null}
+
+            <Link
+              to={`/theatre/${paradox.timeline_id}`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-secondary)] no-underline transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-purple-700)]"
+            >
+              Open Theatre
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <div className="px-4 py-2.5 border-t border-terminal-border/50 bg-terminal-panel flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className={`text-[10px] font-mono font-semibold uppercase ${
-            paradox.status === 'EXTRACTING' ? 'text-echelon-cyan' : style.text
-          }`}>
-            {paradox.status === 'EXTRACTING' ? 'Extracting' : 'Paradox Active'}
-          </span>
-          <span className="text-[10px] font-mono text-terminal-text-muted">
-            spawned {timeAgo(paradox.spawned_at)}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {paradox.status === 'ACTIVE' && (
-            <>
-              <button
-                onClick={() => onExtract(paradox.id)}
-                disabled={isExtracting}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded border transition-colors ${
-                  sev === 'CRITICAL'
-                    ? 'bg-status-failure text-white border-status-failure hover:opacity-90'
-                    : 'text-terminal-text-secondary bg-terminal-surface border-terminal-border hover:text-terminal-text hover:border-terminal-text-muted'
-                } disabled:opacity-50`}
-              >
-                {isExtracting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
-                Extract
-              </button>
-              <button
-                onClick={() => onAbandon(paradox.id)}
-                disabled={isAbandoning}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded border text-terminal-text-secondary bg-terminal-surface border-terminal-border hover:text-terminal-text hover:border-terminal-text-muted transition-colors disabled:opacity-50"
-              >
-                {isAbandoning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                Abandon
-              </button>
-            </>
-          )}
-          <Link
-            to={`/theatre/${paradox.timeline_id}`}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded border text-terminal-text-secondary bg-terminal-surface border-terminal-border hover:text-purple-500 hover:border-purple-500/30 transition-colors"
-          >
-            Open Theatre
-          </Link>
-        </div>
-      </div>
-    </div>
+    </article>
   );
 }
 
-// ── Right Rail ────────────────────────────────────────────────────────────
+function RightRail({
+  paradoxes,
+  pageState,
+}: {
+  paradoxes: Paradox[];
+  pageState: PageState;
+}) {
+  const criticalCount = paradoxes.filter((item) => item.severity_class === 'CLASS_1_CRITICAL').length;
+  const urgentCount = paradoxes.filter((item) => item.severity_class === 'CLASS_2_SEVERE').length;
+  const watchCount = paradoxes.filter(
+    (item) =>
+      item.severity_class === 'CLASS_3_MODERATE' || item.severity_class === 'CLASS_4_MINOR',
+  ).length;
 
-function RightRail({ paradoxes }: { paradoxes: Paradox[] }) {
-  const criticalCount = paradoxes.filter((p) => p.severity_class === 'CLASS_1_CRITICAL').length;
-  const urgentCount = paradoxes.filter((p) => p.severity_class === 'CLASS_2_SEVERE').length;
-  const watchCount = paradoxes.filter((p) => p.severity_class === 'CLASS_3_MODERATE' || p.severity_class === 'CLASS_4_MINOR').length;
-
-  // Detonation queue — sorted by time remaining
   const detonationQueue = [...paradoxes]
-    .filter((p) => p.status === 'ACTIVE')
+    .filter((item) => item.status === 'ACTIVE' || item.status === 'EXTRACTING')
     .sort((a, b) => a.time_remaining_seconds - b.time_remaining_seconds)
     .slice(0, 5);
 
+  const carrierAgents = [...new Map(
+    paradoxes
+      .filter((item) => item.carrier_agent_id && item.carrier_agent_name)
+      .map((item) => [
+        item.carrier_agent_id,
+        {
+          name: item.carrier_agent_name!,
+          sanity: item.carrier_agent_sanity,
+        },
+      ]),
+  ).values()];
+
   return (
-    <div className="flex flex-col gap-4 sticky top-6">
-      {/* Detonation Queue */}
-      {detonationQueue.length > 0 && (
-        <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-panel">
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-terminal-text-muted">
+    <div className="space-y-4">
+      {pageState === 'CRITICAL' && detonationQueue.length > 0 ? (
+        <section className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+          <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
               Detonation Queue
             </h3>
           </div>
-          <div className="px-4 py-2">
-            {detonationQueue.map((p) => {
-              const tier = countdownTier(p);
-              const sev = severityFromClass(p.severity_class);
-              return (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between py-2 border-b border-terminal-border/30 last:border-b-0"
-                >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase ${SEVERITY_STYLES[sev].chip}`}>
-                      {sev.slice(0, 4)}
-                    </span>
-                    <span className="text-[11px] text-terminal-text truncate">
-                      {p.timeline_name}
-                    </span>
+          <div className="space-y-3 px-4 py-4">
+            {detonationQueue.map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-[12px] font-semibold text-[var(--e-text-primary)]">
+                    {item.timeline_name}
                   </div>
-                  <span className={`font-mono text-[11px] font-semibold tabular-nums shrink-0 ml-2 ${TIMER_STYLES[tier]}`}>
-                    {formatCountdown(p.time_remaining_seconds)}
-                  </span>
+                  <div className="mt-1 text-[11px] text-[var(--e-text-muted)]">
+                    {severityFromClass(item.severity_class)}
+                  </div>
                 </div>
-              );
-            })}
+                <span
+                  className={clsx(
+                    'font-mono text-[11px] font-semibold tabular-nums',
+                    countdownTier(item) === 'critical'
+                      ? 'text-[var(--e-red-600)]'
+                      : countdownTier(item) === 'amber'
+                        ? 'text-[var(--e-orange-600)]'
+                        : 'text-[var(--e-text-secondary)]',
+                  )}
+                >
+                  {formatCountdown(item.time_remaining_seconds)}
+                </span>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        </section>
+      ) : null}
 
-      {/* Severity Distribution */}
-      <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-panel">
-          <h3 className="text-[11px] font-bold uppercase tracking-wider text-terminal-text-muted">
+      <section className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+        <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
             Severity Distribution
           </h3>
         </div>
-        <div className="px-4 py-3 space-y-2">
+        <div className="space-y-3 px-4 py-4 text-[12px] text-[var(--e-text-secondary)]">
           {[
-            { label: 'Critical', count: criticalCount, dot: 'bg-status-failure' },
-            { label: 'Urgent', count: urgentCount, dot: 'bg-status-failure/60' },
-            { label: 'Watch', count: watchCount, dot: 'bg-status-warning' },
+            { label: 'Critical', count: criticalCount, tone: 'bg-[var(--e-red-600)]' },
+            { label: 'Urgent', count: urgentCount, tone: 'bg-[color:oklch(0.545_0.185_25_/_0.70)]' },
+            { label: 'Watch', count: watchCount, tone: 'bg-[var(--e-orange-600)]' },
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${item.dot} shrink-0`} />
-              <span className="text-[11px] text-terminal-text-secondary flex-1">{item.label}</span>
-              <span className="font-mono text-[11px] font-semibold text-terminal-text tabular-nums">
-                {item.count}
-              </span>
+              <span className={clsx('h-2.5 w-2.5 rounded-full', item.tone)} />
+              <span className="flex-1">{item.label}</span>
+              <span className="font-mono text-[var(--e-text-primary)] tabular-nums">{item.count}</span>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Agent Involvement — deferred (paradox API does not include per-paradox agent involvement) */}
-      <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-panel">
-          <h3 className="text-[11px] font-bold uppercase tracking-wider text-terminal-text-muted">
+      <section className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+        <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
             Agent Involvement
           </h3>
         </div>
-        <div className="px-4 py-3">
-          {paradoxes.some((p) => p.carrier_agent_name) ? (
-            <div className="space-y-2">
-              {[...new Map(
-                paradoxes
-                  .filter((p) => p.carrier_agent_name)
-                  .map((p) => [p.carrier_agent_id, { name: p.carrier_agent_name!, sanity: p.carrier_agent_sanity }])
-              ).entries()].map(([agentId, agent]) => (
-                <div key={agentId} className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-terminal-text">{agent.name}</span>
-                  <span className="text-[10px] font-mono text-terminal-text-muted">
+        <div className="px-4 py-4 text-[12px] text-[var(--e-text-secondary)]">
+          {carrierAgents.length > 0 ? (
+            <div className="space-y-3">
+              {carrierAgents.map((agent) => (
+                <div key={agent.name} className="flex items-center justify-between gap-3">
+                  <span className="font-medium text-[var(--e-text-primary)]">{agent.name}</span>
+                  <span className="font-mono text-[11px] text-[var(--e-text-muted)]">
                     sanity {agent.sanity ?? '—'}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-[11px] text-terminal-text-muted/50">
-              No carrier agents assigned
+            <div className="text-[var(--e-text-muted)]">
+              Carrier-agent assignments are sparse in the active paradox feed.
             </div>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
-
-// ── Main Page ─────────────────────────────────────────────────────────────
 
 export function BreachConsolePage() {
   const {
@@ -453,161 +545,164 @@ export function BreachConsolePage() {
     abandon,
     isAbandoning,
   } = useParadoxConsole();
-
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Only ACTIVE + EXTRACTING paradoxes for display
   const active = useMemo(
-    () => paradoxes.filter((p) => p.status === 'ACTIVE' || p.status === 'EXTRACTING'),
+    () => paradoxes.filter((item) => item.status === 'ACTIVE' || item.status === 'EXTRACTING'),
     [paradoxes],
   );
 
-  // Sort by urgency: critical first, then by time remaining
   const sorted = useMemo(
-    () => [...active].sort((a, b) => {
-      const sevOrder: Record<string, number> = { CLASS_1_CRITICAL: 0, CLASS_2_SEVERE: 1, CLASS_3_MODERATE: 2, CLASS_4_MINOR: 3 };
-      const sevDiff = (sevOrder[a.severity_class] ?? 3) - (sevOrder[b.severity_class] ?? 3);
-      if (sevDiff !== 0) return sevDiff;
-      return a.time_remaining_seconds - b.time_remaining_seconds;
-    }),
+    () =>
+      [...active].sort((a, b) => {
+        const severityOrder: Record<SeverityClass, number> = {
+          CLASS_1_CRITICAL: 0,
+          CLASS_2_SEVERE: 1,
+          CLASS_3_MODERATE: 2,
+          CLASS_4_MINOR: 3,
+        };
+        const severityDiff = severityOrder[a.severity_class] - severityOrder[b.severity_class];
+        if (severityDiff !== 0) return severityDiff;
+        return a.time_remaining_seconds - b.time_remaining_seconds;
+      }),
     [active],
   );
 
   const pageState = useMemo(() => derivePageState(active), [active]);
+  const criticalCount = useMemo(
+    () => active.filter((item) => item.severity_class === 'CLASS_1_CRITICAL').length,
+    [active],
+  );
+  const watchCount = useMemo(
+    () =>
+      active.filter(
+        (item) =>
+          item.severity_class === 'CLASS_3_MODERATE' || item.severity_class === 'CLASS_4_MINOR',
+      ).length,
+    [active],
+  );
+  const linkedTheatres = useMemo(() => new Set(active.map((item) => item.timeline_id)).size, [active]);
+  const detonationWindows = useMemo(
+    () => active.filter((item) => item.time_remaining_seconds <= 3600).length,
+    [active],
+  );
 
-  // Derived KPIs from real data only
-  const criticalCount = useMemo(() => active.filter((p) => p.severity_class === 'CLASS_1_CRITICAL').length, [active]);
-  const watchCount = useMemo(() => active.filter((p) => p.severity_class === 'CLASS_3_MODERATE' || p.severity_class === 'CLASS_4_MINOR').length, [active]);
-  const linkedTheatres = useMemo(() => new Set(active.map((p) => p.timeline_id)).size, [active]);
-  const detonationWindows = useMemo(() => active.filter((p) => p.time_remaining_seconds <= 3600).length, [active]);
-
-  const handleExtract = async (id: string) => {
+  async function handleExtract(id: string) {
     setActionError(null);
     try {
       await extract(id);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Extraction failed');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Extraction failed');
     }
-  };
+  }
 
-  const handleAbandon = async (id: string) => {
+  async function handleAbandon(id: string) {
     setActionError(null);
     try {
       await abandon(id);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Abandonment failed');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Abandonment failed');
     }
-  };
+  }
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-5 h-5 text-terminal-text-muted animate-spin" />
+      <div className="p-6">
+        <div className="mx-auto flex max-w-7xl items-center justify-center rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-16 shadow-[var(--e-shadow-xs)]">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin text-[var(--e-text-muted)]" />
+          <span className="text-[14px] text-[var(--e-text-muted)]">Loading paradoxes…</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-[1100px] mx-auto space-y-5">
-      {/* Page header */}
-      <div>
-        <div className="text-[11px] font-mono text-terminal-text-muted mb-0.5 uppercase tracking-wider">
-          Intelligence / Paradox Console
-        </div>
-        <h1 className="text-2xl font-bold text-terminal-text">Paradox Console</h1>
-        <p className="text-[13px] text-terminal-text-secondary mt-0.5">
-          Active contradictions, extraction status, and detonation monitoring
-        </p>
-      </div>
-
-      {/* Attention strip */}
-      <AttentionStrip pageState={pageState} paradoxes={active} />
-
-      {/* KPI cards */}
-      <div className="flex gap-4 p-3 px-5 bg-terminal-surface rounded-lg border border-terminal-border flex-wrap">
-        {[
-          { label: 'Active\nNow', value: String(active.length), color: active.length > 0 ? 'text-status-failure' : undefined },
-          { label: 'Critical', value: String(criticalCount), color: criticalCount > 0 ? 'text-status-failure' : undefined },
-          { label: 'Watch', value: String(watchCount), color: watchCount > 0 ? 'text-status-warning' : undefined },
-          { label: 'Linked\nTheatres', value: String(linkedTheatres) },
-          { label: 'Investigations', value: '—' },  // No investigation link in paradox response
-          { label: 'Detonation\nWindows', value: String(detonationWindows), color: detonationWindows > 0 ? 'text-status-failure' : undefined },
-          { label: 'Resolved\nToday', value: '—', color: 'text-status-success' },  // No resolved endpoint
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="flex items-center gap-2 pr-4 border-r border-terminal-border/50 last:border-r-0 last:pr-0"
-          >
-            <span className={`font-mono text-[17px] font-bold tabular-nums ${stat.color ?? 'text-terminal-text'}`}>
-              {stat.value}
-            </span>
-            <span className="text-[11px] font-medium text-terminal-text-muted leading-[14px] whitespace-pre-line">
-              {stat.label}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {/* Action error */}
-      {actionError && (
-        <div className="flex items-center gap-2 p-3 bg-status-failure/10 border border-status-failure/30 rounded-lg">
-          <AlertTriangle className="w-4 h-4 text-status-failure shrink-0" />
-          <span className="text-xs text-status-failure">{actionError}</span>
-        </div>
-      )}
-
-      {/* CLEAR state — zero state */}
-      {isAllClear && (
-        <div className="bg-terminal-surface rounded-lg border border-terminal-border p-8">
-          <div className="flex flex-col items-center text-center max-w-[420px] mx-auto">
-            <div className="w-16 h-16 rounded-full bg-status-success/10 border border-status-success/20 flex items-center justify-center mb-5">
-              <CheckCircle2 className="w-7 h-7 text-status-success" />
+    <div className="p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+              Intelligence / Paradox Console
             </div>
-            <h2 className="text-[17px] font-bold text-terminal-text mb-2">
-              No Active Contradictions
-            </h2>
-            <p className="text-[13px] text-terminal-text-secondary leading-5 mb-6">
-              All markets are operating within expected parameters. The paradox engine is monitoring for logic gaps, evidence staleness, and consensus divergence.
+            <h1 className="text-[34px] font-bold tracking-[-0.03em] text-[var(--e-text-primary)]">
+              Paradox Console
+            </h1>
+            <p className="mt-2 max-w-3xl text-[15px] leading-6 text-[var(--e-text-secondary)]">
+              Monitor active contradictions, detonation windows, and live extraction decisions from the real paradox feed.
             </p>
-            {/* Recently resolved — deferred (no endpoint) */}
-            <div className="w-full text-left">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted mb-2">
+          </div>
+
+          <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-3 shadow-[var(--e-shadow-xs)]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+              Surface
+            </div>
+            <div className="mt-1 text-[13px] font-medium text-[var(--e-text-primary)]">
+              Real paradox roster / honest deferred context
+            </div>
+          </div>
+        </div>
+
+        <AttentionStrip pageState={pageState} paradoxes={active} />
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-7">
+          <StatCard label="Active" value={active.length} windowLabel="now" />
+          <StatCard label="Critical" value={criticalCount} tone={criticalCount > 0 ? 'danger' : undefined} />
+          <StatCard label="Watch" value={watchCount} tone={watchCount > 0 ? 'warning' : undefined} />
+          <StatCard label="Linked Theatres" value={linkedTheatres} />
+          <StatCard label="Investigations" value="—" />
+          <StatCard label="Detonation Windows" value={detonationWindows} tone={detonationWindows > 0 ? 'danger' : undefined} />
+          <StatCard label="Resolved" value="—" windowLabel="today" tone="success" />
+        </div>
+
+        {actionError ? (
+          <div className="flex items-center gap-2 rounded-lg border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] px-4 py-3 text-[13px] text-[var(--e-red-600)]">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {actionError}
+          </div>
+        ) : null}
+
+        {isAllClear ? (
+          <div className="rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-8 py-16 text-center shadow-[var(--e-shadow-xs)]">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[color:oklch(0.545_0.170_152_/_0.08)]">
+              <CheckCircle2 className="h-7 w-7 text-[var(--e-green-600)]" />
+            </div>
+            <h2 className="mt-5 text-[22px] font-semibold text-[var(--e-text-primary)]">
+              No active paradoxes detected
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-[15px] leading-6 text-[var(--e-text-secondary)]">
+              All markets are operating within expected parameters. The paradox engine is watching for logic gaps, decayed evidence confidence, and contradiction escalation.
+            </p>
+            <div className="mx-auto mt-8 max-w-xl rounded-lg border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-4 text-left">
+              <div className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                <Siren className="h-3.5 w-3.5" />
                 Recently Resolved
               </div>
-              <div className="text-[12px] text-terminal-text-muted/50">
-                No resolved paradox history available. Resolved paradox tracking requires a backend endpoint.
-              </div>
-              <div className="text-[10px] font-mono text-terminal-text-muted/30 mt-1">
-                GET /api/v1/paradox/resolved — not yet available
+              <div className="text-[13px] text-[var(--e-text-muted)]">
+                No resolved paradox history available. The backend does not expose a resolved-paradox feed yet.
               </div>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+            <div className="space-y-4">
+              {sorted.map((paradox) => (
+                <ParadoxCard
+                  key={paradox.id}
+                  paradox={paradox}
+                  onExtract={handleExtract}
+                  onAbandon={handleAbandon}
+                  isExtracting={isExtracting}
+                  isAbandoning={isAbandoning}
+                />
+              ))}
+            </div>
 
-      {/* ACTIVE / CRITICAL state — roster + right rail */}
-      {!isAllClear && (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
-          {/* Paradox roster */}
-          <div className="space-y-3">
-            {sorted.map((p) => (
-              <ParadoxCard
-                key={p.id}
-                paradox={p}
-                onExtract={handleExtract}
-                onAbandon={handleAbandon}
-                isExtracting={isExtracting}
-                isAbandoning={isAbandoning}
-              />
-            ))}
+            <div className="space-y-4">
+              <RightRail paradoxes={active} pageState={pageState} />
+            </div>
           </div>
-
-          {/* Right rail */}
-          <div className="hidden lg:block">
-            <RightRail paradoxes={active} />
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

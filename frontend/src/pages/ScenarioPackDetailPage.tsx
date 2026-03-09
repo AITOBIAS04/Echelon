@@ -1,52 +1,49 @@
-/**
- * Scenario Pack Detail Page
- *
- * Aligned to: echelon_scenario_pack_detail_v2.html
- *
- * Two-column layout: content left, sticky launch panel + metadata right.
- * Launch flow composes create + commit + run into a single user action.
- * RUNNABLE vs CATALOG_ONLY distinction preserved throughout.
- *
- * Run modes: TRAINING | EVALUATION | CALIBRATION | REPLAY
- * REPLAY = exact recorded-path replay (NOT "deterministic re-execution")
- *
- * Derived theatres surfaced at pack level via useDerivedTheatres(packId).
- * Branch probabilities remain template-level only in this pass.
- */
-
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  BookOpen,
+  CheckCircle2,
+  ChevronRight,
+  GitBranch,
   Loader2,
   Play,
-  BarChart2,
-  BookOpen,
-  Download,
-  Zap,
-  GitBranch,
-  CheckCircle,
+  Sparkles,
   XCircle,
+  Zap,
 } from 'lucide-react';
+import { clsx } from 'clsx';
 import {
-  useTemplateDetail,
-  useCreatePack,
-  useCommitPack,
-  useStartRun,
-  usePackDetail,
   useBranchProbabilities,
+  useCommitPack,
+  useCreatePack,
   useDerivedTheatres,
+  usePackDetail,
+  useStartRun,
+  useTemplateDetail,
 } from '../hooks/useScenarioPacks';
-import { ScenarioRunDetail } from '../components/scenario/ScenarioRunDetail';
 import { BranchMap } from '../components/scenario/BranchMap';
+import { ScenarioRunDetail } from '../components/scenario/ScenarioRunDetail';
 import type { DerivedTheatreResponse } from '../types/scenarioPack';
 
 type RunMode = 'TRAINING' | 'EVALUATION' | 'CALIBRATION' | 'REPLAY';
 
-const RUN_MODES: { id: RunMode; label: string; description: string }[] = [
-  { id: 'TRAINING', label: 'Training', description: 'Random seed per run' },
-  { id: 'EVALUATION', label: 'Evaluation', description: 'Controlled stochasticity' },
-  { id: 'CALIBRATION', label: 'Calibration', description: 'Canonical seed set' },
+const FAMILY_LABELS: Record<string, string> = {
+  NAV_UNC: 'Navigation',
+  SOC_NAV: 'Social',
+  MAN_FORCE: 'Manual Force',
+  MARL_C3: 'Multi-Agent',
+  '3D_INERT': '3D Inertial',
+  LONG_HZN: 'Long Horizon',
+  PUZ_LOGIC: 'Puzzle',
+  ADV_AIR: 'Adversarial',
+  PREC_MAN: 'Precision',
+};
+
+const RUN_MODES: Array<{ id: RunMode; label: string; description: string }> = [
+  { id: 'TRAINING', label: 'Training', description: 'Varying seeds across fresh runs' },
+  { id: 'EVALUATION', label: 'Evaluation', description: 'Pinned evaluation seed set' },
+  { id: 'CALIBRATION', label: 'Calibration', description: 'Canonical calibration seeds' },
   { id: 'REPLAY', label: 'Replay', description: 'Exact recorded-path replay' },
 ];
 
@@ -64,43 +61,111 @@ const SIMULATION_SCALES = [
 ];
 
 const OBJECTIVE_PROFILES = [
-  { id: 'pack_default', label: 'Default (pack-defined)' },
+  { id: 'pack_default', label: 'Pack default' },
   { id: 'maximize_delivery_rate', label: 'Maximise delivery rate' },
   { id: 'minimize_detection', label: 'Minimise detection' },
-  { id: 'balanced_risk_reward', label: 'Balanced risk/reward' },
+  { id: 'balanced_risk_reward', label: 'Balanced risk / reward' },
 ];
 
-/** Family to human label mapping */
-const FAMILY_LABELS: Record<string, string> = {
-  NAV_UNC: 'Navigation',
-  SOC_NAV: 'Social',
-  MAN_FORCE: 'Manual Force',
-  MARL_C3: 'Multi-Agent',
-  '3D_INERT': '3D Inertial',
-  LONG_HZN: 'Long Horizon',
-  PUZ_LOGIC: 'Puzzle',
-  ADV_AIR: 'Adversarial',
-  PREC_MAN: 'Precision',
-};
-
-/** Derived theatre state badge */
 function theatreStateClasses(state: string): string {
   switch (state) {
     case 'RUNNING':
-      return 'bg-status-warning/15 text-status-warning';
+      return 'border-[color:oklch(0.708_0.136_62_/_0.20)] bg-[color:oklch(0.708_0.136_62_/_0.12)] text-[var(--e-orange-600)]';
     case 'SETTLED':
-      return 'bg-status-success/15 text-status-success';
+      return 'border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[color:oklch(0.545_0.170_152_/_0.10)] text-[var(--e-green-600)]';
     default:
-      return 'bg-terminal-panel text-terminal-text-muted';
+      return 'border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]';
   }
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  disabled,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  options: Array<{ id: string; label: string; description?: string }>;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+        {label}
+      </label>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
+        className="h-10 w-full rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[13px] text-[var(--e-text-primary)] outline-none transition focus:border-[var(--e-border-focus)] disabled:cursor-not-allowed disabled:bg-[var(--e-bg-sunken)] disabled:text-[var(--e-text-disabled)]"
+      >
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.description ? `${option.label} — ${option.description}` : option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function MetadataCell({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="rounded-md border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-3 py-3">
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--e-text-muted)]">
+        {label}
+      </div>
+      <div className={clsx('text-[13px] font-medium text-[var(--e-text-primary)]', mono && 'font-mono tabular-nums')}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function OutputCard({
+  label,
+  description,
+  icon,
+  value,
+}: {
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  value?: string;
+}) {
+  return (
+    <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]">
+      <div className="mb-3 flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]">
+          {icon}
+        </div>
+        <div className="text-[13px] font-semibold text-[var(--e-text-primary)]">{label}</div>
+      </div>
+      <div className="text-[13px] leading-5 text-[var(--e-text-secondary)]">{description}</div>
+      {value ? (
+        <div className="mt-3 font-mono text-[14px] font-semibold text-[var(--e-text-primary)]">{value}</div>
+      ) : null}
+    </div>
+  );
 }
 
 export function ScenarioPackDetailPage() {
   const { templateId } = useParams<{ templateId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: template, isLoading: templateLoading } = useTemplateDetail(templateId ?? null);
   const launchPanelRef = useRef<HTMLDivElement>(null);
 
+  const { data: template, isLoading: templateLoading } = useTemplateDetail(templateId ?? null);
   const [packId, setPackId] = useState<string | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [packCommitted, setPackCommitted] = useState(false);
@@ -108,59 +173,69 @@ export function ScenarioPackDetailPage() {
   const [agentAssignment, setAgentAssignment] = useState('auto_assign');
   const [simulationScale, setSimulationScale] = useState('single_1x');
   const [objectiveProfile, setObjectiveProfile] = useState('pack_default');
-  const [launchStep, setLaunchStep] = useState<'idle' | 'creating' | 'committing' | 'starting' | 'done' | 'error'>(
-    'idle',
-  );
+  const [launchStep, setLaunchStep] = useState<'idle' | 'creating' | 'committing' | 'starting' | 'done' | 'error'>('idle');
   const [launchError, setLaunchError] = useState<string | null>(null);
 
-  // Consume ?launch=true from catalog page shortcut
+  const createPack = useCreatePack();
+  const commitPack = useCommitPack();
+  const startRun = useStartRun();
+  const { data: packDetail } = usePackDetail(packId);
+  const { data: branchProbabilities } = useBranchProbabilities(templateId ?? null);
+  const { data: derivedTheatresData } = useDerivedTheatres(packId);
+  const derivedTheatres: DerivedTheatreResponse[] = derivedTheatresData ?? [];
+
   useEffect(() => {
-    if (searchParams.get('launch') === 'true' && launchPanelRef.current) {
+    if (searchParams.get('launch') === 'true' && launchPanelRef.current && !templateLoading) {
       launchPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams, templateLoading]);
 
-  const createPack = useCreatePack();
-  const commitPack = useCommitPack();
-  const startRun = useStartRun();
-  usePackDetail(packId);
-  const { data: branchProbs } = useBranchProbabilities(templateId ?? null);
-  const { data: derivedTheatresData } = useDerivedTheatres(packId);
-  const derivedTheatres: DerivedTheatreResponse[] = derivedTheatresData ?? [];
-
-  // Determine which checkpoints can spawn theatres
   const canSpawnTheatreCount = useMemo(
-    () => template?.checkpoints?.filter((cp) => cp.can_spawn_theatre).length ?? 0,
+    () => template?.checkpoints?.filter((checkpoint) => checkpoint.can_spawn_theatre).length ?? 0,
     [template],
+  );
+
+  const useTags = useMemo(
+    () =>
+      RUN_MODES.map((mode) => ({
+        ...mode,
+        active: runMode === mode.id,
+      })),
+    [runMode],
   );
 
   if (templateLoading) {
     return (
-      <div className="max-w-5xl mx-auto p-6 flex items-center justify-center h-64">
-        <Loader2 className="w-5 h-5 text-terminal-text-muted animate-spin" />
+      <div className="p-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-center rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-16 shadow-[var(--e-shadow-xs)]">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin text-[var(--e-text-muted)]" />
+          <span className="text-[14px] text-[var(--e-text-muted)]">Loading scenario pack…</span>
+        </div>
       </div>
     );
   }
 
   if (!template) {
     return (
-      <div className="max-w-5xl mx-auto p-6">
-        <div className="text-terminal-text-muted text-sm">Template not found.</div>
+      <div className="p-6">
+        <div className="mx-auto max-w-6xl rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-16 text-center text-[14px] text-[var(--e-text-muted)] shadow-[var(--e-shadow-xs)]">
+          Scenario pack template not found.
+        </div>
       </div>
     );
   }
 
   const isRunnable = template.template_status === 'RUNNABLE';
+  const isLaunching = !['idle', 'done', 'error'].includes(launchStep);
 
-  /** Composed launch: create -> commit -> run. Idempotent — resumes from where it failed. */
   const handleLaunch = async () => {
     if (!isRunnable) return;
     setLaunchError(null);
 
     try {
-      // Step 1: Create pack (skip if already created from a previous attempt)
       let currentPackId = packId;
+
       if (!currentPackId) {
         setLaunchStep('creating');
         const newPack = await createPack.mutateAsync({
@@ -171,17 +246,15 @@ export function ScenarioPackDetailPage() {
           objective_profile: objectiveProfile,
         });
         currentPackId = newPack.id;
-        setPackId(currentPackId);
+        setPackId(newPack.id);
       }
 
-      // Step 2: Commit (skip if already committed from a previous attempt)
       if (!packCommitted) {
         setLaunchStep('committing');
         await commitPack.mutateAsync(currentPackId);
         setPackCommitted(true);
       }
 
-      // Step 3: Start run (skip if already started)
       if (!runId) {
         setLaunchStep('starting');
         const run = await startRun.mutateAsync(currentPackId);
@@ -189,533 +262,460 @@ export function ScenarioPackDetailPage() {
       }
 
       setLaunchStep('done');
-    } catch (err) {
+    } catch (error) {
       setLaunchStep('error');
-      setLaunchError(err instanceof Error ? err.message : 'Launch failed');
+      setLaunchError(error instanceof Error ? error.message : 'Launch failed');
     }
   };
 
-  const isLaunching = launchStep !== 'idle' && launchStep !== 'done' && launchStep !== 'error';
-
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
-      {/* Back link */}
-      <Link
-        to="/scenario-packs"
-        className="inline-flex items-center gap-1.5 text-[13px] font-medium text-terminal-text-secondary hover:text-terminal-text transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Scenario Packs
-      </Link>
+    <div className="p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <Link
+          to="/scenario-packs"
+          className="inline-flex items-center gap-2 text-[12px] font-medium text-[var(--e-text-muted)] no-underline transition hover:text-[var(--e-text-primary)]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Scenario Packs
+        </Link>
 
-      {/* Detail header */}
-      <div className="flex items-start justify-between gap-6">
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-terminal-text leading-8 mb-2">
-            {template.name}
-          </h1>
-          <p className="text-[15px] text-terminal-text-secondary leading-6 mb-3 max-w-[640px]">
-            {template.description}
-          </p>
-          <div className="flex gap-2 flex-wrap">
-            <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded bg-purple-500/10 text-purple-500">
-              {FAMILY_LABELS[template.family] ?? template.family}
-            </span>
-            <span
-              className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded ${
-                isRunnable
-                  ? 'bg-status-success/15 text-status-success'
-                  : 'bg-terminal-panel text-terminal-text-muted'
-              }`}
-            >
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-4xl">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--e-purple-700)]">
+                {FAMILY_LABELS[template.family] ?? template.family}
+              </span>
               <span
-                className={`w-[5px] h-[5px] rounded-full ${
-                  isRunnable ? 'bg-status-success' : 'bg-terminal-text-muted/40'
-                }`}
-              />
-              {template.template_status}
-            </span>
-          </div>
-        </div>
-        <div className="flex gap-3 shrink-0">
-          <button className="flex items-center gap-1.5 h-9 px-4 rounded-lg text-[13px] font-semibold text-terminal-text-secondary border border-terminal-border bg-terminal-surface hover:bg-terminal-panel transition-colors">
-            <Download className="w-4 h-4" />
-            Export
-          </button>
-          {isRunnable && (
-            <button
-              onClick={handleLaunch}
-              disabled={isLaunching || launchStep === 'done'}
-              className="flex items-center gap-1.5 h-9 px-4 rounded-lg text-[13px] font-semibold text-white bg-purple-500 hover:bg-purple-400 transition-colors disabled:opacity-50"
-            >
-              <Play className="w-4 h-4" />
-              Launch Run
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Use tags */}
-      <div className="flex flex-wrap gap-2">
-        {RUN_MODES.map((mode) => (
-          <span
-            key={mode.id}
-            className={`text-[11px] font-semibold px-2.5 py-1 rounded-md border transition-colors ${
-              runMode === mode.id
-                ? 'border-purple-300/40 bg-purple-500/10 text-purple-500'
-                : 'border-terminal-border text-terminal-text-secondary bg-terminal-surface'
-            }`}
-          >
-            {mode.label}
-          </span>
-        ))}
-      </div>
-
-      {/* CATALOG_ONLY notice */}
-      {!isRunnable && (
-        <div className="bg-terminal-surface rounded-lg p-4 border border-terminal-border flex items-start gap-3 opacity-90">
-          <BookOpen className="w-4 h-4 text-terminal-text-muted mt-0.5 shrink-0" />
-          <div>
-            <div className="text-xs font-semibold text-terminal-text">Catalog-Only Template</div>
-            <p className="text-xs text-terminal-text-muted mt-1">
-              This template is available for reference and study but cannot be instantiated as a
-              runnable scenario pack. Inspect checkpoints and branch probabilities below.
+                className={clsx(
+                  'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.04em]',
+                  isRunnable
+                    ? 'bg-[var(--e-green-50)] text-[var(--e-green-600)]'
+                    : 'bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]',
+                )}
+              >
+                <span
+                  className={clsx(
+                    'h-2 w-2 rounded-full',
+                    isRunnable ? 'bg-[var(--e-green-600)]' : 'bg-[var(--e-text-disabled)]',
+                  )}
+                />
+                {template.template_status}
+              </span>
+            </div>
+            <h1 className="text-[36px] font-bold tracking-[-0.03em] text-[var(--e-text-primary)]">
+              {template.name}
+            </h1>
+            <p className="mt-3 max-w-3xl text-[15px] leading-7 text-[var(--e-text-secondary)]">
+              {template.description}
             </p>
           </div>
         </div>
-      )}
 
-      {/* Two-column grid: content left, launch panel + metadata right */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
-        {/* Left column */}
-        <div className="space-y-5">
-          {/* Branch Map */}
-          <div
-            id="branch-map"
-            className="bg-terminal-surface border border-terminal-border rounded-lg overflow-hidden"
-          >
-            <div className="px-5 py-4 border-b border-terminal-border/50 flex items-center justify-between">
-              <span className="text-[13px] font-semibold uppercase tracking-wide text-terminal-text-muted">
-                Branch Map
-              </span>
-            </div>
-            <div className="p-6 min-h-[200px]">
-              {template.checkpoints?.length > 0 ? (
-                <BranchMap
-                  nodes={template.checkpoints.map((cp) => ({
-                    checkpoint_id: cp.id,
-                    sequence_num: cp.sequence_num,
-                    trigger: cp.trigger,
-                    market_question: cp.market_question,
-                    selected_branch: null,
-                    outcome_type: null,
-                    reward: null,
-                    spawned_theatre_id: null,
-                  }))}
-                />
-              ) : (
-                <div className="py-6 text-center text-[13px] text-terminal-text-muted">
-                  No checkpoint data available for this template.
+        {!isRunnable ? (
+          <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-5 py-4 shadow-[var(--e-shadow-xs)]">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]">
+                <BookOpen className="h-4 w-4" />
+              </div>
+              <div>
+                <div className="text-[14px] font-semibold text-[var(--e-text-primary)]">
+                  Catalog-only template
                 </div>
-              )}
-            </div>
-            {/* Legend */}
-            <div className="flex gap-4 px-5 py-3 border-t border-terminal-border/50">
-              {[
-                { label: 'Start', color: 'bg-purple-500' },
-                { label: 'Checkpoint', color: 'bg-orange-500' },
-                { label: 'Success', color: 'bg-status-success' },
-                { label: 'Failure', color: 'bg-status-failure' },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-1.5 text-[11px] font-medium text-terminal-text-secondary">
-                  <div className={`w-2 h-2 rounded-full ${item.color}`} />
-                  {item.label}
+                <div className="mt-1 text-[13px] leading-6 text-[var(--e-text-secondary)]">
+                  This pack can be inspected and compared, but cannot be instantiated as a runnable scenario.
                 </div>
-              ))}
+              </div>
             </div>
           </div>
+        ) : null}
 
-          {/* Expected Outputs — only honestly inferable outputs */}
-          <div className="bg-terminal-surface border border-terminal-border rounded-lg overflow-hidden">
-            <div className="px-5 py-4 border-b border-terminal-border/50">
-              <span className="text-[13px] font-semibold uppercase tracking-wide text-terminal-text-muted">
-                Expected Outputs
-              </span>
-            </div>
-            <div className="p-5">
-              <div className="grid grid-cols-2 gap-3">
-                {/* Checkpoints — always known */}
-                <div className="bg-terminal-panel border border-terminal-border/50 rounded-md p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-5 h-5 rounded flex items-center justify-center bg-orange-500/10 text-orange-500">
-                      <GitBranch className="w-3 h-3" />
-                    </div>
-                    <span className="text-xs font-semibold text-terminal-text">Checkpoints</span>
-                  </div>
-                  <div className="text-xs text-terminal-text-muted">
-                    {template.checkpoint_count} resolution points with branching decisions
-                  </div>
-                  <div className="font-mono text-sm font-bold text-terminal-text mt-1">
-                    {template.checkpoint_count}
-                  </div>
+        <div className="flex flex-wrap gap-2">
+          {useTags.map((tag) => (
+            <span
+              key={tag.id}
+              className={clsx(
+                'inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.04em]',
+                tag.active
+                  ? 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+                  : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-muted)]',
+              )}
+            >
+              {tag.label}
+            </span>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="space-y-6">
+            <section
+              id="branch-map"
+              className="overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-sm)]"
+            >
+              <div className="flex items-center justify-between border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 text-[var(--e-purple-500)]" />
+                  <h2 className="text-[14px] font-semibold text-[var(--e-text-primary)]">Branch Map</h2>
                 </div>
+                <span className="font-mono text-[11px] text-[var(--e-text-muted)]">
+                  {template.checkpoint_count} checkpoints
+                </span>
+              </div>
+              <div className="px-5 py-5">
+                {template.checkpoints?.length ? (
+                  <BranchMap
+                    nodes={template.checkpoints.map((checkpoint) => ({
+                      checkpoint_id: checkpoint.id,
+                      sequence_num: checkpoint.sequence_num,
+                      trigger: checkpoint.trigger,
+                      market_question: checkpoint.market_question,
+                      selected_branch: null,
+                      outcome_type: null,
+                      reward: null,
+                      spawned_theatre_id: null,
+                    }))}
+                  />
+                ) : (
+                  <div className="rounded-md border border-dashed border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-6 text-center text-[13px] text-[var(--e-text-muted)]">
+                    No checkpoint data available for this template.
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-4 border-t border-[var(--e-border-secondary)] px-5 py-3 text-[11px] text-[var(--e-text-muted)]">
+                {[
+                  { label: 'Start', color: 'bg-[var(--e-purple-500)]' },
+                  { label: 'Checkpoint', color: 'bg-[var(--e-orange-500)]' },
+                  { label: 'Success', color: 'bg-[var(--e-green-600)]' },
+                  { label: 'Failure', color: 'bg-[var(--e-red-600)]' },
+                ].map((legend) => (
+                  <div key={legend.label} className="flex items-center gap-2">
+                    <span className={clsx('h-2.5 w-2.5 rounded-full', legend.color)} />
+                    {legend.label}
+                  </div>
+                ))}
+              </div>
+            </section>
 
-                {/* Branches — derivable from fork_points */}
-                <div className="bg-terminal-panel border border-terminal-border/50 rounded-md p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-5 h-5 rounded flex items-center justify-center bg-purple-500/10 text-purple-500">
-                      <GitBranch className="w-3 h-3" />
-                    </div>
-                    <span className="text-xs font-semibold text-terminal-text">Branches</span>
-                  </div>
-                  <div className="text-xs text-terminal-text-muted">
-                    Fork points with {template.fork_points_min}–{template.fork_points_max} depth range
-                  </div>
-                  <div className="font-mono text-sm font-bold text-terminal-text mt-1">
-                    {template.fork_points_max} max
-                  </div>
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[16px] font-semibold text-[var(--e-text-primary)]">Expected Outputs</h2>
+                <span className="text-[12px] text-[var(--e-text-muted)]">Only data-backed outputs shown</span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <OutputCard
+                  label="Checkpoints"
+                  description="Resolution points that determine episode flow."
+                  icon={<GitBranch className="h-4 w-4" />}
+                  value={String(template.checkpoint_count)}
+                />
+                <OutputCard
+                  label="Branches"
+                  description={`Fork range ${template.fork_points_min}–${template.fork_points_max} based on template fork points.`}
+                  icon={<ChevronRight className="h-4 w-4" />}
+                  value={`${template.fork_points_max} max`}
+                />
+                <OutputCard
+                  label="Replay"
+                  description="Fork replay with disclosure events and final settlement once a run completes."
+                  icon={<Play className="h-4 w-4" />}
+                />
+                {canSpawnTheatreCount > 0 ? (
+                  <OutputCard
+                    label="Derived Theatres"
+                    description={`${canSpawnTheatreCount} checkpoint${canSpawnTheatreCount === 1 ? '' : 's'} can emit pack-scoped theatre outputs at runtime.`}
+                    icon={<Zap className="h-4 w-4" />}
+                  />
+                ) : null}
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-sm)]">
+              <div className="flex items-center justify-between border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[var(--e-purple-500)]" />
+                  <h2 className="text-[14px] font-semibold text-[var(--e-text-primary)]">Derived Theatres</h2>
                 </div>
-
-                {/* Replay — always available for completed runs */}
-                <div className="bg-terminal-panel border border-terminal-border/50 rounded-md p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-5 h-5 rounded flex items-center justify-center bg-purple-500/10 text-purple-600">
-                      <Play className="w-3 h-3" />
-                    </div>
-                    <span className="text-xs font-semibold text-terminal-text">Replay</span>
-                  </div>
-                  <div className="text-xs text-terminal-text-muted">
-                    Fork replay output with disclosure events and settlement
-                  </div>
-                </div>
-
-                {/* Theatre output — only if checkpoints can spawn */}
-                {canSpawnTheatreCount > 0 && (
-                  <div className="bg-terminal-panel border border-terminal-border/50 rounded-md p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-5 h-5 rounded flex items-center justify-center bg-orange-500/10 text-orange-500">
-                        <Zap className="w-3 h-3" />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--e-text-muted)]">
+                  pack-scoped
+                </span>
+              </div>
+              <div className="space-y-3 px-5 py-5">
+                {derivedTheatres.length > 0 ? (
+                  derivedTheatres.map((theatre) => (
+                    <div
+                      key={theatre.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-3 shadow-[var(--e-shadow-xs)]"
+                    >
+                      <div className="min-w-0">
+                        <div className="mb-1 flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-[12px] text-[var(--e-text-primary)]">
+                            {theatre.construct_id}
+                          </span>
+                          <span
+                            className={clsx(
+                              'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em]',
+                              theatreStateClasses(theatre.state),
+                            )}
+                          >
+                            {theatre.state}
+                          </span>
+                        </div>
+                        <div className="text-[12px] leading-5 text-[var(--e-text-secondary)]">
+                          {theatre.spawned_from_checkpoint_id ? (
+                            <>
+                              Spawned from checkpoint{' '}
+                              <span className="font-mono text-[var(--e-text-primary)]">
+                                {theatre.spawned_from_checkpoint_id.slice(0, 8)}
+                              </span>
+                            </>
+                          ) : (
+                            'Spawn checkpoint provenance unavailable'
+                          )}
+                          {theatre.certificate_id ? (
+                            <>
+                              {' '}
+                              · certificate{' '}
+                              <span className="font-mono text-[var(--e-text-primary)]">
+                                {theatre.certificate_id.slice(0, 8)}
+                              </span>
+                            </>
+                          ) : null}
+                        </div>
                       </div>
-                      <span className="text-xs font-semibold text-terminal-text">Theatre</span>
+                      <Link
+                        to={`/theatre/${theatre.id}`}
+                        className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--e-purple-700)] no-underline transition hover:text-[var(--e-purple-500)]"
+                      >
+                        View Theatre
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Link>
                     </div>
-                    <div className="text-xs text-terminal-text-muted">
-                      {canSpawnTheatreCount} checkpoint{canSpawnTheatreCount !== 1 ? 's' : ''} can
-                      spawn derived theatres at runtime
+                  ))
+                ) : (
+                  <div className="rounded-md border border-dashed border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-6 text-center">
+                    <div className="text-[13px] font-medium text-[var(--e-text-primary)]">
+                      {packId ? 'No derived theatres spawned' : 'No active pack'}
+                    </div>
+                    <div className="mt-1 text-[12px] leading-5 text-[var(--e-text-muted)]">
+                      {packId
+                        ? 'Theatres appear here when runtime checkpoint resolutions spawn them.'
+                        : 'Launch a run to see pack-scoped theatre outputs from runtime checkpoints.'}
                     </div>
                   </div>
                 )}
               </div>
-            </div>
-          </div>
+              <div className="border-t border-[var(--e-border-secondary)] px-5 py-3 text-[12px] leading-5 text-[var(--e-text-muted)]">
+                Derived theatres are pack-scoped outputs from checkpoint resolution rules, not a manual follow-up create flow.
+              </div>
+            </section>
 
-          {/* Derived Theatres — pack-scoped (B5). Always visible; honest empty state when no pack launched yet. */}
-          <div className="bg-terminal-surface border border-terminal-border rounded-lg overflow-hidden">
-            <div className="px-5 py-4 border-b border-terminal-border/50 flex items-center gap-2">
-              <Zap className="w-3.5 h-3.5 text-terminal-text-muted" />
-              <span className="text-[13px] font-semibold uppercase tracking-wide text-terminal-text-muted">
-                Derived Theatres
-              </span>
-              <span className="text-[11px] text-terminal-text-muted font-medium ml-auto">
-                pack-scoped
-              </span>
-            </div>
-            <div className="p-4">
-              {derivedTheatres.length > 0 ? (
-                <div className="space-y-2">
-                  {derivedTheatres.map((t) => (
+            {template.checkpoints?.length ? (
+              <section className="overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-sm)]">
+                <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-4">
+                  <h2 className="text-[14px] font-semibold text-[var(--e-text-primary)]">Checkpoints</h2>
+                </div>
+                <div className="space-y-2 px-5 py-5">
+                  {template.checkpoints.map((checkpoint) => (
                     <div
-                      key={t.id}
-                      className="flex items-center justify-between p-3 rounded bg-terminal-panel border border-terminal-border/50"
+                      key={checkpoint.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-3 shadow-[var(--e-shadow-xs)]"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-[11px] text-terminal-text">
-                          {t.construct_id}
-                        </span>
-                        <span
-                          className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold uppercase ${theatreStateClasses(t.state)}`}
-                        >
-                          {t.state}
-                        </span>
-                        {t.spawned_from_checkpoint_id && (
-                          <span className="text-[10px] text-terminal-text-muted">
-                            from <span className="font-mono">{t.spawned_from_checkpoint_id.slice(0, 8)}</span>
+                      <div className="min-w-0">
+                        <div className="mb-1 flex items-center gap-2">
+                          <span className="font-mono text-[11px] text-[var(--e-text-muted)]">#{checkpoint.sequence_num}</span>
+                          <span className="text-[13px] font-medium text-[var(--e-text-primary)]">
+                            {checkpoint.trigger}
                           </span>
-                        )}
-                        {t.certificate_id && (
-                          <span className="text-[10px] text-terminal-text-muted">
-                            cert <span className="font-mono">{t.certificate_id.slice(0, 8)}</span>
-                          </span>
-                        )}
+                        </div>
+                        <div className="text-[12px] text-[var(--e-text-secondary)]">
+                          {checkpoint.market_question}
+                        </div>
                       </div>
-                      <Link
-                        to={`/theatre/${t.id}`}
-                        className="text-[11px] font-semibold text-purple-500 hover:underline transition-colors shrink-0 ml-3"
-                      >
-                        View Theatre
-                      </Link>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-[var(--e-text-muted)]">
+                        <span>{checkpoint.branch_count} branches</span>
+                        {checkpoint.can_spawn_theatre ? (
+                          <span className="rounded-full bg-[var(--e-green-50)] px-2 py-0.5 text-[var(--e-green-600)]">
+                            spawns theatre
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="py-6 text-center">
-                  <div className="text-[13px] text-terminal-text-muted mb-1">
-                    {packId ? 'No derived theatres spawned' : 'No active pack'}
-                  </div>
-                  <div className="text-[10px] text-terminal-text-muted/60">
-                    {packId
-                      ? 'Theatres are spawned at runtime when checkpoints with can_spawn_theatre=true resolve.'
-                      : 'Launch a run to see derived theatres spawned from checkpoint resolutions.'}
-                  </div>
+              </section>
+            ) : null}
+
+            {branchProbabilities?.probabilities && Object.keys(branchProbabilities.probabilities).length > 0 ? (
+              <section className="overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-sm)]">
+                <div className="flex items-center justify-between border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-4">
+                  <h2 className="text-[14px] font-semibold text-[var(--e-text-primary)]">Branch Probabilities</h2>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[var(--e-text-muted)]">
+                    template-level
+                  </span>
                 </div>
-              )}
-            </div>
-            <div className="px-5 py-3 border-t border-terminal-border/50 text-[11px] text-terminal-text-muted">
-              Derived theatres are pack-scoped runtime outputs, not manually created via the Create Theatre flow.
-            </div>
+                <div className="space-y-5 px-5 py-5">
+                  {Object.entries(branchProbabilities.probabilities).map(([checkpointId, probabilities]) => {
+                    if (!probabilities) return null;
+                    return (
+                      <div key={checkpointId}>
+                        <div className="mb-2 font-mono text-[11px] text-[var(--e-text-muted)]">{checkpointId}</div>
+                        <div className="space-y-2">
+                          {Object.entries(probabilities).map(([branchId, probability]) => (
+                            <div key={branchId} className="flex items-center gap-3">
+                              <div className="w-28 truncate text-[11px] text-[var(--e-text-secondary)]">
+                                {branchId}
+                              </div>
+                              <div className="h-5 flex-1 overflow-hidden rounded-full bg-[var(--e-bg-sunken)]">
+                                <div
+                                  className="h-full rounded-full bg-[var(--e-purple-500)]/25"
+                                  style={{ width: `${Math.max(probability * 100, 2)}%` }}
+                                />
+                              </div>
+                              <div className="w-14 text-right font-mono text-[11px] font-semibold tabular-nums text-[var(--e-purple-700)]">
+                                {(probability * 100).toFixed(1)}%
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+
+            {packId && runId ? (
+              <ScenarioRunDetail
+                packId={packId}
+                runId={runId}
+                totalCheckpoints={template.checkpoint_count}
+                runMode={runMode}
+              />
+            ) : null}
           </div>
 
-          {/* Checkpoints detail */}
-          {template.checkpoints?.length > 0 && (
-            <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-              <div className="px-5 py-4 border-b border-terminal-border/50">
-                <span className="text-[13px] font-semibold uppercase tracking-wide text-terminal-text-muted">
-                  Checkpoints
-                </span>
+          <aside className="space-y-4 xl:sticky xl:top-20">
+            <section
+              ref={launchPanelRef}
+              className="overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-sm)]"
+            >
+              <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-4">
+                <h2 className="text-[15px] font-semibold text-[var(--e-text-primary)]">Launch Configuration</h2>
               </div>
-              <div className="p-4 space-y-1.5">
-                {template.checkpoints.map((cp) => (
-                  <div
-                    key={cp.id}
-                    className="flex items-center justify-between text-xs p-2 bg-terminal-panel rounded"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-terminal-text-muted">#{cp.sequence_num}</span>
-                      <span className="text-terminal-text">{cp.trigger}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-terminal-text-muted">
-                      <span>{cp.branch_count} branches</span>
-                      {cp.can_spawn_theatre && (
-                        <span className="text-status-success">spawns theatre</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Branch probabilities — template-level */}
-          {branchProbs?.probabilities && Object.keys(branchProbs.probabilities).length > 0 && (
-            <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-              <div className="px-5 py-4 border-b border-terminal-border/50 flex items-center gap-2">
-                <BarChart2 className="w-3.5 h-3.5 text-terminal-text-muted" />
-                <span className="text-[13px] font-semibold uppercase tracking-wide text-terminal-text-muted">
-                  Branch Probabilities
-                </span>
-                <span className="text-[10px] text-terminal-text-muted/60 ml-auto">template-level</span>
-              </div>
-              <div className="p-4 space-y-4">
-                {Object.entries(branchProbs.probabilities).map(([checkpointId, probs]) => {
-                  if (!probs) return null;
-                  return (
-                    <div key={checkpointId}>
-                      <div className="text-[10px] font-mono text-terminal-text-muted mb-1.5">
-                        {checkpointId}
-                      </div>
-                      <div className="space-y-1">
-                        {Object.entries(probs).map(([branch, prob]) => (
-                          <div key={branch} className="flex items-center gap-2">
-                            <div className="w-24 text-[10px] text-terminal-text-muted truncate">{branch}</div>
-                            <div className="flex-1 h-4 bg-terminal-panel rounded overflow-hidden">
-                              <div
-                                className="h-full bg-purple-500/30 rounded"
-                                style={{ width: `${Math.max(prob * 100, 2)}%` }}
-                              />
-                            </div>
-                            <div className="w-12 text-right text-[10px] font-mono tabular-nums text-purple-500">
-                              {(prob * 100).toFixed(1)}%
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Run detail (after launch) */}
-          {packId && runId && (
-            <ScenarioRunDetail
-              packId={packId}
-              runId={runId}
-              totalCheckpoints={template.checkpoint_count}
-              runMode={runMode}
-            />
-          )}
-        </div>
-
-        {/* Right column: Launch panel + metadata */}
-        <div className="lg:sticky lg:top-6 space-y-4">
-          {/* Launch Configuration */}
-          <div ref={launchPanelRef} className="bg-terminal-surface border border-terminal-border rounded-lg overflow-hidden">
-            <div className="px-5 py-4 border-b border-terminal-border/50">
-              <div className="text-[15px] font-semibold text-terminal-text">Launch Configuration</div>
-            </div>
-            <div className="p-5 space-y-4">
-              {/* Run Mode */}
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-terminal-text-muted block mb-1">
-                  Run Mode
-                </label>
-                <select
+              <div className="space-y-4 px-5 py-5">
+                <SelectField
+                  label="Run Mode"
                   value={runMode}
-                  onChange={(e) => setRunMode(e.target.value as RunMode)}
+                  onChange={(value) => setRunMode(value as RunMode)}
+                  options={RUN_MODES}
                   disabled={!isRunnable || isLaunching || launchStep === 'done'}
-                  className="w-full h-9 px-3 bg-terminal-surface border border-terminal-border rounded-md text-[13px] text-terminal-text disabled:opacity-40"
-                >
-                  {RUN_MODES.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label} — {m.description}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Agent Assignment */}
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-terminal-text-muted block mb-1">
-                  Agent Assignment
-                </label>
-                <select
+                />
+                <SelectField
+                  label="Agent Assignment"
                   value={agentAssignment}
-                  onChange={(e) => setAgentAssignment(e.target.value)}
+                  onChange={setAgentAssignment}
+                  options={AGENT_ASSIGNMENTS}
                   disabled={!isRunnable || isLaunching || launchStep === 'done'}
-                  className="w-full h-9 px-3 bg-terminal-surface border border-terminal-border rounded-md text-[13px] text-terminal-text disabled:opacity-40"
-                >
-                  {AGENT_ASSIGNMENTS.map((a) => (
-                    <option key={a.id} value={a.id}>{a.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Simulation Scale */}
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-terminal-text-muted block mb-1">
-                  Simulation Scale
-                </label>
-                <select
+                />
+                <SelectField
+                  label="Simulation Scale"
                   value={simulationScale}
-                  onChange={(e) => setSimulationScale(e.target.value)}
+                  onChange={setSimulationScale}
+                  options={SIMULATION_SCALES}
                   disabled={!isRunnable || isLaunching || launchStep === 'done'}
-                  className="w-full h-9 px-3 bg-terminal-surface border border-terminal-border rounded-md text-[13px] text-terminal-text disabled:opacity-40"
-                >
-                  {SIMULATION_SCALES.map((s) => (
-                    <option key={s.id} value={s.id}>{s.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Objective Profile */}
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-wide text-terminal-text-muted block mb-1">
-                  Objective Profile
-                </label>
-                <select
+                />
+                <SelectField
+                  label="Objective Profile"
                   value={objectiveProfile}
-                  onChange={(e) => setObjectiveProfile(e.target.value)}
+                  onChange={setObjectiveProfile}
+                  options={OBJECTIVE_PROFILES}
                   disabled={!isRunnable || isLaunching || launchStep === 'done'}
-                  className="w-full h-9 px-3 bg-terminal-surface border border-terminal-border rounded-md text-[13px] text-terminal-text disabled:opacity-40"
-                >
-                  {OBJECTIVE_PROFILES.map((o) => (
-                    <option key={o.id} value={o.id}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
+                />
 
-              {/* Launch button */}
-              {isRunnable ? (
-                <>
-                  <button
-                    onClick={handleLaunch}
-                    disabled={isLaunching || launchStep === 'done'}
-                    className="w-full h-11 flex items-center justify-center gap-2 rounded-lg text-sm font-semibold text-white bg-purple-500 hover:bg-purple-400 transition-colors disabled:opacity-50"
-                  >
-                    {isLaunching ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : launchStep === 'done' ? (
-                      <CheckCircle className="w-4 h-4" />
-                    ) : (
-                      <Play className="w-[18px] h-[18px]" />
-                    )}
-                    {launchStep === 'creating'
-                      ? 'Creating pack...'
-                      : launchStep === 'committing'
-                        ? 'Committing...'
-                        : launchStep === 'starting'
-                          ? 'Starting run...'
-                          : launchStep === 'done'
-                            ? 'Run Started'
-                            : 'Launch Run'}
-                  </button>
-                  {launchStep === 'error' && launchError && (
-                    <div className="flex items-center gap-2 text-xs text-status-failure">
-                      <XCircle className="w-3 h-3 shrink-0" />
-                      {launchError}
+                {isRunnable ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleLaunch}
+                      disabled={isLaunching || launchStep === 'done'}
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--e-purple-500)] px-4 text-[14px] font-semibold text-[var(--e-text-inverse)] transition hover:bg-[var(--e-purple-600)] disabled:cursor-not-allowed disabled:bg-[var(--e-purple-200)] disabled:text-[var(--e-text-disabled)]"
+                    >
+                      {isLaunching ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : launchStep === 'done' ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : (
+                        <Play className="h-4 w-4" />
+                      )}
+                      {launchStep === 'creating'
+                        ? 'Creating pack…'
+                        : launchStep === 'committing'
+                          ? 'Committing…'
+                          : launchStep === 'starting'
+                            ? 'Starting run…'
+                            : launchStep === 'done'
+                              ? 'Run Started'
+                              : 'Launch Run'}
+                    </button>
+                    {launchError ? (
+                      <div className="flex items-start gap-2 rounded-md border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] px-3 py-3 text-[12px] text-[var(--e-red-600)]">
+                        <XCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                        {launchError}
+                      </div>
+                    ) : null}
+                    <div className="text-[12px] leading-5 text-[var(--e-text-muted)]">
+                      Launch composes create → commit → run. Retries resume from the failed step rather than creating duplicate packs.
                     </div>
-                  )}
-                  <div className="text-[11px] text-terminal-text-muted text-center leading-4">
-                    Runs execute in the simulation environment. No live market impact.
-                  </div>
-                </>
-              ) : (
-                <>
-                  <button
-                    disabled
-                    className="w-full h-11 flex items-center justify-center gap-2 rounded-lg text-sm font-semibold text-terminal-text-muted bg-terminal-panel cursor-not-allowed opacity-40"
-                  >
-                    Catalog Only
-                  </button>
-                  <div className="text-[11px] text-terminal-text-muted text-center leading-4">
-                    This template is catalog-only and cannot be launched as a runnable pack.
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Pack Metadata — 8-field grid per reference */}
-          <div className="bg-terminal-surface border border-terminal-border rounded-lg overflow-hidden">
-            <div className="px-5 py-4 border-b border-terminal-border/50">
-              <div className="text-[15px] font-semibold text-terminal-text">Pack Metadata</div>
-            </div>
-            <div className="p-5">
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: 'Family', value: FAMILY_LABELS[template.family] ?? template.family },
-                  { label: 'Status', value: template.template_status },
-                  { label: 'Checkpoints', value: String(template.checkpoint_count), mono: true },
-                  { label: 'Branch Depth', value: `${template.fork_points_min}–${template.fork_points_max}`, mono: true },
-                  { label: 'Episode Length', value: template.episode_length_sec ? `${template.episode_length_sec}s` : '—', mono: true },
-                  { label: 'Seeded', value: template.is_seeded ? 'Yes' : 'No' },
-                  { label: 'Agent Type', value: '—' },
-                  { label: 'Objective', value: template.objective_vector?.length ? `${template.objective_vector.length} components` : '—' },
-                ].map((item) => (
-                  <div key={item.label} className="py-2">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-terminal-text-muted mb-0.5">
-                      {item.label}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--e-bg-sunken)] px-4 text-[14px] font-semibold text-[var(--e-text-disabled)]"
+                    >
+                      Catalog Only
+                    </button>
+                    <div className="text-[12px] leading-5 text-[var(--e-text-muted)]">
+                      This template can be browsed and compared, but cannot be instantiated as a runnable pack.
                     </div>
-                    <div className={`text-sm font-medium text-terminal-text ${item.mono ? 'font-mono tabular-nums' : ''}`}>
-                      {item.value}
-                    </div>
-                  </div>
-                ))}
+                  </>
+                )}
               </div>
-            </div>
-          </div>
+            </section>
+
+            <section className="overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-sm)]">
+              <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-4">
+                <h2 className="text-[15px] font-semibold text-[var(--e-text-primary)]">Pack Metadata</h2>
+              </div>
+              <div className="grid grid-cols-2 gap-3 px-5 py-5">
+                <MetadataCell label="Family" value={FAMILY_LABELS[template.family] ?? template.family} />
+                <MetadataCell label="Status" value={template.template_status} />
+                <MetadataCell label="Checkpoints" value={String(template.checkpoint_count)} mono />
+                <MetadataCell label="Branch Depth" value={`${template.fork_points_min}–${template.fork_points_max}`} mono />
+                <MetadataCell label="Episode Length" value={template.episode_length_sec ? `${template.episode_length_sec}s` : '—'} mono />
+                <MetadataCell label="Seeded" value={template.is_seeded ? 'Yes' : 'No'} />
+                <MetadataCell label="Agent Type" value={packDetail?.agent_assignment ?? '—'} />
+                <MetadataCell
+                  label="Objective"
+                  value={
+                    packDetail?.objective_profile ??
+                    (template.objective_vector?.length
+                      ? `${template.objective_vector.length} components`
+                      : '—')
+                  }
+                />
+              </div>
+              {packDetail ? (
+                <div className="border-t border-[var(--e-border-secondary)] px-5 py-3 text-[12px] leading-5 text-[var(--e-text-muted)]">
+                  Pack {packDetail.id.slice(0, 12)} is currently <span className="font-semibold text-[var(--e-text-primary)]">{packDetail.state}</span>.
+                </div>
+              ) : null}
+            </section>
+          </aside>
         </div>
       </div>
     </div>
   );
 }
+
+export default ScenarioPackDetailPage;

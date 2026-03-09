@@ -109,6 +109,20 @@ except ImportError as e:
     osint_router = None
     print(f"⚠️ Could not import OSINT API router: {e}")
 
+# World Monitor API
+try:
+    from backend.api.world_monitor_routes import router as world_monitor_router
+except ImportError as e:
+    world_monitor_router = None
+    print(f"⚠️ Could not import World Monitor API router: {e}")
+
+# Analytics API
+try:
+    from backend.api.analytics_routes import router as analytics_router
+except ImportError as e:
+    analytics_router = None
+    print(f"⚠️ Could not import Analytics API router: {e}")
+
 # Verification API (echelon-verify integration)
 try:
     from backend.api.verification_routes import router as verification_router
@@ -167,6 +181,22 @@ app = FastAPI()
 # --- BACKGROUND TASKS ---
 # Start game loop as background task if enabled
 GAME_LOOP_ENABLED = os.getenv("ENABLE_GAME_LOOP", "true").lower() == "true"
+
+@app.on_event("startup")
+async def seed_investigation_templates_on_startup():
+    """Seed investigation templates if not already present (Cycle-022)."""
+    try:
+        from sqlalchemy.orm import Session as SyncSession
+        from backend.services.investigation_template_seeder import seed_investigation_templates
+        with SyncSession(engine) as session:
+            count = seed_investigation_templates(session)
+            if count > 0:
+                print(f"✅ Seeded {count} investigation templates")
+            else:
+                print("✅ Investigation templates already seeded")
+    except Exception as e:
+        print(f"⚠️ Could not seed investigation templates: {e}")
+
 
 @app.on_event("startup")
 async def start_game_loop():
@@ -327,6 +357,30 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+# Include World Monitor router
+try:
+    if world_monitor_router:
+        app.include_router(world_monitor_router)
+        print("✅ World Monitor router included")
+    else:
+        print("⚠️ World Monitor router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include World Monitor router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Analytics router
+try:
+    if analytics_router:
+        app.include_router(analytics_router)
+        print("✅ Analytics router included")
+    else:
+        print("⚠️ Analytics router is None, skipping")
+except Exception as e:
+    print(f"❌ Failed to include Analytics router: {e}")
+    import traceback
+    traceback.print_exc()
+
 # Include Verification router (echelon-verify)
 try:
     if verification_router:
@@ -406,6 +460,16 @@ try:
     print("✅ Agent Deployment router included")
 except Exception as e:
     print(f"❌ Failed to include Agent Deployment router: {e}")
+    import traceback
+    traceback.print_exc()
+
+# Include Investigation Template routes (Cycle-022)
+try:
+    from backend.api.investigation_template_routes import templates_router as investigation_templates_router
+    app.include_router(investigation_templates_router)
+    print("✅ Investigation Template router included")
+except Exception as e:
+    print(f"❌ Failed to include Investigation Template router: {e}")
     import traceback
     traceback.print_exc()
 

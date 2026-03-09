@@ -1045,6 +1045,41 @@ class DeploymentAuditEvent(Base):
 
 
 # ============================================
+# INVESTIGATION TEMPLATES (Cycle 022)
+# ============================================
+
+class InvestigationTemplate(Base):
+    """Reusable investigation template — defines defaults for new investigations."""
+    __tablename__ = "investigation_templates"
+
+    id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    inquiry_class: Mapped[str] = mapped_column(
+        String(30), default="INVESTIGATIVE",
+        comment="COUNTERFACTUAL | INVESTIGATIVE | INSPECTION | SURVEY | SCRUTINY"
+    )
+    domain_filters_json: Mapped[list] = mapped_column(JSON, default=list)
+    default_sources_json: Mapped[list] = mapped_column(JSON, default=list)
+    default_stop_condition: Mapped[str] = mapped_column(
+        String(30), default="OUTCOME_RESOLUTION",
+        comment="OUTCOME_RESOLUTION | EVIDENCE_THRESHOLD | SPONSOR_DEFINED"
+    )
+    default_time_window_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    requires_legal_review: Mapped[bool] = mapped_column(Boolean, default=False)
+    min_corroboration_groups: Mapped[int] = mapped_column(Integer, default=2)
+    template_status: Mapped[str] = mapped_column(
+        String(20), default="ACTIVE",
+        comment="ACTIVE | DRAFT"
+    )
+    is_seeded: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    investigations: Mapped[List["Investigation"]] = relationship(back_populates="template")
+
+
+# ============================================
 # INVESTIGATION PERSISTENCE (Cycle 019)
 # ============================================
 
@@ -1084,6 +1119,12 @@ class Investigation(Base):
     stop_condition_reason: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     stop_condition_evaluated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # Investigation template (cycle-022)
+    template_id: Mapped[Optional[str]] = mapped_column(
+        String(100), ForeignKey("investigation_templates.id"), nullable=True, index=True
+    )
+    committed_sources_json: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+
     # Relationships
     evidence_items: Mapped[List["InvestigationEvidenceItem"]] = relationship(
         back_populates="investigation", order_by="InvestigationEvidenceItem.submitted_at"
@@ -1099,6 +1140,9 @@ class Investigation(Base):
     )
     certificate: Mapped[Optional["InvestigationCertificateRecord"]] = relationship(
         back_populates="investigation", uselist=False
+    )
+    template: Mapped[Optional["InvestigationTemplate"]] = relationship(
+        back_populates="investigations"
     )
 
 

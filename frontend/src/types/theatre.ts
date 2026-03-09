@@ -20,6 +20,34 @@ export type InquiryClass =
   | 'SURVEY'
   | 'SCRUTINY';
 
+export interface TheatreInvestigationContextCertificateSummary {
+  certificate_id: string;
+  routing_hint: string | null;
+  composite_score: number | null;
+  verification_tier: string | null;
+  coherence_gate_status: string | null;
+  issued_at: string | null;
+}
+
+export interface TheatreInvestigationContextDeploymentSummary {
+  active_count: number;
+  archetype_breakdown: Record<string, number>;
+}
+
+export interface TheatreInvestigationContextConvergenceSummary {
+  cell_count: number;
+  nearby_signal_count: number;
+  source_families: string[];
+}
+
+export interface TheatreInvestigationContextResponse {
+  certificate_summary: TheatreInvestigationContextCertificateSummary | null;
+  deployment_summary: TheatreInvestigationContextDeploymentSummary;
+  paradox_risk_level: string | null;
+  paradox_risk_factors_json: Record<string, unknown> | null;
+  convergence_summary: TheatreInvestigationContextConvergenceSummary;
+}
+
 export interface TheatreResponse {
   id: string;
   user_id: string;
@@ -39,6 +67,7 @@ export interface TheatreResponse {
   stop_config: Record<string, unknown> | null;
   paradox_risk_level: string | null;
   paradox_risk_factors_json: Record<string, unknown> | null;
+  investigation_context?: TheatreInvestigationContextResponse | null;
   created_at: string;
   updated_at: string;
 }

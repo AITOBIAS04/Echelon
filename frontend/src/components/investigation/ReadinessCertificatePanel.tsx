@@ -1,82 +1,32 @@
-/**
- * Readiness & Certificate Lifecycle Panel
- *
- * Shows stop-condition readiness status, certificate build action,
- * and certificate lifecycle stepper (READY -> ANCHORED -> ISSUED).
- *
- * Backend truth:
- * - GET  /api/v1/investigations/{id}/readiness  → ReadinessResponse
- * - GET  /api/v1/investigations/{id}/certificate → CertificateRecordResponse (404 if none)
- * - POST /api/v1/investigations/{id}/certificate/build → 201 (409 if exists or not READY)
- * - POST /api/v1/investigations/certificates/anchor-batch → batch READY→ANCHORED→ISSUED
- *
- * Certificate lifecycle: READY → ANCHORED → ISSUED
- * ANCHORED is transient: run_batch_anchor collapses READY→ANCHORED→ISSUED in one pass.
- * Both anchored_at and issued_at receive the same batch_timestamp (00:00 UTC).
- * Routing decision (ALLOWED | REVIEW_REQUIRED) is recorded but does NOT gate batch-anchor.
- *
- * Design ref: output/design_reference/echelon_readiness_certificate_v2.html
- */
-
-import { Loader2, ShieldCheck, AlertTriangle, CheckCircle2, Clock, Circle } from 'lucide-react';
-import { useReadiness, useBuildCertificate, useCertificate } from '../../hooks/useInvestigation';
+import { AlertTriangle, CheckCircle2, Clock3, Loader2, ShieldCheck } from 'lucide-react';
+import { clsx } from 'clsx';
+import { Link } from 'react-router-dom';
+import { useBuildCertificate, useCertificate, useReadiness } from '../../hooks/useInvestigation';
 import type { CertificateLifecycleStatus } from '../../types/investigation';
 
-/** Humanized stop-condition labels */
 const STOP_LABELS: Record<string, string> = {
   OUTCOME_RESOLUTION: 'Outcome Resolution',
   EVIDENCE_THRESHOLD: 'Evidence Threshold',
   SPONSOR_DEFINED: 'Sponsor Defined',
 };
 
-/**
- * Determine step state from current certificate status.
- *
- * Note: ANCHORED is transient — run_batch_anchor collapses READY→ANCHORED→ISSUED
- * in one pass, so ANCHORED is effectively the same as ISSUED for display purposes.
- * READY is the only durable pre-terminal state (waiting for batch).
- */
-function getStepStates(certStatus: CertificateLifecycleStatus | null): {
-  ready: 'reached' | 'active' | 'pending';
-  anchored: 'reached' | 'active' | 'pending';
-  issued: 'reached' | 'active' | 'pending';
-} {
-  if (!certStatus) return { ready: 'pending', anchored: 'pending', issued: 'pending' };
+function getStepStates(certStatus: CertificateLifecycleStatus | null) {
+  if (!certStatus) {
+    return { ready: 'pending', anchored: 'pending', issued: 'pending' } as const;
+  }
+
   switch (certStatus) {
     case 'ISSUED':
     case 'ANCHORED':
-      // ANCHORED collapses into ISSUED in the same batch pass
-      return { ready: 'reached', anchored: 'reached', issued: 'reached' };
+      return { ready: 'reached', anchored: 'reached', issued: 'reached' } as const;
     case 'READY':
-      return { ready: 'reached', anchored: 'active', issued: 'pending' };
+      return { ready: 'reached', anchored: 'active', issued: 'pending' } as const;
     default:
-      return { ready: 'pending', anchored: 'pending', issued: 'pending' };
+      return { ready: 'pending', anchored: 'pending', issued: 'pending' } as const;
   }
 }
 
-function StepCircle({ state }: { state: 'reached' | 'active' | 'pending' }) {
-  if (state === 'reached') {
-    return (
-      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-status-success/10 border-2 border-status-success">
-        <CheckCircle2 className="w-5 h-5 text-status-success" />
-      </div>
-    );
-  }
-  if (state === 'active') {
-    return (
-      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-echelon-cyan/10 border-2 border-echelon-cyan animate-pulse">
-        <Clock className="w-4 h-4 text-echelon-cyan" />
-      </div>
-    );
-  }
-  return (
-    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-terminal-panel border-2 border-terminal-border">
-      <Circle className="w-4 h-4 text-terminal-text-muted/40" />
-    </div>
-  );
-}
-
-function LifecycleStep({
+function Step({
   label,
   state,
   timestamp,
@@ -85,49 +35,61 @@ function LifecycleStep({
   state: 'reached' | 'active' | 'pending';
   timestamp: string | null;
 }) {
-  const labelColor =
+  const circleClass =
     state === 'reached'
-      ? 'text-status-success'
+      ? 'border-[var(--e-green-600)] bg-[var(--e-green-50)] text-[var(--e-green-600)]'
       : state === 'active'
-        ? 'text-echelon-cyan'
-        : 'text-terminal-text-muted/50';
+        ? 'border-[var(--e-purple-500)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+        : 'border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-disabled)]';
 
   return (
-    <div className="flex flex-col items-center gap-2 min-w-[100px]">
-      <StepCircle state={state} />
-      <div className={`text-[12px] font-semibold font-mono ${labelColor}`}>{label}</div>
-      <div className="text-[10px] font-mono text-terminal-text-muted tabular-nums min-h-[14px]">
-        {timestamp ? new Date(timestamp).toLocaleString() : '\u2014'}
+    <div className="flex min-w-[110px] flex-col items-center gap-2">
+      <div
+        className={clsx(
+          'flex h-10 w-10 items-center justify-center rounded-full border-2',
+          circleClass,
+          state === 'active' && 'animate-pulse',
+        )}
+      >
+        {state === 'reached' ? <CheckCircle2 className="h-5 w-5" /> : <Clock3 className="h-4 w-4" />}
+      </div>
+      <div
+        className={clsx(
+          'text-[12px] font-semibold uppercase tracking-[0.04em]',
+          state === 'reached'
+            ? 'text-[var(--e-green-600)]'
+            : state === 'active'
+              ? 'text-[var(--e-purple-700)]'
+              : 'text-[var(--e-text-muted)]',
+        )}
+      >
+        {label}
+      </div>
+      <div className="min-h-[14px] font-mono text-[10px] tabular-nums text-[var(--e-text-muted)]">
+        {timestamp ? new Date(timestamp).toLocaleString() : '—'}
       </div>
     </div>
   );
 }
 
-function LifecycleConnector({ reached }: { reached: boolean }) {
+function Connector({ reached }: { reached: boolean }) {
   return (
-    <div className="flex-1 flex items-center min-w-[40px]" style={{ marginTop: -28 }}>
-      <div
-        className={`h-0.5 w-full rounded-full ${
-          reached ? 'bg-status-success' : 'bg-terminal-border'
-        }`}
-      />
+    <div className="flex min-w-[40px] flex-1 items-center" style={{ marginTop: -28 }}>
+      <div className={clsx('h-0.5 w-full rounded-full', reached ? 'bg-[var(--e-green-600)]' : 'bg-[var(--e-border-secondary)]')} />
     </div>
   );
 }
 
-export function ReadinessCertificatePanel({
-  investigationId,
-}: {
-  investigationId: string;
-}) {
+export function ReadinessCertificatePanel({ investigationId }: { investigationId: string }) {
   const { readiness, isLoading: readinessLoading } = useReadiness(investigationId);
   const { certificate } = useCertificate(investigationId);
-  const buildCert = useBuildCertificate(investigationId);
+  const buildCertificate = useBuildCertificate(investigationId);
 
   if (readinessLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-5 h-5 text-terminal-text-muted animate-spin" />
+      <div className="flex items-center justify-center py-10 text-[var(--e-text-muted)]">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+        Loading readiness…
       </div>
     );
   }
@@ -136,218 +98,206 @@ export function ReadinessCertificatePanel({
 
   const isReady = readiness.stop_condition_status === 'READY';
   const hasCertificate = readiness.has_certificate;
-  const certStatus = certificate?.certificate_status ?? readiness.certificate_status;
-  const steps = getStepStates(hasCertificate ? certStatus : null);
+  const certificateStatus = certificate?.certificate_status ?? readiness.certificate_status;
+  const steps = getStepStates(hasCertificate ? certificateStatus : null);
 
   return (
     <div className="space-y-4">
-      {/* Stop Condition Readiness — sunken header section */}
-      <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-        <div className="px-5 py-2.5 border-b border-terminal-border/50 bg-terminal-panel flex items-center gap-2">
-          <h3 className="text-[11px] font-bold uppercase tracking-wider text-terminal-text-muted">
+      <section className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+        <div className="flex items-center gap-2 border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
             Stop Condition Readiness
           </h3>
-          {readiness.stop_condition_evaluated_at && (
-            <span className="font-mono text-[10px] text-terminal-text-muted/60 ml-auto">
+          {readiness.stop_condition_evaluated_at ? (
+            <span className="ml-auto font-mono text-[10px] text-[var(--e-text-muted)]">
               evaluated {new Date(readiness.stop_condition_evaluated_at).toLocaleString()}
             </span>
-          )}
+          ) : null}
         </div>
-        <div className="p-5">
-          {/* Readiness badge */}
-          <div className="mb-4">
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-[13px] font-bold ${
-                isReady
-                  ? 'bg-status-success/10 text-status-success border border-status-success/20'
-                  : 'bg-terminal-panel text-terminal-text-muted border border-terminal-border'
-              }`}
-            >
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isReady ? 'bg-status-success' : 'bg-terminal-text-muted/40'
-                }`}
-              />
-              {readiness.stop_condition_status ?? 'NOT_EVALUATED'}
-            </span>
-          </div>
 
-          {/* Readiness metadata */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 text-[13px]">
-              <span className="text-terminal-text-muted font-semibold min-w-[120px] text-[12px]">
-                Stop Condition
-              </span>
-              <span className="text-terminal-text font-medium">
-                {STOP_LABELS[readiness.stop_condition] ?? readiness.stop_condition}
-              </span>
-            </div>
-            <div className="flex items-start gap-3 text-[13px]">
-              <span className="text-terminal-text-muted font-semibold min-w-[120px] text-[12px]">
-                Detail
-              </span>
-              <span className="text-terminal-text font-medium">
-                {readiness.stop_condition_reason ?? '\u2014'}
-              </span>
-            </div>
-            {readiness.stop_condition_evaluated_at && (
-              <div className="flex items-center gap-3 text-[13px]">
-                <span className="text-terminal-text-muted font-semibold min-w-[120px] text-[12px]">
-                  Last Evaluated
-                </span>
-                <span className="font-mono text-terminal-text text-[12px] tabular-nums">
-                  {new Date(readiness.stop_condition_evaluated_at).toLocaleString()}
-                </span>
-              </div>
+        <div className="space-y-4 px-5 py-5">
+          <span
+            className={clsx(
+              'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[13px] font-semibold',
+              isReady
+                ? 'border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[var(--e-green-50)] text-[var(--e-green-600)]'
+                : 'border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]',
             )}
-          </div>
-        </div>
-      </div>
-
-      {/* Build Certificate CTA — only when READY and no certificate exists */}
-      {isReady && !hasCertificate && (
-        <div className="flex items-center justify-between p-4 bg-echelon-cyan/5 border border-echelon-cyan/15 rounded-lg">
-          <div className="text-[13px] text-terminal-text leading-5">
-            <strong>Stop condition met.</strong>{' '}
-            This investigation is ready for certificate issuance. The certificate will be queued for the next 00:00 UTC batch-anchor cycle.
-          </div>
-          <button
-            onClick={() => buildCert.mutate()}
-            disabled={buildCert.isPending}
-            className="flex items-center gap-2 px-4 py-2 text-[13px] font-semibold bg-echelon-cyan text-terminal-bg rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 shrink-0 ml-4"
           >
-            {buildCert.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <ShieldCheck className="w-4 h-4" />
-            )}
+            <span
+              className={clsx(
+                'h-2 w-2 rounded-full',
+                isReady ? 'bg-[var(--e-green-600)]' : 'bg-[var(--e-text-disabled)]',
+              )}
+            />
+            {readiness.stop_condition_status ?? 'NOT_EVALUATED'}
+          </span>
+
+          <div className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-2 text-[13px]">
+            <div className="text-[var(--e-text-muted)]">Stop Condition</div>
+            <div className="text-[var(--e-text-primary)]">
+              {STOP_LABELS[readiness.stop_condition] ?? readiness.stop_condition}
+            </div>
+            <div className="text-[var(--e-text-muted)]">Detail</div>
+            <div className="text-[var(--e-text-primary)]">{readiness.stop_condition_reason ?? '—'}</div>
+            <div className="text-[var(--e-text-muted)]">Last Evaluated</div>
+            <div className="font-mono text-[var(--e-text-primary)]">
+              {readiness.stop_condition_evaluated_at
+                ? new Date(readiness.stop_condition_evaluated_at).toLocaleString()
+                : '—'}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {isReady && !hasCertificate ? (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-5 py-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--e-purple-200)] bg-white text-[var(--e-purple-700)]">
+              <ShieldCheck className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 text-[13px] leading-6 text-[var(--e-text-secondary)]">
+              <strong className="text-[var(--e-text-primary)]">Stop condition met.</strong> This
+              investigation is ready for certificate issuance. The certificate will be queued for
+              the next 00:00 UTC batch-anchor cycle.
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => buildCertificate.mutate()}
+            disabled={buildCertificate.isPending}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--e-purple-500)] px-4 text-[13px] font-semibold text-[var(--e-text-inverse)] transition hover:bg-[var(--e-purple-600)] disabled:cursor-not-allowed disabled:bg-[var(--e-purple-200)] disabled:text-[var(--e-text-disabled)]"
+          >
+            {buildCertificate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
             Build Certificate
           </button>
         </div>
-      )}
+      ) : null}
 
-      {/* Build error */}
-      {buildCert.isError && (
-        <div className="flex items-center gap-2 p-3 bg-status-failure/10 border border-status-failure/30 rounded-lg">
-          <AlertTriangle className="w-4 h-4 text-status-failure shrink-0" />
-          <span className="text-xs text-status-failure">
-            {(buildCert.error as Error)?.message ?? 'Certificate build failed'}
-          </span>
+      {buildCertificate.isError ? (
+        <div className="flex items-center gap-3 rounded-lg border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] px-4 py-3 text-[13px] text-[var(--e-red-600)]">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          {(buildCertificate.error as Error)?.message ?? 'Certificate build failed'}
         </div>
-      )}
+      ) : null}
 
-      {/* Build success feedback (transient) */}
-      {buildCert.isSuccess && !hasCertificate && (
-        <div className="flex items-center gap-2 p-3 bg-status-success/10 border border-status-success/30 rounded-lg">
-          <CheckCircle2 className="w-4 h-4 text-status-success shrink-0" />
-          <span className="text-xs text-status-success">
-            Certificate built — status: {buildCert.data?.certificate_status}
-          </span>
-        </div>
-      )}
-
-      {/* Certificate Lifecycle stepper — always shown */}
-      <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-        <div className="px-5 py-2.5 border-b border-terminal-border/50 bg-terminal-panel flex items-center gap-2">
-          <h3 className="text-[11px] font-bold uppercase tracking-wider text-terminal-text-muted">
+      <section className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+        <div className="flex items-center gap-2 border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
             Certificate Lifecycle
           </h3>
-          {certificate ? (
-            <span className="font-mono text-[11px] font-semibold text-echelon-cyan ml-auto">
-              {certificate.certificate_id.slice(0, 16)}
-            </span>
-          ) : (
-            <span className="text-[11px] text-terminal-text-muted/50 italic ml-auto">
-              {isReady ? 'Awaiting build' : 'Awaiting readiness'}
-            </span>
-          )}
+          <span className="ml-auto text-[11px] text-[var(--e-text-muted)]">
+            {certificate ? certificate.certificate_id.slice(0, 16) : isReady ? 'Awaiting build' : 'Awaiting readiness'}
+          </span>
         </div>
-        <div className="py-6 px-8">
-          {/* Stepper */}
+
+        <div className="px-6 py-6">
           <div className="flex items-start justify-center">
-            <LifecycleStep
-              label="READY"
-              state={steps.ready}
-              timestamp={certificate?.ready_at ?? null}
-            />
-            <LifecycleConnector reached={steps.anchored === 'reached'} />
-            <LifecycleStep
-              label="ANCHORED"
-              state={steps.anchored}
-              timestamp={certificate?.anchored_at ?? null}
-            />
-            <LifecycleConnector reached={steps.issued === 'reached'} />
-            <LifecycleStep
-              label="ISSUED"
-              state={steps.issued}
-              timestamp={certificate?.issued_at ?? null}
-            />
+            <Step label="READY" state={steps.ready} timestamp={certificate?.ready_at ?? null} />
+            <Connector reached={steps.anchored === 'reached'} />
+            <Step label="ANCHORED" state={steps.anchored} timestamp={certificate?.anchored_at ?? null} />
+            <Connector reached={steps.issued === 'reached'} />
+            <Step label="ISSUED" state={steps.issued} timestamp={certificate?.issued_at ?? null} />
           </div>
 
-          {/* Anchoring note when certificate is READY (waiting for batch) */}
-          {certStatus === 'READY' && hasCertificate && (
-            <div className="mt-4 text-center text-[11px] text-terminal-text-muted">
+          {certificateStatus === 'READY' && hasCertificate ? (
+            <div className="mt-4 text-center text-[12px] text-[var(--e-text-muted)]">
               Queued for next 00:00 UTC batch-anchor cycle
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Routing decision — shown when certificate exists */}
-        {certificate && (
-          <div className="flex items-center gap-3 px-5 py-3 border-t border-terminal-border/50">
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[12px] font-bold ${
-                certificate.routing_decision === 'ALLOWED'
-                  ? 'bg-status-success/10 text-status-success border border-status-success/20'
-                  : 'bg-status-warning/10 text-status-warning border border-status-warning/20'
-              }`}
-            >
+        {certificate ? (
+          <>
+            <div className="border-t border-[var(--e-border-secondary)] px-5 py-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="rounded-md border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-3 py-3">
+                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--e-text-muted)]">
+                    Certificate ID
+                  </div>
+                  <div className="font-mono text-[12px] text-[var(--e-text-primary)]">
+                    {certificate.certificate_id}
+                  </div>
+                </div>
+                <div className="rounded-md border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-3 py-3">
+                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--e-text-muted)]">
+                    Status
+                  </div>
+                  <div className="font-mono text-[12px] text-[var(--e-text-primary)]">
+                    {certificate.certificate_status}
+                  </div>
+                </div>
+                <div className="rounded-md border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-3 py-3">
+                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--e-text-muted)]">
+                    Hash
+                  </div>
+                  <div className="font-mono text-[12px] text-[var(--e-text-primary)]">
+                    {certificate.certificate_hash}
+                  </div>
+                </div>
+                <div className="rounded-md border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-3 py-3">
+                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--e-text-muted)]">
+                    Anchor Hash
+                  </div>
+                  <div className="font-mono text-[12px] text-[var(--e-text-primary)]">
+                    {certificate.batch_anchor_hash ?? '—'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 border-t border-[var(--e-border-secondary)] px-5 py-4">
               <span
-                className={`w-1.5 h-1.5 rounded-full ${
+                className={clsx(
+                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold',
                   certificate.routing_decision === 'ALLOWED'
-                    ? 'bg-status-success'
-                    : 'bg-status-warning'
-                }`}
-              />
-              {certificate.routing_decision.replace(/_/g, ' ')}
-            </span>
-            <span className="text-[12px] text-terminal-text-secondary leading-4">
-              {certificate.routing_reason}
-            </span>
-          </div>
-        )}
-      </div>
+                    ? 'border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[var(--e-green-50)] text-[var(--e-green-600)]'
+                    : 'border-[color:oklch(0.708_0.136_62_/_0.20)] bg-[color:oklch(0.708_0.136_62_/_0.10)] text-[var(--e-orange-600)]',
+                )}
+              >
+                <span
+                  className={clsx(
+                    'h-2 w-2 rounded-full',
+                    certificate.routing_decision === 'ALLOWED'
+                      ? 'bg-[var(--e-green-600)]'
+                      : 'bg-[var(--e-orange-600)]',
+                  )}
+                />
+                {certificate.routing_decision.replace(/_/g, ' ')}
+              </span>
+              <span className="text-[12px] leading-5 text-[var(--e-text-secondary)]">
+                {certificate.routing_reason}
+              </span>
+            </div>
 
-      {/* Certificate hash & metadata — only when certificate exists */}
-      {certificate && (
-        <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-          <div className="px-5 py-2.5 border-b border-terminal-border/50 bg-terminal-panel">
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-terminal-text-muted">
-              Certificate Record
-            </h3>
-          </div>
-          <div className="p-5">
-            <dl className="grid grid-cols-[140px_1fr] gap-x-4 gap-y-2 text-[13px]">
-              <dt className="text-terminal-text-muted text-[12px] font-semibold">Certificate ID</dt>
-              <dd className="font-mono text-terminal-text text-xs">{certificate.certificate_id}</dd>
-              <dt className="text-terminal-text-muted text-[12px] font-semibold">Status</dt>
-              <dd className="font-mono text-terminal-text text-xs">{certificate.certificate_status}</dd>
-              <dt className="text-terminal-text-muted text-[12px] font-semibold">Hash</dt>
-              <dd className="font-mono text-terminal-text text-xs break-all">
-                {certificate.certificate_hash}
-              </dd>
-              {certificate.batch_anchor_hash && (
-                <>
-                  <dt className="text-terminal-text-muted text-[12px] font-semibold">Anchor Hash</dt>
-                  <dd className="font-mono text-terminal-text text-xs break-all">
-                    {certificate.batch_anchor_hash}
-                  </dd>
-                </>
-              )}
-            </dl>
-          </div>
-        </div>
-      )}
+            <div className="flex flex-wrap gap-2 border-t border-[var(--e-border-secondary)] px-5 py-4">
+              <Link
+                to="/certificates"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 text-[13px] font-semibold text-[var(--e-text-secondary)] no-underline transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Certificates Ledger
+              </Link>
+              <Link
+                to={`/verify?certificate=${encodeURIComponent(certificate.certificate_id)}`}
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-[var(--e-purple-500)] px-4 text-[13px] font-semibold text-[var(--e-text-inverse)] no-underline transition hover:bg-[var(--e-purple-600)]"
+              >
+                <ShieldCheck className="h-4 w-4" />
+                Open Verify
+              </Link>
+            </div>
+
+            {certificate.routing_decision === 'REVIEW_REQUIRED' ? (
+              <div className="border-t border-[var(--e-border-secondary)] bg-[color:oklch(0.708_0.136_62_/_0.10)] px-5 py-4 text-[12px] leading-5 text-[var(--e-orange-600)]">
+                Routing decision: REVIEW_REQUIRED — coherence gate evaluation triggered. Batch-anchor progression is not blocked by routing decision in the current implementation.
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </section>
     </div>
   );
 }
+
+export default ReadinessCertificatePanel;

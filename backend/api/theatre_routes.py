@@ -24,6 +24,8 @@ from backend.database.models import (
     TheatreCertificate,
     TheatreAuditEvent,
     TheatreEpisodeScore,
+    AgentDeployment,
+    Agent,
 )
 from backend.schemas.theatre import (
     TheatreCreate,
@@ -35,6 +37,10 @@ from backend.schemas.theatre import (
     CommitmentReceiptResponse,
     TheatreResponse,
     TheatreListResponse,
+    TheatreInvestigationContextResponse,
+    TheatreInvestigationContextCertificateSummary,
+    TheatreInvestigationContextDeploymentSummary,
+    TheatreInvestigationContextConvergenceSummary,
     TheatreCertificateResponse,
     TheatreCertificateSummaryResponse,
     CertificateListResponse,
@@ -297,6 +303,7 @@ async def run_theatre(
 @router.get("/{theatre_id}", response_model=TheatreResponse)
 async def get_theatre(
     theatre_id: str,
+    include: Optional[str] = Query(None),
     user: TokenData = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -324,7 +331,65 @@ async def get_theatre(
         )
         await db.commit()
 
-    return TheatreResponse.model_validate(theatre)
+    include_fields = {part.strip() for part in (include or "").split(",") if part.strip()}
+    payload = TheatreResponse.model_validate(theatre).model_dump()
+
+    if "investigation_context" in include_fields:
+        certificate_summary = None
+        if theatre.certificate_id:
+            cert = await db.get(TheatreCertificate, theatre.certificate_id)
+            if cert is not None:
+                certificate_summary = TheatreInvestigationContextCertificateSummary(
+                    certificate_id=cert.id,
+                    routing_hint=cert.routing_hint,
+                    composite_score=cert.composite_score,
+                    verification_tier=cert.verification_tier,
+                    coherence_gate_status=cert.coherence_gate_status,
+                    issued_at=cert.issued_at,
+                )
+
+        active_deployments_result = await db.execute(
+            select(Agent.archetype, func.count())
+            .select_from(AgentDeployment)
+            .join(Agent, Agent.id == AgentDeployment.agent_id)
+            .where(
+                AgentDeployment.theatre_id == theatre.id,
+                AgentDeployment.status == "ACTIVE",
+            )
+            .group_by(Agent.archetype)
+        )
+        archetype_breakdown = {
+            str(archetype.value if hasattr(archetype, "value") else archetype): count
+            for archetype, count in active_deployments_result.all()
+        }
+        active_count = sum(archetype_breakdown.values())
+
+        from backend.api.convergence_routes import get_heatmap
+
+        heatmap = await get_heatmap()
+        matching_cells = [
+            cell for cell in heatmap.cells
+            if theatre.id in cell.theatres
+        ]
+        source_families = sorted({source for cell in matching_cells for source in cell.sources})
+        nearby_signal_count = sum(cell.events for cell in matching_cells)
+
+        payload["investigation_context"] = TheatreInvestigationContextResponse(
+            certificate_summary=certificate_summary,
+            deployment_summary=TheatreInvestigationContextDeploymentSummary(
+                active_count=active_count,
+                archetype_breakdown=archetype_breakdown,
+            ),
+            paradox_risk_level=theatre.paradox_risk_level,
+            paradox_risk_factors_json=theatre.paradox_risk_factors_json,
+            convergence_summary=TheatreInvestigationContextConvergenceSummary(
+                cell_count=len(matching_cells),
+                nearby_signal_count=nearby_signal_count,
+                source_families=source_families,
+            ),
+        ).model_dump()
+
+    return TheatreResponse(**payload)
 
 
 @router.get("/{theatre_id}/commitment", response_model=CommitmentReceiptResponse)

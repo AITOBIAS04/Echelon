@@ -44,6 +44,8 @@ class InvestigationRepository:
         stop_condition: str = "OUTCOME_RESOLUTION",
         stop_config: Optional[dict] = None,
         created_by: Optional[str] = None,
+        template_id: Optional[str] = None,
+        committed_sources: Optional[list] = None,
     ) -> Investigation:
         """Create a new investigation record."""
         investigation = Investigation(
@@ -56,6 +58,8 @@ class InvestigationRepository:
             stop_condition=stop_condition,
             stop_config_json=stop_config or {},
             created_by=created_by,
+            template_id=template_id,
+            committed_sources_json=committed_sources,
         )
         self.session.add(investigation)
         await self.session.flush()
@@ -72,6 +76,7 @@ class InvestigationRepository:
                 selectinload(Investigation.counter_signals),
                 selectinload(Investigation.drift_events),
                 selectinload(Investigation.certificate),
+                selectinload(Investigation.template),
             )
         )
         return result.scalar_one_or_none()
@@ -79,7 +84,15 @@ class InvestigationRepository:
     async def list_all(self) -> List[Investigation]:
         """List all investigations with counts."""
         result = await self.session.execute(
-            select(Investigation).order_by(Investigation.created_at.desc())
+            select(Investigation)
+            .order_by(Investigation.created_at.desc())
+            .options(
+                selectinload(Investigation.evidence_items),
+                selectinload(Investigation.claim_nodes),
+                selectinload(Investigation.counter_signals),
+                selectinload(Investigation.drift_events),
+                selectinload(Investigation.template),
+            )
         )
         return list(result.scalars().all())
 

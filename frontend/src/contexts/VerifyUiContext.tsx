@@ -24,7 +24,7 @@ export function useVerifyUi() {
 }
 
 export function VerifyUiProvider({ children }: { children: ReactNode }) {
-  const [activeTab, setActiveTab] = useState<VerifyTab>('runs');
+  const [activeTab, setActiveTab] = useState<VerifyTab>('certificates');
 
   return (
     <VerifyUiContext.Provider value={{ activeTab, setActiveTab }}>

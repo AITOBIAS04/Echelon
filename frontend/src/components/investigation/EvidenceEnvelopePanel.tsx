@@ -1,141 +1,86 @@
-/**
- * Evidence Envelope Panel
- *
- * Displays evidence items chronologically with provenance badges,
- * content hashes, redaction indicators, and envelope hash.
- */
-
+import { clsx } from 'clsx';
 import type { EvidenceEnvelopeManifest, EvidenceItem } from '../../types/investigation';
 
-const PROVENANCE_COLORS: Record<string, string> = {
-  public_primary: 'bg-emerald-500/20 text-emerald-400',
-  public_secondary: 'bg-blue-500/20 text-blue-400',
-  private_leak: 'bg-red-500/20 text-red-400',
-  analyst_derived: 'bg-amber-500/20 text-amber-400',
-  third_party_tool_output: 'bg-purple-500/20 text-purple-400',
-  PRIMARY: 'bg-emerald-500/20 text-emerald-400',
-  SECONDARY: 'bg-blue-500/20 text-blue-400',
-  LEAKED: 'bg-red-500/20 text-red-400',
-  DERIVED: 'bg-amber-500/20 text-amber-400',
-  TOOL_OUTPUT: 'bg-purple-500/20 text-purple-400',
+const PROVENANCE_CLASSES: Record<string, string> = {
+  public_primary: 'border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[var(--e-green-50)] text-[var(--e-green-600)]',
+  public_secondary: 'border-[color:oklch(0.623_0.188_259_/_0.18)] bg-[color:oklch(0.623_0.188_259_/_0.10)] text-[color:oklch(0.623_0.188_259)]',
+  private_leak: 'border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] text-[var(--e-red-600)]',
+  analyst_derived: 'border-[color:oklch(0.708_0.136_62_/_0.20)] bg-[color:oklch(0.708_0.136_62_/_0.10)] text-[var(--e-orange-600)]',
+  third_party_tool_output: 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]',
 };
 
-function ProvenanceBadge({ provenance }: { provenance: string }) {
-  const color = PROVENANCE_COLORS[provenance] ?? 'bg-zinc-500/20 text-zinc-400';
+function ProvenanceBadge({ value }: { value: string }) {
   return (
-    <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase ${color}`}>
-      {provenance}
+    <span
+      className={clsx(
+        'rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em]',
+        PROVENANCE_CLASSES[value] ?? 'border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]',
+      )}
+    >
+      {value.replace(/_/g, ' ')}
     </span>
   );
 }
 
-const DETERMINISM_COLORS: Record<string, string> = {
-  pure_id_lookup: 'bg-emerald-500/20 text-emerald-400',
-  search_endpoint: 'bg-amber-500/20 text-amber-400',
-  bulk_export: 'bg-red-500/20 text-red-400',
-};
-
-function QueryDeterminismBadge({ determinism }: { determinism: string }) {
-  const color = DETERMINISM_COLORS[determinism] ?? 'bg-zinc-500/20 text-zinc-400';
-  const label = determinism.replace(/_/g, ' ');
+function EvidenceCard({
+  item,
+  redacted,
+}: {
+  item: EvidenceItem;
+  redacted: boolean;
+}) {
   return (
-    <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase ${color}`}>
-      {label}
-    </span>
-  );
-}
-
-function EvidenceItemCard({ item, isRedacted }: { item: EvidenceItem; isRedacted: boolean }) {
-  return (
-    <div className={`bg-terminal-surface rounded-lg p-3 border ${
-      isRedacted ? 'border-red-500/30' : 'border-terminal-border'
-    }`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-terminal-text">{item.evidence_id}</span>
-          <ProvenanceBadge provenance={item.provenance_class} />
-          {item.query_determinism && (
-            <QueryDeterminismBadge determinism={item.query_determinism} />
-          )}
-          {isRedacted && (
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-red-500/20 text-red-400">
-              REDACTED
+    <div
+      className={clsx(
+        'rounded-lg border bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]',
+        redacted
+          ? 'border-[color:oklch(0.545_0.185_25_/_0.18)]'
+          : 'border-[var(--e-border-primary)]',
+      )}
+    >
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[11px] text-[var(--e-text-muted)]">{item.evidence_id}</span>
+          <ProvenanceBadge value={item.provenance_class} />
+          {redacted ? (
+            <span className="rounded-full border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--e-red-600)]">
+              Redacted
             </span>
-          )}
+          ) : null}
         </div>
-        <span className="text-[10px] text-terminal-text-muted whitespace-nowrap">
+        <span className="font-mono text-[11px] text-[var(--e-text-muted)]">
           {new Date(item.submitted_at).toLocaleString()}
         </span>
       </div>
 
-      <div className="mt-2 space-y-1 text-xs">
-        <div className="flex gap-2">
-          <span className="text-terminal-text-muted">Hash:</span>
-          <span className="font-mono text-terminal-text">
-            {item.content_hash.substring(0, 16)}...
-          </span>
-        </div>
-        <div className="flex gap-2">
-          <span className="text-terminal-text-muted">Type:</span>
-          <span className="text-terminal-text">{item.content_type}</span>
-        </div>
-        {item.source_description && (
-          <div className="flex gap-2">
-            <span className="text-terminal-text-muted">Source:</span>
-            <span className="text-terminal-text">{item.source_description}</span>
-          </div>
-        )}
-        {item.references.length > 0 && (
-          <div className="flex gap-2">
-            <span className="text-terminal-text-muted">Refs:</span>
-            <span className="font-mono text-terminal-text">
-              {item.references.join(', ')}
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ProvenanceSummaryBar({ summary }: { summary: Record<string, number> }) {
-  const total = Object.values(summary).reduce((a, b) => a + b, 0);
-  if (total === 0) return null;
-
-  return (
-    <div className="space-y-1">
-      <div className="flex h-2 rounded overflow-hidden">
-        {Object.entries(summary).map(([key, count]) => {
-          const pct = (count / total) * 100;
-          const colorClass = PROVENANCE_COLORS[key]?.split(' ')[0] ?? 'bg-zinc-500/20';
-          return (
-            <div
-              key={key}
-              className={colorClass.replace('/20', '/60')}
-              style={{ width: `${pct}%` }}
-              title={`${key}: ${count}`}
-            />
-          );
-        })}
-      </div>
-      <div className="flex gap-3 flex-wrap">
-        {Object.entries(summary).map(([key, count]) => (
-          <div key={key} className="flex items-center gap-1 text-[10px]">
-            <ProvenanceBadge provenance={key} />
-            <span className="text-terminal-text-muted">{count}</span>
-          </div>
-        ))}
+      <div className="grid grid-cols-[80px_1fr] gap-x-3 gap-y-1 text-[13px]">
+        <div className="text-[var(--e-text-muted)]">Hash</div>
+        <div className="font-mono text-[var(--e-text-primary)]">{item.content_hash}</div>
+        <div className="text-[var(--e-text-muted)]">Type</div>
+        <div className="text-[var(--e-text-primary)]">{item.content_type}</div>
+        {item.source_description ? (
+          <>
+            <div className="text-[var(--e-text-muted)]">Source</div>
+            <div className="text-[var(--e-text-primary)]">{item.source_description}</div>
+          </>
+        ) : null}
+        {item.references.length > 0 ? (
+          <>
+            <div className="text-[var(--e-text-muted)]">Refs</div>
+            <div className="font-mono text-[var(--e-text-primary)]">{item.references.join(', ')}</div>
+          </>
+        ) : null}
       </div>
     </div>
   );
 }
 
 export function EvidenceEnvelopePanel({ evidence }: { evidence: EvidenceEnvelopeManifest }) {
-  const redactedIds = new Set(evidence.redactions.map((r) => r.evidence_id));
+  const redactedIds = new Set(evidence.redactions.map((event) => event.evidence_id));
 
   if (evidence.items.length === 0) {
     return (
-      <div className="text-terminal-text-muted text-xs p-4">
+      <div className="rounded-lg border border-dashed border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-8 text-center text-[13px] text-[var(--e-text-muted)]">
         No evidence items submitted yet.
       </div>
     );
@@ -143,29 +88,29 @@ export function EvidenceEnvelopePanel({ evidence }: { evidence: EvidenceEnvelope
 
   return (
     <div className="space-y-4">
-      {/* Envelope hash */}
-      <div className="bg-terminal-surface rounded-lg p-3 border border-terminal-border">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-terminal-text-muted">Envelope Hash</span>
-          <span className="font-mono text-terminal-text">
-            {evidence.envelope_hash || '—'}
-          </span>
+      <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]">
+        <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+          Envelope Hash
         </div>
+        <div className="font-mono text-[12px] text-[var(--e-text-primary)]">{evidence.envelope_hash || '—'}</div>
       </div>
 
-      {/* Provenance summary bar */}
-      <ProvenanceSummaryBar summary={evidence.provenance_summary} />
+      <div className="flex flex-wrap gap-2">
+        {Object.entries(evidence.provenance_summary).map(([key, count]) => (
+          <div key={key} className="inline-flex items-center gap-2 rounded-full border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-1 shadow-[var(--e-shadow-xs)]">
+            <ProvenanceBadge value={key} />
+            <span className="text-[11px] text-[var(--e-text-muted)]">{count}</span>
+          </div>
+        ))}
+      </div>
 
-      {/* Evidence items (chronological) */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {evidence.items.map((item) => (
-          <EvidenceItemCard
-            key={item.evidence_id}
-            item={item}
-            isRedacted={redactedIds.has(item.evidence_id)}
-          />
+          <EvidenceCard key={item.evidence_id} item={item} redacted={redactedIds.has(item.evidence_id)} />
         ))}
       </div>
     </div>
   );
 }
+
+export default EvidenceEnvelopePanel;

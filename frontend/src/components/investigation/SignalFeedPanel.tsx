@@ -27,7 +27,9 @@ export function SignalFeedPanel() {
 
   const handleCreateFromSignal = (signal: CounterSignal) => {
     const params = new URLSearchParams();
+    params.set('signal_id', signal.counter_signal_id);
     params.set('signal_class', signal.signal_class);
+    params.set('source_surface', 'signal_feed');
     if (signal.evidence_ref) {
       params.set('evidence_ref', signal.evidence_ref);
     }

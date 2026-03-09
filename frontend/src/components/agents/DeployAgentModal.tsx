@@ -1,29 +1,18 @@
-/**
- * Deploy Agent Modal
- *
- * Staged deployment modal — agent-to-theatre assignment.
- *
- * BACKEND TRUTH (Cycle 019):
- *   POST /api/v1/agent-deployments — real endpoint, creates deployment record
- *   GET  /api/v1/agents            — real endpoint, returns agent roster
- *   GET  /api/v1/theatres          — NO list endpoint exists (only GET /{id})
- *
- * The theatre list will return empty until a list endpoint is added.
- * DeploymentGuardError surfaces as 422 with structured detail.
- *
- * STATES:
- *   1. Normal — agents loaded, theatres loaded (or empty), form active
- *   2. Empty  — no agents OR no theatres available (form disabled, explanation shown)
- *   3. Guard failure — deployment rejected by backend guard
- *   4. Success — deployment created, auto-close after 1.2s
- */
-
-import { useState, useEffect, useMemo } from 'react';
-import { X, Rocket, ChevronDown, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Info } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  Info,
+  Loader2,
+  Rocket,
+  ShieldAlert,
+  X,
+} from 'lucide-react';
 import { clsx } from 'clsx';
+import { apiClient } from '../../api/client';
 import { useCreateDeployment } from '../../hooks/useAgentDeployments';
 import { useAgentRoster } from '../../hooks/useAgents';
-import { apiClient } from '../../api/client';
 import type { StrategyProfile } from '../../types/agentDeployment';
 
 interface DeployAgentModalProps {
@@ -33,16 +22,112 @@ interface DeployAgentModalProps {
   preselectedTheatreId?: string;
 }
 
-const STRATEGIES: { id: StrategyProfile; label: string; description: string }[] = [
+interface TheatreOption {
+  id: string;
+  construct_id: string;
+  state: string;
+}
+
+const STRATEGIES: Array<{
+  id: StrategyProfile;
+  label: string;
+  description: string;
+}> = [
   { id: 'AGGRESSIVE', label: 'Aggressive', description: 'High risk, high reward' },
   { id: 'BALANCED', label: 'Balanced', description: 'Default strategy' },
   { id: 'DEFENSIVE', label: 'Defensive', description: 'Capital preservation' },
 ];
 
-interface TheatreOption {
-  id: string;
-  construct_id: string;
-  state: string;
+function parseGuardError(error: unknown): string | null {
+  const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+  return typeof detail === 'string' && detail.toLowerCase().includes('guard') ? detail : null;
+}
+
+function ModalSelect({
+  label,
+  value,
+  placeholder,
+  options,
+  open,
+  onToggle,
+  onSelect,
+  disabled,
+  locked,
+  loading,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  options: Array<{ value: string; label: string; sublabel?: string }>;
+  open: boolean;
+  onToggle: () => void;
+  onSelect: (value: string) => void;
+  disabled?: boolean;
+  locked?: boolean;
+  loading?: boolean;
+}) {
+  const selected = options.find((option) => option.value === value);
+
+  return (
+    <div>
+      <label className="mb-2 block text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--e-text-muted)]">
+        {label}
+      </label>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={disabled || locked}
+          className={clsx(
+            'flex w-full items-center justify-between rounded-md border px-3 py-2.5 text-left text-[13px] transition',
+            disabled
+              ? 'cursor-not-allowed border-[var(--e-border-secondary)] bg-[var(--e-bg-card)] text-[var(--e-text-disabled)] opacity-70'
+              : locked
+                ? 'cursor-default border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+                : 'border-[var(--e-border-primary)] bg-[var(--e-bg-elevated)] text-[var(--e-text-primary)] hover:border-[var(--e-purple-200)]',
+          )}
+        >
+          <span className={selected ? 'text-[var(--e-text-primary)]' : 'text-[var(--e-text-muted)]'}>
+            {selected?.label ?? placeholder}
+          </span>
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-[var(--e-text-muted)]" />
+          ) : !locked && !disabled ? (
+            <ChevronDown className={clsx('h-4 w-4 text-[var(--e-text-muted)] transition', open && 'rotate-180')} />
+          ) : null}
+        </button>
+
+        {open && !disabled && !locked ? (
+          <>
+            <button
+              type="button"
+              aria-label={`Close ${label} dropdown`}
+              onClick={onToggle}
+              className="fixed inset-0 z-[319] cursor-default bg-transparent"
+            />
+            <div className="absolute top-full z-[320] mt-1 max-h-44 w-full overflow-y-auto rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] py-1 shadow-[var(--e-shadow-md)]">
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => onSelect(option.value)}
+                  className={clsx(
+                    'flex w-full items-center justify-between px-3 py-2 text-left text-[12px] transition hover:bg-[var(--e-bg-hover)]',
+                    option.value === value ? 'text-[var(--e-purple-700)]' : 'text-[var(--e-text-primary)]',
+                  )}
+                >
+                  <span>{option.label}</span>
+                  {option.sublabel ? (
+                    <span className="font-mono text-[10px] text-[var(--e-text-muted)]">{option.sublabel}</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export function DeployAgentModal({
@@ -51,8 +136,11 @@ export function DeployAgentModal({
   preselectedAgentId,
   preselectedTheatreId,
 }: DeployAgentModalProps) {
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('');
-  const [selectedTheatreId, setSelectedTheatreId] = useState<string>('');
+  const { agents, isLoading: agentsLoading } = useAgentRoster({ is_alive: true });
+  const createDeployment = useCreateDeployment();
+
+  const [selectedAgentId, setSelectedAgentId] = useState('');
+  const [selectedTheatreId, setSelectedTheatreId] = useState('');
   const [strategy, setStrategy] = useState<StrategyProfile>('BALANCED');
   const [theatres, setTheatres] = useState<TheatreOption[]>([]);
   const [theatresLoading, setTheatresLoading] = useState(false);
@@ -60,29 +148,33 @@ export function DeployAgentModal({
   const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
   const [theatreDropdownOpen, setTheatreDropdownOpen] = useState(false);
 
-  const { agents, isLoading: agentsLoading } = useAgentRoster();
-  const createDeployment = useCreateDeployment();
-
-  // Derive selected agent/theatre display names
-  const selectedAgent = useMemo(
-    () => agents.find((a) => a.id === selectedAgentId),
-    [agents, selectedAgentId],
-  );
-  const selectedTheatre = useMemo(
-    () => theatres.find((t) => t.id === selectedTheatreId),
-    [theatres, selectedTheatreId],
-  );
-
-  // Load theatres from /api/v1/theatres
-  // NOTE: No GET /api/v1/theatres list endpoint exists yet — will 404 gracefully
   useEffect(() => {
     if (!open) return;
+    setSelectedAgentId(preselectedAgentId ?? '');
+    setSelectedTheatreId(preselectedTheatreId ?? '');
+    setStrategy('BALANCED');
+    setAgentDropdownOpen(false);
+    setTheatreDropdownOpen(false);
+    createDeployment.reset();
+  }, [createDeployment, open, preselectedAgentId, preselectedTheatreId]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (preselectedTheatreId) {
+      setTheatres([]);
+      setTheatresLoading(false);
+      setTheatresError(false);
+      return;
+    }
+
     setTheatresLoading(true);
     setTheatresError(false);
+
     apiClient
       .get('/api/v1/theatres')
-      .then((res) => {
-        const items = (res.data?.theatres ?? res.data ?? []) as TheatreOption[];
+      .then((response) => {
+        const items = (response.data?.theatres ?? response.data ?? []) as TheatreOption[];
         setTheatres(items);
       })
       .catch(() => {
@@ -90,320 +182,264 @@ export function DeployAgentModal({
         setTheatresError(true);
       })
       .finally(() => setTheatresLoading(false));
+  }, [open, preselectedTheatreId]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
   }, [open]);
 
-  // Reset state when modal opens
-  useEffect(() => {
-    if (open) {
-      setSelectedAgentId(preselectedAgentId ?? '');
-      setSelectedTheatreId(preselectedTheatreId ?? '');
-      setStrategy('BALANCED');
-      createDeployment.reset();
-    }
-  }, [open, preselectedAgentId, preselectedTheatreId]);
+  const selectedAgent = useMemo(
+    () => agents.find((agent) => agent.id === selectedAgentId),
+    [agents, selectedAgentId],
+  );
+  const selectedTheatre = useMemo(
+    () => theatres.find((theatre) => theatre.id === selectedTheatreId),
+    [selectedTheatreId, theatres],
+  );
 
-  // Lock body scroll
-  useEffect(() => {
-    if (open) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = '';
-    return () => { document.body.style.overflow = ''; };
-  }, [open]);
+  const hasTheatreContext = Boolean(preselectedTheatreId);
+  const canDeploy = Boolean(selectedAgentId && selectedTheatreId && !createDeployment.isPending);
+  const guardError = createDeployment.isError ? parseGuardError(createDeployment.error) : null;
 
-  if (!open) return null;
+  const agentOptions = agents.map((agent) => ({
+    value: agent.id,
+    label: agent.name ?? agent.id,
+    sublabel: agent.archetype,
+  }));
 
-  const hasAgents = !agentsLoading && agents.length > 0;
-  const hasTheatres = !theatresLoading && theatres.length > 0;
-  // Theatre-context deployment: when theatre_id is preselected, deployment is viable
-  // even without a theatre list endpoint
-  const hasTheatreContext = !!preselectedTheatreId;
-  const canDeploy = selectedAgentId && selectedTheatreId && !createDeployment.isPending;
-
-  // Extract guard error detail from API response
-  const guardError = createDeployment.isError
-    ? parseGuardError(createDeployment.error)
-    : null;
+  const theatreOptions = theatres.map((theatre) => ({
+    value: theatre.id,
+    label: theatre.construct_id ?? theatre.id,
+    sublabel: theatre.state,
+  }));
 
   const handleDeploy = () => {
     if (!canDeploy) return;
+
     createDeployment.mutate(
       {
         agent_id: selectedAgentId,
         theatre_id: selectedTheatreId,
         strategy_profile: strategy,
       },
-      { onSuccess: () => setTimeout(onClose, 1200) },
+      {
+        onSuccess: () => {
+          window.setTimeout(onClose, 1200);
+        },
+      },
     );
   };
 
-  // Agent dropdown trigger text
-  const agentTriggerText = agentsLoading
-    ? 'Loading agents...'
-    : selectedAgent
-      ? (selectedAgent.name ?? selectedAgent.id)
-      : agents.length === 0
-        ? 'No agents available'
-        : 'Select agent';
-
-  // Theatre dropdown trigger text
-  const theatreTriggerText = hasTheatreContext
-    ? `Theatre: ${selectedTheatreId.slice(0, 12)}`
-    : theatresLoading
-      ? 'Loading theatres...'
-      : selectedTheatre
-        ? (selectedTheatre.construct_id ?? selectedTheatre.id)
-        : theatres.length === 0
-          ? 'No theatres available'
-          : 'Select theatre';
+  if (!open) return null;
 
   return (
     <>
-      <div className="fixed inset-0 bg-terminal-bg/80 backdrop-blur-sm z-[300]" onClick={onClose} />
-      <div
-        className="fixed inset-0 z-[310] flex items-center justify-center p-4 pointer-events-none"
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-      >
-        <div
-          className="bg-terminal-bg border border-terminal-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-          data-testid="deploy-agent-modal"
-        >
-          {/* Header */}
-          <div className="p-5 border-b border-terminal-border flex items-center justify-between bg-terminal-surface">
+      <div className="fixed inset-0 z-[300] bg-[color:oklch(0.20_0.01_265_/_0.60)]" onClick={onClose} />
+      <div className="fixed inset-0 z-[310] flex items-center justify-center p-4">
+        <div className="w-full max-w-[560px] overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-md)]">
+          <div className="flex items-center justify-between border-b border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] p-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-echelon-cyan/10 rounded-full flex items-center justify-center border border-echelon-cyan/20">
-                <Rocket className="w-5 h-5 text-echelon-cyan" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--e-purple-200)] bg-[var(--e-purple-50)]">
+                <Rocket className="h-5 w-5 text-[var(--e-purple-500)]" />
               </div>
               <div>
-                <h3 className="text-white font-sans font-bold tracking-tight text-lg">Deploy Agent</h3>
-                <p className="text-terminal-text-muted text-xs">Assign agent to theatre with strategy</p>
+                <div className="text-[18px] font-bold tracking-[-0.01em] text-[var(--e-text-primary)]">
+                  Deploy Agent
+                </div>
+                <div className="text-[12px] text-[var(--e-text-muted)]">
+                  Assign agent to theatre with strategy
+                </div>
               </div>
             </div>
-            <button onClick={onClose} className="text-terminal-text-muted hover:text-white transition-colors">
-              <X className="w-5 h-5" />
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--e-text-muted)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
+              aria-label="Close deploy agent modal"
+            >
+              <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Content */}
-          <div className="p-6 overflow-y-auto flex-1 space-y-5">
-            {/* Success state */}
-            {createDeployment.isSuccess && (
-              <div className="bg-status-success/10 border border-status-success/30 rounded-lg p-4 flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-status-success" />
+          <div className="flex flex-col gap-5 p-6">
+            {createDeployment.isSuccess ? (
+              <div className="flex items-start gap-3 rounded-md border border-[color:oklch(0.545_0.170_152_/_0.30)] bg-[var(--e-green-50)] p-4">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 text-[var(--status-success)]" />
                 <div>
-                  <div className="text-sm font-semibold text-status-success">Agent Deployed</div>
-                  <div className="text-xs text-terminal-text-muted mt-0.5">
-                    Deployment ID: <span className="font-mono">{createDeployment.data?.id}</span>
+                  <div className="text-[13px] font-semibold text-[var(--e-green-600)]">
+                    Agent deployed
+                  </div>
+                  <div className="mt-1 text-[11px] text-[var(--e-text-muted)]">
+                    Deployment ID <span className="font-mono">{createDeployment.data?.id}</span>
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
 
-            {/* Guard error state — deployment rejected by backend guard */}
-            {guardError && (
-              <div className="bg-status-failure/10 border border-status-failure/30 rounded-lg p-4 space-y-2">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-status-failure shrink-0" />
-                  <span className="text-xs font-semibold text-status-failure">Deployment Guard Failure</span>
+            {guardError ? (
+              <div className="flex items-start gap-3 rounded-md border border-[color:oklch(0.545_0.185_25_/_0.30)] bg-[var(--e-red-50)] p-4">
+                <ShieldAlert className="mt-0.5 h-4 w-4 text-[var(--status-danger)]" />
+                <div>
+                  <div className="text-[12px] font-semibold text-[var(--e-red-600)]">
+                    Deployment guard failure
+                  </div>
+                  <div className="mt-1 text-[11px] text-[var(--status-danger)]/80">{guardError}</div>
                 </div>
-                <p className="text-xs text-status-failure/80 font-mono">{guardError}</p>
               </div>
-            )}
+            ) : null}
 
-            {/* Generic error state (non-guard) */}
-            {createDeployment.isError && !guardError && (
-              <div className="bg-status-failure/10 border border-status-failure/30 rounded-lg p-3 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-status-failure" />
-                <span className="text-xs text-status-failure">
+            {createDeployment.isError && !guardError ? (
+              <div className="flex items-start gap-3 rounded-md border border-[color:oklch(0.545_0.185_25_/_0.30)] bg-[var(--e-red-50)] p-4">
+                <AlertCircle className="mt-0.5 h-4 w-4 text-[var(--status-danger)]" />
+                <div className="text-[12px] text-[var(--e-red-600)]">
                   {(createDeployment.error as Error)?.message ?? 'Deployment failed'}
-                </span>
+                </div>
               </div>
-            )}
+            ) : null}
 
-            {/* Unavailable state — no theatres loaded and no preselected theatre context */}
-            {!theatresLoading && theatres.length === 0 && theatresError && !hasTheatreContext && (
-              <div className="bg-terminal-surface border border-terminal-border rounded-lg p-4 flex items-start gap-3">
-                <Info className="w-4 h-4 text-terminal-text-muted shrink-0 mt-0.5" />
+            {!hasTheatreContext && theatresError && !theatresLoading ? (
+              <div className="flex items-start gap-3 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] p-4">
+                <Info className="mt-0.5 h-4 w-4 text-[var(--e-text-muted)]" />
                 <div>
-                  <div className="text-xs font-semibold text-terminal-text">Theatre selection unavailable</div>
-                  <div className="text-xs text-terminal-text-muted mt-1">
-                    No theatre list endpoint exists (GET /api/v1/theatres). Deploy agents from a theatre detail page where the theatre context is already known.
+                  <div className="text-[12px] font-semibold text-[var(--e-text-primary)]">
+                    Theatre selection unavailable
+                  </div>
+                  <div className="mt-1 text-[11px] leading-5 text-[var(--e-text-muted)]">
+                    The theatre list API does not exist yet. Deploy from a theatre detail page where the theatre context is already known.
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
 
-            {/* Agent selection */}
-            <div>
-              <label className="text-xs font-sans text-terminal-text-muted uppercase tracking-wide block mb-2">
-                Agent
-              </label>
-              <div className="relative">
-                <button
-                  onClick={() => hasAgents && setAgentDropdownOpen(!agentDropdownOpen)}
-                  disabled={agentsLoading || !hasAgents}
-                  className={clsx(
-                    'w-full flex items-center justify-between border rounded-lg px-3 py-2.5 text-sm font-mono transition-all',
-                    hasAgents
-                      ? 'bg-terminal-bg border-terminal-border text-white hover:border-echelon-cyan/40'
-                      : 'bg-terminal-bg border-terminal-border/50 text-terminal-text-muted cursor-not-allowed',
-                  )}
-                >
-                  <span className={selectedAgent ? 'text-white' : 'text-terminal-text-muted'}>
-                    {agentTriggerText}
-                  </span>
-                  {hasAgents && (
-                    <ChevronDown className={clsx('w-4 h-4 text-terminal-text-muted transition', agentDropdownOpen && 'rotate-180')} />
-                  )}
-                  {agentsLoading && <Loader2 className="w-4 h-4 text-terminal-text-muted animate-spin" />}
-                </button>
-                {agentDropdownOpen && agents.length > 0 && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setAgentDropdownOpen(false)} />
-                    <div className="absolute top-full left-0 mt-1 w-full bg-terminal-panel border border-terminal-border rounded-lg shadow-lg z-20 max-h-40 overflow-y-auto">
-                      {agents.map((agent) => (
-                        <button
-                          key={agent.id}
-                          onClick={() => { setSelectedAgentId(agent.id); setAgentDropdownOpen(false); }}
-                          className={clsx(
-                            'w-full text-left px-3 py-2.5 text-xs font-mono hover:bg-terminal-card transition flex items-center justify-between',
-                            selectedAgentId === agent.id ? 'text-echelon-cyan' : 'text-terminal-text',
-                          )}
-                        >
-                          <span>{agent.name ?? agent.id}</span>
-                          <span className="text-terminal-text-muted text-[10px]">{agent.archetype}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+            <ModalSelect
+              label="Agent"
+              value={selectedAgentId}
+              placeholder={agentsLoading ? 'Loading agents…' : 'Select agent'}
+              options={agentOptions}
+              open={agentDropdownOpen}
+              onToggle={() => setAgentDropdownOpen((state) => !state)}
+              onSelect={(value) => {
+                setSelectedAgentId(value);
+                setAgentDropdownOpen(false);
+              }}
+              disabled={agentsLoading || agentOptions.length === 0}
+              loading={agentsLoading}
+            />
 
-            {/* Theatre selection */}
-            <div>
-              <label className="text-xs font-sans text-terminal-text-muted uppercase tracking-wide block mb-2">
-                Theatre
-              </label>
-              <div className="relative">
-                <button
-                  onClick={() => !hasTheatreContext && hasTheatres && setTheatreDropdownOpen(!theatreDropdownOpen)}
-                  disabled={hasTheatreContext || theatresLoading || !hasTheatres}
-                  className={clsx(
-                    'w-full flex items-center justify-between border rounded-lg px-3 py-2.5 text-sm font-mono transition-all',
-                    hasTheatreContext
-                      ? 'bg-terminal-bg border-echelon-cyan/30 text-echelon-cyan cursor-default'
-                      : hasTheatres
-                        ? 'bg-terminal-bg border-terminal-border text-white hover:border-echelon-cyan/40'
-                        : 'bg-terminal-bg border-terminal-border/50 text-terminal-text-muted cursor-not-allowed',
-                  )}
-                >
-                  <span className={clsx(
-                    hasTheatreContext ? 'text-echelon-cyan' : selectedTheatre ? 'text-white' : 'text-terminal-text-muted',
-                  )}>
-                    {theatreTriggerText}
-                  </span>
-                  {!hasTheatreContext && hasTheatres && (
-                    <ChevronDown className={clsx('w-4 h-4 text-terminal-text-muted transition', theatreDropdownOpen && 'rotate-180')} />
-                  )}
-                  {theatresLoading && !hasTheatreContext && <Loader2 className="w-4 h-4 text-terminal-text-muted animate-spin" />}
-                </button>
-                {theatreDropdownOpen && theatres.length > 0 && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setTheatreDropdownOpen(false)} />
-                    <div className="absolute top-full left-0 mt-1 w-full bg-terminal-panel border border-terminal-border rounded-lg shadow-lg z-20 max-h-40 overflow-y-auto">
-                      {theatres.map((t) => (
-                        <button
-                          key={t.id}
-                          onClick={() => { setSelectedTheatreId(t.id); setTheatreDropdownOpen(false); }}
-                          className={clsx(
-                            'w-full text-left px-3 py-2.5 text-xs font-mono hover:bg-terminal-card transition flex items-center justify-between',
-                            selectedTheatreId === t.id ? 'text-echelon-cyan' : 'text-terminal-text',
-                          )}
-                        >
-                          <span>{t.construct_id ?? t.id}</span>
-                          <span className="text-terminal-text-muted text-[10px]">{t.state}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
+            <ModalSelect
+              label="Theatre"
+              value={selectedTheatreId}
+              placeholder={
+                hasTheatreContext
+                  ? `Theatre: ${selectedTheatreId.slice(0, 12)}`
+                  : theatresLoading
+                    ? 'Loading theatres…'
+                    : 'No list endpoint available'
+              }
+              options={theatreOptions}
+              open={theatreDropdownOpen}
+              onToggle={() => setTheatreDropdownOpen((state) => !state)}
+              onSelect={(value) => {
+                setSelectedTheatreId(value);
+                setTheatreDropdownOpen(false);
+              }}
+              disabled={(!hasTheatreContext && theatreOptions.length === 0) || theatresLoading}
+              locked={hasTheatreContext}
+              loading={theatresLoading && !hasTheatreContext}
+            />
 
-            {/* Strategy */}
             <div>
-              <label className="text-xs font-sans text-terminal-text-muted uppercase tracking-wide block mb-2">
+              <label className="mb-2 block text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--e-text-muted)]">
                 Strategy Profile
               </label>
               <div className="flex gap-2">
-                {STRATEGIES.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setStrategy(s.id)}
-                    className={clsx(
-                      'flex-1 px-2 py-2.5 text-xs rounded-lg border transition-all text-left',
-                      strategy === s.id
-                        ? 'bg-echelon-cyan/10 border-echelon-cyan/30 text-echelon-cyan'
-                        : 'bg-terminal-bg border-terminal-border text-terminal-text-muted hover:text-terminal-text hover:border-terminal-border',
-                    )}
-                  >
-                    <div className="font-semibold">{s.label}</div>
-                    <div className={clsx(
-                      'text-[10px] mt-0.5',
-                      strategy === s.id ? 'text-echelon-cyan/70' : 'text-terminal-text-muted',
-                    )}>
-                      {s.description}
-                    </div>
-                  </button>
-                ))}
+                {STRATEGIES.map((option) => {
+                  const active = strategy === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setStrategy(option.id)}
+                      className={clsx(
+                        'flex-1 rounded-md border p-3 text-left transition',
+                        active
+                          ? 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)]'
+                          : 'border-[var(--e-border-primary)] bg-[var(--e-bg-elevated)] hover:border-[var(--e-purple-200)]',
+                      )}
+                    >
+                      <div
+                        className={clsx(
+                          'text-[12px] font-semibold',
+                          active ? 'text-[var(--e-purple-700)]' : 'text-[var(--e-text-primary)]',
+                        )}
+                      >
+                        {option.label}
+                      </div>
+                      <div
+                        className={clsx(
+                          'mt-1 text-[10px]',
+                          active ? 'text-[var(--e-purple-400)]' : 'text-[var(--e-text-muted)]',
+                        )}
+                      >
+                        {option.description}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
+
+            {selectedAgent ? (
+              <div className="rounded-md border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3 text-[12px] text-[var(--e-text-secondary)]">
+                Deploying <span className="font-semibold text-[var(--e-text-primary)]">{selectedAgent.name}</span>
+                {selectedTheatre ? (
+                  <>
+                    {' '}
+                    into <span className="font-semibold text-[var(--e-text-primary)]">{selectedTheatre.construct_id}</span>
+                  </>
+                ) : hasTheatreContext ? (
+                  <>
+                    {' '}
+                    into <span className="font-semibold text-[var(--e-text-primary)]">{selectedTheatreId.slice(0, 12)}</span>
+                  </>
+                ) : null}
+                .
+              </div>
+            ) : null}
           </div>
 
-          {/* Footer */}
-          <div className="p-5 border-t border-terminal-border bg-terminal-surface flex gap-3 rounded-b-xl">
+          <div className="flex gap-3 border-t border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] p-5">
             <button
+              type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-3 bg-white/5 text-terminal-text-muted rounded-lg font-bold hover:bg-white/10 transition-colors font-sans text-sm"
+              className="flex-1 rounded-md bg-[var(--e-bg-hover)] px-4 py-3 text-[13px] font-semibold text-[var(--e-text-muted)] transition hover:bg-[var(--e-bg-active)] hover:text-[var(--e-text-primary)]"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleDeploy}
               disabled={!canDeploy}
               className={clsx(
-                'flex-1 px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2 font-sans text-sm transition-colors',
+                'flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-3 text-[13px] font-semibold transition',
                 canDeploy
-                  ? 'bg-echelon-cyan/20 border border-echelon-cyan/40 text-echelon-cyan hover:bg-echelon-cyan/30'
-                  : 'bg-echelon-cyan/10 border border-echelon-cyan/20 text-echelon-cyan/50 cursor-not-allowed',
+                  ? 'bg-[var(--e-purple-500)] text-[var(--e-text-inverse)] hover:bg-[var(--e-purple-600)]'
+                  : 'cursor-not-allowed bg-[var(--e-purple-200)] text-[var(--e-text-disabled)]',
               )}
             >
-              {createDeployment.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Rocket className="w-4 h-4" />
-              )}
-              {createDeployment.isPending ? 'Deploying...' : 'Deploy'}
+              {createDeployment.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+              {createDeployment.isPending ? 'Deploying…' : 'Deploy'}
             </button>
           </div>
         </div>
       </div>
     </>
   );
-}
-
-/**
- * Extract guard error detail from API error response.
- * DeploymentGuardError returns structured detail from the backend.
- */
-function parseGuardError(error: unknown): string | null {
-  if (!error) return null;
-  const err = error as { response?: { data?: { detail?: string } }; message?: string };
-  const detail = err.response?.data?.detail;
-  if (typeof detail === 'string' && detail.toLowerCase().includes('guard')) {
-    return detail;
-  }
-  return null;
 }
 
 export default DeployAgentModal;

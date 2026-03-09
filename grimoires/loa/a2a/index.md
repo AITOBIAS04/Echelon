@@ -96,3 +96,12 @@
 | Sprint 0 | sprint-66 | COMPLETED | [reviewer.md](sprint-66/reviewer.md) | [engineer-feedback.md](sprint-66/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-66/auditor-sprint-feedback.md) |
 | Sprint 1 | sprint-67 | COMPLETED | [reviewer.md](sprint-67/reviewer.md) | [engineer-feedback.md](sprint-67/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-67/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-68 | COMPLETED | [reviewer.md](sprint-68/reviewer.md) | [engineer-feedback.md](sprint-68/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-68/auditor-sprint-feedback.md) |
+
+## Cycle-022: Investigation Template Infrastructure
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 0 | sprint-69 | COMPLETED | [reviewer.md](sprint-69/reviewer.md) | [engineer-feedback.md](sprint-69/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-69/auditor-sprint-feedback.md) |
+| Sprint 1 | sprint-70 | COMPLETED | [reviewer.md](sprint-70/reviewer.md) | [engineer-feedback.md](sprint-70/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-70/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-71 | COMPLETED | [reviewer.md](sprint-71/reviewer.md) | [engineer-feedback.md](sprint-71/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-71/auditor-sprint-feedback.md) |
+| Sprint 3 | sprint-72 | COMPLETED | [reviewer.md](sprint-72/reviewer.md) | [engineer-feedback.md](sprint-72/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-72/auditor-sprint-feedback.md) |

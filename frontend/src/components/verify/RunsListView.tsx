@@ -1,25 +1,17 @@
-/**
- * RunsListView — Table of verification runs with filters, pagination, status chips.
- */
-
 import { useState } from 'react';
-import { ShieldCheck, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FlaskConical, X } from 'lucide-react';
+import { clsx } from 'clsx';
 import type { VerificationRun, VerificationRunStatus } from '../../types/verification';
 import { ACTIVE_STATUSES } from '../../types/verification';
 
 const PAGE_SIZE = 20;
 
-// ── Status chip mapping ──────────────────────────────────────────────────
-
 function statusChipClass(status: VerificationRunStatus): string {
-  if (status === 'COMPLETED') return 'chip chip-success';
-  if (status === 'FAILED') return 'chip chip-danger';
-  if (status === 'PENDING') return 'chip chip-neutral';
-  // Active states
-  return 'chip chip-info animate-pulse';
+  if (status === 'COMPLETED') return 'border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[var(--e-green-50)] text-[var(--e-green-600)]';
+  if (status === 'FAILED') return 'border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] text-[var(--e-red-600)]';
+  if (status === 'PENDING') return 'border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]';
+  return 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]';
 }
-
-// ── Relative time ────────────────────────────────────────────────────────
 
 function relativeTime(iso: string): string {
   const now = Date.now();
@@ -35,13 +27,9 @@ function relativeTime(iso: string): string {
   return `${diffDay}d ago`;
 }
 
-// ── Progress bar ─────────────────────────────────────────────────────────
-
 function showProgress(status: VerificationRunStatus): boolean {
   return ACTIVE_STATUSES.includes(status) || status === 'COMPLETED';
 }
-
-// ── Component ────────────────────────────────────────────────────────────
 
 interface RunsListViewProps {
   runs: VerificationRun[];
@@ -78,38 +66,66 @@ export function RunsListView({
   onSelectRun,
 }: RunsListViewProps) {
   const [constructInput, setConstructInput] = useState(filters.construct_id ?? '');
-
   const hasFilters = !!filters.status || !!filters.construct_id;
-
   const rangeStart = offset + 1;
   const rangeEnd = Math.min(offset + PAGE_SIZE, total);
+  const completed = runs.filter((run) => run.status === 'COMPLETED').length;
+  const active = runs.filter((run) => ACTIVE_STATUSES.includes(run.status)).length;
+  const avgCompletion =
+    runs.length > 0
+      ? Math.round(
+          (runs.reduce((sum, run) => sum + (run.total > 0 ? run.progress / run.total : 0), 0) / runs.length) *
+            100,
+        )
+      : 0;
 
-  // Loading skeleton
   if (isLoading && runs.length === 0) {
     return (
-      <div className="space-y-3">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-10 bg-terminal-panel border border-terminal-border rounded-lg animate-pulse" />
+      <div className="space-y-4">
+        <div className="grid gap-3 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className="h-24 animate-pulse rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)]"
+            />
+          ))}
+        </div>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-16 animate-pulse rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)]"
+          />
         ))}
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
-      <div className="bg-terminal-panel border border-status-danger/20 rounded-lg p-6 text-center">
-        <p className="text-xs text-status-danger">Failed to load verification runs: {error.message}</p>
+      <div className="rounded-lg border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-bg-card)] px-6 py-8 text-center shadow-[var(--e-shadow-xs)]">
+        <FlaskConical className="mx-auto mb-3 h-8 w-8 text-[var(--e-red-600)]" />
+        <p className="text-[14px] font-semibold text-[var(--e-red-600)]">Failed to load verification runs</p>
+        <p className="mt-1 text-[13px] text-[var(--e-text-secondary)]">{error.message}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {/* Filter bar */}
-      <div className="flex items-center gap-2 flex-wrap">
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-4">
+        <RunStatCard label="Visible Runs" value={runs.length} />
+        <RunStatCard label="Active" value={active} tone="info" />
+        <RunStatCard label="Completed" value={completed} tone="success" />
+        <RunStatCard
+          label="Avg Completion"
+          value={runs.length > 0 ? `${avgCompletion}%` : '—'}
+          tone={avgCompletion >= 80 ? 'success' : avgCompletion >= 40 ? 'warning' : undefined}
+        />
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] p-4 shadow-[var(--e-shadow-xs)] sm:flex-row sm:flex-wrap sm:items-center">
         <select
-          className="terminal-input"
+          className="h-11 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[13px] text-[var(--e-text-secondary)] outline-none transition focus:border-[var(--e-purple-500)]"
           value={filters.status ?? ''}
           onChange={(e) => {
             const val = e.target.value as VerificationRunStatus | '';
@@ -118,13 +134,15 @@ export function RunsListView({
           }}
         >
           {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
           ))}
         </select>
 
         <input
           type="text"
-          className="terminal-input w-48"
+          className="h-11 w-full rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 text-[13px] text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-purple-500)] sm:w-56"
           placeholder="Filter by construct ID..."
           value={constructInput}
           onChange={(e) => setConstructInput(e.target.value)}
@@ -140,79 +158,89 @@ export function RunsListView({
           }}
         />
 
-        {hasFilters && (
+        {hasFilters ? (
           <button
-            className="btn-ghost text-[10px]"
+            className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 text-[12px] font-semibold text-[var(--e-text-secondary)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
             onClick={() => {
               setConstructInput('');
               onFiltersChange({});
               onOffsetChange(0);
             }}
           >
-            <X className="w-3 h-3" />
+            <X className="h-3.5 w-3.5" />
             Clear
           </button>
-        )}
+        ) : null}
       </div>
 
-      {/* Empty state */}
       {runs.length === 0 ? (
-        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-8 text-center">
-          <ShieldCheck className="w-8 h-8 text-terminal-text-muted mx-auto mb-3" aria-hidden="true" />
-          <p className="text-xs text-terminal-text-muted">No verification runs yet</p>
+        <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-8 py-12 text-center shadow-[var(--e-shadow-xs)]">
+          <FlaskConical className="mx-auto mb-4 h-10 w-10 text-[var(--e-text-muted)]" aria-hidden="true" />
+          <p className="text-[14px] font-semibold text-[var(--e-text-primary)]">No verification runs yet</p>
+          <p className="mt-1 text-[13px] text-[var(--e-text-secondary)]">
+            Start a verification run to benchmark a construct and generate a public calibration certificate.
+          </p>
         </div>
       ) : (
         <>
-          {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="terminal-table">
+          <div className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+            <table className="min-w-full border-collapse">
               <thead>
-                <tr>
-                  <th>Construct ID</th>
-                  <th>Status</th>
-                  <th>Progress</th>
-                  <th>Created</th>
-                  <th>Actions</th>
+                <tr className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-left">
+                  <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">Construct</th>
+                  <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">Status</th>
+                  <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">Progress</th>
+                  <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">Created</th>
+                  <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {runs.map((run) => (
                   <tr
                     key={run.run_id}
-                    className="cursor-pointer"
+                    className="cursor-pointer border-b border-[var(--e-border-secondary)] transition hover:bg-[var(--e-bg-hover)] last:border-b-0"
                     onClick={() => onSelectRun(run.run_id)}
                   >
-                    <td className="font-mono text-echelon-cyan text-[11px]">
-                      {run.construct_id}
+                    <td className="px-4 py-4">
+                      <div className="space-y-1">
+                        <div className="text-[13px] font-semibold text-[var(--e-text-primary)]">{run.construct_id}</div>
+                        <div className="font-mono text-[11px] text-[var(--e-text-muted)]">{run.repo_url}</div>
+                      </div>
                     </td>
-                    <td>
-                      <span className={statusChipClass(run.status)}>
+                    <td className="px-4 py-4">
+                      <span
+                        className={clsx(
+                          'inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.04em]',
+                          statusChipClass(run.status),
+                          ACTIVE_STATUSES.includes(run.status) && 'animate-pulse',
+                        )}
+                      >
                         {run.status}
                       </span>
                     </td>
-                    <td>
+                    <td className="px-4 py-4">
                       {showProgress(run.status) ? (
                         <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-24 bg-terminal-border/30 rounded-full overflow-hidden">
+                          <div className="h-1.5 w-24 overflow-hidden rounded-full bg-[var(--e-bg-sunken)]">
                             <div
-                              className="h-full bg-echelon-cyan rounded-full transition-all duration-500"
+                              className="h-full rounded-full bg-[var(--e-purple-500)] transition-all duration-500"
                               style={{ width: run.total > 0 ? `${(run.progress / run.total) * 100}%` : '0%' }}
                             />
                           </div>
-                          <span className="font-mono text-[10px] text-terminal-text-muted tabular-nums">
+                          <span className="font-mono text-[11px] tabular-nums text-[var(--e-text-muted)]">
                             {run.progress}/{run.total}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-terminal-text-muted text-[10px]">—</span>
+                        <span className="text-[11px] text-[var(--e-text-muted)]">—</span>
                       )}
                     </td>
-                    <td className="font-mono text-terminal-text-muted text-[11px]">
+                    <td className="px-4 py-4 font-mono text-[12px] text-[var(--e-text-secondary)]">
                       {relativeTime(run.created_at)}
                     </td>
-                    <td>
+                    <td className="px-4 py-4">
                       <button
-                        className="btn-ghost text-[10px]"
+                        className="inline-flex h-9 items-center rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[12px] font-semibold text-[var(--e-text-secondary)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
                         onClick={(e) => {
                           e.stopPropagation();
                           onSelectRun(run.run_id);
@@ -227,34 +255,65 @@ export function RunsListView({
             </table>
           </div>
 
-          {/* Pagination */}
           {total > PAGE_SIZE && (
-            <div className="flex items-center justify-between text-xs text-terminal-text-muted">
+            <div className="flex items-center justify-between text-[12px] text-[var(--e-text-muted)]">
               <span>
                 Showing {rangeStart}–{rangeEnd} of {total}
               </span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <button
-                  className="btn-ghost text-[10px]"
+                  className="inline-flex h-9 items-center gap-1 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[12px] font-semibold text-[var(--e-text-secondary)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={offset === 0}
                   onClick={() => onOffsetChange(Math.max(0, offset - PAGE_SIZE))}
                 >
-                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <ChevronLeft className="h-3.5 w-3.5" />
                   Prev
                 </button>
                 <button
-                  className="btn-ghost text-[10px]"
+                  className="inline-flex h-9 items-center gap-1 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[12px] font-semibold text-[var(--e-text-secondary)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={offset + PAGE_SIZE >= total}
                   onClick={() => onOffsetChange(offset + PAGE_SIZE)}
                 >
                   Next
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <ChevronRight className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function RunStatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  tone?: 'success' | 'warning' | 'danger' | 'info';
+}) {
+  return (
+    <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-3 shadow-[var(--e-shadow-xs)]">
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">{label}</div>
+      <div
+        className={clsx(
+          'font-mono text-[24px] font-bold leading-8 tabular-nums',
+          tone === 'success'
+            ? 'text-[var(--e-green-600)]'
+            : tone === 'warning'
+              ? 'text-[var(--e-orange-600)]'
+              : tone === 'danger'
+                ? 'text-[var(--e-red-600)]'
+                : tone === 'info'
+                  ? 'text-[var(--e-purple-700)]'
+                  : 'text-[var(--e-text-primary)]',
+        )}
+      >
+        {value}
+      </div>
     </div>
   );
 }

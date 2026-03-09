@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { BreachConsolePage } from '../BreachConsolePage';
 
 vi.mock('../../api/client', () => ({
@@ -18,15 +19,18 @@ function renderWithProviders(ui: React.ReactElement) {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        {ui}
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
 describe('BreachConsolePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    cleanup();
   });
 
   it('renders paradox data from real API (no demoStore)', async () => {
@@ -109,12 +113,12 @@ describe('BreachConsolePage', () => {
 
     renderWithProviders(<BreachConsolePage />);
 
-    expect(await screen.findByText('EXTRACTING')).toBeInTheDocument();
+    expect(await screen.findByText('Extracting')).toBeInTheDocument();
     expect(screen.getByText('ETH_MERGE')).toBeInTheDocument();
-    expect(screen.getByText('VIPER', { exact: false })).toBeInTheDocument();
+    expect(screen.getAllByText('VIPER').length).toBeGreaterThan(0);
   });
 
-  it('has disabled action buttons', async () => {
+  it('shows live action buttons for active paradoxes', async () => {
     mockGet.mockResolvedValue({
       data: {
         paradoxes: [{
@@ -136,9 +140,94 @@ describe('BreachConsolePage', () => {
     await screen.findByText('TEST');
 
     const extractBtn = screen.getByText('Extract').closest('button');
-    expect(extractBtn).toBeDisabled();
+    expect(extractBtn).not.toBeDisabled();
 
     const abandonBtn = screen.getByText('Abandon').closest('button');
-    expect(abandonBtn).toBeDisabled();
+    expect(abandonBtn).not.toBeDisabled();
+  });
+
+  it('shows the detonation queue only in critical state', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        paradoxes: [{
+          id: 'pdx-watch',
+          timeline_id: 'tl-watch',
+          timeline_name: 'WATCH_ONLY',
+          status: 'ACTIVE',
+          severity_class: 'CLASS_3_MODERATE',
+          logic_gap: 0.22,
+          spawned_at: '2026-03-01T12:00:00Z',
+          detonation_time: '2026-03-01T15:00:00Z',
+          time_remaining_seconds: 7200,
+          decay_multiplier: 1.5,
+          extraction_cost_usdc: 90,
+          extraction_cost_echelon: 12,
+          carrier_sanity_cost: 5,
+          carrier_agent_id: null,
+          carrier_agent_name: null,
+          carrier_agent_sanity: null,
+          connected_timelines: [],
+        }],
+        total_active: 1,
+      },
+    } as any);
+
+    const firstRender = renderWithProviders(<BreachConsolePage />);
+
+    await screen.findByText('WATCH_ONLY');
+    expect(screen.queryByText('Detonation Queue')).not.toBeInTheDocument();
+    firstRender.unmount();
+
+    vi.clearAllMocks();
+    mockGet.mockResolvedValueOnce({
+      data: {
+        paradoxes: [
+          {
+            id: 'pdx-critical',
+            timeline_id: 'tl-critical',
+            timeline_name: 'CRITICAL_ONE',
+            status: 'ACTIVE',
+            severity_class: 'CLASS_1_CRITICAL',
+            logic_gap: 0.71,
+            spawned_at: '2026-03-01T12:00:00Z',
+            detonation_time: '2026-03-01T12:30:00Z',
+            time_remaining_seconds: 900,
+            decay_multiplier: 4.2,
+            extraction_cost_usdc: 350,
+            extraction_cost_echelon: 80,
+            carrier_sanity_cost: 18,
+            carrier_agent_id: null,
+            carrier_agent_name: null,
+            carrier_agent_sanity: null,
+            connected_timelines: [],
+          },
+          {
+            id: 'pdx-urgent',
+            timeline_id: 'tl-urgent',
+            timeline_name: 'URGENT_TWO',
+            status: 'ACTIVE',
+            severity_class: 'CLASS_2_SEVERE',
+            logic_gap: 0.54,
+            spawned_at: '2026-03-01T12:00:00Z',
+            detonation_time: '2026-03-01T13:00:00Z',
+            time_remaining_seconds: 1800,
+            decay_multiplier: 3.4,
+            extraction_cost_usdc: 260,
+            extraction_cost_echelon: 54,
+            carrier_sanity_cost: 14,
+            carrier_agent_id: null,
+            carrier_agent_name: null,
+            carrier_agent_sanity: null,
+            connected_timelines: [],
+          },
+        ],
+        total_active: 2,
+      },
+    } as any);
+
+    renderWithProviders(<BreachConsolePage />);
+
+    expect((await screen.findAllByText('CRITICAL_ONE')).length).toBeGreaterThan(0);
+    expect(screen.getByText('Detonation Queue')).toBeInTheDocument();
   });
 });

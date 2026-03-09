@@ -99,6 +99,7 @@ export async function createInvestigation(body: {
   theatre_id?: string;
   construct_id?: string;
   inquiry_class?: string;
+  template_id?: string;
   domain_filters?: string[];
   stop_condition?: string;
   stop_config?: Record<string, unknown>;

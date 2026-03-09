@@ -1,62 +1,85 @@
 /**
- * DomainFilterSelector — 9 domain categories with source group preview.
- * Used in the Investigation Creation Wizard step 3.
+ * DomainFilterSelector — committed investigation ingestion filters.
+ *
+ * Domain filter IDs align to the backend DomainFilter enum
+ * (backend/investigation/signal_scanner.py).
  */
+
+import {
+  Anchor,
+  Building2,
+  Gavel,
+  Landmark,
+  Plane,
+  Satellite,
+  Shield,
+  Swords,
+  Waves,
+} from 'lucide-react';
 
 const DOMAIN_CATEGORIES = [
   {
-    id: 'financial_filings',
-    label: 'Financial Filings',
-    description: 'SEC, EDGAR, annual reports, quarterly earnings',
-    sources: ['SEC EDGAR', 'Annual Reports', '10-K/10-Q'],
-  },
-  {
-    id: 'regulatory',
-    label: 'Regulatory',
-    description: 'Government agencies, compliance databases, enforcement actions',
-    sources: ['FDA', 'FTC', 'DOJ', 'EU Commission'],
-  },
-  {
-    id: 'corporate_registry',
-    label: 'Corporate Registry',
-    description: 'Business registrations, beneficial ownership, corporate structure',
+    id: 'corporate_and_entity',
+    label: 'Corporate & Entity',
+    description: 'Business registrations, beneficial ownership, corporate structure, identity checks',
     sources: ['OpenCorporates', 'Companies House', 'State SOS'],
+    icon: Building2,
   },
   {
-    id: 'litigation',
-    label: 'Litigation',
-    description: 'Court records, legal proceedings, patent disputes',
+    id: 'finance_and_markets',
+    label: 'Finance & Markets',
+    description: 'SEC filings, earnings reports, market data, financial disclosures',
+    sources: ['SEC EDGAR', '10-K/10-Q', 'Bloomberg'],
+    icon: Landmark,
+  },
+  {
+    id: 'maritime',
+    label: 'Maritime',
+    description: 'Vessel tracking, shipping records, port activity, maritime intelligence',
+    sources: ['MarineTraffic', 'AIS Data', 'Lloyd\'s List'],
+    icon: Anchor,
+  },
+  {
+    id: 'airspace',
+    label: 'Airspace',
+    description: 'Flight tracking, airspace monitoring, aviation intelligence',
+    sources: ['FlightRadar24', 'ADS-B Exchange', 'ICAO'],
+    icon: Plane,
+  },
+  {
+    id: 'geopolitical_and_conflict',
+    label: 'Geopolitical & Conflict',
+    description: 'Sanctions lists, political risk, conflict monitoring, country assessments',
+    sources: ['OFAC', 'EU Sanctions', 'UN Lists', 'ACLED'],
+    icon: Swords,
+  },
+  {
+    id: 'cyber_threat',
+    label: 'Cyber Threat',
+    description: 'Threat intelligence, vulnerability databases, dark web monitoring',
+    sources: ['CVE', 'VirusTotal', 'Shodan', 'MITRE ATT&CK'],
+    icon: Shield,
+  },
+  {
+    id: 'property_and_land',
+    label: 'Property & Land',
+    description: 'Land registry, property records, real estate transactions',
+    sources: ['Land Registry', 'County Records', 'Zillow'],
+    icon: Waves,
+  },
+  {
+    id: 'court_and_legal',
+    label: 'Court & Legal',
+    description: 'Court records, legal proceedings, enforcement actions, patent disputes',
     sources: ['PACER', 'CourtListener', 'Patent Office'],
+    icon: Gavel,
   },
   {
-    id: 'media_news',
-    label: 'Media & News',
-    description: 'News outlets, press releases, investigative journalism',
-    sources: ['Reuters', 'AP', 'Bloomberg', 'Local Media'],
-  },
-  {
-    id: 'social_sentiment',
-    label: 'Social Sentiment',
-    description: 'Social media analysis, community forums, public opinion',
-    sources: ['Twitter/X', 'Reddit', 'Forums'],
-  },
-  {
-    id: 'supply_chain',
-    label: 'Supply Chain',
-    description: 'Trade data, shipping records, supplier networks',
-    sources: ['ImportGenius', 'Panjiva', 'Trade DBs'],
-  },
-  {
-    id: 'geopolitical',
-    label: 'Geopolitical',
-    description: 'Sanctions lists, political risk, country assessments',
-    sources: ['OFAC', 'EU Sanctions', 'UN Lists'],
-  },
-  {
-    id: 'technical',
-    label: 'Technical',
-    description: 'Patents, academic papers, technical standards',
-    sources: ['USPTO', 'ArXiv', 'IEEE'],
+    id: 'satellite_and_earth_observation',
+    label: 'Satellite & Earth Obs',
+    description: 'Satellite imagery, earth observation data, geospatial intelligence',
+    sources: ['Sentinel', 'Planet Labs', 'Maxar'],
+    icon: Satellite,
   },
 ] as const;
 
@@ -70,57 +93,75 @@ interface DomainFilterSelectorProps {
 export function DomainFilterSelector({ selected, onChange }: DomainFilterSelectorProps) {
   const toggle = (id: DomainFilterId) => {
     onChange(
-      selected.includes(id)
-        ? selected.filter((s) => s !== id)
-        : [...selected, id],
+      selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id],
     );
   };
 
   return (
-    <div className="space-y-3">
-      <div className="text-xs text-terminal-text-muted">
-        Select domain categories to scope the investigation. Each category maps to specific OSINT source groups.
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-4">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+          Committed ingestion filters
+        </div>
+        <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
+          These filters govern what evidence and signal classes are considered in scope for the investigation. They are part of the bounded inquiry receipt, not just UI filters.
+        </p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {DOMAIN_CATEGORIES.map((cat) => {
-          const isSelected = selected.includes(cat.id);
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {DOMAIN_CATEGORIES.map((category) => {
+          const selectedState = selected.includes(category.id);
+          const Icon = category.icon;
+
           return (
             <button
-              key={cat.id}
+              key={category.id}
               type="button"
-              onClick={() => toggle(cat.id)}
-              className={`text-left p-3 rounded-lg border transition-colors ${
-                isSelected
-                  ? 'border-echelon-cyan/50 bg-echelon-cyan/5'
-                  : 'border-terminal-border hover:border-terminal-border/80 bg-terminal-surface'
+              onClick={() => toggle(category.id)}
+              className={`rounded-2xl border px-4 py-4 text-left transition ${
+                selectedState
+                  ? 'border-purple-200 bg-purple-100/70'
+                  : 'border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] hover:bg-[var(--e-bg-hover)]'
               }`}
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-semibold text-terminal-text">
-                  {cat.label}
-                </span>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl border ${
+                      selectedState
+                        ? 'border-purple-200 bg-purple-500 text-white'
+                        : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-muted)]'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-[var(--e-text-primary)]">
+                      {category.label}
+                    </div>
+                    <p className="mt-1 text-sm leading-6 text-[var(--e-text-secondary)]">
+                      {category.description}
+                    </p>
+                  </div>
+                </div>
                 <div
-                  className={`w-4 h-4 rounded border flex items-center justify-center ${
-                    isSelected
-                      ? 'border-echelon-cyan bg-echelon-cyan/20'
-                      : 'border-terminal-border'
+                  className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
+                    selectedState
+                      ? 'border-purple-300 bg-purple-500 text-white'
+                      : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-muted)]'
                   }`}
                 >
-                  {isSelected && (
-                    <span className="text-echelon-cyan text-[10px]">✓</span>
-                  )}
+                  {selectedState ? '✓' : ''}
                 </div>
               </div>
-              <p className="text-[10px] text-terminal-text-muted leading-relaxed mb-2">
-                {cat.description}
-              </p>
-              <div className="flex flex-wrap gap-1">
-                {cat.sources.map((src) => (
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {category.sources.map((source) => (
                   <span
-                    key={src}
-                    className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-terminal-bg text-terminal-text-muted"
+                    key={source}
+                    className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2.5 py-1 text-[11px] font-medium text-[var(--e-text-secondary)]"
                   >
-                    {src}
+                    {source}
                   </span>
                 ))}
               </div>
@@ -128,7 +169,8 @@ export function DomainFilterSelector({ selected, onChange }: DomainFilterSelecto
           );
         })}
       </div>
-      <div className="text-[10px] text-terminal-text-muted">
+
+      <div className="text-sm text-[var(--e-text-secondary)]">
         {selected.length} of {DOMAIN_CATEGORIES.length} categories selected
       </div>
     </div>

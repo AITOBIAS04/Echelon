@@ -203,6 +203,8 @@ export interface InvestigationSummary {
   theatre_id: string;
   construct_id: string;
   inquiry_class: string;
+  template_id?: string | null;
+  template_name?: string | null;
   status: string;
   evidence_count: number;
   claim_count: number;
@@ -232,10 +234,13 @@ export interface InvestigationDetail {
   theatre_id: string;
   construct_id: string;
   inquiry_class: string;
+  template_id?: string | null;
+  template_name?: string | null;
   status: string;
   stop_condition: string;
   stop_config: Record<string, unknown>;
   domain_filters?: string[];
+  committed_sources?: string[];
   created_at: string;
   updated_at: string;
   evidence: EvidenceEnvelopeManifest;
