@@ -1,48 +1,27 @@
-/**
- * AgentRoster — Fleet page with roster table, KPI cards, attention strip, right rail.
- *
- * Surfaces real agent + deployment data from:
- *   GET /api/v1/agents           — roster with active_deployments_count
- *   GET /api/v1/agent-deployments — deployment list with filters
- *
- * Design ref: echelon_fleet_v1.html
- *
- * Backend limitations surfaced honestly:
- *   - No theatre list endpoint — Fleet-page deploy shows unavailable modal
- *   - No scheduler API — Scheduler panel deferred
- *   - No restart/decommission endpoints — Failed row actions deferred
- *   - No "degraded" signal — status derived from is_alive + deployments only
- */
-
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  User,
-  Search,
-  Users,
-  Activity,
-  Heart,
-  Rocket,
-  Clock,
   AlertTriangle,
+  ArrowDownToLine,
   ChevronDown,
   Eye,
-  ArrowDownToLine,
+  Globe,
+  Rocket,
+  Search,
+  Users,
 } from 'lucide-react';
+import { clsx } from 'clsx';
 import { useAgentRoster } from '../../hooks/useAgents';
 import { useDeploymentList, useWithdrawDeployment } from '../../hooks/useAgentDeployments';
 import { DeployAgentModal } from './DeployAgentModal';
 import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { useAgentsUi } from '../../contexts/AgentsUiContext';
-import { LocalErrorBoundary } from '../common/LocalErrorBoundary';
-import { EmptyState } from '../empty-states/EmptyState';
-import { clsx } from 'clsx';
 import { getArchetypeTheme } from '../../theme/agentsTheme';
 import type { EnrichedAgent } from '../../hooks/useAgents';
-
-// ── Derived agent status from backend truth ──────────────────────────
+import type { AgentDeploymentSummary } from '../../types/agentDeployment';
 
 type AgentStatus = 'FAILED' | 'DEPLOYED' | 'IDLE';
+type PageState = 'EMPTY' | 'CRITICAL' | 'HEALTHY';
 
 function deriveStatus(agent: EnrichedAgent): AgentStatus {
   if (!agent.is_alive) return 'FAILED';
@@ -50,326 +29,587 @@ function deriveStatus(agent: EnrichedAgent): AgentStatus {
   return 'IDLE';
 }
 
-function statusDot(status: AgentStatus): string {
-  switch (status) {
-    case 'FAILED': return 'bg-status-failure';
-    case 'DEPLOYED': return 'bg-status-success';
-    case 'IDLE': return 'bg-terminal-text-muted';
-  }
-}
-
-function statusLabel(status: AgentStatus): string {
-  switch (status) {
-    case 'FAILED': return 'Failed';
-    case 'DEPLOYED': return 'Healthy';
-    case 'IDLE': return 'Idle';
-  }
-}
-
-// ── Page state machine (design ref) ──────────────────────────────────
-
-type PageState = 'EMPTY' | 'CRITICAL' | 'HEALTHY';
-
 function derivePageState(agents: EnrichedAgent[]): PageState {
   if (agents.length === 0) return 'EMPTY';
-  if (agents.some(a => !a.is_alive)) return 'CRITICAL';
+  if (agents.some((agent) => !agent.is_alive)) return 'CRITICAL';
   return 'HEALTHY';
 }
 
-// ── Component ────────────────────────────────────────────────────────
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const totalMinutes = Math.max(0, Math.floor(diffMs / 60000));
+  if (totalMinutes < 1) return 'just now';
+  if (totalMinutes < 60) return `${totalMinutes}m ago`;
+  const totalHours = Math.floor(totalMinutes / 60);
+  if (totalHours < 24) return `${totalHours}h ago`;
+  const totalDays = Math.floor(totalHours / 24);
+  return `${totalDays}d ago`;
+}
+
+function latestDeploymentForAgent(
+  deployments: AgentDeploymentSummary[],
+): AgentDeploymentSummary | null {
+  if (deployments.length === 0) return null;
+  return [...deployments].sort(
+    (left, right) =>
+      new Date(right.created_at ?? right.deployed_at).getTime() -
+      new Date(left.created_at ?? left.deployed_at).getTime(),
+  )[0] ?? null;
+}
+
+function StatusCell({ status }: { status: AgentStatus }) {
+  const dotClass =
+    status === 'FAILED'
+      ? 'bg-[var(--status-danger)] shadow-[0_0_0_2px_oklch(0.545_0.185_25_/_0.18)]'
+      : status === 'DEPLOYED'
+        ? 'bg-[var(--status-success)] shadow-[0_0_0_2px_oklch(0.545_0.170_152_/_0.18)]'
+        : 'bg-[var(--e-text-disabled)]';
+  const labelClass =
+    status === 'FAILED'
+      ? 'text-[var(--status-danger)]'
+      : status === 'DEPLOYED'
+        ? 'text-[var(--e-green-600)]'
+        : 'text-[var(--e-text-disabled)]';
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className={clsx('inline-block h-2 w-2 rounded-full', dotClass)} />
+      <span className={clsx('text-[11px] font-semibold uppercase tracking-[0.03em]', labelClass)}>
+        {status === 'FAILED' ? 'Failed' : status === 'DEPLOYED' ? 'Healthy' : 'Idle'}
+      </span>
+    </div>
+  );
+}
+
+function FleetKpi({
+  label,
+  value,
+  breakdown,
+  tone,
+}: {
+  label: string;
+  value: number;
+  breakdown?: string;
+  tone?: 'success' | 'warning' | 'danger' | 'muted';
+}) {
+  const valueClass =
+    tone === 'success'
+      ? 'text-[var(--e-green-600)]'
+      : tone === 'warning'
+        ? 'text-[var(--e-orange-600)]'
+        : tone === 'danger'
+          ? 'text-[var(--e-red-600)]'
+          : tone === 'muted'
+            ? 'text-[var(--e-text-disabled)]'
+            : 'text-[var(--e-text-primary)]';
+
+  return (
+    <div className="flex-1 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-3 shadow-[var(--e-shadow-xs)]">
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+        {label}
+      </div>
+      <div className={clsx('font-mono text-[24px] font-bold leading-8 tabular-nums', valueClass)}>{value}</div>
+      {breakdown ? (
+        <div className="mt-1 font-mono text-[10px] text-[var(--e-text-disabled)]">{breakdown}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function AttentionStrip({
+  pageState,
+  total,
+  alive,
+  failed,
+}: {
+  pageState: PageState;
+  total: number;
+  alive: number;
+  failed: number;
+}) {
+  if (pageState === 'EMPTY') return null;
+
+  const critical = pageState === 'CRITICAL';
+
+  return (
+    <div
+      className={clsx(
+        'mb-4 flex items-center gap-4 rounded-md px-5 py-3 text-[13px] leading-5',
+        critical
+          ? 'border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[color:oklch(0.545_0.185_25_/_0.06)]'
+          : 'border border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[color:oklch(0.545_0.170_152_/_0.06)]',
+      )}
+    >
+      <AlertTriangle
+        className={clsx(
+          'h-5 w-5 shrink-0',
+          critical ? 'text-[var(--status-danger)]' : 'text-[var(--e-green-600)]',
+        )}
+      />
+      <span
+        className={clsx(
+          'font-semibold',
+          critical ? 'text-[var(--status-danger)]' : 'text-[var(--e-green-600)]',
+        )}
+      >
+        {critical
+          ? `${failed} agent${failed === 1 ? '' : 's'} failed — requires intervention`
+          : `All ${alive} agents healthy — scheduler nominal`}
+      </span>
+      <span className="text-[var(--e-text-secondary)]">{total} total provisioned</span>
+    </div>
+  );
+}
+
+function SparsePanel({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="overflow-hidden rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+      <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-2.5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+          {title}
+        </h3>
+      </div>
+      <div className="px-4 py-5 text-[12px] leading-5 text-[var(--e-text-muted)]">{description}</div>
+    </div>
+  );
+}
+
+function FilterSelect({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  label: string;
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label={label}
+        className="h-[30px] appearance-none rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 pr-8 text-[12px] font-medium text-[var(--e-text-secondary)] outline-none transition hover:border-[var(--e-purple-200)] focus:border-[var(--e-border-focus)]"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--e-text-muted)]" />
+    </div>
+  );
+}
+
+function IntelCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string | number;
+  detail?: string;
+}) {
+  return (
+    <div className="rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]">
+      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+        {label}
+      </div>
+      <div className="font-mono text-[24px] font-bold leading-8 tabular-nums text-[var(--e-text-primary)]">
+        {value}
+      </div>
+      {detail ? <div className="mt-1 text-[11px] text-[var(--e-text-muted)]">{detail}</div> : null}
+    </div>
+  );
+}
 
 export function AgentRoster() {
   const { agents, isLoading } = useAgentRoster();
-  const { deployments } = useDeploymentList({ status: 'ACTIVE' });
+  const { deployments } = useDeploymentList();
   const withdrawDeployment = useWithdrawDeployment();
-  const [deployModalOpen, setDeployModalOpen] = useState(false);
   const { activeTab, setActiveTab } = useAgentsUi();
-
-  // Filters
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deployAgentId, setDeployAgentId] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [archetypeFilter, setArchetypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [archetypeFilter, setArchetypeFilter] = useState('all');
+  const [theatreFilter, setTheatreFilter] = useState('all');
 
-  // Register TopActionBar action handlers
   useRegisterTopActionBarActions({
     agentRoster: () => setActiveTab('roster'),
     globalIntel: () => setActiveTab('intel'),
     deployAgent: () => setDeployModalOpen(true),
+    agentSearch: () => undefined,
   });
 
-  // Build deployment lookup: agent_id → theatre_ids
+  const activeDeployments = useMemo(
+    () => deployments.filter((deployment) => deployment.status === 'ACTIVE'),
+    [deployments],
+  );
+
   const deploymentsByAgent = useMemo(() => {
-    const map = new Map<string, Array<{ id: string; theatre_id: string; strategy_profile: string }>>();
-    for (const d of deployments) {
-      const list = map.get(d.agent_id) ?? [];
-      list.push({ id: d.id, theatre_id: d.theatre_id, strategy_profile: d.strategy_profile });
-      map.set(d.agent_id, list);
+    const grouped = new Map<string, AgentDeploymentSummary[]>();
+    for (const deployment of deployments) {
+      const existing = grouped.get(deployment.agent_id) ?? [];
+      existing.push(deployment);
+      grouped.set(deployment.agent_id, existing);
     }
-    return map;
+    return grouped;
   }, [deployments]);
 
-  // Derive KPI stats from real data
-  const kpis = useMemo(() => {
-    const total = agents.length;
-    const alive = agents.filter(a => a.is_alive).length;
-    const deployed = agents.filter(a => a.is_alive && a.active_deployments_count > 0).length;
-    const idle = agents.filter(a => a.is_alive && a.active_deployments_count === 0).length;
-    const failed = agents.filter(a => !a.is_alive).length;
-    return { total, alive, deployed, idle, failed };
-  }, [agents]);
+  const theatreOptions = useMemo(() => {
+    const uniqueIds = [...new Set(activeDeployments.map((deployment) => deployment.theatre_id))].sort();
+    return uniqueIds.map((id) => ({ value: id, label: id.slice(0, 12) }));
+  }, [activeDeployments]);
 
-  const pageState = useMemo(() => derivePageState(agents), [agents]);
-
-  // Archetype distribution for right rail
-  const archetypeDistribution = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const a of agents) {
-      counts[a.archetype] = (counts[a.archetype] || 0) + 1;
-    }
-    return Object.entries(counts)
-      .map(([archetype, count]) => ({ archetype, count, pct: agents.length > 0 ? Math.round((count / agents.length) * 100) : 0 }))
-      .sort((a, b) => b.count - a.count);
-  }, [agents]);
-
-  // Filter agents
-  const filteredAgents = useMemo(() => {
-    let result = [...agents];
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(a => a.name.toLowerCase().includes(q) || a.archetype.toLowerCase().includes(q));
-    }
-
-    if (statusFilter !== 'all') {
-      result = result.filter(a => deriveStatus(a) === statusFilter);
-    }
-
-    if (archetypeFilter !== 'all') {
-      result = result.filter(a => a.archetype === archetypeFilter);
-    }
-
-    // Sort: failed first, then deployed, then idle
-    const order: Record<AgentStatus, number> = { FAILED: 0, DEPLOYED: 1, IDLE: 2 };
-    result.sort((a, b) => order[deriveStatus(a)] - order[deriveStatus(b)]);
-
-    return result;
-  }, [agents, searchQuery, statusFilter, archetypeFilter]);
-
-  // Unique archetypes for filter
-  const archetypes = useMemo(
-    () => [...new Set(agents.map(a => a.archetype))].sort(),
+  const archetypeOptions = useMemo(
+    () =>
+      [...new Set(agents.map((agent) => agent.archetype))].sort().map((value) => ({
+        value,
+        label: value,
+      })),
     [agents],
   );
 
-  const handleRecall = (deploymentId: string) => {
-    withdrawDeployment.mutate(deploymentId);
-  };
+  const kpis = useMemo(() => {
+    const total = agents.length;
+    const alive = agents.filter((agent) => agent.is_alive).length;
+    const deployed = agents.filter((agent) => agent.active_deployments_count > 0).length;
+    const idle = agents.filter((agent) => agent.is_alive && agent.active_deployments_count === 0).length;
+    const failed = agents.filter((agent) => !agent.is_alive).length;
+    return { total, alive, deployed, idle, failed };
+  }, [agents]);
+
+  const pageState = derivePageState(agents);
+
+  const filteredAgents = useMemo(() => {
+    const search = searchQuery.trim().toLowerCase();
+    const order: Record<AgentStatus, number> = { FAILED: 0, DEPLOYED: 1, IDLE: 2 };
+
+    return [...agents]
+      .filter((agent) => {
+        const status = deriveStatus(agent);
+        const agentDeployments = deploymentsByAgent.get(agent.id) ?? [];
+        const deployedTo = agentDeployments.map((deployment) => deployment.theatre_id);
+
+        if (search) {
+          const haystack = `${agent.name} ${agent.archetype} ${agent.id}`.toLowerCase();
+          if (!haystack.includes(search)) return false;
+        }
+
+        if (statusFilter !== 'all' && status !== statusFilter) return false;
+        if (archetypeFilter !== 'all' && agent.archetype !== archetypeFilter) return false;
+        if (theatreFilter !== 'all' && !deployedTo.includes(theatreFilter)) return false;
+
+        return true;
+      })
+      .sort((left, right) => {
+        const statusDiff = order[deriveStatus(left)] - order[deriveStatus(right)];
+        if (statusDiff !== 0) return statusDiff;
+        return left.name.localeCompare(right.name);
+      });
+  }, [agents, archetypeFilter, deploymentsByAgent, searchQuery, statusFilter, theatreFilter]);
+
+  const archetypeDistribution = useMemo(() => {
+    return archetypeOptions.map(({ value }) => {
+      const count = agents.filter((agent) => agent.archetype === value).length;
+      const pct = agents.length > 0 ? Math.round((count / agents.length) * 100) : 0;
+      return { archetype: value, count, pct };
+    });
+  }, [agents, archetypeOptions]);
+
+  const recentEvents = useMemo(() => {
+    return [...deployments]
+      .sort(
+        (left, right) =>
+          new Date(right.created_at ?? right.deployed_at).getTime() -
+          new Date(left.created_at ?? left.deployed_at).getTime(),
+      )
+      .slice(0, 6);
+  }, [deployments]);
 
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-terminal-text-muted animate-pulse text-sm">Loading fleet...</div>
+      <div className="p-6">
+        <div className="mx-auto max-w-7xl animate-pulse rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-10 text-sm text-[var(--e-text-muted)] shadow-[var(--e-shadow-xs)]">
+          Loading fleet…
+        </div>
       </div>
     );
   }
 
   if (agents.length === 0) {
     return (
-      <EmptyState
-        type="ZERO_STATE"
-        icon={<User className="w-7 h-7" />}
-        title="No agents provisioned"
-        description="Agents appear here once provisioned. To deploy an agent, open a theatre detail page and use the Deploy Agent action — the theatre context is required."
-      />
+      <div className="p-6">
+        <div className="mx-auto max-w-4xl rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-8 py-14 text-center shadow-[var(--e-shadow-sm)]">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]">
+            <Users className="h-6 w-6" />
+          </div>
+          <h2 className="mb-2 text-[24px] font-bold tracking-[-0.02em] text-[var(--e-text-primary)]">
+            No agents provisioned
+          </h2>
+          <p className="mx-auto max-w-xl text-[14px] leading-6 text-[var(--e-text-secondary)]">
+            Fleet is empty. To deploy an agent, open a theatre detail page and use the deploy action from that known theatre context.
+          </p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div
-      className="h-full flex flex-col"
-      data-testid={activeTab === 'roster' ? 'agents-tab-roster' : 'agents-tab-intel'}
-    >
-      {/* ── Roster Tab ─────────────────────────────────────────────── */}
-      {activeTab === 'roster' && (
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
+    <div className="p-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('roster')}
+            className={clsx(
+              'inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-medium transition',
+              activeTab === 'roster'
+                ? 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+                : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-secondary)] hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]',
+            )}
+          >
+            <Users className="h-4 w-4" />
+            Agent Roster
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('intel')}
+            className={clsx(
+              'inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-medium transition',
+              activeTab === 'intel'
+                ? 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+                : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-secondary)] hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]',
+            )}
+          >
+            <Globe className="h-4 w-4" />
+            Global Intelligence
+          </button>
+        </div>
 
-            {/* ── Attention Strip ──────────────────────────────────── */}
-            <AttentionStrip pageState={pageState} kpis={kpis} />
+        {activeTab === 'roster' ? (
+          <>
+            <AttentionStrip
+              pageState={pageState}
+              total={kpis.total}
+              alive={kpis.alive}
+              failed={kpis.failed}
+            />
 
-            {/* ── KPI Cards ────────────────────────────────────────── */}
-            <div className="flex gap-3 mb-4">
-              <KpiCard label="Total" value={kpis.total} />
-              <KpiCard label="Alive" value={kpis.alive} total={kpis.total} variant={kpis.alive === kpis.total ? 'success' : undefined} />
-              <KpiCard label="Deployed" value={kpis.deployed} />
-              <KpiCard label="Idle" value={kpis.idle} variant={kpis.idle > 0 ? 'warning' : undefined} />
-              <KpiCard label="Failed" value={kpis.failed} variant={kpis.failed > 0 ? 'danger' : 'zero'} />
+            <div className="mb-4 flex flex-wrap gap-3">
+              <FleetKpi label="Total" value={kpis.total} />
+              <FleetKpi label="Alive" value={kpis.alive} breakdown={`${kpis.total > 0 ? Math.round((kpis.alive / kpis.total) * 100) : 0}% alive`} tone={kpis.alive === kpis.total ? 'success' : undefined} />
+              <FleetKpi label="Deployed" value={kpis.deployed} breakdown={`${kpis.deployed} assigned`} tone={kpis.deployed > 0 ? 'success' : undefined} />
+              <FleetKpi label="Idle" value={kpis.idle} breakdown={`${kpis.idle} awaiting assignment`} tone={kpis.idle > 0 ? 'warning' : undefined} />
+              <FleetKpi label="Failed" value={kpis.failed} breakdown={`${kpis.failed} intervention`} tone={kpis.failed > 0 ? 'danger' : 'muted'} />
             </div>
 
-            {/* ── Main Grid: Table + Right Rail ────────────────────── */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
-              {/* Left: Filter + Table */}
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_300px]">
               <div>
-                {/* Filter bar */}
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="relative flex-1 max-w-xs">
-                    <Search className="w-3.5 h-3.5 text-terminal-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search agents..."
-                      className="w-full h-8 pl-9 pr-3 bg-terminal-bg border border-terminal-border rounded-lg text-xs text-terminal-text placeholder:text-terminal-text-muted focus:border-echelon-cyan/40 outline-none"
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--e-text-muted)]" />
+                      <input
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        placeholder="Search agents..."
+                        className="h-[30px] w-[200px] rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] pl-8 pr-3 text-[12px] text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)]"
+                      />
+                    </div>
+                    <FilterSelect
+                      label="Status"
+                      value={statusFilter}
+                      onChange={setStatusFilter}
+                      options={[
+                        { value: 'all', label: 'All statuses' },
+                        { value: 'DEPLOYED', label: 'Deployed' },
+                        { value: 'IDLE', label: 'Idle' },
+                        { value: 'FAILED', label: 'Failed' },
+                      ]}
+                    />
+                    <FilterSelect
+                      label="Archetype"
+                      value={archetypeFilter}
+                      onChange={setArchetypeFilter}
+                      options={[
+                        { value: 'all', label: 'All archetypes' },
+                        ...archetypeOptions,
+                      ]}
+                    />
+                    <FilterSelect
+                      label="Theatre"
+                      value={theatreFilter}
+                      onChange={setTheatreFilter}
+                      options={[
+                        { value: 'all', label: 'All theatres' },
+                        ...theatreOptions,
+                      ]}
                     />
                   </div>
-                  <FilterDropdown
-                    label="Status"
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                    options={[
-                      { value: 'all', label: 'All' },
-                      { value: 'DEPLOYED', label: 'Deployed' },
-                      { value: 'IDLE', label: 'Idle' },
-                      { value: 'FAILED', label: 'Failed' },
-                    ]}
-                  />
-                  <FilterDropdown
-                    label="Archetype"
-                    value={archetypeFilter}
-                    onChange={setArchetypeFilter}
-                    options={[
-                      { value: 'all', label: 'All' },
-                      ...archetypes.map(a => ({ value: a, label: a })),
-                    ]}
-                  />
-                  <span className="text-xs text-terminal-text-muted ml-auto">
-                    {filteredAgents.length} agent{filteredAgents.length !== 1 ? 's' : ''}
+                  <span className="text-[12px] font-medium text-[var(--e-text-muted)]">
+                    {filteredAgents.length} agent{filteredAgents.length === 1 ? '' : 's'}
                   </span>
                 </div>
 
-                {/* Roster Table */}
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                  <table className="w-full text-xs">
+                <div className="overflow-hidden rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+                  <table className="w-full border-collapse">
                     <thead>
-                      <tr className="border-b border-terminal-border bg-terminal-surface">
-                        <th className="text-left px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Status</th>
-                        <th className="text-left px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Name</th>
-                        <th className="text-left px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Archetype</th>
-                        <th className="text-left px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Deployed To</th>
-                        <th className="text-left px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">P&L</th>
-                        <th className="text-right px-4 py-2.5 font-semibold text-terminal-text-muted uppercase tracking-wider text-[10px]">Actions</th>
+                      <tr>
+                        {['Status', 'Name', 'Archetype', 'Deployed to', 'Last Action', 'P&L', 'Actions'].map((header, index) => (
+                          <th
+                            key={header}
+                            className={clsx(
+                              'bg-[var(--e-bg-sunken)] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]',
+                              index >= 5 && 'text-right',
+                            )}
+                          >
+                            {header}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody>
                       {filteredAgents.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="py-8">
-                            <EmptyState
-                              type="NO_RESULTS"
-                              filterDescription={searchQuery || statusFilter !== 'all' ? `${searchQuery} ${statusFilter}` : undefined}
-                              onClearFilters={() => { setSearchQuery(''); setStatusFilter('all'); setArchetypeFilter('all'); }}
-                            />
+                          <td colSpan={7} className="px-6 py-10 text-center text-[13px] text-[var(--e-text-muted)]">
+                            No agents match the current filters.
                           </td>
                         </tr>
                       ) : (
                         filteredAgents.map((agent) => {
                           const status = deriveStatus(agent);
                           const agentDeployments = deploymentsByAgent.get(agent.id) ?? [];
+                          const activeForAgent = agentDeployments.filter((deployment) => deployment.status === 'ACTIVE');
+                          const lastDeployment = latestDeploymentForAgent(agentDeployments);
+                          const archetypeTheme = getArchetypeTheme(agent.archetype);
 
                           return (
                             <tr
                               key={agent.id}
-                              className="border-b border-terminal-border/50 hover:bg-terminal-card/50 transition-colors"
+                              className={clsx(
+                                'border-b border-[var(--e-border-secondary)] transition hover:bg-[var(--e-bg-hover)]',
+                                status === 'FAILED' && 'bg-[color:oklch(0.545_0.185_25_/_0.03)]',
+                              )}
                             >
-                              {/* Status */}
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-2">
-                                  <span className={clsx('w-2 h-2 rounded-full', statusDot(status))} />
-                                  <span className={clsx(
-                                    'text-[10px] font-semibold uppercase',
-                                    status === 'FAILED' && 'text-status-failure',
-                                    status === 'DEPLOYED' && 'text-status-success',
-                                    status === 'IDLE' && 'text-terminal-text-muted',
-                                  )}>
-                                    {statusLabel(status)}
-                                  </span>
-                                </div>
+                              <td className={clsx('px-3 py-2.5', status === 'FAILED' && 'shadow-[inset_3px_0_0_var(--status-danger)]')}>
+                                <StatusCell status={status} />
                               </td>
-
-                              {/* Name */}
-                              <td className="px-4 py-3">
+                              <td className="px-3 py-2.5">
                                 <Link
                                   to={`/fleet/${agent.id}`}
-                                  className="font-semibold text-terminal-text hover:text-echelon-cyan transition-colors"
+                                  className="font-semibold text-[var(--e-text-primary)] no-underline hover:text-[var(--e-purple-700)]"
                                 >
                                   {agent.name}
                                 </Link>
                               </td>
-
-                              {/* Archetype */}
-                              <td className="px-4 py-3">
-                                <span className={clsx(
-                                  'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-semibold',
-                                  getArchetypeTheme(agent.archetype).bgClass,
-                                  getArchetypeTheme(agent.archetype).textClass,
-                                )}>
+                              <td className="px-3 py-2.5">
+                                <span
+                                  className={clsx(
+                                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em]',
+                                    archetypeTheme.bgClass,
+                                    archetypeTheme.borderClass,
+                                    archetypeTheme.textClass,
+                                  )}
+                                >
                                   {agent.archetype}
                                 </span>
                               </td>
-
-                              {/* Deployed To */}
-                              <td className="px-4 py-3">
-                                {agentDeployments.length > 0 ? (
+                              <td className="px-3 py-2.5">
+                                {activeForAgent.length > 0 ? (
                                   <div className="flex flex-wrap gap-1">
-                                    {agentDeployments.map(d => (
-                                      <span key={d.id} className="font-mono text-[10px] text-echelon-cyan bg-echelon-cyan/10 px-1.5 py-0.5 rounded">
-                                        {d.theatre_id.slice(0, 8)}
+                                    {activeForAgent.slice(0, 2).map((deployment) => (
+                                      <span
+                                        key={deployment.id}
+                                        className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-2 py-0.5 font-mono text-[10px] text-[var(--e-text-secondary)]"
+                                      >
+                                        {deployment.theatre_id.slice(0, 12)}
                                       </span>
                                     ))}
+                                    {activeForAgent.length > 2 ? (
+                                      <span className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-2 py-0.5 font-mono text-[10px] text-[var(--e-text-secondary)]">
+                                        +{activeForAgent.length - 2}
+                                      </span>
+                                    ) : null}
                                   </div>
                                 ) : (
-                                  <span className="text-terminal-text-muted">—</span>
+                                  <span className="text-[12px] text-[var(--e-text-muted)]">Undeployed</span>
                                 )}
                               </td>
-
-                              {/* P&L */}
-                              <td className="px-4 py-3">
-                                <span className={clsx(
-                                  'font-mono font-semibold',
-                                  agent.total_pnl_usd >= 0 ? 'text-status-success' : 'text-status-failure',
-                                )}>
-                                  {agent.total_pnl_usd >= 0 ? '+' : ''}${Math.abs(agent.total_pnl_usd).toLocaleString()}
+                              <td className="px-3 py-2.5">
+                                <div className="text-[13px] text-[var(--e-text-primary)]">
+                                  {status === 'FAILED'
+                                    ? 'Agent heartbeat missing'
+                                    : lastDeployment
+                                      ? `${lastDeployment.status === 'WITHDRAWN' ? 'Recalled' : 'Deployed'} ${formatRelativeTime(lastDeployment.created_at ?? lastDeployment.deployed_at)}`
+                                      : 'Awaiting assignment'}
+                                </div>
+                                <div className="text-[11px] text-[var(--e-text-muted)]">
+                                  {lastDeployment
+                                    ? lastDeployment.strategy_profile
+                                    : status === 'FAILED'
+                                      ? 'Intervention required'
+                                      : 'No deployment events yet'}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-right">
+                                <span
+                                  className={clsx(
+                                    'font-mono text-[13px] font-semibold tabular-nums',
+                                    agent.total_pnl_usd > 0
+                                      ? 'text-[var(--e-green-600)]'
+                                      : agent.total_pnl_usd < 0
+                                        ? 'text-[var(--e-red-600)]'
+                                        : 'text-[var(--e-text-muted)]',
+                                  )}
+                                >
+                                  {agent.total_pnl_usd > 0 ? '+' : agent.total_pnl_usd < 0 ? '-' : ''}
+                                  ${Math.abs(agent.total_pnl_usd).toLocaleString()}
                                 </span>
                               </td>
-
-                              {/* Actions */}
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex items-center gap-1.5 justify-end">
+                              <td className="px-3 py-2.5 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
                                   <Link
                                     to={`/fleet/${agent.id}`}
-                                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold bg-terminal-surface border border-terminal-border text-terminal-text-muted hover:text-terminal-text hover:border-terminal-text-muted transition-colors"
+                                    className="inline-flex items-center gap-1 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--e-text-secondary)] no-underline transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
                                   >
-                                    <Eye className="w-3 h-3" />
+                                    <Eye className="h-3 w-3" />
                                     View
                                   </Link>
-                                  {status === 'DEPLOYED' && agentDeployments.length > 0 && (
+                                  {status === 'DEPLOYED' && activeForAgent[0] ? (
                                     <button
-                                      onClick={() => handleRecall(agentDeployments[0].id)}
+                                      type="button"
+                                      onClick={() => withdrawDeployment.mutate(activeForAgent[0].id)}
                                       disabled={withdrawDeployment.isPending}
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold text-terminal-text-muted hover:text-status-failure hover:bg-status-failure/10 transition-colors"
+                                      className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-[var(--e-text-muted)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-red-600)]"
                                     >
-                                      <ArrowDownToLine className="w-3 h-3" />
+                                      <ArrowDownToLine className="h-3 w-3" />
                                       Recall
                                     </button>
-                                  )}
-                                  {status === 'IDLE' && (
-                                    <span
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-semibold text-terminal-text-muted/50 cursor-not-allowed"
-                                      title="Deploy from a theatre detail page where theatre_id is known"
+                                  ) : null}
+                                  {status === 'IDLE' ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setDeployAgentId(agent.id);
+                                        setDeployModalOpen(true);
+                                      }}
+                                      className="inline-flex items-center gap-1 rounded-md border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--e-purple-700)] transition hover:bg-[var(--e-purple-100)]"
                                     >
-                                      <Rocket className="w-3 h-3" />
+                                      <Rocket className="h-3 w-3" />
                                       Deploy
-                                    </span>
-                                  )}
+                                    </button>
+                                  ) : null}
                                 </div>
                               </td>
                             </tr>
@@ -381,315 +621,138 @@ export function AgentRoster() {
                 </div>
               </div>
 
-              {/* ── Right Rail ───────────────────────────────────────── */}
               <div className="space-y-4">
-                {/* Scheduler Status — deferred (no API) */}
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface">
-                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">
-                      Scheduler Status
-                    </h3>
-                  </div>
-                  <div className="p-4">
-                    <div className="text-xs text-terminal-text-muted text-center py-4">
-                      No scheduler API available
-                    </div>
-                  </div>
-                </div>
+                <SparsePanel
+                  title="Scheduler Status"
+                  description="No scheduler API is available yet. This panel will show queue depth, heartbeat, and cycle timing when the scheduler surface ships."
+                />
 
-                {/* Archetype Distribution — real data */}
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface">
-                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">
+                <div className="overflow-hidden rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+                  <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-2.5">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
                       Archetype Distribution
                     </h3>
                   </div>
-                  <div className="p-4 space-y-2">
-                    {archetypeDistribution.length > 0 ? (
-                      archetypeDistribution.map(({ archetype, count, pct }) => (
+                  <div className="space-y-3 px-4 py-4">
+                    {archetypeDistribution.map(({ archetype, count, pct }) => {
+                      const theme = getArchetypeTheme(archetype);
+                      return (
                         <div key={archetype} className="flex items-center gap-2">
-                          <span className={clsx(
-                            'text-[10px] font-mono font-semibold w-16',
-                            getArchetypeTheme(archetype).textClass,
-                          )}>
-                            {archetype}
-                          </span>
-                          <div className="flex-1 h-2 bg-terminal-bg rounded-full overflow-hidden">
-                            <div
-                              className={clsx('h-full rounded-full', getArchetypeTheme(archetype).bgClass)}
-                              style={{ width: `${pct}%` }}
-                            />
+                          <span className={clsx('w-16 text-[11px] font-medium', theme.textClass)}>{archetype}</span>
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--e-bg-sunken)]">
+                            <div className={clsx('h-full rounded-full', theme.bgClass)} style={{ width: `${pct}%` }} />
                           </div>
-                          <span className="text-[10px] font-mono text-terminal-text-muted w-6 text-right">
-                            {count}
-                          </span>
+                          <span className="w-7 text-right font-mono text-[11px] text-[var(--e-text-secondary)]">{count}</span>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-xs text-terminal-text-muted text-center py-2">No agents</div>
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Recent Events Feed — deferred without WebSocket */}
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface">
-                    <h3 className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">
+                <div className="overflow-hidden rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+                  <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-2.5">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
                       Recent Events
                     </h3>
                   </div>
-                  <div className="p-4">
-                    <EmptyState
-                      type="SPARSE_DATA"
-                      description="Event feed requires WebSocket integration. Deployment actions are polled every 15s."
-                      className="min-h-0 bg-transparent p-0"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Intelligence Tab — Real data with sparse states ──────── */}
-      {activeTab === 'intel' && (
-        <LocalErrorBoundary name="Global Intelligence">
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-7xl mx-auto">
-              {/* KPI row from real data */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Users className="w-4 h-4 text-terminal-text-muted" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Total</span>
-                  </div>
-                  <div className="text-2xl font-bold font-mono text-terminal-text">{kpis.total}</div>
-                </div>
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Rocket className="w-4 h-4 text-terminal-text-muted" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Deployed</span>
-                  </div>
-                  <div className="text-2xl font-bold font-mono text-terminal-text">{kpis.deployed}</div>
-                  <div className="text-[10px] text-terminal-text-muted">
-                    {kpis.total > 0 ? Math.round((kpis.deployed / kpis.total) * 100) : 0}% utilization
-                  </div>
-                </div>
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Clock className="w-4 h-4 text-terminal-text-muted" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Idle</span>
-                  </div>
-                  <div className="text-2xl font-bold font-mono text-terminal-text">{kpis.idle}</div>
-                </div>
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="w-4 h-4 text-terminal-text-muted" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Failed</span>
-                  </div>
-                  <div className={clsx('text-2xl font-bold font-mono', kpis.failed > 0 ? 'text-status-failure' : 'text-terminal-text')}>
-                    {kpis.failed}
-                  </div>
-                </div>
-              </div>
-
-              {/* Deployment Heat Map — sparse state (no theatre list) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface flex items-center gap-2">
-                    <Activity className="w-3.5 h-3.5 text-terminal-text-muted" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Deployment Heat Map</span>
-                  </div>
-                  <div className="p-4">
-                    <EmptyState
-                      type="SPARSE_DATA"
-                      description="Heat map requires a theatre list endpoint (GET /api/v1/theatres) which is not yet available. Theatre data will populate automatically when the endpoint ships."
-                      className="min-h-0 bg-transparent p-0"
-                    />
-                  </div>
-                </div>
-
-                {/* Movement Feed — sparse state */}
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface flex items-center gap-2">
-                    <Activity className="w-3.5 h-3.5 text-terminal-text-muted" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Movement Feed</span>
-                  </div>
-                  <div className="p-4">
-                    <EmptyState
-                      type="SPARSE_DATA"
-                      description="Live movement feed requires WebSocket event integration (AGENT_DEPLOYED, AGENT_WITHDRAWN). Deployment data is polled every 15s via React Query."
-                      className="min-h-0 bg-transparent p-0"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Archetype Distribution — real data */}
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-surface flex items-center gap-2">
-                  <Heart className="w-3.5 h-3.5 text-terminal-text-muted" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted">Archetype Distribution</span>
-                </div>
-                <div className="p-4">
-                  {archetypeDistribution.length > 0 ? (
-                    <div className="space-y-3">
-                      {/* Stacked bar */}
-                      <div className="flex h-6 rounded-lg overflow-hidden">
-                        {archetypeDistribution.map(({ archetype, pct }) => (
-                          <div
-                            key={archetype}
-                            className={clsx('h-full', getArchetypeTheme(archetype).bgClass)}
-                            style={{ width: `${pct}%` }}
-                            title={`${archetype}: ${pct}%`}
-                          />
-                        ))}
-                      </div>
-                      {/* Legend */}
-                      <div className="flex flex-wrap gap-3">
-                        {archetypeDistribution.map(({ archetype, count, pct }) => (
-                          <div key={archetype} className="flex items-center gap-1.5">
-                            <span className={clsx('w-2.5 h-2.5 rounded-sm', getArchetypeTheme(archetype).bgClass)} />
-                            <span className="text-[10px] font-mono text-terminal-text-muted">
-                              {archetype} ({count}, {pct}%)
+                  <div className="px-4 py-3">
+                    {recentEvents.length > 0 ? (
+                      <div className="space-y-2">
+                        {recentEvents.map((event) => (
+                          <div key={event.id} className="flex items-center gap-2 text-[12px]">
+                            <span
+                              className={clsx(
+                                'h-2 w-2 rounded-full',
+                                event.status === 'WITHDRAWN'
+                                  ? 'bg-[var(--e-orange-600)]'
+                                  : event.status === 'PAUSED'
+                                    ? 'bg-[var(--status-warning)]'
+                                    : 'bg-[var(--status-success)]',
+                              )}
+                            />
+                            <span className="min-w-0 flex-1 truncate text-[var(--e-text-primary)]">
+                              {event.status === 'WITHDRAWN'
+                                ? `Deployment withdrawn from ${event.theatre_id.slice(0, 12)}`
+                                : event.status === 'PAUSED'
+                                  ? `Deployment paused in ${event.theatre_id.slice(0, 12)}`
+                                  : `Deployment active in ${event.theatre_id.slice(0, 12)}`}
+                            </span>
+                            <span className="font-mono text-[10px] text-[var(--e-text-muted)]">
+                              {formatRelativeTime(event.created_at ?? event.deployed_at)}
                             </span>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-terminal-text-muted text-center py-4">No agents</div>
-                  )}
+                    ) : (
+                      <div className="text-[12px] text-[var(--e-text-muted)]">
+                        No deployment events yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <IntelCard label="Total Agents" value={kpis.total} />
+              <IntelCard label="Deployed" value={kpis.deployed} detail={`${kpis.total > 0 ? Math.round((kpis.deployed / kpis.total) * 100) : 0}% utilization`} />
+              <IntelCard label="Idle" value={kpis.idle} />
+              <IntelCard label="Failed" value={kpis.failed} />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <SparsePanel
+                title="Deployment Heat Map"
+                description="Heat map remains deferred until a theatre list endpoint exists. This surface will populate automatically when GET /api/v1/theatres is available."
+              />
+              <SparsePanel
+                title="Movement Feed"
+                description="Live movement feed is deferred until AGENT_DEPLOYED and AGENT_WITHDRAWN websocket events are surfaced in a dedicated feed component."
+              />
+            </div>
+
+            <div className="overflow-hidden rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+              <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-2.5">
+                <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                  Archetype Distribution
+                </h3>
+              </div>
+              <div className="px-4 py-4">
+                <div className="mb-4 flex h-6 overflow-hidden rounded-md">
+                  {archetypeDistribution.map(({ archetype, pct }) => {
+                    const theme = getArchetypeTheme(archetype);
+                    return <div key={archetype} className={theme.bgClass} style={{ width: `${pct}%` }} title={`${archetype}: ${pct}%`} />;
+                  })}
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {archetypeDistribution.map(({ archetype, count, pct }) => {
+                    const theme = getArchetypeTheme(archetype);
+                    return (
+                      <div key={archetype} className="flex items-center gap-1.5">
+                        <span className={clsx('h-2.5 w-2.5 rounded-sm', theme.bgClass)} />
+                        <span className="text-[11px] text-[var(--e-text-secondary)]">
+                          {archetype} ({count}, {pct}%)
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
           </div>
-        </LocalErrorBoundary>
-      )}
+        )}
 
-      {/* Deploy Agent Modal */}
-      <DeployAgentModal
-        open={deployModalOpen}
-        onClose={() => setDeployModalOpen(false)}
-      />
-    </div>
-  );
-}
-
-// ── Attention Strip ──────────────────────────────────────────────────
-
-function AttentionStrip({ pageState, kpis }: { pageState: PageState; kpis: { failed: number; total: number; alive: number } }) {
-  if (pageState === 'EMPTY') return null; // Zero state handled upstream
-
-  return (
-    <div
-      className={clsx(
-        'flex items-center gap-3 px-4 py-2.5 rounded-lg mb-4 text-xs',
-        pageState === 'CRITICAL' && 'bg-status-failure/[0.06] border border-status-failure/[0.18]',
-        pageState === 'HEALTHY' && 'bg-status-success/[0.06] border border-status-success/[0.18]',
-      )}
-    >
-      <span className={clsx(
-        'w-2 h-2 rounded-full flex-shrink-0',
-        pageState === 'CRITICAL' && 'bg-status-failure',
-        pageState === 'HEALTHY' && 'bg-status-success',
-      )} />
-      <span className={clsx(
-        'font-semibold',
-        pageState === 'CRITICAL' && 'text-status-failure',
-        pageState === 'HEALTHY' && 'text-status-success',
-      )}>
-        {pageState === 'CRITICAL'
-          ? `${kpis.failed} agent${kpis.failed !== 1 ? 's' : ''} failed — requires intervention`
-          : `All ${kpis.alive} agents healthy — scheduler nominal`
-        }
-      </span>
-    </div>
-  );
-}
-
-// ── KPI Card ─────────────────────────────────────────────────────────
-
-function KpiCard({
-  label,
-  value,
-  total,
-  variant,
-}: {
-  label: string;
-  value: number;
-  total?: number;
-  variant?: 'success' | 'warning' | 'danger' | 'zero';
-}) {
-  return (
-    <div className="flex-1 bg-terminal-panel border border-terminal-border rounded-lg p-3">
-      <div className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted mb-1">
-        {label}
+        <DeployAgentModal
+          open={deployModalOpen}
+          onClose={() => {
+            setDeployModalOpen(false);
+            setDeployAgentId(undefined);
+          }}
+          preselectedAgentId={deployAgentId}
+        />
       </div>
-      <div className={clsx(
-        'text-xl font-mono font-bold tabular-nums',
-        variant === 'success' && 'text-status-success',
-        variant === 'warning' && 'text-status-warning',
-        variant === 'danger' && value > 0 && 'text-status-failure',
-        variant === 'zero' && value === 0 && 'text-terminal-text-muted',
-        !variant && 'text-terminal-text',
-      )}>
-        {value}
-      </div>
-      {total != null && (
-        <div className="text-[10px] font-mono text-terminal-text-muted">
-          {total > 0 ? Math.round((value / total) * 100) : 0}%
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Filter Dropdown ──────────────────────────────────────────────────
-
-function FilterDropdown({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: Array<{ value: string; label: string }>;
-}) {
-  const [open, setOpen] = useState(false);
-  const selectedLabel = options.find(o => o.value === value)?.label ?? label;
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 h-8 px-3 bg-terminal-bg border border-terminal-border rounded-lg text-xs text-terminal-text-muted hover:text-terminal-text transition-colors"
-      >
-        <span>{value === 'all' ? label : selectedLabel}</span>
-        <ChevronDown className={clsx('w-3 h-3 transition', open && 'rotate-180')} />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 w-36 bg-terminal-panel border border-terminal-border rounded-lg shadow-lg z-20 py-1">
-            {options.map(o => (
-              <button
-                key={o.value}
-                onClick={() => { onChange(o.value); setOpen(false); }}
-                className={clsx(
-                  'w-full text-left px-3 py-1.5 text-xs hover:bg-terminal-card/50 transition-colors',
-                  value === o.value ? 'text-echelon-cyan' : 'text-terminal-text',
-                )}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 }

@@ -1,27 +1,10 @@
-/**
- * Drift Events Panel
- *
- * Displays commitment drift events and provides drift submission form.
- * Drift is a real live mutation path: POST /api/v1/investigations/{id}/drift
- * triggers stop-condition evaluation after persisting the event.
- *
- * Backend DriftType enum (commitment_monitor.py):
- *   entity_restructure | contract_amendment | market_rule_change
- *   regulatory_status_change | jurisdiction_change
- *
- * Backend DriftImpact enum:
- *   material | non_material
- *
- * Design ref: output/design_reference/echelon_drift_submission_v1.html
- */
-
 import { useState } from 'react';
-import { Plus, AlertTriangle, Loader2, X } from 'lucide-react';
+import { AlertTriangle, Loader2, Plus, X } from 'lucide-react';
+import { clsx } from 'clsx';
 import type { DriftEvent, DriftType, ImpactAssessment } from '../../types/investigation';
 import { useSubmitDrift } from '../../hooks/useInvestigation';
 
-/** Backend-aligned drift type options with human labels */
-const DRIFT_TYPES: { value: DriftType; label: string }[] = [
+const DRIFT_TYPES: Array<{ value: DriftType; label: string }> = [
   { value: 'entity_restructure', label: 'Entity Restructure' },
   { value: 'contract_amendment', label: 'Contract Amendment' },
   { value: 'market_rule_change', label: 'Market Rule Change' },
@@ -30,62 +13,60 @@ const DRIFT_TYPES: { value: DriftType; label: string }[] = [
 ];
 
 const DRIFT_TYPE_LABELS: Record<string, string> = Object.fromEntries(
-  DRIFT_TYPES.map((t) => [t.value, t.label]),
+  DRIFT_TYPES.map((type) => [type.value, type.label]),
 );
 
-const IMPACT_STYLES: Record<string, { bg: string; text: string }> = {
-  material: { bg: 'bg-status-failure/15', text: 'text-status-failure' },
-  MATERIAL: { bg: 'bg-status-failure/15', text: 'text-status-failure' },
-  non_material: { bg: 'bg-terminal-panel', text: 'text-terminal-text-muted' },
-  NON_MATERIAL: { bg: 'bg-terminal-panel', text: 'text-terminal-text-muted' },
-};
+function impactClasses(impact: string): string {
+  if (impact === 'material' || impact === 'MATERIAL') {
+    return 'border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] text-[var(--e-red-600)]';
+  }
+  return 'border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]';
+}
 
 function DriftEventRow({ event }: { event: DriftEvent }) {
-  const impact = IMPACT_STYLES[event.impact_assessment] ?? IMPACT_STYLES.non_material;
-  const typeLabel = DRIFT_TYPE_LABELS[event.drift_type] ?? event.drift_type.replace(/_/g, ' ');
-
   return (
-    <div className="grid grid-cols-[1fr_auto] items-start gap-4 py-3 border-b border-terminal-border/30 last:border-b-0">
-      <div className="min-w-0">
-        {/* Type + impact row */}
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-[11px] font-mono font-semibold text-terminal-text-muted">
+    <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[11px] text-[var(--e-text-muted)]">
             {event.drift_id.slice(0, 12)}
           </span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-echelon-cyan/10 text-echelon-cyan border border-echelon-cyan/20">
-            {typeLabel}
+          <span className="rounded-full border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--e-purple-700)]">
+            {DRIFT_TYPE_LABELS[event.drift_type] ?? event.drift_type.replace(/_/g, ' ')}
           </span>
-          <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase ${impact.bg} ${impact.text}`}>
+          <span
+            className={clsx(
+              'rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em]',
+              impactClasses(event.impact_assessment),
+            )}
+          >
             {event.impact_assessment === 'material' || event.impact_assessment === 'MATERIAL'
               ? 'Material'
               : 'Non-material'}
           </span>
         </div>
-
-        {/* Values */}
-        <div className="grid grid-cols-2 gap-x-4 text-[12px]">
-          <div>
-            <span className="text-terminal-text-muted">Original: </span>
-            <span className="font-mono text-terminal-text">{event.original_value || '\u2014'}</span>
-          </div>
-          <div>
-            <span className="text-terminal-text-muted">New: </span>
-            <span className="font-mono text-terminal-text">{event.new_value || '\u2014'}</span>
-          </div>
-        </div>
-
-        {/* Evidence ref */}
-        {event.evidence_ref && (
-          <div className="mt-1 text-[10px] text-terminal-text-muted">
-            Evidence ref: <span className="font-mono text-echelon-cyan">{event.evidence_ref}</span>
-          </div>
-        )}
+        <span className="font-mono text-[11px] text-[var(--e-text-muted)]">
+          {new Date(event.detected_at).toLocaleString()}
+        </span>
       </div>
 
-      {/* Timestamp */}
-      <span className="text-[10px] font-mono text-terminal-text-muted whitespace-nowrap pt-0.5">
-        {new Date(event.detected_at).toLocaleString()}
-      </span>
+      <div className="grid grid-cols-1 gap-2 text-[13px] text-[var(--e-text-secondary)] sm:grid-cols-2">
+        <div>
+          <span className="text-[var(--e-text-muted)]">Original:</span>{' '}
+          <span className="font-mono text-[var(--e-text-primary)]">{event.original_value || '—'}</span>
+        </div>
+        <div>
+          <span className="text-[var(--e-text-muted)]">New:</span>{' '}
+          <span className="font-mono text-[var(--e-text-primary)]">{event.new_value || '—'}</span>
+        </div>
+      </div>
+
+      {event.evidence_ref ? (
+        <div className="mt-2 text-[12px] text-[var(--e-text-muted)]">
+          Evidence ref:{' '}
+          <span className="font-mono text-[var(--e-purple-700)]">{event.evidence_ref}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -115,50 +96,53 @@ function DriftSubmitForm({
         evidence_ref: evidenceRef || undefined,
       },
       {
-        onSuccess: () => {
-          onClose();
-        },
+        onSuccess: () => onClose(),
       },
     );
   };
 
   return (
-    <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-      <div className="px-5 py-2.5 border-b border-terminal-border/50 bg-terminal-panel flex items-center justify-between">
-        <h3 className="text-[11px] font-bold uppercase tracking-wider text-terminal-text-muted">
+    <div className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+      <div className="flex items-center justify-between border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-3">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
           Report Drift Event
         </h3>
         <button
+          type="button"
           onClick={onClose}
-          className="p-0.5 text-terminal-text-muted hover:text-terminal-text transition-colors"
+          className="text-[var(--e-text-muted)] transition hover:text-[var(--e-text-primary)]"
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="h-4 w-4" />
         </button>
       </div>
-      <div className="p-5 space-y-3">
-        <div className="grid grid-cols-2 gap-3">
+
+      <div className="space-y-4 px-5 py-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="text-[10px] text-terminal-text-muted uppercase tracking-wider block mb-1">
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
               Drift Type
             </label>
             <select
               value={driftType}
-              onChange={(e) => setDriftType(e.target.value as DriftType)}
-              className="w-full bg-terminal-bg border border-terminal-border rounded px-2 py-1.5 text-xs text-terminal-text font-mono focus:outline-none focus:border-echelon-cyan/50"
+              onChange={(event) => setDriftType(event.target.value as DriftType)}
+              className="h-10 w-full rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[13px] text-[var(--e-text-primary)] outline-none focus:border-[var(--e-border-focus)]"
             >
-              {DRIFT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
+              {DRIFT_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
               ))}
             </select>
           </div>
+
           <div>
-            <label className="text-[10px] text-terminal-text-muted uppercase tracking-wider block mb-1">
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
               Impact Assessment
             </label>
             <select
               value={impact}
-              onChange={(e) => setImpact(e.target.value as ImpactAssessment)}
-              className="w-full bg-terminal-bg border border-terminal-border rounded px-2 py-1.5 text-xs text-terminal-text font-mono focus:outline-none focus:border-echelon-cyan/50"
+              onChange={(event) => setImpact(event.target.value as ImpactAssessment)}
+              className="h-10 w-full rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[13px] text-[var(--e-text-primary)] outline-none focus:border-[var(--e-border-focus)]"
             >
               <option value="non_material">Non-material</option>
               <option value="material">Material</option>
@@ -166,62 +150,64 @@ function DriftSubmitForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="text-[10px] text-terminal-text-muted uppercase tracking-wider block mb-1">
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
               Original Value
             </label>
             <input
               value={originalValue}
-              onChange={(e) => setOriginalValue(e.target.value)}
-              className="w-full bg-terminal-bg border border-terminal-border rounded px-2 py-1.5 text-xs text-terminal-text font-mono placeholder:text-terminal-text-muted/50 focus:outline-none focus:border-echelon-cyan/50"
+              onChange={(event) => setOriginalValue(event.target.value)}
+              className="h-10 w-full rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[13px] text-[var(--e-text-primary)] outline-none placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)]"
               placeholder="Value before drift"
             />
           </div>
           <div>
-            <label className="text-[10px] text-terminal-text-muted uppercase tracking-wider block mb-1">
+            <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
               New Value
             </label>
             <input
               value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
-              className="w-full bg-terminal-bg border border-terminal-border rounded px-2 py-1.5 text-xs text-terminal-text font-mono placeholder:text-terminal-text-muted/50 focus:outline-none focus:border-echelon-cyan/50"
+              onChange={(event) => setNewValue(event.target.value)}
+              className="h-10 w-full rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[13px] text-[var(--e-text-primary)] outline-none placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)]"
               placeholder="Value after drift"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-[10px] text-terminal-text-muted uppercase tracking-wider block mb-1">
-            Evidence Reference <span className="text-terminal-text-muted/50">(optional)</span>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+            Evidence Reference <span className="text-[var(--e-text-muted)]">(optional)</span>
           </label>
           <input
             value={evidenceRef}
-            onChange={(e) => setEvidenceRef(e.target.value)}
-            className="w-full bg-terminal-bg border border-terminal-border rounded px-2 py-1.5 text-xs text-terminal-text font-mono placeholder:text-terminal-text-muted/50 focus:outline-none focus:border-echelon-cyan/50"
-            placeholder="E001, E002..."
+            onChange={(event) => setEvidenceRef(event.target.value)}
+            className="h-10 w-full rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[13px] text-[var(--e-text-primary)] outline-none placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)]"
+            placeholder="E001, E002…"
           />
         </div>
 
-        {submitDrift.isError && (
-          <div className="text-xs text-status-failure bg-status-failure/10 border border-status-failure/30 rounded px-3 py-2">
+        {submitDrift.isError ? (
+          <div className="rounded-md border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] px-4 py-3 text-[12px] text-[var(--e-red-600)]">
             {(submitDrift.error as Error)?.message ?? 'Drift submission failed'}
           </div>
-        )}
+        ) : null}
 
-        <div className="flex gap-2 justify-end pt-1">
+        <div className="flex items-center justify-end gap-2">
           <button
+            type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs text-terminal-text-muted hover:text-terminal-text transition-colors"
+            className="rounded-md px-3 py-2 text-[12px] font-medium text-[var(--e-text-muted)] transition hover:text-[var(--e-text-primary)]"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={submitDrift.isPending}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-echelon-cyan bg-echelon-cyan/10 border border-echelon-cyan/30 rounded hover:bg-echelon-cyan/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 rounded-md bg-[var(--e-purple-500)] px-4 py-2 text-[12px] font-semibold text-[var(--e-text-inverse)] transition hover:bg-[var(--e-purple-600)] disabled:cursor-not-allowed disabled:bg-[var(--e-purple-200)] disabled:text-[var(--e-text-disabled)]"
           >
-            {submitDrift.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+            {submitDrift.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Submit Drift
           </button>
         </div>
@@ -243,69 +229,51 @@ export function DriftEventsPanel({
 
   return (
     <div className="space-y-4">
-      {/* Material drift banner */}
-      {hasMaterialDrift && (
-        <div className="bg-status-failure/10 border border-status-failure/30 rounded-lg p-3 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-status-failure shrink-0" />
-          <span className="text-xs text-status-failure">
-            Material drift detected — stop-condition reevaluation triggered. Routing may change to REVIEW_REQUIRED.
-          </span>
+      {hasMaterialDrift ? (
+        <div className="flex items-center gap-3 rounded-lg border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] px-4 py-3 text-[13px] text-[var(--e-red-600)]">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Material drift detected — stop-condition reevaluation triggered. Routing may change to REVIEW_REQUIRED.
         </div>
-      )}
+      ) : null}
 
-      {/* Drift events section — sunken header, padded body */}
-      <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-        <div className="px-5 py-2.5 border-b border-terminal-border/50 bg-terminal-panel flex items-center gap-2">
-          <h3 className="text-[11px] font-bold uppercase tracking-wider text-terminal-text-muted">
+      <div className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+        <div className="flex items-center gap-2 border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
             Drift Events
           </h3>
-          <span className="font-mono text-[11px] text-terminal-text-muted">
-            {events.length} recorded
-          </span>
-          <span className="font-mono text-[11px] text-terminal-text-muted ml-auto">
-            commitment monitor
-          </span>
+          <span className="font-mono text-[11px] text-[var(--e-text-muted)]">{events.length} recorded</span>
+          <span className="ml-auto text-[11px] text-[var(--e-text-muted)]">commitment monitor</span>
         </div>
-        <div className="px-5">
-          {events.length === 0 ? (
-            <div className="py-8 text-center">
-              <div className="text-[13px] text-terminal-text-muted mb-1">
-                No drift events detected
-              </div>
-              <div className="text-[11px] text-terminal-text-muted/60">
-                Drift events are logged when commitment parameters change during an active investigation.
-              </div>
-              <div className="text-[10px] font-mono text-terminal-text-muted/40 mt-2">
-                GET /api/v1/investigations/{'{id}'}/drift
-              </div>
-            </div>
+        <div className="space-y-3 px-5 py-5">
+          {events.length > 0 ? (
+            events.map((event) => <DriftEventRow key={event.drift_id} event={event} />)
           ) : (
-            <div>
-              {events.map((event) => (
-                <DriftEventRow key={event.drift_id} event={event} />
-              ))}
+            <div className="rounded-md border border-dashed border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-8 text-center">
+              <div className="text-[13px] font-medium text-[var(--e-text-primary)]">No drift events detected</div>
+              <div className="mt-1 text-[12px] leading-5 text-[var(--e-text-muted)]">
+                Drift events appear here when committed investigation parameters change.
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Submit form or trigger */}
-      {investigationId && (
+      {investigationId ? (
         showForm ? (
-          <DriftSubmitForm
-            investigationId={investigationId}
-            onClose={() => setShowForm(false)}
-          />
+          <DriftSubmitForm investigationId={investigationId} onClose={() => setShowForm(false)} />
         ) : (
           <button
+            type="button"
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-echelon-cyan border border-echelon-cyan/30 rounded-lg hover:bg-echelon-cyan/10 transition-colors"
+            className="inline-flex items-center gap-2 rounded-md border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-3 py-2 text-[12px] font-semibold text-[var(--e-purple-700)] transition hover:bg-[var(--e-purple-100)]"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="h-4 w-4" />
             Report Drift
           </button>
         )
-      )}
+      ) : null}
     </div>
   );
 }
+
+export default DriftEventsPanel;

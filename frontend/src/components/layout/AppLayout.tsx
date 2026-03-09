@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { ShellHeader } from './ShellHeader';
 import { TopActionBar } from './TopActionBar';
 import { TopActionBarActionsProvider } from '../../contexts/TopActionBarActionsContext';
 import { AgentsUiProvider } from '../../contexts/AgentsUiContext';
@@ -15,6 +16,7 @@ export function AppLayout() {
   useRealtimeInvalidation('platform');
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -28,19 +30,27 @@ export function AppLayout() {
           <VerifyUiProvider>
           <DemoEngine>
             <DemoToastHost />
-            <div className="h-[100dvh] w-screen flex overflow-hidden bg-terminal-bg canary-active">
-              {/* Persistent left sidebar (desktop) + mobile drawer */}
+            <div className="min-h-[100dvh] w-screen bg-[var(--e-bg-app)] text-[var(--e-text-primary)]">
+              <ShellHeader
+                sidebarCollapsed={sidebarCollapsed}
+                onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
+                onOpenMobileMenu={() => setMobileMenuOpen(true)}
+              />
+
               <Sidebar
+                collapsed={sidebarCollapsed}
                 mobileOpen={mobileMenuOpen}
                 onMobileClose={() => setMobileMenuOpen(false)}
               />
 
-              {/* Main area: top action bar + viewport */}
-              <section className="flex-1 flex flex-col min-w-0 h-[100dvh]">
+              <section
+                className={`flex min-h-[100dvh] min-w-0 flex-col pt-14 transition-[margin] duration-300 ease-out ${
+                  sidebarCollapsed ? 'md:ml-16' : 'md:ml-60'
+                }`}
+              >
                 <TopActionBar onHamburgerClick={() => setMobileMenuOpen(true)} />
 
-                {/* Viewport — each page fills this area and manages its own scroll */}
-                <div className="flex-1 min-h-0 relative bg-terminal-bg overflow-auto">
+                <div className="relative flex-1 overflow-auto bg-[var(--e-bg-app)]">
                   <div key={location.pathname} className="page-enter h-full">
                     <Outlet />
                   </div>

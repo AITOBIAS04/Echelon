@@ -99,11 +99,11 @@ export function DomainFilterSelector({ selected, onChange }: DomainFilterSelecto
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-terminal-border bg-terminal-sunken px-4 py-4">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-terminal-text-muted">
+      <div className="rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-4">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
           Committed ingestion filters
         </div>
-        <p className="mt-2 text-sm leading-6 text-terminal-text-secondary">
+        <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
           These filters govern what evidence and signal classes are considered in scope for the investigation. They are part of the bounded inquiry receipt, not just UI filters.
         </p>
       </div>
@@ -121,7 +121,7 @@ export function DomainFilterSelector({ selected, onChange }: DomainFilterSelecto
               className={`rounded-2xl border px-4 py-4 text-left transition ${
                 selectedState
                   ? 'border-purple-200 bg-purple-100/70'
-                  : 'border-terminal-border bg-terminal-sunken hover:bg-terminal-hover'
+                  : 'border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] hover:bg-[var(--e-bg-hover)]'
               }`}
             >
               <div className="flex items-start justify-between gap-3">
@@ -130,16 +130,16 @@ export function DomainFilterSelector({ selected, onChange }: DomainFilterSelecto
                     className={`flex h-10 w-10 items-center justify-center rounded-xl border ${
                       selectedState
                         ? 'border-purple-200 bg-purple-500 text-white'
-                        : 'border-terminal-border bg-terminal-panel text-terminal-text-muted'
+                        : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-muted)]'
                     }`}
                   >
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-terminal-text">
+                    <div className="text-sm font-semibold text-[var(--e-text-primary)]">
                       {category.label}
                     </div>
-                    <p className="mt-1 text-sm leading-6 text-terminal-text-secondary">
+                    <p className="mt-1 text-sm leading-6 text-[var(--e-text-secondary)]">
                       {category.description}
                     </p>
                   </div>
@@ -148,7 +148,7 @@ export function DomainFilterSelector({ selected, onChange }: DomainFilterSelecto
                   className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
                     selectedState
                       ? 'border-purple-300 bg-purple-500 text-white'
-                      : 'border-terminal-border bg-terminal-panel text-terminal-text-muted'
+                      : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-muted)]'
                   }`}
                 >
                   {selectedState ? '✓' : ''}
@@ -159,7 +159,7 @@ export function DomainFilterSelector({ selected, onChange }: DomainFilterSelecto
                 {category.sources.map((source) => (
                   <span
                     key={source}
-                    className="rounded-full border border-terminal-border bg-terminal-elevated px-2.5 py-1 text-[11px] font-medium text-terminal-text-secondary"
+                    className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2.5 py-1 text-[11px] font-medium text-[var(--e-text-secondary)]"
                   >
                     {source}
                   </span>
@@ -170,7 +170,7 @@ export function DomainFilterSelector({ selected, onChange }: DomainFilterSelecto
         })}
       </div>
 
-      <div className="text-sm text-terminal-text-secondary">
+      <div className="text-sm text-[var(--e-text-secondary)]">
         {selected.length} of {DOMAIN_CATEGORIES.length} categories selected
       </div>
     </div>

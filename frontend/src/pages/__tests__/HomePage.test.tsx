@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { HomePage } from '../HomePage';
 
 vi.mock('../../api/client', () => ({
@@ -18,9 +19,11 @@ function renderWithProviders(ui: React.ReactElement) {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        {ui}
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -88,16 +91,17 @@ describe('HomePage', () => {
     renderWithProviders(<HomePage />);
 
     // Summary cards should appear with real data
-    expect(await screen.findByText('Active Timelines')).toBeInTheDocument();
-    expect(screen.getByText('Avg Stability')).toBeInTheDocument();
+    expect(await screen.findByText('Active Theatres')).toBeInTheDocument();
+    expect(screen.getByText('Average Stability')).toBeInTheDocument();
     expect(screen.getByText('70%')).toBeInTheDocument(); // avg of 0.85 and 0.55
     expect(screen.getByText('Active Paradoxes')).toBeInTheDocument();
-    expect(screen.getByText('Investigations')).toBeInTheDocument();
+    expect(screen.getAllByText('Investigations').length).toBeGreaterThan(0);
 
     // Activity feed should show real flaps
     expect(screen.getByText('Recent Activity')).toBeInTheDocument();
     expect(screen.getByText('TRADE')).toBeInTheDocument();
     expect(screen.getByText('Agent bought YES')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
   });
 
   it('renders loading state', () => {
@@ -105,7 +109,7 @@ describe('HomePage', () => {
 
     renderWithProviders(<HomePage />);
 
-    expect(screen.getByText('Loading dashboard...')).toBeInTheDocument();
+    expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
   });
 
   it('renders empty activity feed when no flaps', async () => {
@@ -130,6 +134,6 @@ describe('HomePage', () => {
 
     renderWithProviders(<HomePage />);
 
-    expect(await screen.findByText('No recent activity.')).toBeInTheDocument();
+    expect(await screen.findByText('No recent activity')).toBeInTheDocument();
   });
 });

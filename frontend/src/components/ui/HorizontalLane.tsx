@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * HorizontalLane Props
@@ -30,11 +31,13 @@ export function HorizontalLane({
   viewAllHref,
   onViewAll,
 }: HorizontalLaneProps) {
+  const navigate = useNavigate();
+
   const handleViewAll = () => {
     if (onViewAll) {
       onViewAll();
     } else if (viewAllHref) {
-      window.location.href = viewAllHref;
+      navigate(viewAllHref);
     }
   };
 

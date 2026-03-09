@@ -40,8 +40,14 @@ export const theatreApi = {
   },
 
   /** Get a single theatre by ID */
-  getTheatre: async (theatreId: string): Promise<TheatreResponse> => {
-    const { data } = await apiClient.get(`/api/v1/theatres/${theatreId}`);
+  getTheatre: async (
+    theatreId: string,
+    options?: { includeInvestigationContext?: boolean },
+  ): Promise<TheatreResponse> => {
+    const params = options?.includeInvestigationContext
+      ? { include: 'investigation_context' }
+      : undefined;
+    const { data } = await apiClient.get(`/api/v1/theatres/${theatreId}`, { params });
     return data;
   },
 

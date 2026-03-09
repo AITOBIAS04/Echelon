@@ -1,184 +1,181 @@
-/**
- * CertificatesPage — Document ledger for settlement and verification certificates.
- *
- * Design ref: output/design_reference/echelon_certificates_v1.html
- *
- * Character: Trustworthy, archival, clean, official.
- * Like a notary's ledger or bond certificate registry.
- *
- * Implementation truth:
- *   useCertificateGallery currently surfaces theatre certificates only.
- *   Verification-source rows are deferred until the hook is extended.
- *   Fields like market title, outcome, and dispute reason are not yet
- *   available from the backend — columns show available data honestly.
- */
-
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Award, Loader2, ExternalLink, ShieldCheck } from 'lucide-react';
-import { useCertificateGallery, type UnifiedCertificate } from '../hooks/useCertificateGallery';
+import { Award, ExternalLink, Loader2, ShieldCheck } from 'lucide-react';
+import { clsx } from 'clsx';
 import { EmptyState } from '../components/empty-states/EmptyState';
+import { useCertificateGallery, type UnifiedCertificate } from '../hooks/useCertificateGallery';
 
 type StatusFilter = 'all' | 'deployable' | 'not-deployable';
 
-/** Routing hint badge — PRIMARY visual signal per design reference */
 function RoutingBadge({ hint }: { hint: string | null | undefined }) {
   if (!hint) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold bg-terminal-panel text-terminal-text-muted border border-terminal-border">
-        <span className="w-1.5 h-1.5 rounded-full bg-terminal-text-muted/40" />
-        PENDING
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-2.5 py-1 text-[11px] font-semibold text-[var(--e-text-muted)]">
+        <span className="h-2 w-2 rounded-full bg-[var(--e-text-disabled)]" />
+        Pending
       </span>
     );
   }
-  const styles: Record<string, { bg: string; text: string; dot: string }> = {
-    ALLOWED: {
-      bg: 'bg-status-success/8 border-status-success/20',
-      text: 'text-status-success',
-      dot: 'bg-status-success',
-    },
-    REVIEW_REQUIRED: {
-      bg: 'bg-status-warning/8 border-status-warning/20',
-      text: 'text-status-warning',
-      dot: 'bg-status-warning',
-    },
-    BLOCKED: {
-      bg: 'bg-status-failure/8 border-status-failure/20',
-      text: 'text-status-failure',
-      dot: 'bg-status-failure',
-    },
+
+  const classes: Record<string, string> = {
+    ALLOWED: 'border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[var(--e-green-50)] text-[var(--e-green-600)]',
+    REVIEW_REQUIRED: 'border-[color:oklch(0.708_0.136_62_/_0.20)] bg-[color:oklch(0.708_0.136_62_/_0.10)] text-[var(--e-orange-600)]',
+    BLOCKED: 'border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] text-[var(--e-red-600)]',
   };
-  const s = styles[hint] ?? styles.ALLOWED;
+
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-bold border ${s.bg} ${s.text}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+    <span className={clsx('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold', classes[hint] ?? classes.ALLOWED)}>
+      <span
+        className={clsx(
+          'h-2 w-2 rounded-full',
+          hint === 'ALLOWED'
+            ? 'bg-[var(--e-green-600)]'
+            : hint === 'REVIEW_REQUIRED'
+              ? 'bg-[var(--e-orange-600)]'
+              : 'bg-[var(--e-red-600)]',
+        )}
+      />
       {hint.replace(/_/g, ' ')}
     </span>
   );
 }
 
-/** Verification tier badge */
+function GateBadge({ status }: { status: string | null | undefined }) {
+  if (!status) return null;
+
+  const classes: Record<string, string> = {
+    PASSED: 'border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[var(--e-green-50)] text-[var(--e-green-600)]',
+    PENDING: 'border-[color:oklch(0.708_0.136_62_/_0.20)] bg-[color:oklch(0.708_0.136_62_/_0.10)] text-[var(--e-orange-600)]',
+    FAILED: 'border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] text-[var(--e-red-600)]',
+  };
+
+  return (
+    <span className={clsx('inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em]', classes[status] ?? classes.PENDING)}>
+      {status}
+    </span>
+  );
+}
+
 function TierBadge({ tier }: { tier: string }) {
-  const isEnhanced = tier.toLowerCase() === 'enhanced';
+  const enhanced = tier.toLowerCase() === 'enhanced';
   return (
     <span
-      className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
-        isEnhanced
-          ? 'bg-purple-500/8 text-purple-500 border-purple-500/20'
-          : 'bg-terminal-panel text-terminal-text-secondary border-terminal-border'
-      }`}
+      className={clsx(
+        'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em]',
+        enhanced
+          ? 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+          : 'border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]',
+      )}
     >
       {tier}
     </span>
   );
 }
 
-/** Coherence gate status badge */
-function GateBadge({ status }: { status: string | null | undefined }) {
-  if (!status) return null;
-  const config: Record<string, string> = {
-    PASSED: 'bg-status-success/10 text-status-success border-status-success/20',
-    PENDING: 'bg-status-warning/10 text-status-warning border-status-warning/20',
-    FAILED: 'bg-status-failure/10 text-status-failure border-status-failure/20',
-  };
-  return (
-    <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border ${config[status] ?? config.PENDING}`}>
-      {status}
-    </span>
-  );
-}
-
-/** Source badge (theatre vs verification) */
 function SourceBadge({ source }: { source: string }) {
   return (
     <span
-      className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${
+      className={clsx(
+        'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em]',
         source === 'theatre'
-          ? 'bg-purple-500/8 text-purple-500 border-purple-500/20'
-          : 'bg-echelon-cyan/8 text-echelon-cyan border-echelon-cyan/20'
-      }`}
+          ? 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+          : 'border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]',
+      )}
     >
       {source}
     </span>
   );
 }
 
-function CertificateRow({ cert }: { cert: UnifiedCertificate }) {
+function StatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: 'success' | 'warning';
+}) {
+  const valueClass =
+    tone === 'success'
+      ? 'text-[var(--e-green-600)]'
+      : tone === 'warning'
+        ? 'text-[var(--e-orange-600)]'
+        : 'text-[var(--e-text-primary)]';
+
   return (
-    <tr className="border-b border-terminal-border/30 last:border-b-0 hover:bg-terminal-panel/50 transition-colors">
-      {/* Certificate ID */}
-      <td className="py-3.5 px-4">
-        <span className="font-mono text-[12px] font-semibold text-purple-500">
-          {cert.id.slice(0, 16)}
+    <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-3 shadow-[var(--e-shadow-xs)]">
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+        {label}
+      </div>
+      <div className={clsx('font-mono text-[24px] font-bold leading-8 tabular-nums', valueClass)}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function CertificateRow({ certificate }: { certificate: UnifiedCertificate }) {
+  return (
+    <tr className="border-b border-[var(--e-border-secondary)] align-top transition hover:bg-[var(--e-bg-hover)] last:border-b-0">
+      <td className="px-4 py-4">
+        <span className="font-mono text-[12px] font-semibold text-[var(--e-purple-700)]">
+          {certificate.id.slice(0, 16)}
         </span>
       </td>
-
-      {/* Construct / Source */}
-      <td className="py-3.5 px-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-[13px] font-semibold text-terminal-text leading-[18px]">
-            {cert.construct_id}
-          </span>
-          <div className="flex items-center gap-1.5">
-            <SourceBadge source={cert.source} />
-            {cert.theatre_id && (
+      <td className="px-4 py-4">
+        <div className="space-y-1">
+          <div className="text-[13px] font-semibold text-[var(--e-text-primary)]">
+            {certificate.construct_id}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <SourceBadge source={certificate.source} />
+            {certificate.theatre_id ? (
               <Link
-                to={`/theatre/${cert.theatre_id}`}
-                className="text-[11px] text-terminal-text-muted hover:text-purple-500 transition-colors"
+                to={`/theatre/${certificate.theatre_id}`}
+                className="text-[11px] font-medium text-[var(--e-text-muted)] no-underline transition hover:text-[var(--e-purple-700)]"
               >
-                {cert.theatre_id.slice(0, 12)}
+                {certificate.theatre_id.slice(0, 12)}
               </Link>
-            )}
+            ) : null}
           </div>
         </div>
       </td>
-
-      {/* Routing / Status — PRIMARY visual signal */}
-      <td className="py-3.5 px-4">
-        <RoutingBadge hint={cert.routing_hint} />
+      <td className="px-4 py-4">
+        <RoutingBadge hint={certificate.routing_hint} />
       </td>
-
-      {/* Score */}
-      <td className="py-3.5 px-4 text-right">
-        <span className="font-mono text-[13px] font-bold tabular-nums text-terminal-text">
-          {cert.composite_score.toFixed(3)}
+      <td className="px-4 py-4 text-right">
+        <span className="font-mono text-[13px] font-semibold tabular-nums text-[var(--e-text-primary)]">
+          {certificate.composite_score.toFixed(3)}
         </span>
       </td>
-
-      {/* Gate */}
-      <td className="py-3.5 px-4">
-        <GateBadge status={cert.coherence_gate_status} />
+      <td className="px-4 py-4">
+        <GateBadge status={certificate.coherence_gate_status} />
       </td>
-
-      {/* Tier */}
-      <td className="py-3.5 px-4">
-        <TierBadge tier={cert.verification_tier} />
+      <td className="px-4 py-4">
+        <TierBadge tier={certificate.verification_tier} />
       </td>
-
-      {/* Issue Date */}
-      <td className="py-3.5 px-4">
-        <span className="font-mono text-[12px] text-terminal-text-secondary tabular-nums whitespace-nowrap">
-          {new Date(cert.issued_at).toLocaleDateString()}
+      <td className="px-4 py-4">
+        <span className="font-mono text-[12px] tabular-nums text-[var(--e-text-secondary)]">
+          {new Date(certificate.issued_at).toLocaleDateString()}
         </span>
       </td>
-
-      {/* Actions */}
-      <td className="py-3.5 px-4">
-        <div className="flex gap-1.5 justify-end">
-          {cert.theatre_id && (
+      <td className="px-4 py-4">
+        <div className="flex justify-end gap-2">
+          {certificate.theatre_id ? (
             <Link
-              to={`/theatre/${cert.theatre_id}`}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-terminal-text-secondary bg-terminal-surface border border-terminal-border rounded hover:border-purple-500/30 hover:text-purple-500 transition-colors"
+              to={`/theatre/${certificate.theatre_id}`}
+              className="inline-flex items-center gap-1 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-1.5 text-[11px] font-semibold text-[var(--e-text-secondary)] no-underline transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
             >
-              <ExternalLink className="w-3 h-3" />
+              <ExternalLink className="h-3 w-3" />
               View
             </Link>
-          )}
+          ) : null}
           <Link
-            to="/verify"
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-status-success bg-terminal-surface border border-status-success/20 rounded hover:bg-status-success/5 transition-colors"
+            to={`/verify?certificate=${encodeURIComponent(certificate.id)}`}
+            className="inline-flex items-center gap-1 rounded-md border border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[var(--e-green-50)] px-3 py-1.5 text-[11px] font-semibold text-[var(--e-green-600)] no-underline transition hover:bg-[color:oklch(0.545_0.170_152_/_0.14)]"
           >
-            <ShieldCheck className="w-3 h-3" />
+            <ShieldCheck className="h-3 w-3" />
             Verify
           </Link>
         </div>
@@ -187,150 +184,117 @@ function CertificateRow({ cert }: { cert: UnifiedCertificate }) {
   );
 }
 
-/** Right rail — Recent certificates, type distribution */
 function RightRail({ certificates }: { certificates: UnifiedCertificate[] }) {
   const recent = certificates.slice(0, 5);
-  const deployableCount = certificates.filter((c) => c.is_deployable).length;
-  const notDeployable = certificates.length - deployableCount;
+  const deployableCount = certificates.filter((certificate) => certificate.is_deployable).length;
+  const notDeployableCount = certificates.length - deployableCount;
 
   return (
-    <div className="flex flex-col gap-4 sticky top-6">
-      {/* Recent certificates */}
-      <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-panel">
-          <h3 className="text-[11px] font-bold uppercase tracking-wider text-terminal-text-muted">
+    <div className="space-y-4">
+      <section className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+        <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
             Recent Certificates
           </h3>
         </div>
-        <div className="px-4 py-2">
-          {recent.map((cert) => (
-            <div
-              key={cert.id}
-              className="flex items-center justify-between py-2 border-b border-terminal-border/30 last:border-b-0"
-            >
-              <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                <span className="text-[12px] font-semibold text-terminal-text truncate">
-                  {cert.construct_id}
-                </span>
-                <span className="font-mono text-[10px] text-terminal-text-muted">
-                  {new Date(cert.issued_at).toLocaleDateString()}
-                </span>
+        <div className="px-4 py-3">
+          {recent.length > 0 ? (
+            recent.map((certificate) => (
+              <div
+                key={certificate.id}
+                className="flex items-center justify-between border-b border-[var(--e-border-secondary)] py-2 last:border-b-0"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-[12px] font-semibold text-[var(--e-text-primary)]">
+                    {certificate.construct_id}
+                  </div>
+                  <div className="font-mono text-[10px] text-[var(--e-text-muted)]">
+                    {new Date(certificate.issued_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <span
+                  className={clsx(
+                    'h-2 w-2 rounded-full',
+                    certificate.routing_hint === 'ALLOWED'
+                      ? 'bg-[var(--e-green-600)]'
+                      : certificate.routing_hint === 'REVIEW_REQUIRED'
+                        ? 'bg-[var(--e-orange-600)]'
+                        : 'bg-[var(--e-text-disabled)]',
+                  )}
+                />
               </div>
-              <span
-                className={`w-2 h-2 rounded-full shrink-0 ml-2 ${
-                  cert.routing_hint === 'ALLOWED'
-                    ? 'bg-status-success'
-                    : cert.routing_hint === 'REVIEW_REQUIRED'
-                      ? 'bg-status-warning'
-                      : 'bg-terminal-text-muted/40'
-                }`}
-              />
-            </div>
-          ))}
-          {recent.length === 0 && (
-            <div className="py-4 text-center text-[12px] text-terminal-text-muted">
-              No certificates yet
-            </div>
+            ))
+          ) : (
+            <div className="text-[12px] text-[var(--e-text-muted)]">No certificates yet.</div>
           )}
         </div>
-      </div>
+      </section>
 
-      {/* Deployment readiness */}
-      <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-panel">
-          <h3 className="text-[11px] font-bold uppercase tracking-wider text-terminal-text-muted">
+      <section className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+        <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
             Deployment Readiness
           </h3>
         </div>
-        <div className="px-4 py-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium text-terminal-text-secondary w-[80px] shrink-0">
-              Deployable
-            </span>
-            <div className="flex-1 h-1.5 bg-terminal-panel rounded-full overflow-hidden">
-              <div
-                className="h-full bg-status-success rounded-full"
-                style={{
-                  width: certificates.length > 0 ? `${(deployableCount / certificates.length) * 100}%` : '0%',
-                }}
-              />
+        <div className="space-y-3 px-4 py-4">
+          {[
+            { label: 'Deployable', count: deployableCount, color: 'bg-[var(--e-green-600)]' },
+            { label: 'Not Ready', count: notDeployableCount, color: 'bg-[var(--e-orange-600)]' },
+          ].map((row) => (
+            <div key={row.label} className="flex items-center gap-3">
+              <span className="w-20 text-[11px] text-[var(--e-text-secondary)]">{row.label}</span>
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--e-bg-sunken)]">
+                <div
+                  className={clsx('h-full rounded-full', row.color)}
+                  style={{
+                    width: certificates.length > 0 ? `${(row.count / certificates.length) * 100}%` : '0%',
+                  }}
+                />
+              </div>
+              <span className="w-6 text-right font-mono text-[10px] text-[var(--e-text-muted)]">
+                {row.count}
+              </span>
             </div>
-            <span className="font-mono text-[10px] font-semibold text-terminal-text-muted w-[24px] text-right">
-              {deployableCount}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium text-terminal-text-secondary w-[80px] shrink-0">
-              Not Ready
-            </span>
-            <div className="flex-1 h-1.5 bg-terminal-panel rounded-full overflow-hidden">
-              <div
-                className="h-full bg-status-warning rounded-full"
-                style={{
-                  width: certificates.length > 0 ? `${(notDeployable / certificates.length) * 100}%` : '0%',
-                }}
-              />
-            </div>
-            <span className="font-mono text-[10px] font-semibold text-terminal-text-muted w-[24px] text-right">
-              {notDeployable}
-            </span>
-          </div>
+          ))}
         </div>
-      </div>
+      </section>
 
-      {/* Source note */}
-      <div className="bg-terminal-surface rounded-lg border border-terminal-border overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-terminal-border/50 bg-terminal-panel">
-          <h3 className="text-[11px] font-bold uppercase tracking-wider text-terminal-text-muted">
+      <section className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+        <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
             Source Coverage
           </h3>
         </div>
-        <div className="px-4 py-3">
-          <div className="text-[11px] text-terminal-text-muted leading-[18px]">
-            Currently showing <strong className="text-terminal-text">theatre certificates</strong> only.
-            Verification-source certificates will appear when the gallery hook is extended.
-          </div>
-          <div className="text-[10px] font-mono text-terminal-text-muted/40 mt-2">
-            GET /api/v1/certificates
-          </div>
+        <div className="px-4 py-4 text-[12px] leading-5 text-[var(--e-text-secondary)]">
+          Currently showing <strong className="text-[var(--e-text-primary)]">theatre certificates</strong> only.
+          Verification-source certificates remain deferred until the gallery hook merges them.
         </div>
-      </div>
+      </section>
     </div>
   );
 }
 
 export function CertificatesPage() {
   const navigate = useNavigate();
-  const { certificates, total, isLoading, error, isEmpty } = useCertificateGallery();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const { certificates, total, isLoading, error, isEmpty } = useCertificateGallery();
 
   const filtered = useMemo(() => {
     if (statusFilter === 'all') return certificates;
-    if (statusFilter === 'deployable') return certificates.filter((c) => c.is_deployable);
-    return certificates.filter((c) => !c.is_deployable);
+    if (statusFilter === 'deployable') return certificates.filter((certificate) => certificate.is_deployable);
+    return certificates.filter((certificate) => !certificate.is_deployable);
   }, [certificates, statusFilter]);
 
-  const deployableCount = useMemo(
-    () => certificates.filter((c) => c.is_deployable).length,
-    [certificates],
-  );
+  const deployableCount = certificates.filter((certificate) => certificate.is_deployable).length;
   const notDeployableCount = certificates.length - deployableCount;
-  const allowedCount = useMemo(
-    () => certificates.filter((c) => c.routing_hint === 'ALLOWED').length,
-    [certificates],
-  );
-  const reviewCount = useMemo(
-    () => certificates.filter((c) => c.routing_hint === 'REVIEW_REQUIRED').length,
-    [certificates],
-  );
+  const allowedCount = certificates.filter((certificate) => certificate.routing_hint === 'ALLOWED').length;
+  const reviewCount = certificates.filter((certificate) => certificate.routing_hint === 'REVIEW_REQUIRED').length;
 
   if (error) {
     return (
-      <div className="p-6 max-w-[1100px] mx-auto">
-        <div className="flex items-center gap-2 p-3 bg-status-failure/10 border border-status-failure/30 rounded-lg">
-          <span className="text-xs text-status-failure">
-            Failed to load certificates: {error.message}
-          </span>
+      <div className="p-6">
+        <div className="mx-auto max-w-7xl rounded-lg border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] px-5 py-4 text-[13px] text-[var(--e-red-600)] shadow-[var(--e-shadow-xs)]">
+          Failed to load certificates: {error.message}
         </div>
       </div>
     );
@@ -338,69 +302,55 @@ export function CertificatesPage() {
 
   if (isEmpty) {
     return (
-      <div className="p-6 max-w-[1100px] mx-auto">
-        <EmptyState
-          type="NOT_YET_GENERATED"
-          icon={<Award className="w-6 h-6" />}
-          title="No certificates yet"
-          description="Certificates are generated when theatres are settled and verified. Run and settle a theatre to produce your first certificate."
-          triggerText="Triggered by: Theatre settlement + verification run"
-          actions={[
-            {
-              label: 'Browse Theatres',
-              onClick: () => navigate('/theatres'),
-              variant: 'primary',
-            },
-            {
-              label: 'Verify a Certificate',
-              onClick: () => navigate('/verify'),
-              variant: 'secondary',
-            },
-          ]}
-        />
+      <div className="p-6">
+        <div className="mx-auto max-w-5xl">
+          <EmptyState
+            type="NOT_YET_GENERATED"
+            icon={<Award className="h-6 w-6" />}
+            title="No certificates issued yet"
+            description="Certificates appear here after theatre settlement and verification. Verification-source rows remain deferred until the gallery hook is expanded."
+            actions={[
+              {
+                label: 'Browse Theatres',
+                onClick: () => navigate('/theatres'),
+                variant: 'primary',
+              },
+              {
+                label: 'Verify a Certificate',
+                onClick: () => navigate('/verify'),
+                variant: 'secondary',
+              },
+            ]}
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-[1100px] mx-auto space-y-5">
-      {/* Page header */}
-      <div>
-        <div className="text-[11px] font-mono text-terminal-text-muted mb-0.5 uppercase tracking-wider">
-          Verification / Certificates
-        </div>
-        <h1 className="text-2xl font-bold text-terminal-text">Certificates</h1>
-        <p className="text-[13px] text-terminal-text-secondary mt-0.5">
-          Settlement and verification artifacts from your markets and investigations
-        </p>
-      </div>
-
-      {/* Stats bar */}
-      <div className="flex gap-4 p-3 px-5 bg-terminal-surface rounded-lg border border-terminal-border flex-wrap">
-        {[
-          { label: 'Total\nCertificates', value: isLoading ? '...' : String(total) },
-          { label: 'Routing\nAllowed', value: isLoading ? '...' : String(allowedCount), color: 'text-status-success' },
-          { label: 'Review\nRequired', value: isLoading ? '...' : String(reviewCount), color: reviewCount > 0 ? 'text-status-warning' : undefined },
-          { label: 'Deployable', value: isLoading ? '...' : String(deployableCount), color: 'text-status-success' },
-          { label: 'Not\nDeployable', value: isLoading ? '...' : String(notDeployableCount) },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="flex items-center gap-2 pr-4 border-r border-terminal-border/50 last:border-r-0 last:pr-0"
-          >
-            <span className={`font-mono text-[17px] font-bold tabular-nums ${stat.color ?? 'text-terminal-text'}`}>
-              {stat.value}
-            </span>
-            <span className="text-[11px] font-medium text-terminal-text-muted leading-[14px] whitespace-pre-line">
-              {stat.label}
-            </span>
+    <div className="p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <div>
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+            Verification Ledger
           </div>
-        ))}
-      </div>
+          <h1 className="text-[34px] font-bold tracking-[-0.03em] text-[var(--e-text-primary)]">
+            Certificates
+          </h1>
+          <p className="mt-2 text-[15px] leading-6 text-[var(--e-text-secondary)]">
+            Settlement and verification artifacts from theatres and investigation workflows.
+          </p>
+        </div>
 
-      {/* Filter bar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex gap-0.5 bg-terminal-panel rounded-lg p-[3px] border border-terminal-border/50">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <StatCard label="Total Certificates" value={total} />
+          <StatCard label="Routing Allowed" value={allowedCount} tone="success" />
+          <StatCard label="Review Required" value={reviewCount} tone={reviewCount > 0 ? 'warning' : undefined} />
+          <StatCard label="Deployable" value={deployableCount} tone="success" />
+          <StatCard label="Not Deployable" value={notDeployableCount} />
+        </div>
+
+        <div className="inline-flex rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] p-1 shadow-[var(--e-shadow-xs)]">
           {[
             { label: 'All', value: 'all' as StatusFilter, count: total },
             { label: 'Deployable', value: 'deployable' as StatusFilter, count: deployableCount },
@@ -408,91 +358,69 @@ export function CertificatesPage() {
           ].map((tab) => (
             <button
               key={tab.label}
+              type="button"
               onClick={() => setStatusFilter(tab.value)}
-              className={`flex items-center gap-[5px] px-3 py-[5px] rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+              className={clsx(
+                'inline-flex items-center gap-2 rounded-md px-3 py-2 text-[13px] font-medium transition',
                 statusFilter === tab.value
-                  ? 'bg-terminal-surface text-terminal-text font-semibold shadow-sm'
-                  : 'text-terminal-text-secondary hover:text-terminal-text'
-              }`}
+                  ? 'bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+                  : 'text-[var(--e-text-secondary)] hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]',
+              )}
             >
               {tab.label}
-              <span
-                className={`font-mono text-[10px] font-semibold ${
-                  statusFilter === tab.value ? 'text-purple-500' : 'text-terminal-text-muted'
-                }`}
-              >
-                {isLoading ? '...' : tab.count}
-              </span>
+              <span className="font-mono text-[11px] text-[var(--e-text-muted)]">{tab.count}</span>
             </button>
           ))}
         </div>
-      </div>
 
-      {/* Loading */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-5 h-5 text-terminal-text-muted animate-spin" />
-        </div>
-      )}
+        {isLoading ? (
+          <div className="flex items-center justify-center rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-16 shadow-[var(--e-shadow-xs)]">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin text-[var(--e-text-muted)]" />
+            <span className="text-[14px] text-[var(--e-text-muted)]">Loading certificates…</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px]">
+            <div className="overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-sm)]">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)]">
+                    {['Certificate ID', 'Construct / Source', 'Routing', 'Score', 'Gate', 'Tier', 'Issued', 'Actions'].map((heading, index) => (
+                      <th
+                        key={heading}
+                        className={clsx(
+                          'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]',
+                          index >= 3 && index !== 7 && 'text-right',
+                          index === 7 && 'text-right',
+                        )}
+                      >
+                        {heading}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((certificate) => (
+                    <CertificateRow key={certificate.id} certificate={certificate} />
+                  ))}
+                </tbody>
+              </table>
+              <div className="flex items-center justify-between border-t border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3 text-[12px] text-[var(--e-text-muted)]">
+                <span>
+                  Showing <strong className="text-[var(--e-text-primary)]">{filtered.length}</strong> of{' '}
+                  <strong className="text-[var(--e-text-primary)]">{total}</strong> certificates
+                </span>
+                <span className="font-mono text-[10px]">theatre source only</span>
+              </div>
+            </div>
 
-      {/* Content: 1fr 300px grid — ledger table + right rail */}
-      {!isLoading && (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5 items-start">
-          {/* Document ledger table */}
-          <div className="bg-terminal-surface border border-terminal-border rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-terminal-panel border-b border-terminal-border">
-                  <th className="py-2.5 px-4 text-left text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted whitespace-nowrap">
-                    Certificate ID
-                  </th>
-                  <th className="py-2.5 px-4 text-left text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted whitespace-nowrap">
-                    Construct / Source
-                  </th>
-                  <th className="py-2.5 px-4 text-left text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted whitespace-nowrap">
-                    Routing
-                  </th>
-                  <th className="py-2.5 px-4 text-right text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted whitespace-nowrap">
-                    Score
-                  </th>
-                  <th className="py-2.5 px-4 text-left text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted whitespace-nowrap">
-                    Gate
-                  </th>
-                  <th className="py-2.5 px-4 text-left text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted whitespace-nowrap">
-                    Tier
-                  </th>
-                  <th className="py-2.5 px-4 text-left text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted whitespace-nowrap">
-                    Issued
-                  </th>
-                  <th className="py-2.5 px-4 text-right text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted whitespace-nowrap">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((cert) => (
-                  <CertificateRow key={cert.id} cert={cert} />
-                ))}
-              </tbody>
-            </table>
-            {/* Table footer */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-t border-terminal-border/50 bg-terminal-panel">
-              <span className="text-[12px] text-terminal-text-muted">
-                Showing <strong className="text-terminal-text-secondary font-semibold">{filtered.length}</strong> of{' '}
-                <strong className="text-terminal-text-secondary font-semibold">{total}</strong> certificates
-              </span>
-              <span className="text-[10px] font-mono text-terminal-text-muted/40">
-                theatre source only
-              </span>
+            <div className="hidden lg:block">
+              <RightRail certificates={certificates} />
             </div>
           </div>
-
-          {/* Right rail */}
-          <div className="hidden lg:block">
-            <RightRail certificates={certificates} />
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
+
+export default CertificatesPage;

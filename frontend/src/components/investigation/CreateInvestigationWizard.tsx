@@ -22,6 +22,7 @@ import {
   Radar,
   SearchCheck,
   ShieldCheck,
+  TrendingUp,
 } from 'lucide-react';
 import { DomainFilterSelector } from './DomainFilterSelector';
 import { StopConditionConfigurator } from './StopConditionConfigurator';
@@ -309,7 +310,14 @@ export function CreateInvestigationWizard({
   const [submitted, setSubmitted] = useState(false);
   const createMutation = useCreateInvestigation();
   const originContext = useMemo(() => buildOriginContext(searchParams), [searchParams]);
-  const { theatre: linkedTheatre } = useTheatreDetail(state.theatreId || null);
+  const { theatre: linkedTheatre } = useTheatreDetail(
+    state.theatreId || null,
+    { includeInvestigationContext: true },
+  );
+  const selectedTemplateSummary = useMemo(
+    () => templates.find((template) => template.template_id === state.template) ?? null,
+    [templates, state.template],
+  );
 
   // Fetch detail for the selected template to populate defaults
   const { template: selectedTemplateDetail } = useInvestigationTemplateDetail(
@@ -435,20 +443,20 @@ export function CreateInvestigationWizard({
   return (
     <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="space-y-5">
-        <section className="rounded-2xl border border-terminal-border bg-terminal-panel px-5 py-5 shadow-sm">
+        <section className="rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-5 py-5 shadow-[var(--e-shadow-xs)]">
           <div className="inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-purple-700">
             <SearchCheck className="h-3.5 w-3.5" />
             Bounded Inquiry Tools
           </div>
-          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-terminal-text">
+          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-[var(--e-text-primary)]">
             Create investigation
           </h2>
-          <p className="mt-2 text-sm leading-6 text-terminal-text-secondary">
+          <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
             Define the question, lock the domain filters, and commit the stop condition that will govern readiness and certificate issuance.
           </p>
         </section>
 
-        <section className="rounded-2xl border border-terminal-border bg-terminal-panel px-5 py-5 shadow-sm">
+        <section className="rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-5 py-5 shadow-[var(--e-shadow-xs)]">
           <div className="space-y-3">
             {STEPS.map((label, index) => {
               const StepIcon = STEP_ICONS[index];
@@ -466,8 +474,8 @@ export function CreateInvestigationWizard({
                       ? 'border-purple-200 bg-purple-100/70'
                       : isComplete
                         ? 'border-green-200 bg-green-50/70 hover:border-green-300'
-                        : 'border-terminal-border bg-terminal-sunken'
-                  } ${index > step ? 'cursor-default' : 'hover:bg-terminal-hover'}`}
+                        : 'border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)]'
+                  } ${index > step ? 'cursor-default' : 'hover:bg-[var(--e-bg-hover)]'}`}
                 >
                   <div
                     className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl border ${
@@ -475,19 +483,19 @@ export function CreateInvestigationWizard({
                         ? 'border-purple-200 bg-purple-500 text-white'
                         : isComplete
                           ? 'border-green-200 bg-green-500 text-white'
-                          : 'border-terminal-border bg-terminal-panel text-terminal-text-muted'
+                          : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-muted)]'
                     }`}
                   >
                     {isComplete ? <Check className="h-4 w-4" /> : <StepIcon className="h-4 w-4" />}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-terminal-text-muted">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
                       Step {index + 1}
                     </div>
-                    <div className="mt-1 text-sm font-semibold text-terminal-text">
+                    <div className="mt-1 text-sm font-semibold text-[var(--e-text-primary)]">
                       {label}
                     </div>
-                    <div className="mt-1 text-sm leading-5 text-terminal-text-secondary">
+                    <div className="mt-1 text-sm leading-5 text-[var(--e-text-secondary)]">
                       {stepSummaryLabel(state, index)}
                     </div>
                   </div>
@@ -513,17 +521,17 @@ export function CreateInvestigationWizard({
       </aside>
 
       <section className="space-y-5">
-        <header className="rounded-2xl border border-terminal-border bg-terminal-panel px-6 py-5 shadow-sm">
+        <header className="rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-5 shadow-[var(--e-shadow-xs)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-terminal-border bg-terminal-sunken px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-terminal-text-muted">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
                 <CurrentStepIcon className="h-3.5 w-3.5" />
                 Step {step + 1}: {STEPS[step]}
               </div>
-              <h3 className="mt-3 text-2xl font-semibold tracking-tight text-terminal-text">
+              <h3 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--e-text-primary)]">
                 {STEPS[step]}
               </h3>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-terminal-text-secondary">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--e-text-secondary)]">
                 {step === 0 &&
                   'Frame the question and decide whether this inquiry should behave like a full investigation, a monitoring loop, or a verification task.'}
                 {step === 1 &&
@@ -575,10 +583,10 @@ export function CreateInvestigationWizard({
                 />
               ) : null}
             </div>
-            <div className="mt-3 text-sm leading-6 text-terminal-text-secondary">
+            <div className="mt-3 text-sm leading-6 text-[var(--e-text-secondary)]">
               {originContext.signalTitle ? (
                 <div>
-                  Prefilled from signal <span className="font-medium text-terminal-text">{originContext.signalTitle}</span>.
+                  Prefilled from signal <span className="font-medium text-[var(--e-text-primary)]">{originContext.signalTitle}</span>.
                 </div>
               ) : null}
               {state.domainFilters.length > 0 ? (
@@ -602,22 +610,22 @@ export function CreateInvestigationWizard({
         ) : null}
 
         {state.theatreId ? (
-          <section className="rounded-2xl border border-terminal-border bg-terminal-panel px-5 py-4 shadow-sm">
+          <section className="rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-5 py-4 shadow-[var(--e-shadow-xs)]">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-terminal-text-muted">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
                   Theatre context
                 </div>
-                <h4 className="mt-2 text-lg font-semibold text-terminal-text">
+                <h4 className="mt-2 text-lg font-semibold text-[var(--e-text-primary)]">
                   {linkedTheatre ? linkedTheatre.construct_id : state.constructId || state.theatreId}
                 </h4>
-                <p className="mt-1 text-sm leading-6 text-terminal-text-secondary">
+                <p className="mt-1 text-sm leading-6 text-[var(--e-text-secondary)]">
                   Bound investigations inherit the operational context of the theatre without changing the investigation receipt.
                 </p>
               </div>
               <Link
                 to={`/theatre/${encodeURIComponent(state.theatreId)}`}
-                className="inline-flex h-9 items-center justify-center rounded-xl border border-terminal-border bg-terminal-sunken px-3 text-sm font-medium text-terminal-text-secondary transition hover:bg-terminal-hover hover:text-terminal-text"
+                className="inline-flex h-9 items-center justify-center rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-3 text-sm font-medium text-[var(--e-text-secondary)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
               >
                 Open theatre
               </Link>
@@ -628,14 +636,127 @@ export function CreateInvestigationWizard({
               <MiniStat label="Inquiry Class" value={linkedTheatre?.inquiry_class ?? state.inquiryClass} />
               <MiniStat label="Paradox Risk" value={linkedTheatre?.paradox_risk_level ?? '—'} />
             </div>
+            {linkedTheatre?.investigation_context ? (
+              <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                <div className="rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-4">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                    Operational context
+                  </div>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <MiniStat
+                      label="Active Agents"
+                      value={linkedTheatre.investigation_context.deployment_summary.active_count.toString()}
+                    />
+                    <MiniStat
+                      label="Nearby Signals"
+                      value={linkedTheatre.investigation_context.convergence_summary.nearby_signal_count.toString()}
+                    />
+                    <MiniStat
+                      label="Convergence Cells"
+                      value={linkedTheatre.investigation_context.convergence_summary.cell_count.toString()}
+                    />
+                    <MiniStat
+                      label="Certificate"
+                      value={linkedTheatre.investigation_context.certificate_summary ? 'Issued' : 'None'}
+                    />
+                  </div>
+                  {Object.keys(linkedTheatre.investigation_context.deployment_summary.archetype_breakdown).length > 0 ? (
+                    <div className="mt-4">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                        Agent archetypes
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {Object.entries(linkedTheatre.investigation_context.deployment_summary.archetype_breakdown).map(([archetype, count]) => (
+                          <span
+                            key={archetype}
+                            className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2.5 py-1 text-[11px] font-mono text-[var(--e-text-secondary)]"
+                          >
+                            {archetype} · {count}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {linkedTheatre.investigation_context.convergence_summary.source_families.length > 0 ? (
+                    <div className="mt-4">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                        Nearby source families
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {linkedTheatre.investigation_context.convergence_summary.source_families.map((source) => (
+                          <span
+                            key={source}
+                            className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2.5 py-1 text-[11px] font-mono text-[var(--e-text-secondary)]"
+                          >
+                            {source}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-4">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                    Certificate + risk
+                  </div>
+                  {linkedTheatre.investigation_context.certificate_summary ? (
+                    <div className="mt-3 space-y-3">
+                      <MiniStat
+                        label="Routing"
+                        value={linkedTheatre.investigation_context.certificate_summary.routing_hint ?? '—'}
+                      />
+                      <MiniStat
+                        label="Tier"
+                        value={linkedTheatre.investigation_context.certificate_summary.verification_tier ?? '—'}
+                      />
+                      <MiniStat
+                        label="Score"
+                        value={
+                          linkedTheatre.investigation_context.certificate_summary.composite_score != null
+                            ? linkedTheatre.investigation_context.certificate_summary.composite_score.toFixed(2)
+                            : '—'
+                        }
+                      />
+                      <MiniStat
+                        label="Gate"
+                        value={linkedTheatre.investigation_context.certificate_summary.coherence_gate_status ?? '—'}
+                      />
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-sm leading-6 text-[var(--e-text-secondary)]">
+                      No issued certificate on this theatre yet.
+                    </p>
+                  )}
+                  {linkedTheatre.investigation_context.paradox_risk_factors_json ? (
+                    <div className="mt-4 rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-card)] px-3 py-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-[var(--e-text-primary)]">
+                        <TrendingUp className="h-4 w-4 text-purple-600" />
+                        Paradox risk factors
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {Object.entries(linkedTheatre.investigation_context.paradox_risk_factors_json).map(([key, value]) => (
+                          <span
+                            key={key}
+                            className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2.5 py-1 text-[11px] text-[var(--e-text-secondary)]"
+                          >
+                            {key.replaceAll('_', ' ')}: {String(value)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </section>
         ) : null}
 
-        <div className="rounded-2xl border border-terminal-border bg-terminal-panel px-6 py-6 shadow-sm">
+        <div className="rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-6 shadow-[var(--e-shadow-xs)]">
           {step === 0 && (
             <div className="space-y-6">
               <label className="block">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-terminal-text-muted">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
                   Inquiry Question
                 </span>
                 <textarea
@@ -645,12 +766,12 @@ export function CreateInvestigationWizard({
                   }
                   placeholder="What are you investigating? e.g., 'Will Company X complete its merger by Q3 2026?'"
                   rows={4}
-                  className="mt-2 w-full rounded-2xl border border-terminal-border bg-terminal-elevated px-4 py-3 text-sm text-terminal-text outline-none transition placeholder:text-terminal-text-muted focus:border-purple-300 focus:ring-2 focus:ring-purple-200"
+                  className="mt-2 w-full rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-4 py-3 text-sm text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)] focus:ring-2 focus:ring-[color:oklch(0.53_0.23_295_/_0.12)]"
                 />
               </label>
 
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-terminal-text-muted">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
                   Inquiry Class
                 </div>
                 <div className="mt-3 grid gap-3 md:grid-cols-3 lg:grid-cols-5">
@@ -669,15 +790,15 @@ export function CreateInvestigationWizard({
                         className={`rounded-2xl border px-4 py-4 text-left transition ${
                           selected
                             ? 'border-purple-200 bg-purple-100/70'
-                            : 'border-terminal-border bg-terminal-sunken hover:bg-terminal-hover'
+                            : 'border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] hover:bg-[var(--e-bg-hover)]'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <div className="text-sm font-semibold text-terminal-text">
+                            <div className="text-sm font-semibold text-[var(--e-text-primary)]">
                               {inquiryClass.label}
                             </div>
-                            <p className="mt-2 text-sm leading-6 text-terminal-text-secondary">
+                            <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
                               {inquiryClass.description}
                             </p>
                           </div>
@@ -685,7 +806,7 @@ export function CreateInvestigationWizard({
                             className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border ${
                               selected
                                 ? 'border-purple-300 bg-purple-500 text-white'
-                                : 'border-terminal-border bg-terminal-panel text-terminal-text-muted'
+                                : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-muted)]'
                             }`}
                           >
                             {selected && <Check className="h-3.5 w-3.5" />}
@@ -703,7 +824,7 @@ export function CreateInvestigationWizard({
             <div className="space-y-6">
               {templatesLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="text-sm text-terminal-text-secondary">Loading templates...</div>
+                  <div className="text-sm text-[var(--e-text-secondary)]">Loading templates...</div>
                 </div>
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
@@ -717,32 +838,81 @@ export function CreateInvestigationWizard({
                         className={`rounded-2xl border px-4 py-4 text-left transition ${
                           selected
                             ? 'border-purple-200 bg-purple-100/70'
-                            : 'border-terminal-border bg-terminal-sunken hover:bg-terminal-hover'
+                            : 'border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] hover:bg-[var(--e-bg-hover)]'
                         }`}
                       >
-                        <div className="text-sm font-semibold text-terminal-text">
-                          {template.name}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="text-sm font-semibold text-[var(--e-text-primary)]">
+                            {template.name}
+                          </div>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                            template.template_status === 'ACTIVE'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-[var(--e-bg-card)] text-[var(--e-text-muted)]'
+                          }`}>
+                            {template.template_status}
+                          </span>
                         </div>
-                        <p className="mt-2 text-sm leading-6 text-terminal-text-secondary">
+                        <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
                           {template.description}
                         </p>
+                        <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[var(--e-text-secondary)]">
+                          <span className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2 py-0.5 font-mono">
+                            {template.inquiry_class}
+                          </span>
+                          <span className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2 py-0.5">
+                            {template.domain_filter_count} filters
+                          </span>
+                          {template.requires_legal_review ? (
+                            <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-700">
+                              Legal review
+                            </span>
+                          ) : null}
+                        </div>
                       </button>
                     );
                   })}
                 </div>
               )}
 
-              <div className="rounded-2xl border border-terminal-border bg-terminal-sunken px-4 py-4">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-terminal-text-muted">
+              {state.template !== 'blank' && selectedTemplateDetail ? (
+                <div className="rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] px-4 py-4">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                    Template provenance
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <MiniStat label="Template" value={selectedTemplateDetail.name} />
+                    <MiniStat label="Inquiry Class" value={selectedTemplateDetail.inquiry_class} />
+                    <MiniStat label="Stop Condition" value={selectedTemplateDetail.default_stop_condition} />
+                    <MiniStat label="Corroboration" value={`${selectedTemplateDetail.min_corroboration_groups} groups`} />
+                  </div>
+                  <div className="mt-3 text-sm leading-6 text-[var(--e-text-secondary)]">
+                    {selectedTemplateDetail.default_sources.length > 0 ? (
+                      <>
+                        Default source manifest resolves to{' '}
+                        <span className="font-medium text-[var(--e-text-primary)]">
+                          {selectedTemplateDetail.default_sources.length}
+                        </span>{' '}
+                        source ID{selectedTemplateDetail.default_sources.length === 1 ? '' : 's'}.
+                      </>
+                    ) : (
+                      'Blank or manual templates do not pre-commit a source manifest.'
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-4">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
                   Optional scope binding
                 </div>
-                <p className="mt-2 text-sm leading-6 text-terminal-text-secondary">
+                <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
                   Bind this investigation to a known theatre or construct if the inquiry already belongs to a live operational context.
                 </p>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-terminal-text-muted">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
                       Theatre ID (optional)
                     </span>
                     <input
@@ -752,12 +922,12 @@ export function CreateInvestigationWizard({
                         setState((current) => ({ ...current, theatreId: e.target.value }))
                       }
                       placeholder="TH_..."
-                      className="mt-2 w-full rounded-xl border border-terminal-border bg-terminal-elevated px-3 py-2 text-sm font-mono text-terminal-text outline-none transition placeholder:text-terminal-text-muted focus:border-purple-300 focus:ring-2 focus:ring-purple-200"
+                      className="mt-2 w-full rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-2 text-sm font-mono text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)] focus:ring-2 focus:ring-[color:oklch(0.53_0.23_295_/_0.12)]"
                     />
                   </label>
 
                   <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-terminal-text-muted">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
                       Construct ID (optional)
                     </span>
                     <input
@@ -767,7 +937,7 @@ export function CreateInvestigationWizard({
                         setState((current) => ({ ...current, constructId: e.target.value }))
                       }
                       placeholder="CON_..."
-                      className="mt-2 w-full rounded-xl border border-terminal-border bg-terminal-elevated px-3 py-2 text-sm font-mono text-terminal-text outline-none transition placeholder:text-terminal-text-muted focus:border-purple-300 focus:ring-2 focus:ring-purple-200"
+                      className="mt-2 w-full rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-2 text-sm font-mono text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)] focus:ring-2 focus:ring-[color:oklch(0.53_0.23_295_/_0.12)]"
                     />
                   </label>
                 </div>
@@ -818,7 +988,7 @@ export function CreateInvestigationWizard({
                       {state.domainFilters.map((filter) => (
                         <span
                           key={filter}
-                          className="rounded-full border border-terminal-border bg-terminal-elevated px-2.5 py-1 text-[11px] font-mono text-terminal-text-secondary"
+                          className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2.5 py-1 text-[11px] font-mono text-[var(--e-text-secondary)]"
                         >
                           {filter}
                         </span>
@@ -831,11 +1001,58 @@ export function CreateInvestigationWizard({
               />
 
               <ReviewCard
+                title="Template Provenance"
+                body={
+                  selectedTemplateSummary ? (
+                    <div className="space-y-2">
+                      <div className="text-sm font-semibold text-[var(--e-text-primary)]">
+                        {selectedTemplateSummary.name}
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-[11px]">
+                        <span className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2.5 py-1 font-mono text-[var(--e-text-secondary)]">
+                          {selectedTemplateSummary.template_id}
+                        </span>
+                        <span className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2.5 py-1 font-mono text-[var(--e-text-secondary)]">
+                          {selectedTemplateSummary.inquiry_class}
+                        </span>
+                        {selectedTemplateDetail?.requires_legal_review ? (
+                          <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-orange-700">
+                            Legal review
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : (
+                    'Blank / manual configuration'
+                  )
+                }
+                footer={
+                  selectedTemplateDetail?.default_sources?.length ? (
+                    <div className="space-y-2">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                        Source manifest snapshot
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedTemplateDetail.default_sources.map((sourceId) => (
+                          <span
+                            key={sourceId}
+                            className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2.5 py-1 font-mono text-[11px] text-[var(--e-text-secondary)]"
+                          >
+                            {sourceId}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : undefined
+                }
+              />
+
+              <ReviewCard
                 title="Stop Condition"
                 body={formatStopConditionLabel(state.stopCondition)}
                 footer={
                   Object.keys(state.stopConfig).length > 0 ? (
-                    <pre className="overflow-x-auto rounded-xl border border-terminal-border bg-terminal-elevated px-3 py-3 text-[11px] text-terminal-text-secondary">
+                    <pre className="overflow-x-auto rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-3 text-[11px] text-[var(--e-text-secondary)]">
                       {JSON.stringify(state.stopConfig, null, 2)}
                     </pre>
                   ) : undefined
@@ -846,7 +1063,7 @@ export function CreateInvestigationWizard({
                 <ReviewCard
                   title="Scope"
                   body={
-                    <div className="space-y-1 text-sm text-terminal-text">
+                    <div className="space-y-1 text-sm text-[var(--e-text-primary)]">
                       {state.theatreId && <div>Theatre: <span className="font-mono">{state.theatreId}</span></div>}
                       {state.constructId && <div>Construct: <span className="font-mono">{state.constructId}</span></div>}
                     </div>
@@ -863,11 +1080,11 @@ export function CreateInvestigationWizard({
           )}
         </div>
 
-        <footer className="flex items-center justify-between rounded-2xl border border-terminal-border bg-terminal-panel px-5 py-4 shadow-sm">
+        <footer className="flex items-center justify-between rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-5 py-4 shadow-[var(--e-shadow-xs)]">
           <button
             type="button"
             onClick={step === 0 ? onCancel : () => setStep((current) => current - 1)}
-            className="inline-flex items-center gap-2 rounded-xl border border-terminal-border bg-terminal-sunken px-4 py-2 text-sm font-medium text-terminal-text-secondary transition hover:bg-terminal-hover hover:text-terminal-text"
+            className="inline-flex items-center gap-2 rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-2 text-sm font-medium text-[var(--e-text-secondary)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
           >
             <ArrowLeft className="h-4 w-4" />
             {step === 0 ? 'Cancel' : 'Back'}
@@ -878,7 +1095,7 @@ export function CreateInvestigationWizard({
               type="button"
               onClick={() => setStep((current) => current + 1)}
               disabled={!canAdvance()}
-              className="inline-flex items-center gap-2 rounded-xl border border-purple-200 bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:border-terminal-border disabled:bg-terminal-sunken disabled:text-terminal-text-disabled"
+              className="inline-flex items-center gap-2 rounded-xl border border-purple-200 bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:border-[var(--e-border-secondary)] disabled:bg-[var(--e-bg-sunken)] disabled:text-[var(--e-text-disabled)]"
             >
               Next
               <ArrowRight className="h-4 w-4" />
@@ -888,7 +1105,7 @@ export function CreateInvestigationWizard({
               type="button"
               onClick={handleSubmit}
               disabled={!canAdvance() || createMutation.isPending}
-              className="inline-flex items-center gap-2 rounded-xl border border-purple-200 bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:border-terminal-border disabled:bg-terminal-sunken disabled:text-terminal-text-disabled"
+              className="inline-flex items-center gap-2 rounded-xl border border-purple-200 bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:border-[var(--e-border-secondary)] disabled:bg-[var(--e-bg-sunken)] disabled:text-[var(--e-text-disabled)]"
             >
               <ShieldCheck className="h-4 w-4" />
               {createMutation.isPending ? 'Creating...' : 'Commit Investigation'}
@@ -902,11 +1119,11 @@ export function CreateInvestigationWizard({
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-terminal-border bg-terminal-elevated px-4 py-3 shadow-sm">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-terminal-text-muted">
+    <div className="rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-4 py-3 shadow-[var(--e-shadow-xs)]">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
         {label}
       </div>
-      <div className="mt-2 text-sm font-semibold text-terminal-text">{value}</div>
+      <div className="mt-2 text-sm font-semibold text-[var(--e-text-primary)]">{value}</div>
     </div>
   );
 }
@@ -921,11 +1138,11 @@ function ReviewCard({
   footer?: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-terminal-border bg-terminal-sunken px-4 py-4">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-terminal-text-muted">
+    <section className="rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-4">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
         {title}
       </div>
-      <div className="mt-3 text-sm leading-6 text-terminal-text">{body}</div>
+      <div className="mt-3 text-sm leading-6 text-[var(--e-text-primary)]">{body}</div>
       {footer ? <div className="mt-3">{footer}</div> : null}
     </section>
   );
