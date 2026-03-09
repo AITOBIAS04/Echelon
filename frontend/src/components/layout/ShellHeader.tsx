@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Bell, ChevronDown, ExternalLink, Menu, PanelLeftClose, PanelLeftOpen, Search, Shield, Wallet } from 'lucide-react';
+import { Bell, ChevronDown, ExternalLink, Link as LinkIcon, Menu, PanelLeftClose, PanelLeftOpen, Search, Shield, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../../api/auth';
 import { paymentsApi } from '../../api/payments';
@@ -30,6 +30,7 @@ export function ShellHeader({
   const [walletPanelOpen, setWalletPanelOpen] = useState(false);
   const [walletInput, setWalletInput] = useState(() => localStorage.getItem(WALLET_STORAGE_KEY) ?? '');
   const [depositAmount, setDepositAmount] = useState('25');
+  const [manualWalletMode, setManualWalletMode] = useState(false);
   const walletPanelRef = useRef<HTMLDivElement | null>(null);
 
   const { data: currentUser, isError: userLoadFailed } = useQuery({
@@ -92,6 +93,7 @@ export function ShellHeader({
   }
 
   const canCreateDeposit = Boolean(currentUser?.id) && Number(depositAmount) > 0;
+  const walletConnected = Boolean(persistedWalletAddress);
 
   return (
     <header className="fixed inset-x-0 top-0 z-30 flex h-14 items-center justify-between border-b border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 shadow-[var(--e-shadow-xs)]">
@@ -171,11 +173,11 @@ export function ShellHeader({
                     Wallet
                   </div>
                   <div className="mt-1 text-[18px] font-semibold tracking-[-0.02em] text-[var(--e-text-primary)]">
-                    Funding & identity
+                    Funding & connection
                   </div>
                 </div>
                 <div className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-2 py-1 text-[11px] font-medium text-[var(--e-text-muted)]">
-                  {currentUser?.id ? 'Account linked' : 'Identity pending'}
+                  {walletConnected ? 'Wallet linked' : currentUser?.id ? 'Ready to fund' : 'Identity pending'}
                 </div>
               </div>
 
@@ -193,25 +195,49 @@ export function ShellHeader({
                 </div>
               </div>
 
-              <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
-                Wallet address
-              </label>
-              <div className="mb-4 flex gap-2">
-                <input
-                  type="text"
-                  value={walletInput}
-                  onChange={(event) => setWalletInput(event.target.value)}
-                  placeholder="0x..."
-                  className="h-10 flex-1 rounded-md border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-3 text-[13px] text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)] focus:bg-[var(--e-bg-card)]"
-                />
+              <div className="mb-4 grid gap-2 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={handleWalletSave}
-                  className="rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[12px] font-semibold text-[var(--e-text-primary)] transition hover:bg-[var(--e-bg-hover)]"
+                  onClick={() => setManualWalletMode((value) => !value)}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[12px] font-semibold text-[var(--e-text-primary)] transition hover:bg-[var(--e-bg-hover)]"
                 >
-                  Save
+                  <LinkIcon className="h-4 w-4 text-[var(--e-purple-500)]" />
+                  {walletConnected ? 'Update wallet' : 'Connect Wallet'}
+                </button>
+                <button
+                  type="button"
+                  disabled={!canCreateDeposit || depositCharge.isPending}
+                  onClick={() => depositCharge.mutate()}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[var(--e-purple-500)] px-3 text-[12px] font-semibold text-[var(--e-text-inverse)] transition hover:bg-[var(--e-purple-600)] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Wallet className="h-4 w-4" />
+                  {depositCharge.isPending ? 'Opening…' : 'Add Funds'}
                 </button>
               </div>
+
+              {manualWalletMode ? (
+                <>
+                  <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                    Wallet address
+                  </label>
+                  <div className="mb-4 flex gap-2">
+                    <input
+                      type="text"
+                      value={walletInput}
+                      onChange={(event) => setWalletInput(event.target.value)}
+                      placeholder="0x..."
+                      className="h-10 flex-1 rounded-md border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-3 text-[13px] text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)] focus:bg-[var(--e-bg-card)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleWalletSave}
+                      className="rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 text-[12px] font-semibold text-[var(--e-text-primary)] transition hover:bg-[var(--e-bg-hover)]"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </>
+              ) : null}
 
               <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
                 Add funds (USDC)
@@ -226,15 +252,6 @@ export function ShellHeader({
                   onChange={(event) => setDepositAmount(event.target.value)}
                   className="h-10 flex-1 rounded-md border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-3 text-[13px] text-[var(--e-text-primary)] outline-none transition focus:border-[var(--e-border-focus)] focus:bg-[var(--e-bg-card)]"
                 />
-                <button
-                  type="button"
-                  disabled={!canCreateDeposit || depositCharge.isPending}
-                  onClick={() => depositCharge.mutate()}
-                  className="inline-flex items-center gap-2 rounded-md bg-[var(--e-purple-500)] px-3 text-[12px] font-semibold text-[var(--e-text-inverse)] transition hover:bg-[var(--e-purple-600)] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Wallet className="h-4 w-4" />
-                  {depositCharge.isPending ? 'Opening…' : 'Add Funds'}
-                </button>
               </div>
 
               {depositCharge.isError ? (
@@ -247,8 +264,8 @@ export function ShellHeader({
                 <div className="flex items-start gap-2">
                   <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>
-                    Funding uses the live Coinbase Commerce deposit route. Wallet identity is stored locally and sent as
-                    `X-Wallet-Address` on API requests.
+                    Funding uses the live Coinbase Commerce deposit route. Wallet address is optional here and only used
+                    as a local identity override until the full connect-wallet flow lands.
                   </span>
                 </div>
                 {userLoadFailed ? (

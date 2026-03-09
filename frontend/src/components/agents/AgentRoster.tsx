@@ -1,21 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowDownToLine,
   ChevronDown,
   Eye,
-  Globe,
-  Rocket,
   Search,
   Users,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAgentRoster } from '../../hooks/useAgents';
 import { useDeploymentList, useWithdrawDeployment } from '../../hooks/useAgentDeployments';
-import { DeployAgentModal } from './DeployAgentModal';
-import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
-import { useAgentsUi } from '../../contexts/AgentsUiContext';
 import { getArchetypeTheme } from '../../theme/agentsTheme';
 import type { EnrichedAgent } from '../../hooks/useAgents';
 import type { AgentDeploymentSummary } from '../../types/agentDeployment';
@@ -108,7 +103,9 @@ function FleetKpi({
       <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
         {label}
       </div>
-      <div className={clsx('font-mono text-[24px] font-bold leading-8 tabular-nums', valueClass)}>{value}</div>
+      <div className={clsx('font-mono text-[24px] font-bold leading-8 tabular-nums', valueClass)}>
+        {value}
+      </div>
       {breakdown ? (
         <div className="mt-1 font-mono text-[10px] text-[var(--e-text-disabled)]">{breakdown}</div>
       ) : null}
@@ -175,7 +172,9 @@ function SparsePanel({
           {title}
         </h3>
       </div>
-      <div className="px-4 py-5 text-[12px] leading-5 text-[var(--e-text-muted)]">{description}</div>
+      <div className="px-4 py-5 text-[12px] leading-5 text-[var(--e-text-muted)]">
+        {description}
+      </div>
     </div>
   );
 }
@@ -210,46 +209,15 @@ function FilterSelect({
   );
 }
 
-function IntelCard({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: string | number;
-  detail?: string;
-}) {
-  return (
-    <div className="rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]">
-      <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
-        {label}
-      </div>
-      <div className="font-mono text-[24px] font-bold leading-8 tabular-nums text-[var(--e-text-primary)]">
-        {value}
-      </div>
-      {detail ? <div className="mt-1 text-[11px] text-[var(--e-text-muted)]">{detail}</div> : null}
-    </div>
-  );
-}
-
 export function AgentRoster() {
+  const navigate = useNavigate();
   const { agents, isLoading } = useAgentRoster();
   const { deployments } = useDeploymentList();
   const withdrawDeployment = useWithdrawDeployment();
-  const { activeTab, setActiveTab } = useAgentsUi();
-  const [deployModalOpen, setDeployModalOpen] = useState(false);
-  const [deployAgentId, setDeployAgentId] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [archetypeFilter, setArchetypeFilter] = useState('all');
   const [theatreFilter, setTheatreFilter] = useState('all');
-
-  useRegisterTopActionBarActions({
-    agentRoster: () => setActiveTab('roster'),
-    globalIntel: () => setActiveTab('intel'),
-    deployAgent: () => setDeployModalOpen(true),
-    agentSearch: () => undefined,
-  });
 
   const activeDeployments = useMemo(
     () => deployments.filter((deployment) => deployment.status === 'ACTIVE'),
@@ -341,25 +309,7 @@ export function AgentRoster() {
     return (
       <div className="p-6">
         <div className="mx-auto max-w-7xl animate-pulse rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-10 text-sm text-[var(--e-text-muted)] shadow-[var(--e-shadow-xs)]">
-          Loading fleet…
-        </div>
-      </div>
-    );
-  }
-
-  if (agents.length === 0) {
-    return (
-      <div className="p-6">
-        <div className="mx-auto max-w-4xl rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-8 py-14 text-center shadow-[var(--e-shadow-sm)]">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]">
-            <Users className="h-6 w-6" />
-          </div>
-          <h2 className="mb-2 text-[24px] font-bold tracking-[-0.02em] text-[var(--e-text-primary)]">
-            No agents provisioned
-          </h2>
-          <p className="mx-auto max-w-xl text-[14px] leading-6 text-[var(--e-text-secondary)]">
-            Fleet is empty. To deploy an agent, open a theatre detail page and use the deploy action from that known theatre context.
-          </p>
+          Loading agents…
         </div>
       </div>
     );
@@ -367,37 +317,43 @@ export function AgentRoster() {
 
   return (
     <div className="p-6">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--e-text-muted)]">
+              Fleet
+            </div>
+            <div>
+              <h1 className="text-[44px] font-semibold tracking-[-0.04em] text-[var(--e-text-primary)]">
+                Agents
+              </h1>
+              <p className="mt-2 max-w-2xl text-[16px] leading-7 text-[var(--e-text-secondary)]">
+                Review provisioned operators, inspect live deployments, and route new agent deployment through known theatre context.
+              </p>
+            </div>
+          </div>
           <button
             type="button"
-            onClick={() => setActiveTab('roster')}
-            className={clsx(
-              'inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-medium transition',
-              activeTab === 'roster'
-                ? 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
-                : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-secondary)] hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]',
-            )}
+            onClick={() => navigate('/theatres')}
+            className="inline-flex items-center gap-2 rounded-md border border-[var(--e-purple-500)] bg-[var(--e-purple-500)] px-4 py-2.5 text-[14px] font-semibold text-white shadow-[var(--e-shadow-sm)] transition hover:border-[var(--e-purple-600)] hover:bg-[var(--e-purple-600)]"
           >
-            <Users className="h-4 w-4" />
-            Agent Roster
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('intel')}
-            className={clsx(
-              'inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-medium transition',
-              activeTab === 'intel'
-                ? 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
-                : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-secondary)] hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]',
-            )}
-          >
-            <Globe className="h-4 w-4" />
-            Global Intelligence
+            Deploy Agent
           </button>
         </div>
 
-        {activeTab === 'roster' ? (
+        {agents.length === 0 ? (
+          <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-8 py-14 text-center shadow-[var(--e-shadow-sm)]">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]">
+              <Users className="h-6 w-6" />
+            </div>
+            <h2 className="mb-2 text-[24px] font-bold tracking-[-0.02em] text-[var(--e-text-primary)]">
+              No agents provisioned
+            </h2>
+            <p className="mx-auto max-w-xl text-[14px] leading-6 text-[var(--e-text-secondary)]">
+              Fleet is empty. To deploy an agent, open a theatre detail page and use the deploy action from that known theatre context.
+            </p>
+          </div>
+        ) : (
           <>
             <AttentionStrip
               pageState={pageState}
@@ -406,12 +362,32 @@ export function AgentRoster() {
               failed={kpis.failed}
             />
 
-            <div className="mb-4 flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3">
               <FleetKpi label="Total" value={kpis.total} />
-              <FleetKpi label="Alive" value={kpis.alive} breakdown={`${kpis.total > 0 ? Math.round((kpis.alive / kpis.total) * 100) : 0}% alive`} tone={kpis.alive === kpis.total ? 'success' : undefined} />
-              <FleetKpi label="Deployed" value={kpis.deployed} breakdown={`${kpis.deployed} assigned`} tone={kpis.deployed > 0 ? 'success' : undefined} />
-              <FleetKpi label="Idle" value={kpis.idle} breakdown={`${kpis.idle} awaiting assignment`} tone={kpis.idle > 0 ? 'warning' : undefined} />
-              <FleetKpi label="Failed" value={kpis.failed} breakdown={`${kpis.failed} intervention`} tone={kpis.failed > 0 ? 'danger' : 'muted'} />
+              <FleetKpi
+                label="Alive"
+                value={kpis.alive}
+                breakdown={`${kpis.total > 0 ? Math.round((kpis.alive / kpis.total) * 100) : 0}% alive`}
+                tone={kpis.alive === kpis.total ? 'success' : undefined}
+              />
+              <FleetKpi
+                label="Deployed"
+                value={kpis.deployed}
+                breakdown={`${kpis.deployed} assigned`}
+                tone={kpis.deployed > 0 ? 'success' : undefined}
+              />
+              <FleetKpi
+                label="Idle"
+                value={kpis.idle}
+                breakdown={`${kpis.idle} awaiting assignment`}
+                tone={kpis.idle > 0 ? 'warning' : undefined}
+              />
+              <FleetKpi
+                label="Failed"
+                value={kpis.failed}
+                breakdown={`${kpis.failed} intervention`}
+                tone={kpis.failed > 0 ? 'danger' : 'muted'}
+              />
             </div>
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_300px]">
@@ -442,19 +418,13 @@ export function AgentRoster() {
                       label="Archetype"
                       value={archetypeFilter}
                       onChange={setArchetypeFilter}
-                      options={[
-                        { value: 'all', label: 'All archetypes' },
-                        ...archetypeOptions,
-                      ]}
+                      options={[{ value: 'all', label: 'All archetypes' }, ...archetypeOptions]}
                     />
                     <FilterSelect
                       label="Theatre"
                       value={theatreFilter}
                       onChange={setTheatreFilter}
-                      options={[
-                        { value: 'all', label: 'All theatres' },
-                        ...theatreOptions,
-                      ]}
+                      options={[{ value: 'all', label: 'All theatres' }, ...theatreOptions]}
                     />
                   </div>
                   <span className="text-[12px] font-medium text-[var(--e-text-muted)]">
@@ -466,17 +436,19 @@ export function AgentRoster() {
                   <table className="w-full border-collapse">
                     <thead>
                       <tr>
-                        {['Status', 'Name', 'Archetype', 'Deployed to', 'Last Action', 'P&L', 'Actions'].map((header, index) => (
-                          <th
-                            key={header}
-                            className={clsx(
-                              'bg-[var(--e-bg-sunken)] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]',
-                              index >= 5 && 'text-right',
-                            )}
-                          >
-                            {header}
-                          </th>
-                        ))}
+                        {['Status', 'Name', 'Archetype', 'Deployed to', 'Last Action', 'P&L', 'Actions'].map(
+                          (header, index) => (
+                            <th
+                              key={header}
+                              className={clsx(
+                                'bg-[var(--e-bg-sunken)] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]',
+                                index >= 5 && 'text-right',
+                              )}
+                            >
+                              {header}
+                            </th>
+                          ),
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -600,14 +572,10 @@ export function AgentRoster() {
                                   {status === 'IDLE' ? (
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        setDeployAgentId(agent.id);
-                                        setDeployModalOpen(true);
-                                      }}
+                                      onClick={() => navigate('/theatres')}
                                       className="inline-flex items-center gap-1 rounded-md border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--e-purple-700)] transition hover:bg-[var(--e-purple-100)]"
                                     >
-                                      <Rocket className="h-3 w-3" />
-                                      Deploy
+                                      Deploy via Theatre
                                     </button>
                                   ) : null}
                                 </div>
@@ -638,11 +606,15 @@ export function AgentRoster() {
                       const theme = getArchetypeTheme(archetype);
                       return (
                         <div key={archetype} className="flex items-center gap-2">
-                          <span className={clsx('w-16 text-[11px] font-medium', theme.textClass)}>{archetype}</span>
+                          <span className={clsx('w-16 text-[11px] font-medium', theme.textClass)}>
+                            {archetype}
+                          </span>
                           <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--e-bg-sunken)]">
                             <div className={clsx('h-full rounded-full', theme.bgClass)} style={{ width: `${pct}%` }} />
                           </div>
-                          <span className="w-7 text-right font-mono text-[11px] text-[var(--e-text-secondary)]">{count}</span>
+                          <span className="w-7 text-right font-mono text-[11px] text-[var(--e-text-secondary)]">
+                            {count}
+                          </span>
                         </div>
                       );
                     })}
@@ -693,65 +665,7 @@ export function AgentRoster() {
               </div>
             </div>
           </>
-        ) : (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-              <IntelCard label="Total Agents" value={kpis.total} />
-              <IntelCard label="Deployed" value={kpis.deployed} detail={`${kpis.total > 0 ? Math.round((kpis.deployed / kpis.total) * 100) : 0}% utilization`} />
-              <IntelCard label="Idle" value={kpis.idle} />
-              <IntelCard label="Failed" value={kpis.failed} />
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <SparsePanel
-                title="Deployment Heat Map"
-                description="Heat map remains deferred until a theatre list endpoint exists. This surface will populate automatically when GET /api/v1/theatres is available."
-              />
-              <SparsePanel
-                title="Movement Feed"
-                description="Live movement feed is deferred until AGENT_DEPLOYED and AGENT_WITHDRAWN websocket events are surfaced in a dedicated feed component."
-              />
-            </div>
-
-            <div className="overflow-hidden rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
-              <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-2.5">
-                <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
-                  Archetype Distribution
-                </h3>
-              </div>
-              <div className="px-4 py-4">
-                <div className="mb-4 flex h-6 overflow-hidden rounded-md">
-                  {archetypeDistribution.map(({ archetype, pct }) => {
-                    const theme = getArchetypeTheme(archetype);
-                    return <div key={archetype} className={theme.bgClass} style={{ width: `${pct}%` }} title={`${archetype}: ${pct}%`} />;
-                  })}
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {archetypeDistribution.map(({ archetype, count, pct }) => {
-                    const theme = getArchetypeTheme(archetype);
-                    return (
-                      <div key={archetype} className="flex items-center gap-1.5">
-                        <span className={clsx('h-2.5 w-2.5 rounded-sm', theme.bgClass)} />
-                        <span className="text-[11px] text-[var(--e-text-secondary)]">
-                          {archetype} ({count}, {pct}%)
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
         )}
-
-        <DeployAgentModal
-          open={deployModalOpen}
-          onClose={() => {
-            setDeployModalOpen(false);
-            setDeployAgentId(undefined);
-          }}
-          preselectedAgentId={deployAgentId}
-        />
       </div>
     </div>
   );

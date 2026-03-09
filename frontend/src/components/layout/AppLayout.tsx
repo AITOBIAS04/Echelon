@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { ShellHeader } from './ShellHeader';
-import { TopActionBar } from './TopActionBar';
 import { TopActionBarActionsProvider } from '../../contexts/TopActionBarActionsContext';
 import { AgentsUiProvider } from '../../contexts/AgentsUiContext';
 import { RlmfUiProvider } from '../../contexts/RlmfUiContext';
@@ -48,8 +47,6 @@ export function AppLayout() {
                   sidebarCollapsed ? 'md:ml-16' : 'md:ml-60'
                 }`}
               >
-                <TopActionBar onHamburgerClick={() => setMobileMenuOpen(true)} />
-
                 <div className="relative flex-1 overflow-auto bg-[var(--e-bg-app)]">
                   <div key={location.pathname} className="page-enter h-full">
                     <Outlet />

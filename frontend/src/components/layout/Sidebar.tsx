@@ -2,20 +2,21 @@ import type { ComponentType } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 import {
-  Award,
+  ArrowDownToLine,
   BarChart3,
-  Boxes,
-  Briefcase,
-  Globe,
-  Home,
-  LayoutDashboard,
-  Radio,
-  Search,
+  Box,
+  CircleDot,
+  Clock3,
+  CreditCard,
+  GitBranch,
+  Hash,
+  LayoutGrid,
+  Mountain,
+  Shield,
   ShieldCheck,
-  Users,
-  AlertTriangle,
+  SlidersHorizontal,
+  SquareStack,
   X,
-  Cpu,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -38,36 +39,42 @@ interface NavGroup {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: 'Overview',
+    label: 'Command',
     items: [
-      { path: '/home', label: 'Dashboard', icon: Home },
+      { path: '/home', label: 'Mission Control', icon: LayoutGrid },
+      { path: '/theatres', label: 'Theatres', icon: Clock3, matchPrefixes: ['/theatres', '/theatre/'] },
+      { path: '/portfolio', label: 'Positions', icon: Box },
     ],
   },
   {
     label: 'Intelligence',
     items: [
-      { path: '/theatres', label: 'Theatres', icon: LayoutDashboard, matchPrefixes: ['/theatres', '/theatre/'] },
-      { path: '/investigation', label: 'Investigations', icon: Search, matchPrefixes: ['/investigation'] },
-      { path: '/signal-map', label: 'Signal Map', icon: Radio },
-      { path: '/world-monitor', label: 'World Monitor', icon: Globe },
+      { path: '/world-monitor', label: 'WorldMonitor', icon: CircleDot, matchPrefixes: ['/world-monitor'] },
+      { path: '/signal-map', label: 'Signal Map', icon: Mountain },
+      { path: '/investigation', label: 'Investigations', icon: Hash, matchPrefixes: ['/investigation'] },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { path: '/fleet', label: 'Fleet', icon: Users, matchPrefixes: ['/fleet'] },
-      { path: '/paradox-console', label: 'Paradox Console', icon: AlertTriangle },
-      { path: '/certificates', label: 'Certificates', icon: Award },
-      { path: '/scenario-packs', label: 'Scenario Packs', icon: Boxes },
+      { path: '/fleet', label: 'Fleet', icon: SlidersHorizontal, matchPrefixes: ['/fleet'] },
+      { path: '/paradox-console', label: 'Paradox Console', icon: GitBranch },
+      { path: '/scenario-packs', label: 'Scenario Packs', icon: SquareStack },
     ],
   },
   {
-    label: 'Systems',
+    label: 'Verification',
     items: [
-      { path: '/portfolio', label: 'Portfolio', icon: Briefcase },
-      { path: '/analytics', label: 'Analytics', icon: BarChart3 },
-      { path: '/rlmf', label: 'RLMF Exports', icon: Cpu },
       { path: '/verify', label: 'Verify', icon: ShieldCheck },
+      { path: '/certificates', label: 'Certificates', icon: CreditCard },
+      { path: '/vrf', label: 'VRF', icon: Shield },
+      { path: '/rlmf', label: 'RLMF Exports', icon: ArrowDownToLine },
+    ],
+  },
+  {
+    label: 'Analytics',
+    items: [
+      { path: '/analytics', label: 'Analytics', icon: BarChart3 },
     ],
   },
 ];
