@@ -168,6 +168,8 @@ class InvestigationSummaryResponse(BaseModel):
     theatre_id: str
     construct_id: str
     inquiry_class: str
+    template_id: Optional[str] = None
+    template_name: Optional[str] = None
     status: str  # active, completed
     evidence_count: int = 0
     claim_count: int = 0
@@ -191,7 +193,11 @@ class InvestigationDetailResponse(BaseModel):
     theatre_id: str
     construct_id: str
     inquiry_class: str
+    template_id: Optional[str] = None
+    template_name: Optional[str] = None
     status: str
+    domain_filters: list[str] = Field(default_factory=list)
+    committed_sources: list[str] = Field(default_factory=list)
     stop_condition: str
     stop_config: dict = Field(default_factory=dict)
     created_at: datetime

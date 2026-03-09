@@ -62,6 +62,14 @@ def get_narrative_war() -> NarrativeWarEngine:
 # =============================================================================
 
 router = APIRouter(prefix="/api/situation-room", tags=["Situation Room"])
+SYNTHETIC_OSINT_ENABLED = False
+
+
+def _synthetic_osint_disabled() -> None:
+    raise HTTPException(
+        status_code=410,
+        detail="Synthetic OSINT is disabled. Use live OSINT, Situation Room, or World Monitor sources instead.",
+    )
 
 
 # =============================================================================
@@ -507,6 +515,9 @@ async def bet_on_truth_market(market_id: str, request: BetRequest):
 @router.post("/test/inject-signal")
 async def inject_test_signal(request: InjectSignalRequest):
     """Inject a synthetic test signal"""
+    if not SYNTHETIC_OSINT_ENABLED:
+        _synthetic_osint_disabled()
+
     try:
         from backend.core.mission_generator import SignalCategory
     except ImportError:
@@ -536,6 +547,9 @@ async def inject_test_signal(request: InjectSignalRequest):
 @router.post("/test/inject-crisis")
 async def inject_crisis(scenario: str = "taiwan"):
     """Inject a crisis scenario (multiple related signals)"""
+    if not SYNTHETIC_OSINT_ENABLED:
+        _synthetic_osint_disabled()
+
     engine = get_engine()
     uploader = get_uploader()
     generator = SyntheticOSINTGenerator()
@@ -555,6 +569,9 @@ async def inject_crisis(scenario: str = "taiwan"):
 @router.post("/test/inject-mystery")
 async def inject_mystery():
     """Inject a 'Who Killed X?' mystery event"""
+    if not SYNTHETIC_OSINT_ENABLED:
+        _synthetic_osint_disabled()
+
     engine = get_engine()
     uploader = get_uploader()
     generator = SyntheticOSINTGenerator()
@@ -575,6 +592,9 @@ async def inject_mystery():
 
 async def start_synthetic_feed(background_tasks: BackgroundTasks):
     """Start the synthetic OSINT feed in background"""
+    if not SYNTHETIC_OSINT_ENABLED:
+        _synthetic_osint_disabled()
+
     global _synthetic_feed
     
     _synthetic_feed = SyntheticOSINTFeed(
@@ -596,6 +616,9 @@ async def start_synthetic_feed(background_tasks: BackgroundTasks):
 @router.post("/test/start-feed")
 async def start_feed(background_tasks: BackgroundTasks):
     """Start synthetic OSINT feed (for demo mode)"""
+    if not SYNTHETIC_OSINT_ENABLED:
+        _synthetic_osint_disabled()
+
     await start_synthetic_feed(background_tasks)
     return {"message": "Synthetic feed started"}
 
@@ -603,6 +626,9 @@ async def start_feed(background_tasks: BackgroundTasks):
 @router.post("/test/stop-feed")
 async def stop_feed():
     """Stop synthetic OSINT feed"""
+    if not SYNTHETIC_OSINT_ENABLED:
+        _synthetic_osint_disabled()
+
     global _synthetic_feed
     if _synthetic_feed:
         _synthetic_feed.stop()
@@ -627,4 +653,3 @@ if __name__ == "__main__":
     app.include_router(router)
     
     uvicorn.run(app, host="0.0.0.0", port=8000)
-

@@ -84,7 +84,15 @@ class InvestigationRepository:
     async def list_all(self) -> List[Investigation]:
         """List all investigations with counts."""
         result = await self.session.execute(
-            select(Investigation).order_by(Investigation.created_at.desc())
+            select(Investigation)
+            .order_by(Investigation.created_at.desc())
+            .options(
+                selectinload(Investigation.evidence_items),
+                selectinload(Investigation.claim_nodes),
+                selectinload(Investigation.counter_signals),
+                selectinload(Investigation.drift_events),
+                selectinload(Investigation.template),
+            )
         )
         return list(result.scalars().all())
 
