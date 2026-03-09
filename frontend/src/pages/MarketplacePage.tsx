@@ -287,19 +287,10 @@ export function MarketplacePage() {
   return (
     <div className="p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
-              Markets / Theatre Grid
-            </div>
-            <h1 className="text-[34px] font-bold tracking-[-0.03em] text-[var(--e-text-primary)]">
-              Theatres
-            </h1>
-            <p className="mt-2 max-w-3xl text-[15px] leading-6 text-[var(--e-text-secondary)]">
-              Browse live theatres, inspect paradox pressure, and open the full theatre surface for deployment and resolution context.
-            </p>
-          </div>
-
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="max-w-3xl text-[15px] leading-6 text-[var(--e-text-secondary)]">
+            Browse live theatres, inspect paradox pressure, and open the full theatre surface for deployment and resolution context.
+          </p>
           <button
             type="button"
             onClick={() => navigate('/theatres/create')}

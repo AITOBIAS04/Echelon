@@ -300,14 +300,9 @@ export function RLMFPage() {
               <Database className="h-3.5 w-3.5" />
               RLMF Exports
             </div>
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight text-[var(--e-text-primary)]">
-                Delivery-ready export catalog
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--e-text-secondary)]">
-                Echelon can already generate RLMF training exports and sponsor delivery bundles in the backend. The page below exposes that delivery model honestly while the dedicated export package routes are still pending.
-              </p>
-            </div>
+            <p className="max-w-2xl text-sm leading-6 text-[var(--e-text-secondary)]">
+              Echelon can already generate RLMF training exports and sponsor delivery bundles in the backend. This page exposes that delivery model honestly while the dedicated export package routes are still pending.
+            </p>
           </div>
 
           <div className="grid min-w-[280px] gap-3 sm:grid-cols-2 xl:grid-cols-2">

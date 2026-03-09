@@ -330,17 +330,9 @@ export function CertificatesPage() {
   return (
     <div className="p-6">
       <div className="mx-auto max-w-7xl space-y-5">
-        <div>
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
-            Verification Ledger
-          </div>
-          <h1 className="text-[34px] font-bold tracking-[-0.03em] text-[var(--e-text-primary)]">
-            Certificates
-          </h1>
-          <p className="mt-2 text-[15px] leading-6 text-[var(--e-text-secondary)]">
-            Settlement and verification artifacts from theatres and investigation workflows.
-          </p>
-        </div>
+        <p className="max-w-4xl text-[15px] leading-6 text-[var(--e-text-secondary)]">
+          Settlement and verification artifacts from theatres and investigation workflows.
+        </p>
 
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
           <StatCard label="Total Certificates" value={total} />

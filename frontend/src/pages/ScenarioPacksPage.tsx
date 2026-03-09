@@ -123,19 +123,10 @@ export function ScenarioPacksPage() {
   return (
     <div className="p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
-              Alpamayo Studio
-            </div>
-            <h1 className="text-[34px] font-bold tracking-[-0.03em] text-[var(--e-text-primary)]">
-              Scenario Packs
-            </h1>
-            <p className="mt-2 max-w-3xl text-[15px] leading-6 text-[var(--e-text-secondary)]">
-              Browse branching runtime environments for training, evaluation, calibration, and replay.
-            </p>
-          </div>
-
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <p className="max-w-3xl text-[15px] leading-6 text-[var(--e-text-secondary)]">
+            Browse branching runtime environments for training, evaluation, calibration, and replay.
+          </p>
           <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-3 shadow-[var(--e-shadow-xs)]">
             <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
               Surface

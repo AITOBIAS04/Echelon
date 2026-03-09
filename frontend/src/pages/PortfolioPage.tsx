@@ -1,355 +1,332 @@
-// Portfolio Page Component
-// Portfolio overview with positions from real API
-
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  TrendingUp,
-  AlertTriangle,
-  Filter,
-  Loader2,
-  Briefcase,
-} from 'lucide-react';
-import { usePositions, usePortfolioSummary, useEquityChart, usePortfolioStatus } from '../hooks/usePortfolio';
+import { Briefcase, Filter, Loader2, TrendingUp } from 'lucide-react';
 import { EmptyState } from '../components/empty-states/EmptyState';
+import { useEquityChart, usePortfolioStatus, usePortfolioSummary, usePositions } from '../hooks/usePortfolio';
 import type { ChartTimeframe, PositionTab } from '../types/portfolio';
+
+function formatCurrency(value: number) {
+  return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
+}
+
+function formatSignedCurrency(value: number) {
+  const sign = value >= 0 ? '+' : '-';
+  return `${sign}$${Math.abs(value).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  })}`;
+}
+
+function metricTone(value: number) {
+  if (value > 0) return 'text-[var(--e-green-600)]';
+  if (value < 0) return 'text-[var(--e-red-600)]';
+  return 'text-[var(--e-text-primary)]';
+}
+
+function KpiCard({
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: string | number;
+  detail?: string;
+  tone?: string;
+}) {
+  return (
+    <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-3 shadow-[var(--e-shadow-xs)]">
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+        {label}
+      </div>
+      <div className={`font-mono text-[24px] font-bold leading-8 tabular-nums ${tone ?? 'text-[var(--e-text-primary)]'}`}>
+        {value}
+      </div>
+      {detail ? <div className="mt-1 text-[11px] text-[var(--e-text-muted)]">{detail}</div> : null}
+    </div>
+  );
+}
 
 export function PortfolioPage() {
   const navigate = useNavigate();
   const { positions, totals, isLoading, error } = usePositions();
   const { summary } = usePortfolioSummary();
-  const { timeframe: chartTimeframe, setTimeframe: setChartTimeframe } = useEquityChart();
+  const { timeframe, setTimeframe } = useEquityChart();
   usePortfolioStatus();
-
   const [positionTab, setPositionTab] = useState<PositionTab>('positions');
 
-  const formatPL = (value: number): string => {
-    const prefix = value >= 0 ? '+' : '';
-    return `${prefix}$${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  const exposureSplit = useMemo(() => {
+    if (totals.totalNotional <= 0) {
+      return { yes: 0, no: 0 };
+    }
+    return {
+      yes: (totals.yesNotional / totals.totalNotional) * 100,
+      no: (totals.noNotional / totals.totalNotional) * 100,
+    };
+  }, [totals.noNotional, totals.totalNotional, totals.yesNotional]);
 
   if (error) {
     return (
-      <div className="h-full flex items-center justify-center bg-terminal-bg text-terminal-text">
-        <div className="text-center">
-          <AlertTriangle size={32} className="text-status-danger mx-auto mb-3" />
-          <div className="text-sm font-semibold mb-1">Failed to load portfolio</div>
-          <div className="text-xs text-terminal-text-muted">Check that the backend is running</div>
+      <div className="p-6">
+        <div className="mx-auto max-w-6xl">
+          <section className="rounded-xl border border-[var(--e-red-200)] bg-[var(--e-red-50)] px-5 py-4 text-[13px] text-[var(--e-red-600)] shadow-[var(--e-shadow-xs)]">
+            Failed to load portfolio. Check that the positions and portfolio summary services are available.
+          </section>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 bg-terminal-bg text-terminal-text">
-      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div className="flex-1 flex min-w-0 overflow-hidden gap-4 p-4">
-          {/* Left Column */}
-          <div className="flex-1 min-w-0 overflow-y-auto pr-6 custom-scrollbar">
-            <div className="bg-terminal-bg border border-terminal-border rounded-2xl flex flex-col overflow-hidden">
-              {/* Header */}
-              <div className="px-4 py-4 border-b border-terminal-border">
-                <div className="text-sm font-semibold text-terminal-text mb-1">
-                  Portfolio Overview
-                </div>
-                <div className="text-xs text-terminal-text-muted">
-                  Live positions and performance from real market data
+    <div className="p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="grid gap-4 md:grid-cols-4">
+          <KpiCard label="Total P/L" value={isLoading ? '—' : formatSignedCurrency(totals.totalPL)} tone={metricTone(totals.totalPL)} />
+          <KpiCard label="Win Rate" value={isLoading ? '—' : `${totals.winRate.toFixed(0)}%`} />
+          <KpiCard label="Positions" value={isLoading ? '—' : positions.length} />
+          <KpiCard
+            label="Total Notional"
+            value={isLoading ? '—' : formatCurrency(totals.totalNotional)}
+            detail={summary ? `${summary.timelines_at_risk} timeline${summary.timelines_at_risk === 1 ? '' : 's'} at risk` : undefined}
+          />
+        </section>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-4">
+            <section className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+              <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                  Exposure Summary
                 </div>
               </div>
-
-              {/* Top Metrics */}
-              <div className="grid grid-cols-3 gap-3 p-4">
-                <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                  <div className="text-[10px] font-semibold text-terminal-text-muted uppercase tracking-wider mb-1">
-                    Total P/L
-                  </div>
-                  <div className={`text-2xl font-bold mono ${totals.totalPL >= 0 ? 'text-status-success' : 'text-status-danger'}`}>
-                    {isLoading ? '---' : formatPL(totals.totalPL)}
-                  </div>
-                </div>
-                <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                  <div className="text-[10px] font-semibold text-terminal-text-muted uppercase tracking-wider mb-1">
-                    Win Rate
-                  </div>
-                  <div className="text-2xl font-bold text-terminal-text mono">
-                    {isLoading ? '---' : `${totals.winRate.toFixed(0)}%`}
-                  </div>
-                </div>
-                <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                  <div className="text-[10px] font-semibold text-terminal-text-muted uppercase tracking-wider mb-1">
-                    Positions
-                  </div>
-                  <div className="text-2xl font-bold text-terminal-text mono">
-                    {isLoading ? '---' : positions.length}
-                  </div>
-                </div>
-              </div>
-
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-auto px-4 pb-4">
-                {/* Portfolio Summary */}
-                {summary && (
-                  <div className="mt-4 p-3 bg-terminal-bg border border-terminal-border rounded-xl">
-                    <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider mb-3">
-                      Portfolio Summary
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-[11px] text-terminal-text-secondary mb-1">Total Value</div>
-                        <div className="text-sm font-semibold text-terminal-text mono">
-                          ${summary.total_value_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[11px] text-terminal-text-secondary mb-1">Unrealised P/L</div>
-                        <div className={`text-sm font-semibold mono ${summary.total_unrealised_pnl_usd >= 0 ? 'text-status-success' : 'text-status-danger'}`}>
-                          {formatPL(summary.total_unrealised_pnl_usd)} ({summary.total_unrealised_pnl_percent.toFixed(1)}%)
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[11px] text-terminal-text-secondary mb-1">Founder Yield</div>
-                        <div className="text-sm font-semibold text-status-success mono">
-                          +${summary.total_founder_yield_earned_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[11px] text-terminal-text-secondary mb-1">At Risk</div>
-                        <div className="text-sm font-semibold text-terminal-text mono">
-                          {summary.timelines_at_risk} timeline{summary.timelines_at_risk !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Exposure Summary */}
-                <div className="mt-4 p-3 bg-terminal-bg border border-terminal-border rounded-xl">
-                  <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider mb-3">
-                    Exposure Summary
-                  </div>
-                  <div className="mb-3">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-[11px] text-terminal-text-secondary">Total Notional</span>
-                      <span className="text-xs font-semibold text-terminal-text mono">
-                        ${totals.totalNotional.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-                  {totals.totalNotional > 0 && (
-                    <>
-                      <div className="mb-3">
-                        <div className="flex justify-between mb-1">
-                          <span className="text-[11px] text-terminal-text-secondary">Net YES Notional</span>
-                          <span className="text-xs font-semibold text-status-success mono">
-                            ${totals.yesNotional.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                        <div className="h-1.5 bg-terminal-bg rounded overflow-hidden">
-                          <div className="h-full bg-status-success" style={{ width: `${(totals.yesNotional / totals.totalNotional) * 100}%` }}></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-[11px] text-terminal-text-secondary">Net NO Notional</span>
-                          <span className="text-xs font-semibold text-status-danger mono">
-                            ${totals.noNotional.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                        <div className="h-1.5 bg-terminal-bg rounded overflow-hidden">
-                          <div className="h-full bg-status-danger" style={{ width: `${(totals.noNotional / totals.totalNotional) * 100}%` }}></div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Equity Curve placeholder */}
-                <div className="mt-4 p-3 bg-terminal-bg border border-terminal-border rounded-xl">
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider">Equity Curve</div>
-                    <div className="flex gap-1">
-                      {(['1D', '7D', '30D', 'ALL'] as ChartTimeframe[]).map((tf) => (
-                        <button
-                          key={tf}
-                          onClick={() => setChartTimeframe(tf)}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] cursor-pointer transition-all ${chartTimeframe === tf ? 'bg-echelon-cyan/10 border border-echelon-cyan/30 text-echelon-cyan' : 'bg-transparent border border-terminal-border text-terminal-text-muted hover:text-terminal-text-secondary'}`}
-                        >
-                          {tf}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="relative h-[120px] bg-terminal-bg rounded-lg overflow-hidden flex items-center justify-center">
-                    <span className="text-xs text-terminal-text-muted">Equity history coming soon</span>
-                  </div>
-                </div>
-
-                {/* Positions Panel */}
-                <div className="flex-1 bg-terminal-bg border border-terminal-border rounded-xl flex flex-col mt-4 overflow-hidden">
-                  <div className="flex items-center justify-between p-3 border-b border-terminal-border">
-                    <div className="flex gap-3">
-                      {(['positions', 'foldovers'] as PositionTab[]).map((tab) => (
-                        <button
-                          key={tab}
-                          onClick={() => setPositionTab(tab)}
-                          className={`px-3 py-1 rounded-lg text-[11px] font-medium capitalize cursor-pointer transition-all ${positionTab === tab ? 'bg-echelon-cyan/10 border border-echelon-cyan/30 text-echelon-cyan' : 'bg-transparent border border-terminal-border text-terminal-text-muted hover:text-terminal-text-secondary'}`}
-                        >
-                          {tab}
-                        </button>
-                      ))}
-                    </div>
-                    <button className="flex items-center gap-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded-lg text-[11px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">
-                      <Filter size={12} />
-                      Filter
-                    </button>
-                  </div>
-                  <div className="flex-1 overflow-auto">
-                    {isLoading ? (
-                      <div className="flex items-center justify-center p-8">
-                        <Loader2 size={20} className="animate-spin text-terminal-text-muted" />
-                        <span className="ml-2 text-xs text-terminal-text-muted">Loading positions...</span>
-                      </div>
-                    ) : positions.length === 0 ? (
-                      <EmptyState
-                        type="ZERO_STATE"
-                        icon={<Briefcase className="w-7 h-7" />}
-                        title="No open positions"
-                        description="Positions appear here once you trade on a theatre. Browse active theatres to get started."
-                        actions={[
-                          {
-                            label: 'Browse Theatres',
-                            onClick: () => navigate('/theatres'),
-                            variant: 'primary',
-                          },
-                        ]}
-                      />
-                    ) : (
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Timeline</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Side</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Shards</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Entry</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Current</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">P/L</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Stability</th>
-                            <th className="text-center p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Risk</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {positions.map((p) => (
-                            <tr key={`${p.timeline_id}-${p.side}`} className="border-b border-terminal-border">
-                              <td className="p-2">
-                                <div className="text-xs font-semibold text-terminal-text mono">{p.timeline_name}</div>
-                                <div className="text-[10px] text-terminal-text-muted mono">{p.timeline_id}</div>
-                              </td>
-                              <td className="p-2">
-                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: p.side === 'YES' ? 'rgba(74,222,128,0.1)' : 'rgba(251,113,133,0.1)', color: p.side === 'YES' ? '#4ADE80' : '#FB7185' }}>
-                                  {p.side}
-                                </span>
-                              </td>
-                              <td className="p-2"><span className="text-xs text-terminal-text mono">{p.shards_held.toLocaleString()}</span></td>
-                              <td className="p-2"><span className="text-xs text-terminal-text mono">${p.average_entry_price.toFixed(2)}</span></td>
-                              <td className="p-2"><span className="text-xs text-terminal-text mono">${p.current_price.toFixed(2)}</span></td>
-                              <td className="p-2">
-                                <span className={`text-xs font-semibold mono ${p.unrealised_pnl_usd >= 0 ? 'text-status-success' : 'text-status-danger'}`}>
-                                  {formatPL(p.unrealised_pnl_usd)}
-                                </span>
-                                <div className="text-[10px] text-terminal-text-muted">
-                                  {p.unrealised_pnl_percent >= 0 ? '+' : ''}{p.unrealised_pnl_percent.toFixed(1)}%
-                                </div>
-                              </td>
-                              <td className="p-2">
-                                <span className="text-xs mono" style={{ color: p.timeline_stability >= 70 ? '#4ADE80' : p.timeline_stability >= 30 ? '#F59E0B' : '#FB7185' }}>
-                                  {p.timeline_stability.toFixed(0)}%
-                                </span>
-                              </td>
-                              <td className="p-2 text-center">
-                                {p.has_active_paradox && (
-                                  <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold bg-status-danger/10 text-status-danger">
-                                    PARADOX
-                                  </span>
-                                )}
-                                {p.is_founder && (
-                                  <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold bg-echelon-cyan/10 text-echelon-cyan ml-1">
-                                    FOUNDER
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Sidebar */}
-          <aside className="w-[360px] flex-shrink-0 flex flex-col gap-4 self-start sticky top-6">
-            {/* Summary Card */}
-            {summary && (
-              <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider mb-3">Quick Stats</div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="text-center p-2 bg-terminal-bg border border-terminal-border rounded-lg">
-                    <div className="text-xl font-bold text-terminal-text mono">{summary.active_position_count}</div>
-                    <div className="text-[10px] text-terminal-text-muted mt-0.5">Active Positions</div>
-                  </div>
-                  <div className="text-center p-2 bg-terminal-bg border border-terminal-border rounded-lg">
-                    <div className="text-xl font-bold text-terminal-text mono">{summary.active_founder_positions}</div>
-                    <div className="text-[10px] text-terminal-text-muted mt-0.5">Founder Positions</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Highest Risk Timeline */}
-            {summary?.highest_risk_timeline_id && (
-              <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle size={14} className="text-status-warning" />
-                  <span className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider">Highest Risk</span>
-                </div>
-                <div className="text-xs font-semibold text-terminal-text mono">{summary.highest_risk_timeline_name}</div>
-                <div className="text-[10px] text-terminal-text-muted mono">{summary.highest_risk_timeline_id}</div>
-                <div className="mt-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-terminal-text-muted">Stability</span>
-                    <span className="text-xs font-semibold mono" style={{ color: (summary.highest_risk_stability ?? 0) >= 30 ? '#F59E0B' : '#FB7185' }}>
-                      {summary.highest_risk_stability?.toFixed(0) ?? '?'}%
+              <div className="grid gap-4 px-5 py-5 md:grid-cols-2">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-[13px] text-[var(--e-text-secondary)]">
+                    <span>Total Notional</span>
+                    <span className="font-mono font-semibold text-[var(--e-text-primary)]">
+                      {formatCurrency(totals.totalNotional)}
                     </span>
                   </div>
-                  <div className="h-1.5 bg-terminal-bg rounded overflow-hidden">
-                    <div className="h-full rounded" style={{ width: `${summary.highest_risk_stability ?? 0}%`, background: (summary.highest_risk_stability ?? 0) >= 30 ? '#F59E0B' : '#FB7185' }}></div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[12px] text-[var(--e-text-secondary)]">
+                      <span>YES exposure</span>
+                      <span className="font-mono text-[var(--e-green-600)]">{formatCurrency(totals.yesNotional)}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[var(--e-bg-sunken)]">
+                      <div className="h-full bg-[var(--e-green-600)]" style={{ width: `${exposureSplit.yes}%` }} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[12px] text-[var(--e-text-secondary)]">
+                      <span>NO exposure</span>
+                      <span className="font-mono text-[var(--e-red-600)]">{formatCurrency(totals.noNotional)}</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[var(--e-bg-sunken)]">
+                      <div className="h-full bg-[var(--e-red-600)]" style={{ width: `${exposureSplit.no}%` }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                      Total Value
+                    </div>
+                    <div className="mt-2 font-mono text-[18px] font-bold text-[var(--e-text-primary)]">
+                      {summary ? formatCurrency(summary.total_value_usd) : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                      Unrealised P/L
+                    </div>
+                    <div className={`mt-2 font-mono text-[18px] font-bold ${metricTone(summary?.total_unrealised_pnl_usd ?? 0)}`}>
+                      {summary ? formatSignedCurrency(summary.total_unrealised_pnl_usd) : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                      Founder Yield
+                    </div>
+                    <div className="mt-2 font-mono text-[18px] font-bold text-[var(--e-green-600)]">
+                      {summary ? formatCurrency(summary.total_founder_yield_earned_usd) : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                      At Risk
+                    </div>
+                    <div className="mt-2 font-mono text-[18px] font-bold text-[var(--e-text-primary)]">
+                      {summary ? summary.timelines_at_risk : '—'}
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
+            </section>
 
-            {/* Founder Yield Card */}
-            {summary && summary.total_founder_yield_earned_usd > 0 && (
-              <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider flex items-center gap-2">
-                    <TrendingUp size={14} className="text-echelon-cyan" />
-                    Founder Yield
-                  </span>
+            <section className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+              <div className="flex items-center justify-between gap-3 border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                  Equity Curve
                 </div>
-                <div className="text-xl font-bold text-status-success mono">
-                  +${summary.total_founder_yield_earned_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className="text-[10px] text-terminal-text-muted mt-1">
-                  Across {summary.active_founder_positions} founder position{summary.active_founder_positions !== 1 ? 's' : ''}
+                <div className="flex flex-wrap gap-1">
+                  {(['1D', '7D', '30D', 'ALL'] as ChartTimeframe[]).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setTimeframe(option)}
+                      className={`rounded-md border px-2.5 py-1 text-[10px] font-semibold transition ${
+                        timeframe === option
+                          ? 'border-[var(--e-purple-300)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+                          : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-muted)] hover:text-[var(--e-text-primary)]'
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
                 </div>
               </div>
-            )}
+              <div className="flex min-h-[180px] items-center justify-center px-5 py-6 text-center">
+                <div>
+                  <div className="text-[13px] font-medium text-[var(--e-text-secondary)]">Equity history coming soon</div>
+                  <div className="mt-2 text-[12px] text-[var(--e-text-muted)]">
+                    Current portfolio contracts do not yet expose persisted equity snapshots.
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+              <div className="flex items-center justify-between gap-3 border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-3">
+                <div className="flex gap-2">
+                  {(['positions', 'foldovers'] as PositionTab[]).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setPositionTab(tab)}
+                      className={`rounded-md border px-3 py-1.5 text-[12px] font-semibold capitalize transition ${
+                        positionTab === tab
+                          ? 'border-[var(--e-purple-300)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+                          : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-muted)] hover:text-[var(--e-text-primary)]'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-secondary)]"
+                >
+                  <Filter className="h-3.5 w-3.5" />
+                  Filter
+                </button>
+              </div>
+              <div className="px-5 py-5">
+                {isLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-10 text-[13px] text-[var(--e-text-muted)]">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading positions...
+                  </div>
+                ) : positions.length === 0 ? (
+                  <EmptyState
+                    type="ZERO_STATE"
+                    icon={<Briefcase className="h-7 w-7" />}
+                    title="No open positions"
+                    description="Positions appear here once you trade on a theatre. Browse active theatres to get started."
+                    actions={[
+                      {
+                        label: 'Browse Theatres',
+                        onClick: () => navigate('/theatres'),
+                        variant: 'primary',
+                      },
+                    ]}
+                  />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-collapse">
+                      <thead>
+                        <tr className="border-b border-[var(--e-border-secondary)] text-left text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                          <th className="pb-3 pr-4">Theatre</th>
+                          <th className="pb-3 pr-4">Side</th>
+                          <th className="pb-3 pr-4">Shards</th>
+                          <th className="pb-3 pr-4">Entry</th>
+                          <th className="pb-3 pr-4">Current</th>
+                          <th className="pb-3 pr-4">P/L</th>
+                          <th className="pb-3">Stability</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {positions.map((position) => (
+                          <tr key={`${position.timeline_id}-${position.side}`} className="border-b border-[var(--e-border-secondary)]/70 text-[13px]">
+                            <td className="py-3 pr-4">
+                              <div className="font-semibold text-[var(--e-text-primary)]">{position.timeline_name}</div>
+                              <div className="mt-1 font-mono text-[11px] text-[var(--e-text-muted)]">{position.timeline_id}</div>
+                            </td>
+                            <td className="py-3 pr-4">
+                              <span
+                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] ${
+                                  position.side === 'YES'
+                                    ? 'bg-[var(--e-green-50)] text-[var(--e-green-600)]'
+                                    : 'bg-[var(--e-red-50)] text-[var(--e-red-600)]'
+                                }`}
+                              >
+                                {position.side}
+                              </span>
+                            </td>
+                            <td className="py-3 pr-4 font-mono text-[var(--e-text-primary)]">{position.shards_held.toLocaleString()}</td>
+                            <td className="py-3 pr-4 font-mono text-[var(--e-text-primary)]">{formatCurrency(position.average_entry_price)}</td>
+                            <td className="py-3 pr-4 font-mono text-[var(--e-text-primary)]">{formatCurrency(position.current_price)}</td>
+                            <td className={`py-3 pr-4 font-mono font-semibold ${metricTone(position.unrealised_pnl_usd)}`}>
+                              {formatSignedCurrency(position.unrealised_pnl_usd)}
+                            </td>
+                            <td className="py-3 font-mono text-[var(--e-text-primary)]">{Math.round(position.timeline_stability)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+
+          <aside className="space-y-4">
+            <section className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]">
+              <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                <TrendingUp className="h-4 w-4" />
+                Quick Stats
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <div className="rounded-lg border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+                  <div className="text-[11px] text-[var(--e-text-muted)]">Active Positions</div>
+                  <div className="mt-2 font-mono text-[22px] font-bold text-[var(--e-text-primary)]">
+                    {summary ? summary.active_position_count : '—'}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+                  <div className="text-[11px] text-[var(--e-text-muted)]">Founder Positions</div>
+                  <div className="mt-2 font-mono text-[22px] font-bold text-[var(--e-text-primary)]">
+                    {summary ? summary.active_founder_positions : '—'}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {summary?.highest_risk_timeline_name ? (
+              <section className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]">
+                <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                  Highest Risk
+                </div>
+                <div className="text-[14px] font-semibold text-[var(--e-text-primary)]">
+                  {summary.highest_risk_timeline_name}
+                </div>
+                <div className="mt-1 font-mono text-[11px] text-[var(--e-text-muted)]">{summary.highest_risk_timeline_id}</div>
+              </section>
+            ) : null}
           </aside>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

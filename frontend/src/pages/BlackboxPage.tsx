@@ -3,7 +3,6 @@ import { clsx } from 'clsx';
 import { Link } from 'react-router-dom';
 import {
   Activity,
-  BarChart3,
   ChartColumn,
   Download,
   ExternalLink,
@@ -721,62 +720,59 @@ export function BlackboxPage() {
   return (
     <div className="p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-sm)]">
-          <div className="px-6 py-8">
-            <div className="mx-auto max-w-3xl text-center">
-              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-lg border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]">
-                <BarChart3 className="h-7 w-7" />
+        <section className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                Analytics Views
               </div>
-              <h1 className="text-[30px] font-semibold tracking-[-0.02em] text-[var(--e-text-primary)]">
-                Analytics
-              </h1>
-              <p className="mx-auto mt-3 max-w-2xl text-[14px] leading-6 text-[var(--e-text-secondary)]">
-                Monitor platform health, operational pressure, and portfolio readiness without inventing data that the current contracts do not expose.
-              </p>
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={saveCurrentView}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-primary)] shadow-[var(--e-shadow-xs)] hover:border-[var(--e-purple-300)] hover:text-[var(--e-purple-700)]"
-                >
-                  <Save className="h-4 w-4" />
-                  Save view
-                </button>
-                <button
-                  type="button"
-                  onClick={updateSelectedView}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-primary)] shadow-[var(--e-shadow-xs)] hover:border-[var(--e-purple-300)] hover:text-[var(--e-purple-700)]"
-                >
-                  <Save className="h-4 w-4" />
-                  Update selected
-                </button>
-                <button
-                  type="button"
-                  onClick={exportCurrentJson}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-primary)] shadow-[var(--e-shadow-xs)] hover:border-[var(--e-purple-300)] hover:text-[var(--e-purple-700)]"
-                >
-                  <Download className="h-4 w-4" />
-                  Export JSON
-                </button>
-                <button
-                  type="button"
-                  onClick={exportCurrentCsv}
-                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-primary)] shadow-[var(--e-shadow-xs)] hover:border-[var(--e-purple-300)] hover:text-[var(--e-purple-700)]"
-                >
-                  <Download className="h-4 w-4" />
-                  Export CSV
-                </button>
-                {selectedView ? (
-                  <button
-                    type="button"
-                    onClick={deleteSelectedView}
-                    className="inline-flex items-center gap-2 rounded-lg border border-[var(--e-red-200)] bg-[var(--e-red-50)] px-3 py-2 text-[12px] font-semibold text-[var(--e-red-600)] shadow-[var(--e-shadow-xs)] hover:border-[var(--e-red-300)]"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete selected
-                  </button>
-                ) : null}
+              <div className="mt-1 text-[13px] text-[var(--e-text-secondary)]">
+                Save, update, and export the current backend-backed analytics slice.
               </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={saveCurrentView}
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-primary)] shadow-[var(--e-shadow-xs)] hover:border-[var(--e-purple-300)] hover:text-[var(--e-purple-700)]"
+              >
+                <Save className="h-4 w-4" />
+                Save view
+              </button>
+              <button
+                type="button"
+                onClick={updateSelectedView}
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-primary)] shadow-[var(--e-shadow-xs)] hover:border-[var(--e-purple-300)] hover:text-[var(--e-purple-700)]"
+              >
+                <Save className="h-4 w-4" />
+                Update selected
+              </button>
+              <button
+                type="button"
+                onClick={exportCurrentJson}
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-primary)] shadow-[var(--e-shadow-xs)] hover:border-[var(--e-purple-300)] hover:text-[var(--e-purple-700)]"
+              >
+                <Download className="h-4 w-4" />
+                Export JSON
+              </button>
+              <button
+                type="button"
+                onClick={exportCurrentCsv}
+                className="inline-flex items-center gap-2 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-primary)] shadow-[var(--e-shadow-xs)] hover:border-[var(--e-purple-300)] hover:text-[var(--e-purple-700)]"
+              >
+                <Download className="h-4 w-4" />
+                Export CSV
+              </button>
+              {selectedView ? (
+                <button
+                  type="button"
+                  onClick={deleteSelectedView}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[var(--e-red-200)] bg-[var(--e-red-50)] px-3 py-2 text-[12px] font-semibold text-[var(--e-red-600)] shadow-[var(--e-shadow-xs)] hover:border-[var(--e-red-300)]"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete selected
+                </button>
+              ) : null}
             </div>
           </div>
         </section>

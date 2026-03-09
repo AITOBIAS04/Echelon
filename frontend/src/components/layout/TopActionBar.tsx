@@ -3,14 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { clsx } from 'clsx';
 import {
   Award,
-  BarChart3,
-  Globe,
   List,
   Menu,
   Plus,
-  Radio,
-  Search,
-  Users,
 } from 'lucide-react';
 import { useTopActionBarActions, type TopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { useAgentsUi, type AgentsTab } from '../../contexts/AgentsUiContext';
@@ -70,12 +65,7 @@ const PAGE_CONFIGS: Array<{ match: (pathname: string) => boolean; config: PageCo
     config: {
       name: 'Fleet',
       eyebrow: 'Operations',
-      buttons: [
-        { label: 'Agent Roster', icon: Users, isTab: true, tabValue: 'roster' },
-        { label: 'Global Intelligence', icon: Globe, isTab: true, tabValue: 'intel' },
-        { label: 'Search', icon: Search, action: 'agentSearch' },
-        { label: 'Deploy Agent', icon: Plus, kind: 'primary', action: 'deployAgent' },
-      ],
+      buttons: [{ label: 'Deploy Agent', icon: Plus, kind: 'primary', action: 'deployAgent' }],
     },
   },
   {
@@ -123,10 +113,7 @@ const PAGE_CONFIGS: Array<{ match: (pathname: string) => boolean; config: PageCo
     config: {
       name: 'RLMF Exports',
       eyebrow: 'Data Product',
-      buttons: [
-        { label: 'Market View', icon: BarChart3, isRlmfViewTab: true, rlmfViewValue: 'market' },
-        { label: 'Robotics View', icon: Radio, isRlmfViewTab: true, rlmfViewValue: 'robotics' },
-      ],
+      buttons: [],
     },
   },
   {
@@ -186,8 +173,8 @@ export function TopActionBar({ onHamburgerClick }: TopActionBarProps) {
 
   return (
     <div className="sticky top-14 z-10 border-b border-[var(--e-border-primary)] bg-[var(--e-bg-card)]/90 px-6 py-4 backdrop-blur-sm">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
             onClick={onHamburgerClick}
@@ -196,16 +183,6 @@ export function TopActionBar({ onHamburgerClick }: TopActionBarProps) {
           >
             <Menu className="h-4 w-4" />
           </button>
-          <div className="min-w-0">
-            {config.eyebrow ? (
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
-                {config.eyebrow}
-              </div>
-            ) : null}
-            <h1 className="text-[24px] font-bold leading-8 tracking-[-0.02em] text-[var(--e-text-primary)]">
-              {config.name}
-            </h1>
-          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

@@ -375,11 +375,7 @@ export function CreateTheatrePage() {
             Back to Theatres
           </Link>
 
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
-            Theatre Creation
-          </div>
-          <h1 className="text-[30px] font-semibold tracking-[-0.02em] text-[var(--e-text-primary)]">Create Theatre</h1>
-          <p className="mt-2 max-w-3xl text-[14px] leading-6 text-[var(--e-text-secondary)]">
+          <p className="max-w-3xl text-[14px] leading-6 text-[var(--e-text-secondary)]">
             Theatre Templates are live market and certificate contracts. Scenario Packs stay separate. This flow keeps
             template creation honest: template-backed launch works today, blank authoring is deferred, and Alpamayo
             remains staged until recommendation data exists.

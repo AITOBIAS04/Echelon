@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Award, ExternalLink, FlaskConical, Search, ShieldCheck } from 'lucide-react';
+import { Award, ExternalLink, Search, ShieldCheck } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useVerifyUi } from '../contexts/VerifyUiContext';
 import { useRegisterTopActionBarActions } from '../contexts/TopActionBarActionsContext';
@@ -115,55 +115,31 @@ export function VerifyPage() {
   return (
     <div className="p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-sm)]">
-          <div className="px-6 py-8">
-            <div className="mx-auto max-w-3xl text-center">
-              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-lg border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]">
-                {activeTab === 'certificates' ? <ShieldCheck className="h-7 w-7" /> : <FlaskConical className="h-7 w-7" />}
+        {activeTab === 'certificates' ? (
+          <section className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-5 py-5 shadow-[var(--e-shadow-xs)]">
+            <div className="max-w-3xl">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                Public Verify
               </div>
-              <h1 className="text-[30px] font-semibold tracking-[-0.02em] text-[var(--e-text-primary)]">
-                {activeTab === 'certificates' ? 'Verify Certificate' : 'Verification Runs'}
-              </h1>
-              <p className="mx-auto mt-3 max-w-2xl text-[14px] leading-6 text-[var(--e-text-secondary)]">
-                {activeTab === 'certificates'
-                  ? 'Search calibration certificates, review replay methodology, and inspect score detail from the public verification surface.'
-                  : 'Launch verification runs, monitor replay progress, and open issued public certificates once a construct has completed scoring.'}
-              </p>
-
-              {activeTab === 'certificates' ? (
-                <div className="mx-auto mt-6 max-w-2xl">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--e-text-muted)]" />
-                    <input
-                      type="text"
-                      className="h-12 w-full rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] pl-11 pr-4 font-mono text-[14px] text-[var(--e-text-primary)] outline-none transition placeholder:font-sans placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-purple-500)] focus:ring-2 focus:ring-[color:oklch(0.530_0.230_295_/_0.12)]"
-                      placeholder="Filter by construct ID"
-                      value={certConstructFilter}
-                      onChange={(e) => {
-                        setCertConstructFilter(e.target.value);
-                        setCertOffset(0);
-                      }}
-                    />
-                  </div>
-                  <p className="mt-3 text-[12px] text-[var(--e-text-muted)]">
-                    Browse public certificates by construct ID. Direct hash-based verification is still deferred until the backend exposes it.
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-6 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(true)}
-                    className="inline-flex h-11 items-center gap-2 rounded-md border border-[var(--e-purple-500)] bg-[var(--e-purple-500)] px-4 text-[13px] font-semibold text-white transition hover:bg-[var(--e-purple-400)]"
-                  >
-                    <FlaskConical className="h-4 w-4" />
-                    Start Verification
-                  </button>
-                </div>
-              )}
+              <div className="mt-2 text-[14px] leading-6 text-[var(--e-text-secondary)]">
+                Browse public certificates by construct ID. Direct hash-based verification remains deferred until the backend exposes it.
+              </div>
+              <div className="relative mt-4 max-w-2xl">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--e-text-muted)]" />
+                <input
+                  type="text"
+                  className="h-12 w-full rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] pl-11 pr-4 font-mono text-[14px] text-[var(--e-text-primary)] outline-none transition placeholder:font-sans placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-purple-500)] focus:ring-2 focus:ring-[color:oklch(0.530_0.230_295_/_0.12)]"
+                  placeholder="Filter by construct ID"
+                  value={certConstructFilter}
+                  onChange={(e) => {
+                    setCertConstructFilter(e.target.value);
+                    setCertOffset(0);
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        ) : null}
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="space-y-6">
