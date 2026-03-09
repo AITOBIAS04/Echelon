@@ -19,6 +19,7 @@ class InvestigationCreateRequest(BaseModel):
     theatre_id: str = ""
     construct_id: str = ""
     inquiry_class: str = "INVESTIGATIVE"
+    template_id: Optional[str] = None  # Investigation template ID (cycle-022)
     domain_filters: list[str] = Field(default_factory=list)
     stop_condition: str = "OUTCOME_RESOLUTION"
     stop_config: dict = Field(default_factory=dict)

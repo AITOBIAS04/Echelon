@@ -122,6 +122,9 @@ class InvestigationCertificateBuilder:
         counter_signal_feed: InvestigationCounterSignalFeed,
         commitment_monitor: CommitmentMonitor,
         investigation_started_at: datetime | None = None,
+        template_id: str | None = None,
+        template_name: str | None = None,
+        committed_sources: list | None = None,
     ) -> InvestigationCertificate:
         """Build a frozen InvestigationCertificate from all toolset state."""
         now = datetime.now(timezone.utc)
@@ -181,6 +184,14 @@ class InvestigationCertificateBuilder:
             "routing_decision": routing_decision,
             "routing_reason": routing_reason,
         }
+
+        # Template and source provenance (cycle-022)
+        if template_id is not None:
+            hash_payload["template_id"] = template_id
+            hash_payload["template_name"] = template_name
+        if committed_sources is not None:
+            hash_payload["committed_sources"] = committed_sources
+
         certificate_hash = hashlib.sha256(
             canonical_json(hash_payload).encode()
         ).hexdigest()

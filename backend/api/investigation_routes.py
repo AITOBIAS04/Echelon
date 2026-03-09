@@ -20,6 +20,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database.models import (
@@ -29,6 +30,7 @@ from backend.database.models import (
     InvestigationCounterSignal,
     InvestigationDriftEvent,
     InvestigationCertificateRecord,
+    InvestigationTemplate,
 )
 from backend.database.repositories.investigation_repository import InvestigationRepository
 from backend.dependencies import get_db
@@ -38,6 +40,10 @@ from backend.investigation.counter_signals import InvestigationCounterSignalClas
 from backend.investigation.models import ProvenanceClass
 from backend.investigation.toolset import InvestigationConfig, InvestigationToolset
 from backend.osint.models.registry import RegistryLoader
+from backend.investigation.signal_scanner import (
+    DomainFilter,
+    DOMAIN_FILTER_SOURCE_GROUPS,
+)
 from backend.services.domain_filter_validator import (
     DomainFilterViolation,
     validate_evidence_source,
@@ -311,20 +317,101 @@ async def list_investigations(db: AsyncSession = Depends(get_db)):
     return InvestigationListResponse(investigations=summaries, total=len(summaries))
 
 
+def _resolve_committed_sources(domain_filters: list[str]) -> list[str]:
+    """Resolve source group IDs from domain filters via DOMAIN_FILTER_SOURCE_GROUPS.
+
+    Returns sorted, deduplicated source group identifiers from the live registry mapping.
+    """
+    source_groups: set[str] = set()
+    for df_str in domain_filters:
+        try:
+            df = DomainFilter(df_str)
+        except ValueError:
+            continue
+        groups = DOMAIN_FILTER_SOURCE_GROUPS.get(df, [])
+        source_groups.update(groups)
+    return sorted(source_groups)
+
+
+def _validate_domain_filters(domain_filters: list[str]) -> None:
+    """Validate all domain filter values against the backend DomainFilter enum.
+
+    Raises HTTPException(400) if any value is invalid.
+    """
+    valid_values = {df.value for df in DomainFilter}
+    for df in domain_filters:
+        if df not in valid_values:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid domain filter: '{df}'. Valid values: {sorted(valid_values)}",
+            )
+
+
 @router.post("/", response_model=InvestigationSummaryResponse, status_code=201)
 async def create_investigation(
     request: InvestigationCreateRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new investigation."""
+    # Resolve template defaults if template_id provided
+    template = None
+    template_id = request.template_id
+
+    inquiry_class = request.inquiry_class
+    domain_filters = request.domain_filters
+    stop_condition = request.stop_condition
+    stop_config = request.stop_config
+
+    if template_id is not None:
+        # Validate template exists and is ACTIVE
+        result = await db.execute(
+            sa_select(InvestigationTemplate)
+            .where(InvestigationTemplate.id == template_id)
+        )
+        template = result.scalar_one_or_none()
+        if template is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Investigation template '{template_id}' not found",
+            )
+        if template.template_status != "ACTIVE":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Investigation template '{template_id}' is not ACTIVE (status={template.template_status})",
+            )
+
+        # Apply template defaults for fields not explicitly provided
+        # InvestigationCreateRequest defaults: inquiry_class="INVESTIGATIVE",
+        # domain_filters=[], stop_condition="OUTCOME_RESOLUTION", stop_config={}
+        # We check whether user provided non-default values to determine overrides.
+        if inquiry_class == "INVESTIGATIVE" and template.inquiry_class != "INVESTIGATIVE":
+            inquiry_class = template.inquiry_class
+        if not domain_filters:
+            domain_filters = template.domain_filters_json or []
+        if stop_condition == "OUTCOME_RESOLUTION" and template.default_stop_condition != "OUTCOME_RESOLUTION":
+            stop_condition = template.default_stop_condition
+        if not stop_config and template.default_time_window_days is not None:
+            stop_config = {"time_window_days": template.default_time_window_days}
+
+    # Validate domain filters against backend enum
+    if domain_filters:
+        _validate_domain_filters(domain_filters)
+
+    # Resolve committed sources from live registry for the final domain_filters
+    committed_sources = None
+    if domain_filters:
+        committed_sources = _resolve_committed_sources(domain_filters)
+
     repo = InvestigationRepository(db)
     inv = await repo.create(
         theatre_id=request.theatre_id,
         construct_id=request.construct_id,
-        inquiry_class=request.inquiry_class,
-        domain_filters=request.domain_filters,
-        stop_condition=request.stop_condition,
-        stop_config=request.stop_config,
+        inquiry_class=inquiry_class,
+        domain_filters=domain_filters,
+        stop_condition=stop_condition,
+        stop_config=stop_config,
+        template_id=template_id,
+        committed_sources=committed_sources,
     )
     await db.commit()
     await db.refresh(inv)
@@ -777,9 +864,13 @@ async def build_certificate(
             detail=f"Stop conditions not satisfied (status={inv.stop_condition_status})",
         )
 
-    # Rebuild toolset and build certificate (existing logic)
+    # Rebuild toolset and build certificate (existing logic + cycle-022 provenance)
     toolset = _rebuild_toolset(inv)
-    cert = toolset.build_certificate()
+    cert = toolset.build_certificate(
+        template_id=inv.template_id,
+        template_name=inv.template.name if inv.template else None,
+        committed_sources=inv.committed_sources_json,
+    )
 
     # Persist certificate record in READY state (does NOT set COMPLETED)
     cert_record = await repo.persist_certificate_as_ready(
