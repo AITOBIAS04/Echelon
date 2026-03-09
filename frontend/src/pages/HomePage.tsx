@@ -159,9 +159,9 @@ export function HomePage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
-              Mission Control
+              Dashboard
             </div>
-            <h1 className="text-[30px] font-semibold tracking-[-0.02em] text-[var(--e-text-primary)]">Dashboard</h1>
+            <h1 className="text-[30px] font-semibold tracking-[-0.02em] text-[var(--e-text-primary)]">Mission Control</h1>
             <p className="mt-2 max-w-3xl text-[14px] leading-6 text-[var(--e-text-secondary)]">
               Operator overview across theatres, paradoxes, investigations, fleet activity, and the latest wing flaps.
             </p>
