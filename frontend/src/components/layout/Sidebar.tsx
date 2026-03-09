@@ -5,13 +5,13 @@ import {
   ArrowDownToLine,
   BarChart3,
   Box,
-  CircleDot,
   Clock3,
   CreditCard,
   GitBranch,
   Hash,
   LayoutGrid,
   Mountain,
+  Radar,
   Shield,
   ShieldCheck,
   SlidersHorizontal,
@@ -49,7 +49,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Intelligence',
     items: [
-      { path: '/world-monitor', label: 'WorldMonitor', icon: CircleDot, matchPrefixes: ['/world-monitor'] },
+      { path: '/world-monitor', label: 'WorldMonitor', icon: Radar, matchPrefixes: ['/world-monitor'] },
       { path: '/signal-map', label: 'Signal Map', icon: Mountain },
       { path: '/investigation', label: 'Investigations', icon: Hash, matchPrefixes: ['/investigation'] },
     ],

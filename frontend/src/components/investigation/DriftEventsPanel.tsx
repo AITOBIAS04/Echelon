@@ -25,8 +25,8 @@ function impactClasses(impact: string): string {
 
 function DriftEventRow({ event }: { event: DriftEvent }) {
   return (
-    <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+    <div className="grid grid-cols-[1fr_auto] gap-4 border-b border-[var(--e-border-subtle)] py-4 last:border-b-0">
+      <div>
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-[11px] text-[var(--e-text-muted)]">
             {event.drift_id.slice(0, 12)}
@@ -45,28 +45,27 @@ function DriftEventRow({ event }: { event: DriftEvent }) {
               : 'Non-material'}
           </span>
         </div>
-        <span className="font-mono text-[11px] text-[var(--e-text-muted)]">
-          {new Date(event.detected_at).toLocaleString()}
-        </span>
-      </div>
+        <div className="mt-2 grid grid-cols-1 gap-2 text-[12px] text-[var(--e-text-secondary)] sm:grid-cols-2">
+          <div>
+            <span className="text-[var(--e-text-muted)]">Original:</span>{' '}
+            <span className="font-mono text-[var(--e-text-primary)]">{event.original_value || '—'}</span>
+          </div>
+          <div>
+            <span className="text-[var(--e-text-muted)]">New:</span>{' '}
+            <span className="font-mono text-[var(--e-text-primary)]">{event.new_value || '—'}</span>
+          </div>
+        </div>
 
-      <div className="grid grid-cols-1 gap-2 text-[13px] text-[var(--e-text-secondary)] sm:grid-cols-2">
-        <div>
-          <span className="text-[var(--e-text-muted)]">Original:</span>{' '}
-          <span className="font-mono text-[var(--e-text-primary)]">{event.original_value || '—'}</span>
-        </div>
-        <div>
-          <span className="text-[var(--e-text-muted)]">New:</span>{' '}
-          <span className="font-mono text-[var(--e-text-primary)]">{event.new_value || '—'}</span>
-        </div>
+        {event.evidence_ref ? (
+          <div className="mt-2 text-[11px] text-[var(--e-text-muted)]">
+            Evidence ref:{' '}
+            <span className="font-mono text-[var(--e-cyan-700)]">{event.evidence_ref}</span>
+          </div>
+        ) : null}
       </div>
-
-      {event.evidence_ref ? (
-        <div className="mt-2 text-[12px] text-[var(--e-text-muted)]">
-          Evidence ref:{' '}
-          <span className="font-mono text-[var(--e-purple-700)]">{event.evidence_ref}</span>
-        </div>
-      ) : null}
+      <span className="pt-0.5 font-mono text-[10px] text-[var(--e-text-muted)]">
+        {new Date(event.detected_at).toLocaleString()}
+      </span>
     </div>
   );
 }
@@ -205,7 +204,7 @@ function DriftSubmitForm({
             type="button"
             onClick={handleSubmit}
             disabled={submitDrift.isPending}
-            className="inline-flex items-center gap-2 rounded-md bg-[var(--e-purple-500)] px-4 py-2 text-[12px] font-semibold text-[var(--e-text-inverse)] transition hover:bg-[var(--e-purple-600)] disabled:cursor-not-allowed disabled:bg-[var(--e-purple-200)] disabled:text-[var(--e-text-disabled)]"
+            className="inline-flex items-center gap-2 rounded-md border border-[color:oklch(0.758_0.103_216_/_0.35)] bg-[color:oklch(0.965_0.025_216)] px-4 py-2 text-[12px] font-semibold text-[color:oklch(0.41_0.102_224)] transition hover:bg-[color:oklch(0.94_0.03_216)] disabled:cursor-not-allowed disabled:border-[var(--e-border-secondary)] disabled:bg-[var(--e-bg-sunken)] disabled:text-[var(--e-text-disabled)]"
           >
             {submitDrift.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Submit Drift
@@ -244,7 +243,7 @@ export function DriftEventsPanel({
           <span className="font-mono text-[11px] text-[var(--e-text-muted)]">{events.length} recorded</span>
           <span className="ml-auto text-[11px] text-[var(--e-text-muted)]">commitment monitor</span>
         </div>
-        <div className="space-y-3 px-5 py-5">
+        <div className="px-5 py-5">
           {events.length > 0 ? (
             events.map((event) => <DriftEventRow key={event.drift_id} event={event} />)
           ) : (
@@ -265,7 +264,7 @@ export function DriftEventsPanel({
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-2 rounded-md border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-3 py-2 text-[12px] font-semibold text-[var(--e-purple-700)] transition hover:bg-[var(--e-purple-100)]"
+            className="inline-flex items-center gap-2 rounded-md border border-[color:oklch(0.758_0.103_216_/_0.35)] bg-transparent px-3 py-2 text-[12px] font-semibold text-[color:oklch(0.41_0.102_224)] transition hover:bg-[color:oklch(0.965_0.025_216)]"
           >
             <Plus className="h-4 w-4" />
             Report Drift

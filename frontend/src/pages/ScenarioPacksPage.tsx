@@ -7,6 +7,7 @@ import {
   Eye,
   GitBranch,
   Loader2,
+  Plus,
   Play,
   Search,
   Sparkles,
@@ -119,6 +120,7 @@ export function ScenarioPacksPage() {
   const runnableCount = templates.filter((template) => template.template_status === 'RUNNABLE').length;
   const catalogCount = templates.filter((template) => template.template_status === 'CATALOG_ONLY').length;
   const maxBranchDepth = templates.length > 0 ? Math.max(...templates.map((template) => template.fork_points_max)) : 0;
+  const firstRunnableTemplate = templates.find((template) => template.template_status === 'RUNNABLE');
 
   return (
     <div className="p-6">
@@ -127,14 +129,25 @@ export function ScenarioPacksPage() {
           <p className="max-w-3xl text-[15px] leading-6 text-[var(--e-text-secondary)]">
             Browse branching runtime environments for training, evaluation, calibration, and replay.
           </p>
-          <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-3 shadow-[var(--e-shadow-xs)]">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
-              Surface
-            </div>
-            <div className="mt-1 text-[13px] font-medium text-[var(--e-text-primary)]">
-              Catalog / runnable split preserved
-            </div>
-          </div>
+          {firstRunnableTemplate ? (
+            <button
+              type="button"
+              onClick={() => navigate(`/scenario-packs/${firstRunnableTemplate.id}?launch=true`)}
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--e-purple-500)] bg-[var(--e-purple-500)] px-4 py-2.5 text-[14px] font-semibold text-white shadow-[var(--e-shadow-sm)] transition hover:border-[var(--e-purple-600)] hover:bg-[var(--e-purple-600)]"
+            >
+              <Plus className="h-4 w-4" />
+              Create Pack
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-2 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] px-4 py-2.5 text-[14px] font-semibold text-[var(--e-text-disabled)]"
+            >
+              <Plus className="h-4 w-4" />
+              Create Pack
+            </button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">

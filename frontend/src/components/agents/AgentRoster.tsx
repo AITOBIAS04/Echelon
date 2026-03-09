@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -12,6 +12,7 @@ import { clsx } from 'clsx';
 import { useAgentRoster } from '../../hooks/useAgents';
 import { useDeploymentList, useWithdrawDeployment } from '../../hooks/useAgentDeployments';
 import { getArchetypeTheme } from '../../theme/agentsTheme';
+import DeployAgentModal from './DeployAgentModal';
 import type { EnrichedAgent } from '../../hooks/useAgents';
 import type { AgentDeploymentSummary } from '../../types/agentDeployment';
 
@@ -210,10 +211,11 @@ function FilterSelect({
 }
 
 export function AgentRoster() {
-  const navigate = useNavigate();
   const { agents, isLoading } = useAgentRoster();
   const { deployments } = useDeploymentList();
   const withdrawDeployment = useWithdrawDeployment();
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [deployAgentId, setDeployAgentId] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [archetypeFilter, setArchetypeFilter] = useState('all');
@@ -258,6 +260,11 @@ export function AgentRoster() {
   }, [agents]);
 
   const pageState = derivePageState(agents);
+
+  const openDeployModal = (agentId?: string) => {
+    setDeployAgentId(agentId);
+    setShowDeployModal(true);
+  };
 
   const filteredAgents = useMemo(() => {
     const search = searchQuery.trim().toLowerCase();
@@ -334,7 +341,7 @@ export function AgentRoster() {
           </div>
           <button
             type="button"
-            onClick={() => navigate('/theatres')}
+            onClick={() => openDeployModal()}
             className="inline-flex items-center gap-2 rounded-md border border-[var(--e-purple-500)] bg-[var(--e-purple-500)] px-4 py-2.5 text-[14px] font-semibold text-white shadow-[var(--e-shadow-sm)] transition hover:border-[var(--e-purple-600)] hover:bg-[var(--e-purple-600)]"
           >
             Deploy Agent
@@ -572,10 +579,10 @@ export function AgentRoster() {
                                   {status === 'IDLE' ? (
                                     <button
                                       type="button"
-                                      onClick={() => navigate('/theatres')}
+                                      onClick={() => openDeployModal(agent.id)}
                                       className="inline-flex items-center gap-1 rounded-md border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--e-purple-700)] transition hover:bg-[var(--e-purple-100)]"
                                     >
-                                      Deploy via Theatre
+                                      Deploy Agent
                                     </button>
                                   ) : null}
                                 </div>
@@ -667,6 +674,15 @@ export function AgentRoster() {
           </>
         )}
       </div>
+
+      <DeployAgentModal
+        open={showDeployModal}
+        onClose={() => {
+          setShowDeployModal(false);
+          setDeployAgentId(undefined);
+        }}
+        preselectedAgentId={deployAgentId}
+      />
     </div>
   );
 }
