@@ -186,12 +186,6 @@ export function TopActionBar({ onHamburgerClick }: TopActionBarProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span
-            className="hidden rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--e-text-muted)] lg:inline-flex"
-            title={`Build: ${__BUILD_HASH__}`}
-          >
-            {__BUILD_ID__}
-          </span>
           {config.buttons.map((btn) => {
             if (btn.isTab) {
               const active = activeTab === btn.tabValue;

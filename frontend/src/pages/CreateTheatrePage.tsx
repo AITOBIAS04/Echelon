@@ -153,11 +153,13 @@ function PathCard({
   selected,
   onClick,
   recommended,
+  disabled,
 }: {
   path: CreationPath;
   selected: boolean;
   onClick: () => void;
   recommended?: boolean;
+  disabled?: boolean;
 }) {
   const copy = PATH_COPY[path];
 
@@ -165,14 +167,26 @@ function PathCard({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={clsx(
-        'relative rounded-xl border-2 bg-[var(--e-bg-card)] p-5 text-left shadow-[var(--e-shadow-xs)] transition hover:-translate-y-0.5 hover:shadow-[var(--e-shadow-md)]',
-        selected ? 'border-[var(--e-purple-500)] shadow-[var(--e-shadow-md)]' : 'border-[var(--e-border-primary)] hover:border-[var(--e-purple-200)]',
+        'relative rounded-xl border-2 bg-[var(--e-bg-card)] p-5 text-left shadow-[var(--e-shadow-xs)] transition',
+        disabled
+          ? 'cursor-not-allowed border-[var(--e-border-primary)] opacity-65'
+          : 'hover:-translate-y-0.5 hover:shadow-[var(--e-shadow-md)]',
+        selected
+          ? 'border-[var(--e-purple-500)] shadow-[var(--e-shadow-md)]'
+          : 'border-[var(--e-border-primary)]',
+        !selected && !disabled && 'hover:border-[var(--e-purple-200)]',
       )}
     >
       {recommended ? (
         <span className="absolute right-4 top-4 rounded-full border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--e-purple-700)]">
           Recommended
+        </span>
+      ) : null}
+      {disabled ? (
+        <span className="absolute right-4 top-4 rounded-full border border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--e-text-muted)]">
+          Coming soon
         </span>
       ) : null}
       <div className={clsx('mb-4 flex h-12 w-12 items-center justify-center rounded-lg border', copy.tone)}>{copy.icon}</div>
@@ -239,7 +253,13 @@ function DetailRow({ label, value, mono }: { label: string; value: string; mono?
 
 export function CreateTheatrePage() {
   const navigate = useNavigate();
-  const { templates, isLoading: templatesLoading, error: templatesError, isEmpty: templatesEmpty } = useTheatreTemplates();
+  const {
+    templates,
+    isLoading: templatesLoading,
+    error: templatesError,
+    isEmpty: templatesEmpty,
+    refetch: refetchTemplates,
+  } = useTheatreTemplates();
 
   const [path, setPath] = useState<CreationPath | null>(null);
   const [step, setStep] = useState<Step>('choose-path');
@@ -282,18 +302,16 @@ export function CreateTheatrePage() {
 
   const choosePath = (nextPath: CreationPath) => {
     setSubmitError(null);
+    if (nextPath !== 'template') {
+      return;
+    }
     setPath(nextPath);
     setSelectedTemplate(null);
     setSelectedSuggestion(null);
-    if (nextPath === 'blank') {
-      setStep('configure');
-      return;
-    }
     if (nextPath === 'template') {
       setStep('select-template');
       return;
     }
-    setStep('select-suggestion');
   };
 
   const selectTemplate = (template: TemplateSummaryResponse) => {
@@ -385,18 +403,34 @@ export function CreateTheatrePage() {
         <Stepper steps={steps} current={step} />
 
         {step === 'choose-path' ? (
-          <div className="grid gap-4 lg:grid-cols-3">
-            <PathCard path="blank" selected={path === 'blank'} onClick={() => choosePath('blank')} />
-            <PathCard path="template" selected={path === 'template'} onClick={() => choosePath('template')} recommended />
-            <PathCard path="alpamayo" selected={path === 'alpamayo'} onClick={() => choosePath('alpamayo')} />
+          <div className="space-y-4">
+            <div className="rounded-lg border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-4 py-4 text-[13px] leading-6 text-[var(--e-purple-700)]">
+              Template-backed theatre creation is the only live path today. Blank authoring and Alpamayo recommendations
+              remain staged until their backend contracts are ready.
+            </div>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <PathCard path="blank" selected={path === 'blank'} onClick={() => choosePath('blank')} disabled />
+              <PathCard path="template" selected={path === 'template'} onClick={() => choosePath('template')} recommended />
+              <PathCard path="alpamayo" selected={path === 'alpamayo'} onClick={() => choosePath('alpamayo')} disabled />
+            </div>
           </div>
         ) : null}
 
         {step === 'select-template' ? (
           <SectionCard title="Select a Template" eyebrow="Template Library">
             {templatesError ? (
-              <div className="rounded-lg border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] px-4 py-3 text-[13px] text-[var(--e-red-600)]">
-                Failed to load templates: {templatesError.message}
+              <div className="rounded-lg border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] px-4 py-4 text-[13px] text-[var(--e-red-600)]">
+                <div className="font-semibold">Failed to load templates</div>
+                <div className="mt-1">{templatesError.message}</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void refetchTemplates();
+                  }}
+                  className="mt-3 inline-flex h-9 items-center rounded-md border border-[var(--e-red-200)] bg-white px-3 text-[12px] font-semibold text-[var(--e-red-600)] transition hover:bg-[var(--e-red-50)]"
+                >
+                  Retry
+                </button>
               </div>
             ) : null}
 

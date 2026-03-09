@@ -21,6 +21,11 @@ apiClient.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  const walletAddress = localStorage.getItem('wallet_address');
+  if (walletAddress) {
+    config.headers['X-Wallet-Address'] = walletAddress;
+  }
   return config;
 });
 
