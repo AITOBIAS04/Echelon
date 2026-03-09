@@ -88,16 +88,29 @@ def _derive_source_groups(domain_filters: list[str]) -> set[str]:
 
 
 def _derive_default_sources(domain_filters: list[str]) -> list[str]:
-    """Derive default source group IDs from domain filters via DOMAIN_FILTER_SOURCE_GROUPS.
+    """Derive actual source_ids from domain filters via the live OSINT registry.
 
-    Sources are resolved from the live OSINT master registry's source group mappings.
-    Each source group in DOMAIN_FILTER_SOURCE_GROUPS represents a category of OSINT
-    sources available in the registry (e.g., 'official_gov', 'market_data', 'court_filing').
-
-    Returns sorted list of unique source group identifiers.
+    Chain: domain_filter → source_groups (DOMAIN_FILTER_SOURCE_GROUPS) → source_ids (RegistryLoader).
+    Returns sorted list of unique source_id values from sources.json.
     """
     source_groups = _derive_source_groups(domain_filters)
-    return sorted(source_groups)
+    if not source_groups:
+        return []
+
+    import os
+    from backend.osint.models.registry import RegistryLoader
+
+    registry_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "osint", "sources.json",
+    )
+    registry = RegistryLoader(registry_path)
+    source_ids: set[str] = set()
+    for group in source_groups:
+        for source in registry.get_sources_by_group(group):
+            source_ids.add(source.source_id)
+
+    return sorted(source_ids)
 
 
 def _derive_requires_legal_review(source_groups: set[str]) -> bool:
@@ -129,7 +142,7 @@ def seed_investigation_templates(session: Session) -> int:
 
         domain_filters = tpl_def["domain_filters"]
         source_groups = _derive_source_groups(domain_filters)
-        default_sources = sorted(source_groups)
+        default_sources = _derive_default_sources(domain_filters)
         requires_legal_review = _derive_requires_legal_review(source_groups)
 
         template = InvestigationTemplate(

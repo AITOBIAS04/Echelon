@@ -191,21 +191,20 @@ def test_corporate_due_diligence_detail(seeded_session):
     # Domain filters
     assert template.domain_filters_json == ["corporate_and_entity", "court_and_legal", "property_and_land"]
 
-    # Default sources derived from DOMAIN_FILTER_SOURCE_GROUPS
-    expected_source_groups = _derive_default_sources(template.domain_filters_json)
-    assert template.default_sources_json == expected_source_groups
-    assert len(template.default_sources_json) > 0
+    # Default sources are real source_ids from sources.json (not group names)
+    expected_source_ids = _derive_default_sources(template.domain_filters_json)
+    assert template.default_sources_json == expected_source_ids
 
-    # Verify specific source groups are present
-    # corporate_and_entity → official_gov, corporate_filing, entity_resolution
-    # court_and_legal → court_filing, insolvency
-    # property_and_land → property_registry
-    assert "official_gov" in template.default_sources_json
-    assert "corporate_filing" in template.default_sources_json
-    assert "entity_resolution" in template.default_sources_json
-    assert "court_filing" in template.default_sources_json
-    assert "insolvency" in template.default_sources_json
-    assert "property_registry" in template.default_sources_json
+    # corporate_and_entity → official_gov group → companies_house_api source
+    assert "companies_house_api" in template.default_sources_json
+
+    # Verify NO source group names leaked in (they should be source_ids)
+    source_group_names = {"official_gov", "corporate_filing", "entity_resolution",
+                          "court_filing", "insolvency", "property_registry"}
+    for sid in template.default_sources_json:
+        assert sid not in source_group_names, (
+            f"default_sources contains group name '{sid}' instead of source_id"
+        )
 
     # Policy metadata
     assert template.requires_legal_review is True

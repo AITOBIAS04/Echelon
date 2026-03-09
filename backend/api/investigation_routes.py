@@ -318,10 +318,12 @@ async def list_investigations(db: AsyncSession = Depends(get_db)):
 
 
 def _resolve_committed_sources(domain_filters: list[str]) -> list[str]:
-    """Resolve source group IDs from domain filters via DOMAIN_FILTER_SOURCE_GROUPS.
+    """Resolve actual source_ids from domain filters via the live OSINT registry.
 
-    Returns sorted, deduplicated source group identifiers from the live registry mapping.
+    Chain: domain_filter → source_groups (DOMAIN_FILTER_SOURCE_GROUPS) → source_ids (RegistryLoader).
+    Returns sorted, deduplicated source_id values from sources.json.
     """
+    # Step 1: domain filters → source group names
     source_groups: set[str] = set()
     for df_str in domain_filters:
         try:
@@ -330,7 +332,18 @@ def _resolve_committed_sources(domain_filters: list[str]) -> list[str]:
             continue
         groups = DOMAIN_FILTER_SOURCE_GROUPS.get(df, [])
         source_groups.update(groups)
-    return sorted(source_groups)
+
+    if not source_groups:
+        return []
+
+    # Step 2: source groups → actual source_ids from registry
+    registry = _get_registry()
+    source_ids: set[str] = set()
+    for group in source_groups:
+        for source in registry.get_sources_by_group(group):
+            source_ids.add(source.source_id)
+
+    return sorted(source_ids)
 
 
 def _validate_domain_filters(domain_filters: list[str]) -> None:
@@ -380,18 +393,18 @@ async def create_investigation(
                 detail=f"Investigation template '{template_id}' is not ACTIVE (status={template.template_status})",
             )
 
-        # Apply template defaults for fields not explicitly provided
-        # InvestigationCreateRequest defaults: inquiry_class="INVESTIGATIVE",
-        # domain_filters=[], stop_condition="OUTCOME_RESOLUTION", stop_config={}
-        # We check whether user provided non-default values to determine overrides.
-        if inquiry_class == "INVESTIGATIVE" and template.inquiry_class != "INVESTIGATIVE":
+        # Apply template defaults for fields the user did NOT explicitly provide.
+        # Use model_fields_set to distinguish "user sent INVESTIGATIVE" from "Pydantic default."
+        explicitly_set = request.model_fields_set
+        if "inquiry_class" not in explicitly_set:
             inquiry_class = template.inquiry_class
-        if not domain_filters:
+        if "domain_filters" not in explicitly_set or not domain_filters:
             domain_filters = template.domain_filters_json or []
-        if stop_condition == "OUTCOME_RESOLUTION" and template.default_stop_condition != "OUTCOME_RESOLUTION":
+        if "stop_condition" not in explicitly_set:
             stop_condition = template.default_stop_condition
-        if not stop_config and template.default_time_window_days is not None:
-            stop_config = {"time_window_days": template.default_time_window_days}
+        if "stop_config" not in explicitly_set or not stop_config:
+            if template.default_time_window_days is not None:
+                stop_config = {"time_window_days": template.default_time_window_days}
 
     # Validate domain filters against backend enum
     if domain_filters:

@@ -10,7 +10,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -332,12 +332,6 @@ export function CreateInvestigationWizard({
     }
   }, [templates, templateResolved, searchParams]);
 
-  // When template detail loads, populate wizard defaults (user can override)
-  const applyTemplateDefaults = useCallback((templateId: string) => {
-    if (templateId === 'blank') return;
-    // Detail will be fetched by the hook; we apply on detail load
-  }, []);
-
   // Apply template detail defaults when detail loads after a new template selection
   const [lastAppliedTemplateId, setLastAppliedTemplateId] = useState<string | null>(null);
   useEffect(() => {
@@ -361,9 +355,21 @@ export function CreateInvestigationWizard({
   }, [selectedTemplateDetail, lastAppliedTemplateId]);
 
   const handleTemplateSelect = (templateId: string) => {
-    setState((current) => ({ ...current, template: templateId }));
-    setLastAppliedTemplateId(null); // Reset so defaults are applied when detail loads
-    applyTemplateDefaults(templateId);
+    if (templateId === 'blank') {
+      // Reset to initial defaults — clear any previously applied template state
+      setState((current) => ({
+        ...current,
+        template: 'blank',
+        inquiryClass: 'INVESTIGATIVE',
+        domainFilters: [],
+        stopCondition: 'OUTCOME_RESOLUTION' as StopCondition,
+        stopConfig: {},
+      }));
+      setLastAppliedTemplateId('blank');
+    } else {
+      setState((current) => ({ ...current, template: templateId }));
+      setLastAppliedTemplateId(null); // Reset so defaults are applied when detail loads
+    }
   };
 
   const stepSummaryLabel = (wizardState: WizardState, stepIndex: number): string => {
