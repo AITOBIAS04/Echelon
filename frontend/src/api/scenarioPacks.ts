@@ -78,7 +78,7 @@ export const scenarioPackApi = {
 
 export const scenarioPackLifecycleApi = {
   createPack: async (req: ScenarioPackCreate): Promise<ScenarioPackResponse> => {
-    const { data } = await apiClient.post('/api/v1/scenario-packs', req);
+    const { data } = await apiClient.post('/api/v1/scenario-packs/', req);
     return data;
   },
 

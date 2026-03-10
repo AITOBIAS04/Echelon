@@ -172,7 +172,7 @@ export function DeployAgentModal({
     setTheatresError(false);
 
     apiClient
-      .get('/api/v1/theatres')
+      .get('/api/v1/theatres/')
       .then((response) => {
         const items = (response.data?.theatres ?? response.data ?? []) as TheatreOption[];
         setTheatres(items);

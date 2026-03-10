@@ -35,7 +35,7 @@ import type {
 export const theatreApi = {
   /** Create a new theatre in DRAFT state */
   createTheatre: async (req: TheatreCreateRequest): Promise<TheatreResponse> => {
-    const { data } = await apiClient.post('/api/v1/theatres', req);
+    const { data } = await apiClient.post('/api/v1/theatres/', req);
     return data;
   },
 
@@ -98,7 +98,7 @@ export const templateApi = {
     limit?: number;
     offset?: number;
   }): Promise<TemplateListResponse> => {
-    const { data } = await apiClient.get('/api/v1/templates', { params });
+    const { data } = await apiClient.get('/api/v1/templates/', { params });
     return data;
   },
 
@@ -117,7 +117,7 @@ export const theatreCertificateApi = {
     limit?: number;
     offset?: number;
   }): Promise<CertificateListResponse> => {
-    const { data } = await apiClient.get('/api/v1/certificates', { params });
+    const { data } = await apiClient.get('/api/v1/certificates/', { params });
     return data;
   },
 

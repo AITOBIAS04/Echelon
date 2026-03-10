@@ -22,7 +22,7 @@ import type {
 
 export const agentDeploymentApi = {
   create: async (req: AgentDeploymentCreate): Promise<AgentDeploymentResponse> => {
-    const { data } = await apiClient.post('/api/v1/agent-deployments', req);
+    const { data } = await apiClient.post('/api/v1/agent-deployments/', req);
     return data;
   },
 
@@ -33,7 +33,7 @@ export const agentDeploymentApi = {
     limit?: number;
     offset?: number;
   }): Promise<DeploymentListResponse> => {
-    const { data } = await apiClient.get('/api/v1/agent-deployments', { params });
+    const { data } = await apiClient.get('/api/v1/agent-deployments/', { params });
     return data;
   },
 

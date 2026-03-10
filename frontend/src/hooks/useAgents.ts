@@ -17,7 +17,7 @@ async function fetchAgents(params?: {
   limit?: number;
   offset?: number;
 }): Promise<AgentListResponse> {
-  const { data } = await apiClient.get<AgentListResponse>('/api/v1/agents', { params });
+  const { data } = await apiClient.get<AgentListResponse>('/api/v1/agents/', { params });
   return data;
 }
 

@@ -54,7 +54,7 @@ export function useAgentLeaderboard() {
     queryKey: ['agents', 'leaderboard'],
     queryFn: async () => {
       const { data } = await apiClient.get<{ agents: BackendAgent[] }>(
-        '/api/v1/agents',
+        '/api/v1/agents/',
         { params: { is_alive: true, limit: 20 } },
       );
       return data;

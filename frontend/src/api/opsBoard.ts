@@ -33,7 +33,7 @@ export async function fetchOpsDashboard(): Promise<OpsDashboardData> {
   const [timelinesResp, agentsResp, paradoxResp, investigationsResp, flapsResp] =
     await Promise.allSettled([
       apiClient.get<TimelineHealthResponse>('/api/v1/butterfly/timelines/health'),
-      apiClient.get<{ agents: unknown[]; total: number }>('/api/v1/agents', {
+      apiClient.get<{ agents: unknown[]; total: number }>('/api/v1/agents/', {
         params: { limit: 1 },
       }),
       apiClient.get<{ paradoxes: unknown[]; total_active: number }>(
