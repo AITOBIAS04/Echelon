@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-from backend.database.connection import get_async_session
+from backend.database.connection import get_db as get_async_session
 from backend.database.models import (
     Timeline, Paradox, WingFlap, Agent, User, UserPosition,
     WingFlapType, FlapDirection,

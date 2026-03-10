@@ -283,6 +283,7 @@ export function MarketplacePage() {
       ? Math.round(theatres.reduce((sum, theatre) => sum + theatre.stability, 0) / theatres.length)
       : 0;
   const lowLiquidityCount = theatres.filter((theatre) => theatre.liquidity_depth_usd < 75_000).length;
+  const showHeaderCreateAction = !isLoading && !error && !isEmpty;
 
   return (
     <div className="p-6">
@@ -291,14 +292,16 @@ export function MarketplacePage() {
           <p className="max-w-3xl text-[15px] leading-6 text-[var(--e-text-secondary)]">
             Browse live theatres, inspect paradox pressure, and open the full theatre surface for deployment and resolution context.
           </p>
-          <button
-            type="button"
-            onClick={() => navigate('/theatres/create')}
-            className="inline-flex items-center gap-2 rounded-lg bg-[var(--e-purple-500)] px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[var(--e-purple-400)]"
-          >
-            <Plus className="h-4 w-4" />
-            Create Theatre
-          </button>
+          {showHeaderCreateAction ? (
+            <button
+              type="button"
+              onClick={() => navigate('/theatres/create')}
+              className="inline-flex items-center gap-2 rounded-lg bg-[var(--e-purple-500)] px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[var(--e-purple-400)]"
+            >
+              <Plus className="h-4 w-4" />
+              Create Theatre
+            </button>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">

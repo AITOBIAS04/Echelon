@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
 
-from theatre.engine.canonical_json import canonical_json
+from backend.utils.canonical_json import canonical_json
 
 
 class SourceQueryRecord(BaseModel):

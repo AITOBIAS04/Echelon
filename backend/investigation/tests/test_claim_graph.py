@@ -2,7 +2,7 @@
 
 import hashlib
 
-from theatre.engine.canonical_json import canonical_json
+from backend.utils.canonical_json import canonical_json
 
 from backend.investigation.claim_graph import (
     ClaimGraph,

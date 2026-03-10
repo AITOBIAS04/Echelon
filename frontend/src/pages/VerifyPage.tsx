@@ -3,7 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Award, ExternalLink, Search, ShieldCheck } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useVerifyUi } from '../contexts/VerifyUiContext';
-import { useRegisterTopActionBarActions } from '../contexts/TopActionBarActionsContext';
 import { useVerificationRuns } from '../hooks/useVerificationRuns';
 import { useCertificates } from '../hooks/useCertificates';
 import { RunsListView } from '../components/verify/RunsListView';
@@ -107,10 +106,6 @@ export function VerifyPage() {
     },
     [createRun],
   );
-
-  useRegisterTopActionBarActions({
-    startVerification: () => setShowModal(true),
-  });
 
   return (
     <div className="p-6">

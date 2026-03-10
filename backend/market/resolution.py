@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Tuple
 
-from theatre.engine.canonical_json import canonical_json
+from backend.utils.canonical_json import canonical_json
 
 from backend.market.lifecycle import MarketLifecycle
 from backend.market.lmsr import LMSREngine

@@ -54,7 +54,7 @@ def upgrade() -> None:
                 "requires_legal_review",
                 sa.Boolean,
                 nullable=False,
-                server_default=sa.text("0"),
+                server_default=sa.text("false"),
             ),
             sa.Column(
                 "min_corroboration_groups",
@@ -73,7 +73,7 @@ def upgrade() -> None:
                 "is_seeded",
                 sa.Boolean,
                 nullable=False,
-                server_default=sa.text("0"),
+                server_default=sa.text("false"),
             ),
             sa.Column("created_at", sa.DateTime, nullable=True),
         )

@@ -14,7 +14,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from theatre.engine.canonical_json import canonical_json
+from backend.utils.canonical_json import canonical_json
 
 from backend.investigation.claim_graph import ClaimGraph
 from backend.investigation.commitment_monitor import CommitmentMonitor, DriftImpact

@@ -51,7 +51,7 @@ def upgrade() -> None:
             sa.Column("fork_points_max", sa.Integer, nullable=False, server_default="10"),
             sa.Column("settlement_latency_sec", sa.Integer, nullable=True),
             sa.Column("template_status", sa.String(20), nullable=False, server_default="CATALOG_ONLY"),
-            sa.Column("is_seeded", sa.Boolean, nullable=False, server_default="0"),
+            sa.Column("is_seeded", sa.Boolean, nullable=False, server_default="false"),
             sa.Column("created_at", sa.DateTime, nullable=False),
         )
         op.create_index("ix_scenario_pack_templates_family", "scenario_pack_templates", ["family"])
@@ -68,7 +68,7 @@ def upgrade() -> None:
             sa.Column("trigger_condition_json", sa.JSON, nullable=True),
             sa.Column("market_question", sa.Text, nullable=False),
             sa.Column("decision_window_sec", sa.Integer, nullable=False, server_default="30"),
-            sa.Column("can_spawn_theatre", sa.Boolean, nullable=False, server_default="0"),
+            sa.Column("can_spawn_theatre", sa.Boolean, nullable=False, server_default="false"),
             sa.Column("evaluator_type", sa.String(30), nullable=False, server_default="BINARY_RISK_GATE"),
             sa.Column("theatre_spawn_rule_json", sa.JSON, nullable=True),
             sa.Column("reward_mapping_json", sa.JSON, nullable=True),
