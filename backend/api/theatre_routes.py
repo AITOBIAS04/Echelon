@@ -801,14 +801,22 @@ async def _get_user_theatre(
     Looks up by primary key first, then falls back to construct_id.
     This allows the frontend to navigate using either the UUID id or
     the human-readable construct_id (e.g. timeline IDs like TL_*).
+
+    On testnet (TESTNET_AUTO_AUTH=true), skips user_id filter so that
+    seeded theatres are always accessible regardless of owner.
     """
+    import os
     from sqlalchemy import or_
 
-    result = await db.execute(
-        select(Theatre).where(
-            or_(Theatre.id == theatre_id, Theatre.construct_id == theatre_id),
-            Theatre.user_id == user_id,
-        )
+    testnet_auto = os.getenv("TESTNET_AUTO_AUTH", "false").lower() == "true"
+
+    query = select(Theatre).where(
+        or_(Theatre.id == theatre_id, Theatre.construct_id == theatre_id),
+    )
+    if not testnet_auto:
+        query = query.where(Theatre.user_id == user_id)
+
+    result = await db.execute(query
     )
     theatre = result.scalar_one_or_none()
     if theatre is None:

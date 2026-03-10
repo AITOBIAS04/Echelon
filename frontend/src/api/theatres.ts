@@ -65,7 +65,9 @@ export const theatreApi = {
 
   /** Settle an ACTIVE theatre — triggers resolution and certificate generation */
   settleTheatre: async (theatreId: string): Promise<TheatreResponse> => {
-    const { data } = await apiClient.post(`/api/v1/theatres/${theatreId}/settle`);
+    const { data } = await apiClient.post(`/api/v1/theatres/${theatreId}/settle`, {
+      settlement_data: {},
+    });
     return data;
   },
 
