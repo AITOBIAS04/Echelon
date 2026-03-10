@@ -226,7 +226,7 @@ class Agent(Base):
 # Helper function for WingFlap default timestamp (must be defined outside class)
 def _wingflap_default_timestamp() -> datetime:
     """Return a naive UTC datetime for database compatibility."""
-    return datetime.utcnow().replace(tzinfo=None)
+    return datetime.utcnow()
 
 class WingFlap(Base):
     __tablename__ = "wing_flaps"

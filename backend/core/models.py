@@ -22,7 +22,7 @@ The Theater (formerly War Room):
 import asyncio
 import uuid
 import random
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Callable
 from dataclasses import dataclass, field
 from enum import Enum
@@ -253,7 +253,7 @@ class Mission:
     difficulty: Difficulty = Difficulty.STANDARD
     
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
     starts_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
     duration_minutes: int = 60

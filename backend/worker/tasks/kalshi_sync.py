@@ -10,7 +10,7 @@ This bridges real prediction markets with Echelon's counterfactual layer.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -242,7 +242,7 @@ class KalshiSyncTask:
         
         flap_id = f"KALSHI_{timeline.id}_{uuid.uuid4().hex[:8]}"
         # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
-        flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+        flap_timestamp = datetime.utcnow()
         flap = WingFlap(
             id=flap_id,
             timeline_id=timeline.id,

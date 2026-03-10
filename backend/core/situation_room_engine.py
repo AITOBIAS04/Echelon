@@ -18,7 +18,7 @@ import asyncio
 import uuid
 import random
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Tuple, Callable
 from dataclasses import dataclass, field
 from enum import Enum
@@ -73,7 +73,7 @@ class IntelPacket:
     full_content: str = ""                # Revealed after purchase
     
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
     expires_at: Optional[datetime] = None
     time_advantage_seconds: int = 10      # How early buyers get the info
     
@@ -103,7 +103,7 @@ class IntelSubscription:
     subscriber_id: str = ""               # User or agent ID
     spy_agent_id: str = ""
     
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.utcnow())
     expires_at: Optional[datetime] = None
     
     price_paid: float = 0.0
@@ -164,7 +164,7 @@ Category: {signal.category.value}
             signal_id=signal.id,
             encrypted_preview=preview,
             full_content=full_content,
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
             creator_agent_id=creator_agent_id,
             creator_faction=creator_faction,
             price_usdc=price,
@@ -275,8 +275,8 @@ MARKET IMPACT ESTIMATE: {fake_sentiment * 100:+.1f}%
         sub = IntelSubscription(
             subscriber_id=subscriber_id,
             spy_agent_id=spy_agent_id,
-            started_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=30 * months),
+            started_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(days=30 * months),
             price_paid=20.0 * months,  # $20/month
             is_active=True,
         )
@@ -330,7 +330,7 @@ class Treaty:
     violation_conditions: List[str] = field(default_factory=list)
     
     # Timeline
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
     expires_at: Optional[datetime] = None
     stability_period_hours: int = 72      # Must remain stable for this long
     
@@ -379,7 +379,7 @@ class TreatySystem:
             terms=terms,
             party_a_escrow=escrow_amount,
             tension_threshold=tension_threshold,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+            expires_at=datetime.utcnow() + timedelta(days=7),
             is_active=False,  # Not active until both parties deposit
         )
         
@@ -407,7 +407,7 @@ class TreatySystem:
         treaty.party_b_escrow = escrow_amount
         treaty.total_escrow = treaty.party_a_escrow + escrow_amount
         treaty.is_active = True
-        treaty.created_at = datetime.now(timezone.utc)
+        treaty.created_at = datetime.utcnow()
         
         # Add to theater state
         self.theater_state.active_treaties.append({
@@ -458,7 +458,7 @@ class TreatySystem:
             "parties": [treaty.party_a_faction.value, treaty.party_b_faction.value],
             "slashed_amount": slash_amount,
             "reason": treaty.violation_reason,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.utcnow().isoformat(),
         })
         
         # Increase chaos from broken treaty
@@ -590,7 +590,7 @@ class SleeperCellSystem:
             # Check tension trigger
             if self.theater_state.global_tension > assignment.trigger_tension:
                 assignment.is_triggered = True
-                assignment.triggered_at = datetime.now(timezone.utc)
+                assignment.triggered_at = datetime.utcnow()
                 triggered.append(assignment)
                 
                 self._execute_betrayal(assignment)
@@ -604,7 +604,7 @@ class SleeperCellSystem:
             "agent_id": assignment.agent_id,
             "apparent_faction": assignment.apparent_faction.value,
             "actions": assignment.betrayal_actions,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.utcnow().isoformat(),
             "message": "🔴 A MOLE HAS BEEN ACTIVATED",
         })
         
@@ -636,7 +636,7 @@ class SleeperCellSystem:
         self.theater_state.event_log.append({
             "type": "mole_revealed",
             **reveal_data,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.utcnow().isoformat(),
             "message": f"🎭 THE MOLE HAS BEEN UNMASKED: Agent {assignment.agent_id}",
         })
         
@@ -653,7 +653,7 @@ class SleeperCellSystem:
             "options": suspect_agent_ids,
             "season": self.current_season,
             "resolves_when": "Mole is revealed or season ends",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.utcnow().isoformat(),
         }
 
 
@@ -713,7 +713,7 @@ class SituationRoomEngine:
         
         # Tick counter
         self.tick_count = 0
-        self.last_tick = datetime.now(timezone.utc)
+        self.last_tick = datetime.utcnow()
     
     # =========================================================================
     # SIGNAL PROCESSING
@@ -755,7 +755,7 @@ class SituationRoomEngine:
                 "type": "early_access_signal",
                 "signal_id": signal.id,
                 "preview": signal.headline[:50],
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.utcnow().isoformat(),
             })
     
     # =========================================================================
@@ -815,7 +815,7 @@ class SituationRoomEngine:
         # Start mission if minimum agents reached
         if len(mission.assigned_agents) >= mission.min_agents:
             mission.status = MissionStatus.ACTIVE
-            mission.starts_at = datetime.now(timezone.utc)
+            mission.starts_at = datetime.utcnow()
             
         return True, f"Agent {agent_id} assigned to {mission.codename}"
     
@@ -842,7 +842,7 @@ class SituationRoomEngine:
         
         objective.is_completed = True
         objective.completed_by = agent_id
-        objective.completed_at = datetime.now(timezone.utc)
+        objective.completed_at = datetime.utcnow()
         
         # Update agent stats
         self.agent_stats[agent_id]["usdc_earned"] += objective.reward_usdc
@@ -949,7 +949,7 @@ class SituationRoomEngine:
             # Set cooldown
             cooldown_seconds = config.get("cooldown_seconds", 60)
             self.agent_cooldowns[agent_id][ability.value] = (
-                datetime.now(timezone.utc) + timedelta(seconds=cooldown_seconds)
+                datetime.utcnow() + timedelta(seconds=cooldown_seconds)
             )
             
             # Update stats
@@ -962,7 +962,7 @@ class SituationRoomEngine:
         cooldown_end = self.agent_cooldowns[agent_id].get(ability.value)
         if not cooldown_end:
             return True
-        return datetime.now(timezone.utc) >= cooldown_end
+        return datetime.utcnow() >= cooldown_end
     
     async def _execute_ability(
         self,
@@ -1111,7 +1111,7 @@ class SituationRoomEngine:
         Called periodically to update game state.
         """
         self.tick_count += 1
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # 1. Process signal queue -> generate missions
         await self._process_signal_queue()
@@ -1167,7 +1167,7 @@ class SituationRoomEngine:
     
     async def _check_mission_expirations(self):
         """Check for and handle expired missions"""
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         for mission in self.missions.values():
             if mission.status == MissionStatus.ACTIVE and mission.expires_at:
@@ -1268,7 +1268,7 @@ class SituationRoomEngine:
         event = {
             "type": event_type,
             "data": data,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.utcnow().isoformat(),
             "tick": self.tick_count,
         }
         

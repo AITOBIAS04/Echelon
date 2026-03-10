@@ -85,7 +85,7 @@ async def compute_evidence_freshness_hours(db, theatre_id: str) -> float:
     if latest_submitted.tzinfo is None:
         latest_submitted = latest_submitted.replace(tzinfo=timezone.utc)
 
-    elapsed = datetime.now(timezone.utc) - latest_submitted
+    elapsed = datetime.utcnow() - latest_submitted
     return max(0.0, elapsed.total_seconds() / 3600.0)
 
 

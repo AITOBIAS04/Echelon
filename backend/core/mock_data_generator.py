@@ -17,7 +17,7 @@ Features:
 import os
 import random
 import hashlib
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
@@ -193,7 +193,7 @@ def generate_mock_events(count: int = 10, domain: str = None) -> List[MockEvent]
             description=description,
             source=f"MockNews_{event_domain.upper()}",
             domain=event_domain,
-            published_at=datetime.now(timezone.utc) - timedelta(minutes=random.randint(5, 120)),
+            published_at=datetime.utcnow() - timedelta(minutes=random.randint(5, 120)),
             sentiment=round(sentiment, 3),
             virality_score=round(virality, 1),
         ))

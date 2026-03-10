@@ -12,7 +12,7 @@ This creates pressure for users to actively stabilise timelines.
 import logging
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime, timezone
+from datetime import datetime
 import uuid
 
 from backend.database.models import Timeline, WingFlap, WingFlapType, FlapDirection
@@ -94,7 +94,7 @@ class EntropyTask:
             # Create wing flap for entropy event (if decay is significant)
             if decay > 0.001:
                 flap_id = f"ENTROPY_{timeline.id}_{uuid.uuid4().hex[:8]}"
-                flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+                flap_timestamp = datetime.utcnow()
                 entropy_flap = WingFlap(
                     id=flap_id,
                     timeline_id=timeline.id,

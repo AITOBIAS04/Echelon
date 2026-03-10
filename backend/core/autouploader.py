@@ -21,7 +21,7 @@ This runs as a background service that continuously:
 """
 
 import asyncio
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Callable
 from dataclasses import dataclass, field
 from enum import Enum
@@ -245,7 +245,7 @@ class SituationRoomAutoUploader:
         
         # State tracking
         self.is_running = False
-        self.last_check = datetime.now(timezone.utc)
+        self.last_check = datetime.utcnow()
         self.missions_generated_this_cycle = 0
         self.mission_type_last_generated: Dict[MissionType, datetime] = {}
         
@@ -308,7 +308,7 @@ class SituationRoomAutoUploader:
         # 4. Update engine state
         await self.engine.tick()
         
-        self.last_check = datetime.now(timezone.utc)
+        self.last_check = datetime.utcnow()
     
     # =========================================================================
     # SIGNAL PROCESSING
@@ -414,7 +414,7 @@ class SituationRoomAutoUploader:
             return None
         
         # Update tracking
-        self.mission_type_last_generated[mission_type] = datetime.now(timezone.utc)
+        self.mission_type_last_generated[mission_type] = datetime.utcnow()
         self.stats["missions_generated"] += 1
         
         # Create betting market if enabled
@@ -458,7 +458,7 @@ class SituationRoomAutoUploader:
             return True
         
         cooldown = timedelta(minutes=self.config.mission_type_cooldown_minutes)
-        return datetime.now(timezone.utc) >= last_generated + cooldown
+        return datetime.utcnow() >= last_generated + cooldown
     
     # =========================================================================
     # NARRATIVE ARCS

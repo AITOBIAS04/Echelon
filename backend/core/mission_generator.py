@@ -18,7 +18,7 @@ import asyncio
 import uuid
 import random
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
@@ -92,7 +92,7 @@ class OSINTSignal:
     urgency: float = 0.5  # 0-1
     
     # Timing
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.utcnow())
     
     # Analysis
     mission_potential: float = 0.0  # 0-1, how suitable for mission
@@ -365,7 +365,7 @@ class MissionGenerator:
         # Set timing
         duration = random.randint(*template["duration_range"])
         mission.duration_minutes = duration
-        mission.starts_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+        mission.starts_at = datetime.utcnow() + timedelta(minutes=5)
         mission.expires_at = mission.starts_at + timedelta(minutes=duration)
         
         # Set rewards
@@ -775,7 +775,7 @@ class NarrativeArcGenerator:
             ),
             theme=arc_type,
             total_chapters=template["chapter_count"],
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.utcnow(),
             possible_endings=template["possible_endings"],
             seed_signals=[s.id for s in seed_signals],
         )

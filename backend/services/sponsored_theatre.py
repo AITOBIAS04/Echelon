@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 
 from backend.utils.canonical_json import canonical_json
 
@@ -228,7 +228,7 @@ class SponsoredTheatreService:
 
         # Update record
         record.committed = True
-        record.committed_at = datetime.now(timezone.utc).isoformat()
+        record.committed_at = datetime.utcnow().isoformat()
         record.tx_hash = tx_receipt.tx_hash
 
         return {

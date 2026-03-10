@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Optional
 
 from backend.osint.engine.scorer import OracleOutput
@@ -73,7 +73,7 @@ class TheatreEvidenceCollector:
 
         snapshot = EvidenceSnapshot(
             theatre_id=theatre_id,
-            collection_timestamp=datetime.now(timezone.utc).isoformat(),
+            collection_timestamp=datetime.utcnow().isoformat(),
             oracle_output=oracle_output,
             evidence_bundles=evidence_bundles,
             collection_results=collection_results,

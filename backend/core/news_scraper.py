@@ -2,7 +2,7 @@ import requests
 import json
 import os
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from datetime import datetime, timezone
+from datetime import datetime
 
 # Load environment variables
 try:
@@ -130,7 +130,7 @@ def save_world_state(sentiment_score):
         tension = 0.0
 
     world_state = {
-        "last_updated": datetime.now(timezone.utc).isoformat(),
+        "last_updated": datetime.utcnow().isoformat(),
         "raw_sentiment": round(sentiment_score, 4),
         "global_tension_score": round(tension, 4)
     }

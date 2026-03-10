@@ -22,7 +22,7 @@ Perfect for:
 import asyncio
 import random
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
@@ -606,7 +606,7 @@ class SyntheticOSINTGenerator:
                 sentiment=-0.7,
                 entities=["Crisis", scenario.title()],
                 # Stagger timestamps
-                timestamp=datetime.now(timezone.utc) - timedelta(minutes=30 * (len(scenario_events) - i)),
+                timestamp=datetime.utcnow() - timedelta(minutes=30 * (len(scenario_events) - i)),
             )
             signals.append(signal)
         

@@ -21,7 +21,7 @@ Version: 2.0.0
 from fastapi import APIRouter, HTTPException, Request, Header, BackgroundTasks
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from enum import Enum
 import hashlib
 import hmac
@@ -835,7 +835,7 @@ async def butler_health():
         "status": "healthy",
         "service": "echelon-butler-api",
         "version": "2.0.0",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.utcnow().isoformat(),
         "commands_supported": [cmd.value for cmd in ButlerCommandType if cmd != ButlerCommandType.UNKNOWN],
         "genesis_identities": stats["total_identities"],
         "active_instances": stats["active_instances"],

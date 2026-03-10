@@ -96,7 +96,7 @@ class GameLoop:
         logger.info("Database connection established")
         
         self.running = True
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.utcnow()
         
         logger.info(f"Task intervals: {self.intervals}")
         logger.info("Game loop active. Press Ctrl+C to stop.")
@@ -116,7 +116,7 @@ class GameLoop:
         """Main loop - runs forever until cancelled."""
         while self.running:
             self.tick_count += 1
-            now = datetime.now(timezone.utc)
+            now = datetime.utcnow()
             
             # Create database session for this tick
             async with async_session_maker() as session:
@@ -174,11 +174,11 @@ class GameLoop:
     async def _run_task(self, task_name: str, task_fn, session):
         """Run a task and update its last run time."""
         try:
-            start = datetime.now(timezone.utc)
+            start = datetime.utcnow()
             result = await task_fn(session)
-            elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+            elapsed = (datetime.utcnow() - start).total_seconds()
             
-            self.last_run[task_name] = datetime.now(timezone.utc)
+            self.last_run[task_name] = datetime.utcnow()
             
             if result:
                 logger.info(f"[{task_name.upper():8}] {result} ({elapsed:.2f}s)")

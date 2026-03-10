@@ -15,7 +15,7 @@ import json
 import os
 import signal
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, Dict, Any
 
 # --- IMPORTS ---
@@ -124,7 +124,7 @@ async def game_loop():
                         description=mission.description,
                         source="OSINT_NETWORK",
                         url="internal://classified",
-                        published_at=datetime.now(timezone.utc),
+                        published_at=datetime.utcnow(),
                         domain=domain_enum,
                         virality_score=mission.virality_score,
                         sentiment=-0.8 # Missions usually imply tension

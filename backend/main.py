@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException, Header, Request
 from sqlalchemy import text
 from pydantic import BaseModel, Field
 from typing import Annotated, Optional
-from datetime import datetime, timezone
+from datetime import datetime
 
 # Import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -560,7 +560,7 @@ async def health_check():
 
     return {
         "status": overall,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.utcnow().isoformat(),
         "database": db_status,
         "version": "1.0.0",
     }
@@ -947,7 +947,7 @@ async def create_market(market: MarketCreate):
             description=market.description,
             source="MANUAL",
             url="",
-            published_at=datetime.now(timezone.utc),
+            published_at=datetime.utcnow(),
             domain=EventDomain(market.domain),
             virality_score=75,
         )
@@ -1098,7 +1098,7 @@ async def get_timeline_detail(timeline_id: str):
                     "id": "REALITY",
                     "label": "Master Reality",
                     "status": "master",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.utcnow().isoformat(),
                     "parent_id": None,
                     "fork_reason": None,
                     "matchday": None,
@@ -1307,7 +1307,7 @@ async def get_evolution_status(domain: str = "financial"):
                 "dominant_percentage": latest.get("dominant_percentage", 25),
                 "archetype_distribution": latest.get("archetype_distribution", {}),
                 "is_learning": latest.get("is_learning", True),
-                "last_evolution": latest.get("timestamp", datetime.now(timezone.utc).isoformat()),
+                "last_evolution": latest.get("timestamp", datetime.utcnow().isoformat()),
             }
     except Exception as e:
         print(f"⚠️ Could not load evolution data: {e}")
@@ -1336,7 +1336,7 @@ async def get_evolution_status(domain: str = "financial"):
         "dominant_percentage": distribution[dominant],
         "archetype_distribution": distribution,
         "is_learning": random.random() > 0.2,
-        "last_evolution": datetime.now(timezone.utc).isoformat(),
+        "last_evolution": datetime.utcnow().isoformat(),
     }
 
 
@@ -1448,7 +1448,7 @@ async def get_osint_signals():
         return {
             "signals": signals_data,
             "total": len(signals_data),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.utcnow().isoformat(),
             "defcon_level": osint.base_detector.defcon_level.value,
             "defcon_name": osint.base_detector.defcon_level.name,
         }
@@ -1489,7 +1489,7 @@ async def get_osint_tension():
             "trend": "rising" if status["active_signals"] > 5 else "falling",
             "defcon_level": status["defcon_level"],
             "active_signals": status["active_signals"],
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching tension data: {str(e)}")

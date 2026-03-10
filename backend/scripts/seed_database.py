@@ -13,7 +13,7 @@ For fixtures-based seeding: python -m backend.scripts.seed_database --fixtures d
 """
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 import random
 import uuid
 import sys
@@ -543,8 +543,8 @@ async def seed_paradoxes(session, timelines: list) -> list:
             status=ParadoxStatus.ACTIVE,
             severity_class=SeverityClass.CLASS_3_MODERATE,
             logic_gap=0.32,
-            spawned_at=(datetime.now(timezone.utc) - timedelta(hours=4)).replace(tzinfo=None),
-            detonation_time=(datetime.now(timezone.utc) + timedelta(hours=8)).replace(tzinfo=None),
+            spawned_at=(datetime.utcnow() - timedelta(hours=4)).replace(tzinfo=None),
+            detonation_time=(datetime.utcnow() + timedelta(hours=8)).replace(tzinfo=None),
             decay_multiplier=2.5,
             extraction_cost_usdc=450.0,
             extraction_cost_echelon=135,
@@ -557,8 +557,8 @@ async def seed_paradoxes(session, timelines: list) -> list:
             status=ParadoxStatus.ACTIVE,
             severity_class=SeverityClass.CLASS_2_SEVERE,
             logic_gap=0.45,
-            spawned_at=(datetime.now(timezone.utc) - timedelta(hours=3)).replace(tzinfo=None),
-            detonation_time=(datetime.now(timezone.utc) + timedelta(hours=5)).replace(tzinfo=None),
+            spawned_at=(datetime.utcnow() - timedelta(hours=3)).replace(tzinfo=None),
+            detonation_time=(datetime.utcnow() + timedelta(hours=5)).replace(tzinfo=None),
             decay_multiplier=5.0,
             extraction_cost_usdc=820.0,
             extraction_cost_echelon=245,
@@ -571,8 +571,8 @@ async def seed_paradoxes(session, timelines: list) -> list:
             status=ParadoxStatus.ACTIVE,
             severity_class=SeverityClass.CLASS_1_CRITICAL,
             logic_gap=0.55,
-            spawned_at=(datetime.now(timezone.utc) - timedelta(hours=6)).replace(tzinfo=None),
-            detonation_time=(datetime.now(timezone.utc) + timedelta(hours=2)).replace(tzinfo=None),
+            spawned_at=(datetime.utcnow() - timedelta(hours=6)).replace(tzinfo=None),
+            detonation_time=(datetime.utcnow() + timedelta(hours=2)).replace(tzinfo=None),
             decay_multiplier=8.0,
             extraction_cost_usdc=1850.0,
             extraction_cost_echelon=555,
@@ -591,7 +591,7 @@ async def seed_paradoxes(session, timelines: list) -> list:
 async def seed_wing_flaps(session, timelines: list, agents: list) -> list:
     """Create 75 wing flaps with realistic activity patterns."""
     flaps = []
-    base_time = datetime.now(timezone.utc).replace(tzinfo=None)
+    base_time = datetime.utcnow()
     
     # More diverse action templates
     trade_actions = [

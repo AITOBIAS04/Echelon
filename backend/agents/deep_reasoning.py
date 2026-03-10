@@ -9,7 +9,7 @@ Cycle-013, Sprint 2 -- Task 2.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional
 
 from backend.agents.context_compiler import T0Context
@@ -70,7 +70,7 @@ class T3RateLimiter:
         Returns:
             True if the call is within both daily and per-tick limits.
         """
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        today = datetime.utcnow().strftime("%Y-%m-%d")
         if self._last_reset_date != today:
             self._daily_count = 0
             self._last_reset_date = today

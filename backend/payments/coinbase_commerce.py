@@ -19,7 +19,7 @@ import hashlib
 import json
 import uuid
 import asyncio
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field, asdict
 from enum import Enum
@@ -87,7 +87,7 @@ class ChargeMetadata:
     shares: Optional[float] = None
     intel_tier: Optional[str] = None
     internal_ref: Optional[str] = None
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     
     def to_dict(self) -> Dict[str, str]:
         """Convert to flat dict for API (all values must be strings)"""
@@ -147,7 +147,7 @@ class Charge:
             "created_at": self.created_at.isoformat(),
             "expires_at": self.expires_at.isoformat(),
             "metadata": self.metadata.to_dict(),
-            "is_expired": datetime.now(timezone.utc) > self.expires_at,
+            "is_expired": datetime.utcnow() > self.expires_at,
             "is_paid": self.status == PaymentStatus.COMPLETED
         }
     
@@ -188,7 +188,7 @@ class WebhookEvent:
             type=event_data.get("type", ""),
             api_version=event_data.get("api_version", ""),
             created_at=datetime.fromisoformat(
-                event_data.get("created_at", datetime.now(timezone.utc).isoformat()).replace("Z", "+00:00")
+                event_data.get("created_at", datetime.utcnow().isoformat()).replace("Z", "+00:00")
             ),
             charge=Charge.from_api_response(event_data.get("data", {}))
         )
@@ -582,7 +582,7 @@ class PaymentHandler:
             "shares": metadata.shares,
             "amount_paid": charge.amount,
             "charge_id": charge.id,
-            "fulfilled_at": datetime.now(timezone.utc).isoformat()
+            "fulfilled_at": datetime.utcnow().isoformat()
         }
         
         print(f"✅ BET FULFILLED: {metadata.user_id} bought {metadata.shares} shares of {metadata.outcome}")
@@ -605,7 +605,7 @@ class PaymentHandler:
             "alpha": timedelta(days=30)
         }
         duration = tier_durations.get(intel_tier, timedelta(hours=24))
-        expires_at = datetime.now(timezone.utc) + duration
+        expires_at = datetime.utcnow() + duration
         
         # Store access
         if user_id not in self._intel_access:
@@ -647,7 +647,7 @@ class PaymentHandler:
         if expires_at is None:
             return False
         
-        return datetime.now(timezone.utc) < expires_at
+        return datetime.utcnow() < expires_at
     
     def get_user_balance(self, user_id: str) -> float:
         """Get user's current balance"""
@@ -699,8 +699,8 @@ async def test_commerce_integration():
             currency="USD",
             status=PaymentStatus.NEW,
             hosted_url="https://commerce.coinbase.com/charges/TESTCODE",
-            created_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+            created_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(hours=1),
             metadata=ChargeMetadata(
                 charge_type=ChargeType.MARKET_BET,
                 user_id="user_001",
@@ -718,7 +718,7 @@ async def test_commerce_integration():
             id="event_456",
             type="charge:confirmed",
             api_version="2018-03-22",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.utcnow(),
             charge=fake_charge
         )
         

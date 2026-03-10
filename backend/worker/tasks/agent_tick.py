@@ -15,7 +15,7 @@ Uses the Hierarchical Intelligence Architecture:
 import logging
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from sqlalchemy import select, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -142,7 +142,7 @@ class AgentTickTask:
         new_stability = max(0.0, min(1.0, target.stability + stability_delta))
 
         flap_id = f"SHARK_{agent.id}_{uuid.uuid4().hex[:8]}"
-        flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+        flap_timestamp = datetime.utcnow()
         flap = WingFlap(
             id=flap_id,
             timeline_id=target.id,
@@ -206,7 +206,7 @@ class AgentTickTask:
 
         flap_id = f"SPY_{agent.id}_{uuid.uuid4().hex[:8]}"
         # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
-        flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+        flap_timestamp = datetime.utcnow()
         flap = WingFlap(
             id=flap_id,
             timeline_id=target.id,
@@ -265,7 +265,7 @@ class AgentTickTask:
 
         flap_id = f"DIPLOMAT_{agent.id}_{uuid.uuid4().hex[:8]}"
         # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
-        flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+        flap_timestamp = datetime.utcnow()
         flap = WingFlap(
             id=flap_id,
             timeline_id=target.id,
@@ -320,7 +320,7 @@ class AgentTickTask:
 
         flap_id = f"SABOTEUR_{agent.id}_{uuid.uuid4().hex[:8]}"
         # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
-        flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+        flap_timestamp = datetime.utcnow()
         flap = WingFlap(
             id=flap_id,
             timeline_id=target.id,
@@ -392,7 +392,7 @@ class AgentTickTask:
 
         flap_id = f"WHALE_{agent.id}_{uuid.uuid4().hex[:8]}"
         # Convert to naive datetime for database (column is TIMESTAMP WITHOUT TIME ZONE)
-        flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+        flap_timestamp = datetime.utcnow()
         flap = WingFlap(
             id=flap_id,
             timeline_id=target.id,

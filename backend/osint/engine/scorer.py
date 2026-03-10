@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 
 from backend.osint.canonical import canonical_json
 from backend.osint.engine.corroboration import CorroborationResult
@@ -63,7 +63,7 @@ class OracleOutput:
     counter_signal_results: list[CounterSignalResult]
     evidence_completeness: float                        # 0.0-1.0
     bundle_hash: str                                    # SHA-256
-    scored_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    scored_at: datetime = field(default_factory=lambda: datetime.utcnow())
 
 
 class Scorer:

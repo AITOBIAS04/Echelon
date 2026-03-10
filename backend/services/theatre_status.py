@@ -10,7 +10,7 @@ Cycle-012, Sprint 2 -- Task 6.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Optional
 
 from backend.market.lmsr import LMSREngine
@@ -131,6 +131,6 @@ def build_theatre_status(
         composite_score=composite_score,
         counter_signal_status=counter_signal_status,
         verification_tier=verification_tier,
-        cached_at=datetime.now(timezone.utc).isoformat(),
+        cached_at=datetime.utcnow().isoformat(),
         ttl_seconds=300,
     )

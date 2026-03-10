@@ -359,9 +359,9 @@ async def maritime_anomaly(request: MaritimeAnomalyRequest):
 
 def test_schemas_instantiate():
     """Verify all schema models can be instantiated with valid data."""
-    from datetime import timezone
+    from datetime import datetime
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
 
     geo = GeoPoint(lat=26.5667, lon=56.25, radius_m=50000)
     measure = NormalisedMeasure(type=MeasureType.COUNTRY_INSTABILITY_INDEX, value=0.78, unit="0_1")

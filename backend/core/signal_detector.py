@@ -39,7 +39,7 @@ import random
 import asyncio
 import hashlib
 from math import cos, radians
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
@@ -133,7 +133,7 @@ class Signal:
     
     @property
     def is_expired(self) -> bool:
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.utcnow() > self.expires_at
     
     @property
     def severity(self) -> str:
@@ -235,7 +235,7 @@ class BaseSignalSource(ABC):
     
     def _generate_signal_id(self, source: str, region: str) -> str:
         """Generate unique signal ID."""
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.utcnow().isoformat()
         raw = f"{source}:{region}:{timestamp}:{random.random()}"
         return hashlib.md5(raw.encode()).hexdigest()[:12]
 
@@ -280,7 +280,7 @@ class PizzaIndexSource(BaseSignalSource):
         if not facilities:
             return signals
         
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         hour = now.hour
         
         # Late night (10 PM - 6 AM) is when anomalies matter most
@@ -368,7 +368,7 @@ class FlightRadarSource(BaseSignalSource):
         if not zone or not baseline:
             return signals
         
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Try real OpenSky API first
         real_data = await self._fetch_opensky_data(zone)
@@ -479,7 +479,7 @@ class GoogleTrendsSource(BaseSignalSource):
         if not keywords:
             return signals
         
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Try real Google Trends
         real_data = await self._fetch_trends_data(keywords)
@@ -575,7 +575,7 @@ class SocialChatterSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Simulated social sentiment (would be real API in production)
         for category, keywords in self.KEYWORDS.items():
@@ -633,7 +633,7 @@ class ShippingPatternSource(BaseSignalSource):
         if not chokepoint:
             return signals
         
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         baseline = chokepoint["daily_tankers"]
         
         # Simulate traffic (10% chance of anomaly)
@@ -776,7 +776,7 @@ class SignalDetector:
     
     def _cleanup_expired_signals(self):
         """Remove expired signals."""
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         self.active_signals = [s for s in self.active_signals if s.expires_at > now]
     
     def _correlate_signals(self):
@@ -873,7 +873,7 @@ class SignalDetector:
         codename_suffix = random.choice(["DAWN", "FURY", "STORM", "STRIKE", "HAMMER", "SPEAR"])
         codename = f"OPERATION {codename_prefix} {codename_suffix}"
         
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Duration based on signal level
         if signal.level >= 0.8:

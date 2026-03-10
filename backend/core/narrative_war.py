@@ -21,7 +21,7 @@ This creates the "Truth vs Hype" betting market mechanic.
 
 import asyncio
 import random
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
@@ -87,7 +87,7 @@ class NarrativeReport:
     credibility_score: float = 0.5
     
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
 
 
 @dataclass
@@ -116,7 +116,7 @@ class TruthMarket:
     resolved_at: Optional[datetime] = None
     
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
     closes_at: Optional[datetime] = None
     
     def get_odds(self) -> Dict[str, float]:
@@ -287,7 +287,7 @@ class NarrativeWarEngine:
         
         report.is_verified = True
         report.verified_by = agent_id
-        report.verification_timestamp = datetime.now(timezone.utc)
+        report.verification_timestamp = datetime.utcnow()
         
         # Update reputations
         fact_checker_rep = self._get_or_create_reputation(agent_id, AgentRole.JOURNALIST)
@@ -469,7 +469,7 @@ class NarrativeWarEngine:
             signal_id=signal.id,
             headline=signal.headline,
             truth_probability=signal.source_credibility,  # Initial odds from credibility
-            closes_at=datetime.now(timezone.utc) + timedelta(minutes=duration_minutes),
+            closes_at=datetime.utcnow() + timedelta(minutes=duration_minutes),
         )
         
         self.truth_markets[market.id] = market
@@ -508,7 +508,7 @@ class NarrativeWarEngine:
             if market.signal_id == signal_id and not market.is_resolved:
                 market.is_resolved = True
                 market.actual_outcome = "truth" if is_truth else "hype"
-                market.resolved_at = datetime.now(timezone.utc)
+                market.resolved_at = datetime.utcnow()
     
     # =========================================================================
     # REPUTATION MANAGEMENT

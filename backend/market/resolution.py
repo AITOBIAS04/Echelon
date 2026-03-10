@@ -241,9 +241,9 @@ class ResolutionEngine:
                     if now.tzinfo is None:
                         now = now.replace(tzinfo=timezone.utc)
                 except (ValueError, TypeError):
-                    now = datetime.now(timezone.utc)
+                    now = datetime.utcnow()
             else:
-                now = datetime.now(timezone.utc)
+                now = datetime.utcnow()
             return now >= milestone
 
         # Unknown stop condition — fail safely

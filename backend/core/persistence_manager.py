@@ -16,7 +16,7 @@ import json
 import os
 import time
 import threading
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 from dataclasses import dataclass, asdict
@@ -110,7 +110,7 @@ class PersistenceManager:
                 # Prepare data with metadata
                 wrapped_data = {
                     "_meta": {
-                        "saved_at": datetime.now(timezone.utc).isoformat(),
+                        "saved_at": datetime.utcnow().isoformat(),
                         "state_name": state_name,
                         "version": "1.0",
                     },

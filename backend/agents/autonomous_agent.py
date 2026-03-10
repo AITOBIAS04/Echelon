@@ -22,7 +22,7 @@ import os
 import json
 import sys
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 from enum import Enum
@@ -296,7 +296,7 @@ class GeopoliticalAgent:
         
         try:
             # Create intel listing
-            intel_id = f"INTEL_{self.agent_id}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+            intel_id = f"INTEL_{self.agent_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
             
             listing = IntelPackage(
                 intel_id=intel_id,
@@ -306,7 +306,7 @@ class GeopoliticalAgent:
                 confidence=intel_package.get("confidence", 0.5),
                 sources=intel_package.get("sources", []),
                 price_usdc=price_usdc,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.utcnow()
             )
             
             # Register with ACP marketplace
@@ -421,7 +421,7 @@ class GeopoliticalAgent:
         # In production, this calls the actual ACP contract
         # For now, we simulate the job creation
         
-        job_id = f"ACP_JOB_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{self.agent_id[:4]}"
+        job_id = f"ACP_JOB_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{self.agent_id[:4]}"
         
         # Store job locally (would be on-chain in production)
         self._pending_jobs = getattr(self, '_pending_jobs', {})
@@ -433,7 +433,7 @@ class GeopoliticalAgent:
             "params": params,
             "budget_usdc": budget_usdc,
             "status": "pending",
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.utcnow().isoformat()
         }
         
         return {

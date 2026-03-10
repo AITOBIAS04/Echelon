@@ -5,7 +5,7 @@ No transition is reversible. Parameters are immutable after COMMITTED.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from backend.market.commitment import MarketCommitment
 from backend.market.exceptions import (
@@ -53,7 +53,7 @@ class MarketLifecycle:
             x=[0.0] * n_outcomes,
             phase=MarketPhase.CREATED,
             fee_schedule=fee_schedule or FeeSchedule(),
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.utcnow().isoformat(),
         )
 
     @staticmethod
@@ -65,7 +65,7 @@ class MarketLifecycle:
             )
         market.commitment_hash = MarketCommitment.compute_hash(market)
         market.phase = MarketPhase.COMMITTED
-        market.committed_at = datetime.now(timezone.utc).isoformat()
+        market.committed_at = datetime.utcnow().isoformat()
         return market
 
     @staticmethod
@@ -76,7 +76,7 @@ class MarketLifecycle:
                 current=market.phase, target=MarketPhase.TRADING
             )
         market.phase = MarketPhase.TRADING
-        market.trading_opened_at = datetime.now(timezone.utc).isoformat()
+        market.trading_opened_at = datetime.utcnow().isoformat()
         return market
 
     @staticmethod
@@ -95,7 +95,7 @@ class MarketLifecycle:
             )
         market.resolved_outcome = winning_outcome
         market.phase = MarketPhase.RESOLVING
-        market.resolved_at = datetime.now(timezone.utc).isoformat()
+        market.resolved_at = datetime.utcnow().isoformat()
         return market
 
     @staticmethod
@@ -106,5 +106,5 @@ class MarketLifecycle:
                 current=market.phase, target=MarketPhase.SETTLED
             )
         market.phase = MarketPhase.SETTLED
-        market.settled_at = datetime.now(timezone.utc).isoformat()
+        market.settled_at = datetime.utcnow().isoformat()
         return market

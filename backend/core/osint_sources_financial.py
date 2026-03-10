@@ -15,7 +15,7 @@ hedge funds trade on alternative data.
 import os
 import random
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from enum import Enum
@@ -94,7 +94,7 @@ class SatelliteSupplyChainSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Only scan for financial regions
         if region in [RegionOfInterest.WASHINGTON_DC]:
@@ -241,7 +241,7 @@ class JobPostingsSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Job signals are US market focused
         if region != RegionOfInterest.WASHINGTON_DC:
@@ -357,7 +357,7 @@ class AppStoreSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # App signals are US market focused
         if region != RegionOfInterest.WASHINGTON_DC:
@@ -474,7 +474,7 @@ class CorporateJetSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Only US-focused
         if region != RegionOfInterest.WASHINGTON_DC:

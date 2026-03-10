@@ -6,7 +6,7 @@ BaseSepoliaClient uses web3.py (lazy import, testnet only).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 
 @dataclass
@@ -82,7 +82,7 @@ class MockSepoliaClient:
             theatre_id=theatre_id,
             commitment_hash=self._commitments[theatre_id],
             block_number=self._block_counter,
-            timestamp=int(datetime.now(timezone.utc).timestamp()),
+            timestamp=int(datetime.utcnow().timestamp()),
         )
 
     def verify_settlement(self, theatre_id: str) -> SettlementRecord | None:
@@ -95,7 +95,7 @@ class MockSepoliaClient:
             settlement_hash=settlement_hash,
             winning_outcome=winning_outcome,
             block_number=self._block_counter,
-            timestamp=int(datetime.now(timezone.utc).timestamp()),
+            timestamp=int(datetime.utcnow().timestamp()),
         )
 
 

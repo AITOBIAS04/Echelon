@@ -6,7 +6,7 @@ Classifies gap into four severity tiers: healthy, stressed, danger, critical.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 
 
@@ -80,7 +80,7 @@ class LogicGapCalculator:
             gap_direction=gap_direction,
             status=status,
             smoothing_window_s=self._smoothing_window_s,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.utcnow().isoformat(),
         )
 
     @staticmethod

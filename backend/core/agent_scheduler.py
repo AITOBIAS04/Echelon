@@ -21,7 +21,7 @@ Architecture:
 import asyncio
 import os
 import sys
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
@@ -180,7 +180,7 @@ class AgentScheduler:
             archetype=archetype,
             run_interval_seconds=run_interval_seconds,
             enabled=enabled,
-            next_run=datetime.now(timezone.utc)
+            next_run=datetime.utcnow()
         )
         self.agents[agent_id] = agent
         logger.info(f"📝 Registered agent: {agent_id} ({archetype}) - interval: {run_interval_seconds}s")
@@ -199,7 +199,7 @@ class AgentScheduler:
         Returns decision results and stats.
         """
         agent.state = AgentState.SCANNING
-        agent.last_run = datetime.now(timezone.utc)
+        agent.last_run = datetime.utcnow()
         
         results = {
             "agent_id": agent.agent_id,
@@ -248,7 +248,7 @@ class AgentScheduler:
             results["error"] = str(e)
         
         # Schedule next run
-        agent.next_run = datetime.now(timezone.utc) + timedelta(seconds=agent.run_interval_seconds)
+        agent.next_run = datetime.utcnow() + timedelta(seconds=agent.run_interval_seconds)
         
         return results
     
@@ -324,7 +324,7 @@ class AgentScheduler:
         logger.info("🚀 Agent scheduler started")
         
         while self.running:
-            now = datetime.now(timezone.utc)
+            now = datetime.utcnow()
             
             # Check daily budget
             if self.stats.total_cost_usd >= self.max_daily_budget_usd:

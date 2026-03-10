@@ -21,7 +21,7 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 from backend.osint.canonical import compute_content_hash, compute_receipt_hash
 from backend.osint.collectors.base import BaseCollector
@@ -167,7 +167,7 @@ class WorldMonitorCollector(BaseCollector):
             fetch_duration_ms=duration_ms,
             success=False,
             error=last_error,
-            retrieved_at=datetime.now(timezone.utc),
+            retrieved_at=datetime.utcnow(),
         )
 
     async def _do_http_post(self, url: str, request: dict) -> bytes:
@@ -203,7 +203,7 @@ class WorldMonitorCollector(BaseCollector):
         duration_ms: float,
     ) -> CollectionResult:
         """Parse response bytes and build EvidenceBundle + receipt."""
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         try:
             data = json.loads(raw_payload)
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:

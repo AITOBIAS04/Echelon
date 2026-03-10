@@ -6,7 +6,7 @@ Stability is clamped at write time: post_stability = clamp(pre + impact, 0, 1).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 
 
@@ -124,7 +124,7 @@ class ButterflyEngine:
             post_stability=post_stability,
             direction=direction,
             trigger_detail=trigger_detail,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.utcnow().isoformat(),
         )
 
         if theatre_id not in self._flaps:

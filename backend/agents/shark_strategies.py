@@ -13,7 +13,7 @@ These strategies give Shark agents realistic alpha over Novice/Degen agents.
 """
 
 import random
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
@@ -53,7 +53,7 @@ class MarketState:
     order_book_depth: float       # How much can be traded at current price
     
     # Time
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
     expires_at: Optional[datetime] = None
     
     # Participants
@@ -70,7 +70,7 @@ class MarketState:
         """Time remaining until market expires"""
         if not self.expires_at:
             return None
-        return self.expires_at - datetime.now(timezone.utc)
+        return self.expires_at - datetime.utcnow()
     
     @property
     def hours_to_expiry(self) -> Optional[float]:
@@ -436,7 +436,7 @@ class TulipStrategy:
             "entry_price": opportunity.book_odds if opportunity.recommended_side == "YES" else 1 - opportunity.book_odds,
             "true_odds": opportunity.true_odds,
             "edge": opportunity.edge,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.utcnow().isoformat(),
             "status": "open",
         }
         
@@ -617,7 +617,7 @@ def demo_tulip_strategy():
             current_liquidity=3200,  # ILLIQUID ✓
             order_book_depth=1000,
             unique_traders=15,
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=8),  # <24h ✓
+            expires_at=datetime.utcnow() + timedelta(hours=8),  # <24h ✓
             price_24h_change=0.05,
         ),
         MarketState(
@@ -629,7 +629,7 @@ def demo_tulip_strategy():
             current_liquidity=45000,  # LIQUID - skip
             order_book_depth=15000,
             unique_traders=89,
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=120),
+            expires_at=datetime.utcnow() + timedelta(hours=120),
         ),
         MarketState(
             market_id="market-003",
@@ -640,7 +640,7 @@ def demo_tulip_strategy():
             current_liquidity=1800,  # VERY ILLIQUID ✓
             order_book_depth=500,
             unique_traders=8,
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=4),  # EXPIRING ✓
+            expires_at=datetime.utcnow() + timedelta(hours=4),  # EXPIRING ✓
             price_24h_change=-0.08,
         ),
     ]

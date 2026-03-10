@@ -51,7 +51,7 @@ class ConvergenceAlert:
     alert_id: str
     cell: ConvergenceCell
     theatre_id: str | None = None
-    triggered_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    triggered_at: datetime = field(default_factory=lambda: datetime.utcnow())
 
 
 class ConvergenceDetector:
@@ -92,7 +92,7 @@ class ConvergenceDetector:
             return []
 
         # Time window cutoff
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         cutoff = now - timedelta(hours=self._window_hours)
 
         # Bin events by geographic cell

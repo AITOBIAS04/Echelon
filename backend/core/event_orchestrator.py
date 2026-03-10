@@ -388,7 +388,7 @@ class ViralityCalculator:
             sentiment_bonus
         )
         
-        hours_old = (datetime.now(timezone.utc) - event.published_at.replace(tzinfo=timezone.utc)).total_seconds() / 3600
+        hours_old = (datetime.utcnow() - event.published_at.replace(tzinfo=timezone.utc)).total_seconds() / 3600
         decay = self.config.HOURLY_DECAY ** hours_old
         
         final_score = raw_score * decay
@@ -428,15 +428,15 @@ class NewsIngester:
     def _parse_date(self, date_str: str) -> datetime:
         """Parse various date formats."""
         if not date_str:
-            return datetime.now(timezone.utc)
+            return datetime.utcnow()
         
         try:
             if "T" in date_str:
                 return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
             else:
-                return datetime.now(timezone.utc)
+                return datetime.utcnow()
         except:
-            return datetime.now(timezone.utc)
+            return datetime.utcnow()
     
     def _generate_id(self, title: str, url: str) -> str:
         """Generate unique ID for an event."""
@@ -1192,14 +1192,14 @@ class EventOrchestrator:
     def _parse_date(self, date_str: str) -> datetime:
         """Parse various date formats."""
         if not date_str:
-            return datetime.now(timezone.utc)
+            return datetime.utcnow()
         try:
             if "T" in str(date_str):
                 return datetime.fromisoformat(str(date_str).replace("Z", "+00:00"))
             else:
                 return datetime.strptime(str(date_str), "%Y-%m-%d").replace(tzinfo=timezone.utc)
         except:
-            return datetime.now(timezone.utc)
+            return datetime.utcnow()
     
     def filter_by_virality(self, events: List[RawEvent] = None, 
                            min_score: float = 50) -> List[RawEvent]:
@@ -1395,7 +1395,7 @@ if __name__ == "__main__":
                 description="Apple reveals new AI features",
                 source="Test",
                 url="http://test.com/1",
-                published_at=datetime.now(timezone.utc),
+                published_at=datetime.utcnow(),
                 sentiment=0.8,
                 social_volume=500,
                 news_velocity=10,

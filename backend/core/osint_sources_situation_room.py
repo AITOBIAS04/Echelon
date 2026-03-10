@@ -17,7 +17,7 @@ import random
 import asyncio
 import hashlib
 from math import cos, radians, sin, sqrt, atan2
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
@@ -120,7 +120,7 @@ class VIPAircraftSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Try real OpenSky API
         real_aircraft = await self._fetch_opensky_data(region)
@@ -213,7 +213,7 @@ class VIPAircraftSource(BaseSignalSource):
                     speed_knots=(state[9] or 0) * 1.944,  # m/s to knots
                     heading=state[10] or 0,
                     on_ground=state[8] or False,
-                    last_seen=datetime.now(timezone.utc),
+                    last_seen=datetime.utcnow(),
                 )
                 
                 # Check if near sensitive location
@@ -418,7 +418,7 @@ class MarineTrafficSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Map regions to chokepoints
         region_chokepoints = {
@@ -592,7 +592,7 @@ class NightLightsSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         location = self.MONITORED_LOCATIONS.get(region)
         if not location:
@@ -694,7 +694,7 @@ class InternetOutageSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         network = self.MONITORED_NETWORKS.get(region)
         if not network:

@@ -9,7 +9,7 @@ Cycle-013, Sprint 1 -- Task 4.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -30,7 +30,7 @@ class DecisionTrace(BaseModel):
     agent_id: str
     theatre_id: str
     timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
+        default_factory=lambda: datetime.utcnow()
     )
 
     # --- Tier ---

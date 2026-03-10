@@ -85,7 +85,7 @@ class CryptoWhaleAlertSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Crypto is global, but we associate with Washington DC (US markets)
         if region != RegionOfInterest.WASHINGTON_DC:
@@ -365,7 +365,7 @@ class LegislativeTrackerSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Legislative tracking is US-focused
         if region != RegionOfInterest.WASHINGTON_DC:
@@ -539,7 +539,7 @@ class NASAFIRMSSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Fire monitoring is US-focused for our purposes
         if region != RegionOfInterest.WASHINGTON_DC:
@@ -603,7 +603,7 @@ class NASAFIRMSSource(BaseSignalSource):
                     brightness=float(parts[2]),
                     confidence=parts[8],
                     satellite=parts[6],
-                    acq_date=datetime.now(timezone.utc),
+                    acq_date=datetime.utcnow(),
                     frp=float(parts[12]) if len(parts) > 12 else 0,
                     daynight=parts[9] if len(parts) > 9 else "D",
                 ))
@@ -759,7 +759,7 @@ class EnhancedGoogleTrendsSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Google Trends for US markets
         if region != RegionOfInterest.WASHINGTON_DC:

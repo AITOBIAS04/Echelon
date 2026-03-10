@@ -17,7 +17,7 @@ The brain asks Claude: "Given the current situation, should I use my ability?"
 
 import asyncio
 import random
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
@@ -412,7 +412,7 @@ class RPGAgentBrain:
                 "type": "ability_use",
                 "ability": ability.value,
                 "decision": decision,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.utcnow().isoformat(),
             })
             
             return decision.get("should_use", False), decision

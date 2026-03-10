@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Optional
 
 from backend.market.resolution import SettlementReport
@@ -158,7 +158,7 @@ class RLMFExportGenerator:
             composite_score=resolution_result.composite_score,
             evidence_bundle_hash=resolution_result.evidence_bundle_hash,
             settlement_hash=settlement_report.settlement_hash,
-            exported_at=datetime.now(timezone.utc).isoformat(),
+            exported_at=datetime.utcnow().isoformat(),
         )
 
     @staticmethod

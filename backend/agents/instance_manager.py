@@ -30,7 +30,7 @@ import asyncio
 import hashlib
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import Any, Optional, Dict, List, Callable
 from pydantic import BaseModel, Field
@@ -237,7 +237,7 @@ class AgentInstance(BaseModel):
     
     # Status
     status: InstanceStatus = InstanceStatus.SPAWNING
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
     last_active_at: Optional[datetime] = None
     
     # Current Job
@@ -309,7 +309,7 @@ class JobRequest(BaseModel):
     priority: JobPriority = JobPriority.NORMAL
     
     # Timing
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
     deadline: Optional[datetime] = None
     
     class Config:
@@ -558,7 +558,7 @@ class InstanceManager:
         # Assign job to instance
         instance.current_job_id = request.job_id
         instance.status = InstanceStatus.WORKING
-        instance.last_active_at = datetime.now(timezone.utc)
+        instance.last_active_at = datetime.utcnow()
         
         self.active_jobs[request.job_id] = request
         
@@ -626,7 +626,7 @@ class InstanceManager:
             instance.win_rate = instance.jobs_completed / total
         
         # Create result
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         result = JobResult(
             job_id=job_id,
             instance_id=instance.instance_id,

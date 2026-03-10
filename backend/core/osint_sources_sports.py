@@ -14,7 +14,7 @@ These signals give sports bettors an edge beyond basic statistics.
 import os
 import random
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 from enum import Enum
@@ -122,7 +122,7 @@ class StadiumWeatherSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Sports signals are not region-specific in our system
         # We'll check a random selection of stadiums
@@ -319,7 +319,7 @@ class PlayerSentimentSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Check random selection of players
         check_players = random.sample(self.TRACKED_PLAYERS, min(5, len(self.TRACKED_PLAYERS)))
@@ -456,7 +456,7 @@ class TeamTravelSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # 10% chance of notable travel signal
         if random.random() < 0.10:
@@ -540,7 +540,7 @@ class LineupIntelSource(BaseSignalSource):
     
     async def scan(self, region: RegionOfInterest) -> List[Signal]:
         signals = []
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # 8% chance of lineup intel
         if random.random() < 0.08:

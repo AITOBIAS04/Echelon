@@ -6,7 +6,7 @@ Execution is atomic: if any validation fails, no state is mutated.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 from backend.market.exceptions import (
     InsufficientBalance,
@@ -106,7 +106,7 @@ class TradingEngine:
             cost=cost,
             pre_trade_prices=pre_trade_prices,
             post_trade_prices=post_trade_prices,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.utcnow().isoformat(),
         )
 
         # Update position

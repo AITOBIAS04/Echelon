@@ -7,7 +7,7 @@ import random
 import logging
 import uuid
 from typing import Optional, Dict, Any
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,7 +87,7 @@ async def inject_chaos(
     agent_id = await _get_any_agent_id(session)
     if agent_id:
         flap_id = f"ADMIN_CHAOS_{timeline.id}_{uuid.uuid4().hex[:8]}"
-        flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+        flap_timestamp = datetime.utcnow()
         flap = WingFlap(
             id=flap_id,
             timeline_id=timeline.id,
@@ -154,7 +154,7 @@ async def heal_timeline(
     agent_id = await _get_any_agent_id(session)
     if agent_id:
         flap_id = f"ADMIN_HEAL_{timeline.id}_{uuid.uuid4().hex[:8]}"
-        flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+        flap_timestamp = datetime.utcnow()
         flap = WingFlap(
             id=flap_id,
             timeline_id=timeline.id,

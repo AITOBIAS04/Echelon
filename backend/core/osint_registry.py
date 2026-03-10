@@ -35,7 +35,7 @@ Usage:
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
@@ -225,7 +225,7 @@ class OSINTRegistry:
     
     def _update_active_signals(self, new_signals: List[Signal]):
         """Update active signals list, removing expired ones."""
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Remove expired
         self.active_signals = [s for s in self.active_signals if s.expires_at > now]
@@ -300,7 +300,7 @@ class OSINTRegistry:
             signals_data.append(sig_dict)
         
         state = {
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.utcnow().isoformat(),
             "signals": signals_data,
             "stats": self.stats
         }
@@ -385,7 +385,7 @@ class OSINTRegistry:
         categorized = self.get_signals_by_category()
         
         return {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.utcnow().isoformat(),
             "defcon_level": self.base_detector.defcon_level.value,
             "defcon_name": self.base_detector.defcon_level.name,
             "total_active_signals": len(self.active_signals),
@@ -442,7 +442,7 @@ class OSINTRegistry:
         """Create a financial mission from a signal."""
         from datetime import timedelta
         
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         # Extract company/ticker if available
         ticker = signal.raw_data.get("ticker", "UNKNOWN")
@@ -472,7 +472,7 @@ class OSINTRegistry:
         """Create a sports mission from a signal."""
         from datetime import timedelta
         
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         
         team = signal.raw_data.get("team", "Unknown Team")
         sport = signal.raw_data.get("sport", "Unknown")

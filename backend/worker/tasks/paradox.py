@@ -10,7 +10,7 @@ When detected, spawns a new paradox with countdown timer.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from sqlalchemy import select, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -281,7 +281,7 @@ class ParadoxTask:
             # Create detonation wing flap
             import uuid
             flap_id = f"DETONATE_{paradox.timeline_id}_{uuid.uuid4().hex[:8]}"
-            flap_timestamp = datetime.utcnow().replace(tzinfo=None)
+            flap_timestamp = datetime.utcnow()
             flap = WingFlap(
                 id=flap_id,
                 timeline_id=paradox.timeline_id,

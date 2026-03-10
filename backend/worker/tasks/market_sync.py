@@ -11,7 +11,7 @@ This bridges real prediction markets with Echelon's counterfactual layer.
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -288,7 +288,7 @@ class MarketSyncTask:
         
         # Update volume
         volume_24h = float(market.get("volume_24hr", 0) or 0)
-        sync_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+        sync_timestamp = datetime.utcnow()
         if volume_24h > timeline.total_volume_usd:
             await session.execute(
                 update(Timeline)
@@ -333,7 +333,7 @@ class MarketSyncTask:
 
         action_text = f"Polymarket mirror: {side} {outcome} @ ${price:.2f}"
 
-        flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+        flap_timestamp = datetime.utcnow()
 
         flap_id = f"PM_{timeline.id}_{uuid.uuid4().hex[:8]}"
         flap = WingFlap(

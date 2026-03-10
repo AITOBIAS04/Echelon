@@ -19,7 +19,7 @@ import os
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime
 
 from backend.osint.canonical import compute_content_hash, compute_receipt_hash
 from backend.osint.collectors.base import BaseCollector
@@ -53,7 +53,7 @@ class CompaniesHouseCollector(BaseCollector):
 
     async def _fetch(self, request: dict, theatre_id: str) -> CollectionResult:
         """GET /company/{company_number} with Basic auth."""
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
         if not self._api_key:
             return CollectionResult(
@@ -155,7 +155,7 @@ class CompaniesHouseCollector(BaseCollector):
         duration_ms: float,
     ) -> CollectionResult:
         """Parse response and build EvidenceBundle + receipt."""
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
         try:
             data = json.loads(raw_payload)

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from backend.osint.collectors.base import BaseCollector
@@ -55,7 +55,7 @@ class CollectionRunner:
         """
         sources = oracle_config.get("sources", list(self._collectors.keys()))
         window_raw = oracle_config.get("evaluation_window", {})
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
         # Parse evaluation window
         start = window_raw.get("start", now)
@@ -133,7 +133,7 @@ class CollectionRunner:
                 fetch_duration_ms=plan.timeout_s * 1000,
                 success=False,
                 error=f"Timeout after {plan.timeout_s}s",
-                retrieved_at=datetime.now(timezone.utc),
+                retrieved_at=datetime.utcnow(),
             )
         except Exception as exc:
             return CollectionResult(
@@ -143,7 +143,7 @@ class CollectionRunner:
                 fetch_duration_ms=0.0,
                 success=False,
                 error=f"Unexpected error: {exc}",
-                retrieved_at=datetime.now(timezone.utc),
+                retrieved_at=datetime.utcnow(),
             )
 
     def _build_request(self, plan: CollectionPlan) -> dict:
@@ -170,5 +170,5 @@ class CollectionRunner:
             fetch_duration_ms=0.0,
             success=False,
             error=f"No collector registered for source_id '{source_id}'",
-            retrieved_at=datetime.now(timezone.utc),
+            retrieved_at=datetime.utcnow(),
         )
