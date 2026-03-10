@@ -52,7 +52,26 @@ import { CreateTheatrePage } from './pages/CreateTheatrePage';
 import { ScenarioPacksPage } from './pages/ScenarioPacksPage';
 import { ScenarioPackDetailPage } from './pages/ScenarioPackDetailPage';
 
-const VerifyPage = lazy(() =>
+/**
+ * Retry dynamic import once with a full page reload on failure.
+ * Handles stale chunk hashes after Vercel/Pages redeployment.
+ */
+function lazyWithRetry(importFn: () => Promise<{ default: React.ComponentType }>) {
+  return lazy(() =>
+    importFn().catch(() => {
+      // Chunk hash mismatch after deploy — reload once
+      const key = 'chunk-retry';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+      }
+      // Fallback: rethrow so error boundary catches it
+      return importFn();
+    }),
+  );
+}
+
+const VerifyPage = lazyWithRetry(() =>
   import('./pages/VerifyPage').then((m) => ({ default: m.VerifyPage }))
 );
 

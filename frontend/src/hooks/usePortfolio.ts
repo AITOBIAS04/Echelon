@@ -16,14 +16,43 @@ import type {
 // API FETCHERS
 // ============================================
 
+const EMPTY_POSITIONS: UserPositionsResponse = {
+  positions: [],
+  total_value_usd: 0,
+  total_unrealised_pnl_usd: 0,
+  total_founder_yield_usd: 0,
+};
+
+const EMPTY_SUMMARY: PortfolioSummary = {
+  total_value_usd: 0,
+  total_unrealised_pnl_usd: 0,
+  total_unrealised_pnl_percent: 0,
+  active_position_count: 0,
+  timelines_at_risk: 0,
+  total_founder_yield_earned_usd: 0,
+  active_founder_positions: 0,
+  highest_risk_timeline_id: null,
+  highest_risk_timeline_name: null,
+  highest_risk_stability: null,
+};
+
 async function fetchPositions(): Promise<UserPositionsResponse> {
-  const { data } = await apiClient.get<UserPositionsResponse>('/api/v1/user/positions');
-  return data;
+  try {
+    const { data } = await apiClient.get<UserPositionsResponse>('/api/v1/user/positions');
+    return data;
+  } catch {
+    // Backend UserService not initialised (503) or endpoint missing — return empty
+    return EMPTY_POSITIONS;
+  }
 }
 
 async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
-  const { data } = await apiClient.get<PortfolioSummary>('/api/v1/user/portfolio/summary');
-  return data;
+  try {
+    const { data } = await apiClient.get<PortfolioSummary>('/api/v1/user/portfolio/summary');
+    return data;
+  } catch {
+    return EMPTY_SUMMARY;
+  }
 }
 
 // ============================================
