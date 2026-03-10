@@ -6,6 +6,7 @@ Async database connection using SQLAlchemy 2.0 with asyncpg.
 Provides session management, FastAPI dependencies, and lifecycle hooks.
 """
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from contextlib import asynccontextmanager
@@ -60,9 +61,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 # =========================================
 
 async def init_db():
-    """Initialize database (create tables)."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Verify database connectivity on startup.
+
+    Table creation is handled exclusively by Alembic migrations.
+    This only validates the connection pool is reachable.
+    """
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
 
 
 async def close_db():

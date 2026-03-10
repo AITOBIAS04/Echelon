@@ -16,10 +16,10 @@ mkdir -p data/backups
 mkdir -p data/snapshots
 echo "📁 Data directories ready"
 
-# Check for required environment variables
+# Require DATABASE_URL — no SQLite fallback in production
 if [ -z "$DATABASE_URL" ]; then
-    echo "⚠️  DATABASE_URL not set, using SQLite"
-    export DATABASE_URL="sqlite:///./seed_production.db"
+    echo "❌ DATABASE_URL is required. Set it to a PostgreSQL connection string."
+    exit 1
 fi
 
 # Run database migrations (if using Alembic)
@@ -28,16 +28,8 @@ if [ -f "alembic.ini" ]; then
     alembic upgrade head || echo "⚠️  Migrations skipped (alembic not configured)"
 fi
 
-# Initialize database tables
-echo "🗄️  Initializing database..."
-python -c "
-try:
-    from backend.core.database import engine, Base
-    Base.metadata.create_all(bind=engine)
-    print('✅ Database tables created')
-except Exception as e:
-    print(f'⚠️  Database init skipped: {e}')
-"
+# Database tables are created via Alembic migrations (above) and
+# init_db() on FastAPI startup event. No manual create_all needed.
 
 # Start the server
 echo "🚀 Starting Uvicorn..."

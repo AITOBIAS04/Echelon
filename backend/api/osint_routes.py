@@ -50,25 +50,12 @@ async def get_osint_signals(
 ):
     """
     Get OSINT signals feed.
-    
+
     Returns real-time intelligence signals from various sources.
     """
-    import os
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if USE_MOCKS:
-        # Return mock data
-        return OSINTSignalsResponse(
-            signals=[],
-            total=0,
-            has_more=False
-        )
-    
     # TODO: Implement with database when OSINT signals table exists
-    # For now, return empty response
     return OSINTSignalsResponse(
         signals=[],
         total=0,
         has_more=False
     )
-

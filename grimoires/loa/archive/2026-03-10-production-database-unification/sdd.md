@@ -2,7 +2,7 @@
 
 **Cycle:** cycle-023
 **Date:** 9 March 2026
-**PRD:** grimoires/loa/prd_023.md
+**PRD:** grimoires/loa/context/prd_023.md
 
 ---
 
@@ -41,9 +41,12 @@ AFTER (unified):
 
 ## 2. File Changes
 
-### 2.1 DELETE: `backend/core/database.py`
+### 2.1 DELETE or SHIM: `backend/core/database.py`
 
-Remove entirely. All consumers must migrate to `backend.database.connection`.
+**Preferred:** Delete entirely once all imports are migrated.
+**Acceptable:** Reduce to a thin re-export shim from `backend.database.connection` if test files or dev scripts still need it as a transitional step. The shim must **not** create any SQLite engine or session.
+
+All production consumers must migrate to `backend.database.connection`.
 
 **Import migration map:**
 
@@ -55,22 +58,29 @@ Remove entirely. All consumers must migrate to `backend.database.connection`.
 | `from backend.core.database import User as DBUser` | `from backend.database.models import User` |
 | `from backend.core.database import get_db` | `from backend.dependencies import get_db` |
 
-### 2.2 MODIFY: `backend/database/models.py`
+### 2.2 EXISTING: `backend/database/models.py` — User Model (DO NOT MODIFY)
 
-Add `User` model if not already present:
+A `User` model **already exists** at line 78 with the correct async schema:
 
 ```python
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
     username: Mapped[str] = mapped_column(String(100), unique=True, index=True)
-    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, unique=True, index=True)
-    hashed_password: Mapped[str] = mapped_column(String(255))
-    play_money_balance: Mapped[float] = mapped_column(Float, default=10000.0)
-    wallet_address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
-    tier: Mapped[str] = mapped_column(String(50), default="free")
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    tier: Mapped[str] = mapped_column(String(20), default="free")
+    balance_usdc: Mapped[float] = mapped_column(Float, default=0.0)
+    balance_echelon: Mapped[int] = mapped_column(Integer, default=0)
+    wallet_address: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships: agents, positions, watchlist_items, private_forks
 ```
+
+**Do not modify this model.** It already has relationships with Agent, UserPosition, WatchlistItem, and PrivateFork. The auth_routes rewrite must conform to these field names (especially `password_hash`, not `hashed_password`).
 
 ### 2.3 MODIFY: `backend/main.py`
 
@@ -108,9 +118,10 @@ async def health_check():
 
 ### 2.4 MODIFY: `backend/api/auth_routes.py`
 
-Replace in-memory `USERS = {}` with database-backed operations:
+Replace in-memory `USERS = {}` with database-backed operations. **Critical:** Use the existing `User` model's field names (`password_hash`, `balance_usdc`, `balance_echelon`, `id: String(50)`).
 
 ```python
+import uuid
 from backend.database.models import User
 from backend.dependencies import get_db
 
@@ -122,24 +133,27 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(400, "Email already registered")
 
     user = User(
+        id=str(uuid.uuid4()),  # String(50) primary key
         username=req.username,
         email=req.email,
-        hashed_password=hash_password(req.password),
+        password_hash=hash_password(req.password),  # NOTE: field is password_hash, not hashed_password
         tier="free",
+        balance_usdc=0.0,
+        balance_echelon=0,
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    return {"user_id": str(user.id), "message": "Registered successfully"}
+    return {"user_id": user.id, "message": "Registered successfully"}
 
 @router.post("/login")
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == req.email))
     user = result.scalar_one_or_none()
-    if not user or not verify_password(req.password, user.hashed_password):
+    if not user or not verify_password(req.password, user.password_hash):  # NOTE: password_hash
         raise HTTPException(401, "Invalid credentials")
 
-    token_data = TokenData(user_id=str(user.id), username=user.username, email=user.email, tier=user.tier)
+    token_data = TokenData(user_id=user.id, username=user.username, email=user.email, tier=user.tier)
     return {
         "access_token": create_access_token(token_data),
         "refresh_token": create_refresh_token(token_data),
@@ -163,8 +177,9 @@ except Exception as e:
     traceback.print_exc()
 ```
 
-### 2.6 MODIFY: `railway.toml`
+### 2.6 MODIFY: `railway.toml` + `nixpacks.toml` (update as a pair)
 
+**`railway.toml`:**
 ```toml
 [build]
 builder = "nixpacks"
@@ -173,18 +188,44 @@ builder = "nixpacks"
 startCommand = "sh -c 'cd backend && python -m alembic upgrade head && cd .. && uvicorn backend.main:app --host 0.0.0.0 --port \"$PORT\"'"
 ```
 
+**`nixpacks.toml`:**
+```toml
+[phases.setup]
+nixPkgs = ["python312", "gcc"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "cd backend && python -m alembic upgrade head && cd .. && uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+
+[variables]
+PYTHON_VERSION = "3.12"
+```
+
+Railway may use either file depending on deployment mode. Both must run migrations before the app starts.
+
 ### 2.7 NEW: Alembic migration `c023_user_model.py`
 
-Add User table to the async Base migration chain. This ensures `alembic upgrade head` creates the users table in PostgreSQL.
+Add User table to the async Base migration chain. This ensures `alembic upgrade head` creates the users table in PostgreSQL. **Note:** The User model already exists in `models.py` — this migration just needs to create the `users` table if it doesn't exist.
 
 ### 2.8 Grep Sweep: Remove All `backend.core.database` References
 
 Search entire codebase for any remaining imports of `backend.core.database` and update to use the async layer. Known consumers beyond main.py:
 
-- `backend/seed_data.py`
-- `backend/test_db.py`
-- `backend/test_db_connection.py`
+- `backend/seed_data.py` — **already deleted** in cleanup commit
+- `backend/test_db.py` — update or delete
+- `backend/test_db_connection.py` — update or delete
+- `backend/start.sh` — update old core DB init logic
 - Any other test files
+
+### 2.9 Remove USE_MOCKS Entirely
+
+Delete all mock-related code:
+- `dependencies.py`: Remove `USE_MOCKS` variable, the `_EmptyRepo` stub class, and all conditional branches
+- `butterfly_routes.py`: Remove all `USE_MOCKS` checks and mock fallback branches (~16 references)
+- `paradox_routes.py`: Remove all `USE_MOCKS` checks and mock fallback branches (~14 references)
+- `main.py`: Remove the mock engine warning block
 
 ---
 
@@ -195,9 +236,10 @@ Required env vars (Tobias sets these in Railway dashboard):
 | Variable | Value | Notes |
 |----------|-------|-------|
 | `DATABASE_URL` | Auto-set by Railway Postgres plugin | `postgresql://user:pass@host:port/dbname` |
-| `USE_MOCKS` | `false` | Disables mock data in butterfly/paradox routes |
 | `JWT_SECRET_KEY` | Generate with `python -c 'import secrets; print(secrets.token_urlsafe(32))'` | Required for auth; main.py raises ValueError in production without it |
 | `ENVIRONMENT` | `production` | Enables production guards |
+
+**Note:** `USE_MOCKS` is no longer needed — all mock code is deleted in this cycle. Remove from Railway env vars if previously set.
 
 ---
 
@@ -233,7 +275,7 @@ Before Loa can validate the cycle on Railway:
 
 ## 6. Verification
 
-Post-deploy checklist:
+### 6.1 Backend (curl against Railway URL)
 
 | # | Check | Method |
 |---|-------|--------|
@@ -248,4 +290,16 @@ Post-deploy checklist:
 | 9 | `/api/v1/investigation-templates/` returns 200 (seeded) | `curl` |
 | 10 | `/api/v1/investigations/` returns 200 (empty) | `curl` |
 | 11 | `/api/v1/world-monitor/live` returns 200 | `curl` |
-| 12 | Frontend loads without console 500/404 errors on any surface | Browser check |
+| 12 | `grep -r USE_MOCKS backend/` returns zero results | Local check |
+| 13 | Both `railway.toml` and `nixpacks.toml` contain `alembic upgrade head` | Local check |
+
+### 6.2 Frontend smoke (browser against deployed frontend)
+
+| # | Check | Method |
+|---|-------|--------|
+| 14 | `/theatres` loads, no 500/console errors | Browser DevTools |
+| 15 | `/investigations` loads, no 500/console errors | Browser DevTools |
+| 16 | `/scenario-packs` loads, no 500/console errors | Browser DevTools |
+| 17 | `/certificates` loads, no 500/console errors | Browser DevTools |
+| 18 | `/verify` loads, no 500/console errors | Browser DevTools |
+| 19 | Auth flow: register → login → `/me` → session persists across navigation | Browser |
