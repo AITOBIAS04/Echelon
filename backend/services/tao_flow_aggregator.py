@@ -9,7 +9,7 @@ Updates Timeline model fields.
 Cycle-017: Policy Surface — Sprint 2
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional, Tuple
 
 from sqlalchemy import select, func
@@ -40,7 +40,10 @@ class TaoFlowAggregator:
         Returns (net_inflow_24h, net_inflow_7d).
         """
         if now is None:
-            now = datetime.now(timezone.utc)
+            now = datetime.utcnow()
+        elif now.tzinfo is not None:
+            # Strip timezone info for TIMESTAMP WITHOUT TIME ZONE columns
+            now = now.replace(tzinfo=None)
 
         cutoff_24h = now - timedelta(hours=24)
         cutoff_7d = now - timedelta(days=7)
@@ -88,7 +91,7 @@ class TaoFlowAggregator:
 
         Returns the number of timelines updated.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
         # Get active timeline IDs
         stmt = select(Timeline.id).where(Timeline.is_active.is_(True))

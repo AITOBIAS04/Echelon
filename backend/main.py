@@ -155,11 +155,14 @@ async def shutdown_db():
 
 @app.on_event("startup")
 async def seed_core_data_on_startup():
-    """Seed core operational data when SEED_ON_BOOT=true and operational tables are empty.
+    """Seed core operational data when SEED_ON_BOOT=true and any table is empty.
 
     Gated behind an explicit env var so production-like environments never
-    silently boot with synthetic data.  Checks all operational tables — not
-    just users — so partially-initialised databases are also handled.
+    silently boot with synthetic data.
+
+    Uses all-or-nothing seeding: if any operational table is empty, clear all
+    six tables and reseed from scratch.  The seed functions reference each
+    other's records by index so partial fills are not safe.
     """
     if os.getenv("SEED_ON_BOOT", "false").lower() != "true":
         print("ℹ️  SEED_ON_BOOT not enabled — skipping core data seeding")
@@ -183,30 +186,28 @@ async def seed_core_data_on_startup():
                 print(f"✅ Core data present — {counts}")
                 return
 
-            print(f"🌱 SEED_ON_BOOT: missing data in {missing} — seeding...")
+            print(f"🌱 SEED_ON_BOOT: missing data in {missing} — clearing + full reseed...")
             from backend.scripts.seed_database import (
                 seed_users, seed_agents, seed_timelines,
                 seed_paradoxes, seed_wing_flaps, seed_user_positions,
             )
 
-            # Clear any partial data so FKs don't collide
+            # Clear all six tables (FK-safe order) then reseed from scratch
             for model in [WingFlap, Paradox, UserPosition, Agent, Timeline, User]:
-                if counts.get(model.__tablename__, 0) > 0:
-                    continue
-                # Only seed, don't nuke existing rows
+                await session.execute(model.__table__.delete())
+            await session.commit()
 
-            users = await seed_users(session) if counts["users"] == 0 else (await session.execute(select(User))).scalars().all()
-            agents = await seed_agents(session, users) if counts["agents"] == 0 else (await session.execute(select(Agent))).scalars().all()
-            timelines = await seed_timelines(session, users) if counts["timelines"] == 0 else (await session.execute(select(Timeline))).scalars().all()
-            if counts["paradoxes"] == 0:
-                paradoxes = await seed_paradoxes(session, timelines)
-            if counts["wing_flaps"] == 0:
-                wing_flaps = await seed_wing_flaps(session, timelines, agents)
-            if counts["positions"] == 0:
-                positions = await seed_user_positions(session, users, timelines)
+            users = await seed_users(session)
+            agents = await seed_agents(session, users)
+            timelines = await seed_timelines(session, users)
+            paradoxes = await seed_paradoxes(session, timelines)
+            wing_flaps = await seed_wing_flaps(session, timelines, agents)
+            positions = await seed_user_positions(session, users, timelines)
 
             await session.commit()
-            print("✅ Core data seeded (SEED_ON_BOOT)")
+            print(f"✅ Core data seeded: {len(users)} users, {len(agents)} agents, "
+                  f"{len(timelines)} timelines, {len(paradoxes)} paradoxes, "
+                  f"{len(wing_flaps)} flaps, {len(positions)} positions")
     except Exception as e:
         print(f"⚠️ Could not seed core data: {e}")
         import traceback
