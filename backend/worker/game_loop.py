@@ -13,7 +13,7 @@ Run with: python -m backend.worker.game_loop
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Optional
 
 from backend.database.connection import async_session_maker, init_db
@@ -72,8 +72,8 @@ class GameLoop:
             'tao_flow': 60,      # TAO flow aggregation every 60s
         }
 
-        # Last run times (timezone-aware)
-        min_time = datetime(1970, 1, 1, tzinfo=timezone.utc)
+        # Last run times (naive UTC)
+        min_time = datetime(1970, 1, 1)
         self.last_run = {
             'entropy': min_time,
             'paradox': min_time,
