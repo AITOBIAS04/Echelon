@@ -42,29 +42,33 @@ async def get_db():
 # =============================================================================
 
 if USE_MOCKS:
-    # Use mock implementations
-    from backend.mocks.mock_data import (
-        MockTimelineRepository,
-        MockAgentRepository,
-        MockParadoxRepository,
-        MockUserRepository
+    # Mock mode removed — mock data deleted in production cleanup.
+    # If USE_MOCKS=true (the default), provide stub repos that return empty data.
+    import warnings
+    warnings.warn(
+        "USE_MOCKS=true but mock data has been removed. "
+        "Set USE_MOCKS=false in your environment. Using empty stubs.",
+        stacklevel=2,
     )
-    
+
+    class _EmptyRepo:
+        """Stub repository that returns empty results for all queries."""
+        def __getattr__(self, name):
+            async def _noop(*args, **kwargs):
+                return []
+            return _noop
+
     def get_timeline_repo():
-        """Get timeline repository (mock)."""
-        return MockTimelineRepository()
-    
+        return _EmptyRepo()
+
     def get_agent_repo():
-        """Get agent repository (mock)."""
-        return MockAgentRepository()
-    
+        return _EmptyRepo()
+
     def get_paradox_repo():
-        """Get paradox repository (mock)."""
-        return MockParadoxRepository()
-    
+        return _EmptyRepo()
+
     def get_user_repo():
-        """Get user repository (mock)."""
-        return MockUserRepository()
+        return _EmptyRepo()
 
 else:
     # Use real database repositories

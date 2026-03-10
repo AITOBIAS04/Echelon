@@ -479,34 +479,9 @@ GAME_LOOP_ENABLED = os.getenv("ENABLE_GAME_LOOP", "true").lower() == "true"
 print(f"🔍 [Main] USE_MOCKS={USE_MOCKS} (from env: {os.getenv('USE_MOCKS', 'not set')})")
 print(f"🔍 [Main] ENABLE_GAME_LOOP={GAME_LOOP_ENABLED} (from env: {os.getenv('ENABLE_GAME_LOOP', 'not set')})")
 if USE_MOCKS and (butterfly_router or paradox_router):
-    try:
-        from backend.dependencies import init_butterfly_engine, init_paradox_engine
-        from backend.mechanics.butterfly_engine import ButterflyEngine
-        from backend.mechanics.paradox_engine import ParadoxEngine
-        from backend.mocks.mock_data import (
-            MockTimelineRepository,
-            MockAgentRepository
-        )
-        from backend.core.osint_registry import get_osint_registry
-        
-        # Initialize with mock repositories
-        timeline_repo = MockTimelineRepository()
-        agent_repo = MockAgentRepository()
-        osint_service = get_osint_registry()
-        
-        # Create Butterfly Engine
-        butterfly_engine = ButterflyEngine(timeline_repo, agent_repo, osint_service)
-        init_butterfly_engine(butterfly_engine)
-        print("✅ Butterfly Engine initialized (mock mode)")
-        
-        # Create Paradox Engine (depends on Butterfly Engine)
-        paradox_engine = ParadoxEngine(timeline_repo, agent_repo, butterfly_engine)
-        init_paradox_engine(paradox_engine)
-        print("✅ Paradox Engine initialized (mock mode)")
-    except Exception as e:
-        print(f"⚠️ Failed to initialize engines (mock mode): {e}")
-        import traceback
-        traceback.print_exc()
+    # Mock mode removed — mock data deleted in production cleanup.
+    # Engine init skipped. Set USE_MOCKS=false to use real database.
+    print("⚠️ USE_MOCKS=true but mock data has been removed. Set USE_MOCKS=false.")
 
 # --- DATABASE DEPENDENCY ---
 
