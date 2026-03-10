@@ -823,8 +823,10 @@
     {
       "cycle_id": "cycle-023",
       "label": "Production Database Unification + Railway Hardening",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-10T10:00:00Z",
+      "archived": "2026-03-10T13:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-10-production-database-unification",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -833,27 +835,27 @@
           "local_id": "sprint-0",
           "global_id": 73,
           "label": "Grep Sweep + User Model Migration",
-          "status": "pending",
+          "status": "completed",
           "tasks": 4
         },
         {
           "local_id": "sprint-1",
           "global_id": 74,
           "label": "Coordinated Startup-Path Replacement",
-          "status": "pending",
+          "status": "completed",
           "tasks": 8
         },
         {
           "local_id": "sprint-2",
           "global_id": 75,
           "label": "Auth Routes + Railway Config + Validation",
-          "status": "pending",
+          "status": "completed",
           "tasks": 5
         }
       ]
     }
   ],
-  "active_cycle": "cycle-023",
+  "active_cycle": null,
   "active_bugfix": null,
   "global_sprint_counter": 75,
   "bugfix_cycles": [],

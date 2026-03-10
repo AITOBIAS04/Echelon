@@ -34,7 +34,7 @@ async def get_wing_flaps(
 ):
     """
     Get the Wing Flap feed (causality events).
-    
+
     Filters:
     - timeline_id: Only flaps for this timeline
     - agent_id: Only flaps by this agent
@@ -42,87 +42,42 @@ async def get_wing_flaps(
     - min_volume_usd: Only flaps with volume >= this value
     - flap_types: Only these types (TRADE, SHIELD, SABOTAGE, etc.)
     """
-    # Create repositories with the request's database session
-    import os
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if not USE_MOCKS:
-        # Use real database repositories with this request's session
-        # Note: db_session is already an AsyncSession from the dependency
-        timeline_repo = TimelineRepository(db_session)
-        agent_repo = AgentRepository(db_session)
-        osint_service = get_osint_registry()
-        
-        # Create a temporary engine instance for this request
-        request_engine = ButterflyEngine(timeline_repo, agent_repo, osint_service)
-        
-        flaps = await request_engine.get_flaps_async(
+    # Use real database repositories with this request's session
+    timeline_repo = TimelineRepository(db_session)
+    agent_repo = AgentRepository(db_session)
+    osint_service = get_osint_registry()
+
+    # Create a temporary engine instance for this request
+    request_engine = ButterflyEngine(timeline_repo, agent_repo, osint_service)
+
+    flaps = await request_engine.get_flaps_async(
+        timeline_id=timeline_id,
+        agent_id=agent_id,
+        min_delta=min_stability_delta,
+        min_volume=min_volume_usd,
+        flap_types=flap_types,
+        limit=limit,
+        offset=offset
+    )
+
+    # Use async count if available, otherwise use sync
+    if hasattr(request_engine, 'count_flaps_async'):
+        total = await request_engine.count_flaps_async(
             timeline_id=timeline_id,
             agent_id=agent_id,
             min_delta=min_stability_delta,
             min_volume=min_volume_usd,
-            flap_types=flap_types,
-            limit=limit,
-            offset=offset
+            flap_types=flap_types
         )
-        
-        # Use async count if available, otherwise use sync
-        if hasattr(request_engine, 'count_flaps_async'):
-            total = await request_engine.count_flaps_async(
-                timeline_id=timeline_id,
-                agent_id=agent_id,
-                min_delta=min_stability_delta,
-                min_volume=min_volume_usd,
-                flap_types=flap_types
-            )
-        else:
-            total = request_engine.count_flaps(
-                timeline_id=timeline_id,
-                agent_id=agent_id,
-                min_delta=min_stability_delta,
-                min_volume=min_volume_usd,
-                flap_types=flap_types
-            )
     else:
-        # Use the singleton engine (mocks)
-        if hasattr(engine, 'get_flaps_async'):
-            flaps = await engine.get_flaps_async(
-                timeline_id=timeline_id,
-                agent_id=agent_id,
-                min_delta=min_stability_delta,
-                min_volume=min_volume_usd,
-                flap_types=flap_types,
-                limit=limit,
-                offset=offset
-            )
-        else:
-            flaps = engine.get_flaps(
-                timeline_id=timeline_id,
-                agent_id=agent_id,
-                min_delta=min_stability_delta,
-                min_volume=min_volume_usd,
-                flap_types=flap_types,
-                limit=limit,
-                offset=offset
-            )
-        
-        if hasattr(engine, 'count_flaps_async'):
-            total = await engine.count_flaps_async(
-                timeline_id=timeline_id,
-                agent_id=agent_id,
-                min_delta=min_stability_delta,
-                min_volume=min_volume_usd,
-                flap_types=flap_types
-            )
-        else:
-            total = engine.count_flaps(
-                timeline_id=timeline_id,
-                agent_id=agent_id,
-                min_delta=min_stability_delta,
-                min_volume=min_volume_usd,
-                flap_types=flap_types
-            )
-    
+        total = request_engine.count_flaps(
+            timeline_id=timeline_id,
+            agent_id=agent_id,
+            min_delta=min_stability_delta,
+            min_volume=min_volume_usd,
+            flap_types=flap_types
+        )
+
     return WingFlapFeedResponse(
         flaps=flaps,
         total_count=total,
@@ -138,21 +93,11 @@ async def get_recent_flaps(
 ):
     """
     Get the most recent high-impact wing flaps.
-    
+
     Sorted by |stability_delta| descending.
     """
-    import os
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if not USE_MOCKS:
-        # TODO: Implement with database
-        return []
-    
-    if engine is None:
-        raise HTTPException(status_code=503, detail="Engine not available")
-    
-    since = datetime.now() - timedelta(hours=hours)
-    return engine.get_recent_high_impact_flaps(since=since, limit=limit)
+    # TODO: Implement with database
+    return []
 
 # =========================================
 # TIMELINE HEALTH
@@ -170,45 +115,30 @@ async def get_timeline_health(
 ):
     """
     Get health status of timelines.
-    
+
     Default: Top 20 by Gravity score (most important).
     """
-    import os
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if not USE_MOCKS:
-        # Use real database repositories with this request's session
-        timeline_repo = TimelineRepository(db_session)
-        agent_repo = AgentRepository(db_session)
-        osint_service = get_osint_registry()
-        
-        # Create a temporary engine instance for this request
-        request_engine = ButterflyEngine(timeline_repo, agent_repo, osint_service)
-        
-        timelines = await request_engine.get_timeline_health_async(
-            sort_by=sort_by,
-            sort_order=sort_order,
-            min_gravity=min_gravity,
-            paradox_only=include_paradox_only,
-            limit=limit
-        )
-        
-        total = await request_engine.count_timelines_async(
-            min_gravity=min_gravity,
-            paradox_only=include_paradox_only
-        )
-    else:
-        # Use the singleton engine (mocks)
-        timelines = engine.get_timeline_health(
-            sort_by=sort_by,
-            sort_order=sort_order,
-            min_gravity=min_gravity,
-            paradox_only=include_paradox_only,
-            limit=limit
-        )
-        
-        total = engine.count_timelines(min_gravity=min_gravity, paradox_only=include_paradox_only)
-    
+    # Use real database repositories with this request's session
+    timeline_repo = TimelineRepository(db_session)
+    agent_repo = AgentRepository(db_session)
+    osint_service = get_osint_registry()
+
+    # Create a temporary engine instance for this request
+    request_engine = ButterflyEngine(timeline_repo, agent_repo, osint_service)
+
+    timelines = await request_engine.get_timeline_health_async(
+        sort_by=sort_by,
+        sort_order=sort_order,
+        min_gravity=min_gravity,
+        paradox_only=include_paradox_only,
+        limit=limit
+    )
+
+    total = await request_engine.count_timelines_async(
+        min_gravity=min_gravity,
+        paradox_only=include_paradox_only
+    )
+
     return TimelineHealthResponse(
         timelines=timelines,
         total_count=total
@@ -221,20 +151,8 @@ async def get_single_timeline_health(
     engine: Optional[ButterflyEngine] = Depends(get_butterfly_engine)
 ):
     """Get detailed health for a single timeline."""
-    import os
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if not USE_MOCKS:
-        # TODO: Implement with database
-        raise HTTPException(status_code=404, detail="Timeline not found")
-    
-    if engine is None:
-        raise HTTPException(status_code=503, detail="Engine not available")
-    
-    health = engine.get_timeline_health_by_id(timeline_id)
-    if not health:
-        raise HTTPException(status_code=404, detail="Timeline not found")
-    return health
+    # TODO: Implement with database
+    raise HTTPException(status_code=404, detail="Timeline not found")
 
 # =========================================
 # GRAVITY
@@ -248,23 +166,11 @@ async def get_gravity_breakdown(
 ):
     """
     Get detailed Gravity calculation for a timeline.
-    
+
     Shows how each factor contributes to the total score.
     """
-    import os
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if not USE_MOCKS:
-        # TODO: Implement with database
-        raise HTTPException(status_code=404, detail="Timeline not found")
-    
-    if engine is None:
-        raise HTTPException(status_code=503, detail="Engine not available")
-    
-    breakdown = engine.calculate_gravity(timeline_id)
-    if not breakdown:
-        raise HTTPException(status_code=404, detail="Timeline not found")
-    return breakdown
+    # TODO: Implement with database
+    raise HTTPException(status_code=404, detail="Timeline not found")
 
 @router.get("/gravity/trending", response_model=List[GravityBreakdown])
 async def get_trending_timelines(
@@ -274,20 +180,11 @@ async def get_trending_timelines(
 ):
     """
     Get timelines with highest gravity (trending).
-    
+
     These are the most important timelines to show in SIGINT.
     """
-    import os
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if not USE_MOCKS:
-        # TODO: Implement with database
-        return []
-    
-    if engine is None:
-        raise HTTPException(status_code=503, detail="Engine not available")
-    
-    return engine.get_trending_timelines(limit=limit)
+    # TODO: Implement with database
+    return []
 
 # =========================================
 # RIPPLES (Forks)
@@ -304,28 +201,8 @@ async def get_ripples(
     """
     Get recent Ripples (forks spawned from Wing Flaps).
     """
-    import os
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if not USE_MOCKS:
-        # TODO: Implement with database
-        return RippleListResponse(ripples=[], total_today=0, total_all_time=0)
-    
-    if engine is None:
-        raise HTTPException(status_code=503, detail="Engine not available")
-    
-    since = datetime.now() - timedelta(hours=hours)
-    ripples = engine.get_ripples(
-        parent_id=parent_timeline_id,
-        since=since,
-        limit=limit
-    )
-    
-    return RippleListResponse(
-        ripples=ripples,
-        total_today=engine.count_ripples_since(datetime.now().replace(hour=0, minute=0)),
-        total_all_time=engine.count_all_ripples()
-    )
+    # TODO: Implement with database
+    return RippleListResponse(ripples=[], total_today=0, total_all_time=0)
 
 @router.get("/ripples/{timeline_id}/tree")
 async def get_fork_tree(
@@ -336,18 +213,8 @@ async def get_fork_tree(
 ):
     """
     Get the fork tree for a timeline.
-    
+
     Shows parent, siblings, and children up to specified depth.
     """
-    import os
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if not USE_MOCKS:
-        # TODO: Implement with database
-        return {}
-    
-    if engine is None:
-        raise HTTPException(status_code=503, detail="Engine not available")
-    
-    return engine.get_fork_tree(timeline_id, depth=depth)
-
+    # TODO: Implement with database
+    return {}

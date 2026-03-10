@@ -1,18 +1,11 @@
 import uvicorn
 import json
-import subprocess 
-import re 
 import os
-import sys 
-from fastapi import FastAPI, Depends, HTTPException, status, Header, Request
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm 
-from sqlalchemy.orm import Session
+from fastapi import FastAPI, HTTPException, Header, Request
 from sqlalchemy import text
-from passlib.context import CryptContext
-from pydantic import BaseModel, ConfigDict, Field, validator
-from typing import Annotated, Dict, Optional
-from jose import JWTError, jwt
-from datetime import datetime, timedelta, timezone
+from pydantic import BaseModel, Field
+from typing import Annotated, Optional
+from datetime import datetime, timezone
 
 # Import CORSMiddleware
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,9 +14,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.core.security import (
     limiter,
     RATE_LIMITS,
-    WalletAddressValidator,
-    BetAmountValidator,
-    StringSanitizer,
     get_client_ip,
 )
 from slowapi.errors import RateLimitExceeded
@@ -31,8 +21,8 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.extension import _rate_limit_exceeded_handler
 
 # --- IMPORTS ---
-from backend.core.database import SessionLocal, engine, Base, User as DBUser
 from backend.core.osint_registry import get_osint_registry
+from backend.database.connection import init_db, close_db, async_session_maker
 
 # Auto Uploader Config
 from backend.core.autouploader import AutoUploadConfig
@@ -60,12 +50,6 @@ try:
 except ImportError:
     markets_router = None
 
-# Operations API (Butler + Situation Room)
-try:
-    from backend.api.operations import router as operations_router
-except ImportError as e:
-    operations_router = None
-    print(f"⚠️ Could not import Operations API router: {e}")
 
 # Butterfly Engine API
 try:
@@ -146,35 +130,8 @@ osint = get_osint_registry()
 
 # --- CONFIGURATION ---
 
-# Ensure database tables are created
-Base.metadata.create_all(bind=engine)
-print("✅ Database tables initialized")
+# Database tables created via Alembic migrations + init_db() on startup
 
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") 
-
-# Security: Load JWT secret from environment variable
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not SECRET_KEY:
-    # In production, this should raise an error
-    SECRET_KEY = os.getenv("SECRET_KEY", "a_very_secret_key_for_jwt_replace_this")
-    if SECRET_KEY == "a_very_secret_key_for_jwt_replace_this":
-        # Only warn in production or if explicitly enabled
-        is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
-        if is_production:
-            raise ValueError(
-                "❌ CRITICAL: JWT_SECRET_KEY must be set in production! "
-                "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
-            )
-        # In development, show a one-time warning (less verbose)
-        import sys
-        if not hasattr(sys, '_jwt_warning_shown'):
-            print("⚠️  WARNING: Using default JWT secret key (development only).")
-            print("   Set JWT_SECRET_KEY in .env for production.")
-            sys._jwt_warning_shown = True
-
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 app = FastAPI()
 
@@ -183,17 +140,38 @@ app = FastAPI()
 GAME_LOOP_ENABLED = os.getenv("ENABLE_GAME_LOOP", "true").lower() == "true"
 
 @app.on_event("startup")
+async def startup_db():
+    """Initialize async database (belt-and-suspenders alongside Alembic)."""
+    await init_db()
+    print("✅ Async database initialized")
+
+
+@app.on_event("shutdown")
+async def shutdown_db():
+    """Close async database connections."""
+    await close_db()
+    print("✅ Async database connections closed")
+
+
+@app.on_event("startup")
 async def seed_investigation_templates_on_startup():
     """Seed investigation templates if not already present (Cycle-022)."""
     try:
+        from sqlalchemy import create_engine
         from sqlalchemy.orm import Session as SyncSession
+        from backend.database.config import DatabaseConfig
         from backend.services.investigation_template_seeder import seed_investigation_templates
-        with SyncSession(engine) as session:
+
+        # Seeder uses sync Session, so create a temporary sync engine
+        sync_url = DatabaseConfig.SYNC_DATABASE_URL
+        sync_engine = create_engine(sync_url)
+        with SyncSession(sync_engine) as session:
             count = seed_investigation_templates(session)
             if count > 0:
                 print(f"✅ Seeded {count} investigation templates")
             else:
                 print("✅ Investigation templates already seeded")
+        sync_engine.dispose()
     except Exception as e:
         print(f"⚠️ Could not seed investigation templates: {e}")
 
@@ -201,9 +179,7 @@ async def seed_investigation_templates_on_startup():
 @app.on_event("startup")
 async def start_game_loop():
     """Start the game loop as a background task."""
-    # Check USE_MOCKS here since it's defined later
-    use_mocks = os.getenv("USE_MOCKS", "true").lower() == "true"
-    if GAME_LOOP_ENABLED and not use_mocks:
+    if GAME_LOOP_ENABLED:
         try:
             from backend.worker.game_loop import GameLoop
             import asyncio
@@ -273,17 +249,6 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
-# Include Operations router (Butler + Situation Room)
-try:
-    if operations_router:
-        app.include_router(operations_router)
-        print("✅ Operations router included")
-    else:
-        print("⚠️ Operations router is None, skipping")
-except Exception as e:
-    print(f"❌ Failed to include Operations router: {e}")
-    import traceback
-    traceback.print_exc()
 
 # Include Butterfly Engine router
 try:
@@ -473,98 +438,15 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
-# Initialize Butterfly and Paradox Engines (for USE_MOCKS mode)
-USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-GAME_LOOP_ENABLED = os.getenv("ENABLE_GAME_LOOP", "true").lower() == "true"
-print(f"🔍 [Main] USE_MOCKS={USE_MOCKS} (from env: {os.getenv('USE_MOCKS', 'not set')})")
-print(f"🔍 [Main] ENABLE_GAME_LOOP={GAME_LOOP_ENABLED} (from env: {os.getenv('ENABLE_GAME_LOOP', 'not set')})")
-if USE_MOCKS and (butterfly_router or paradox_router):
-    # Mock mode removed — mock data deleted in production cleanup.
-    # Engine init skipped. Set USE_MOCKS=false to use real database.
-    print("⚠️ USE_MOCKS=true but mock data has been removed. Set USE_MOCKS=false.")
-
-# --- DATABASE DEPENDENCY ---
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# --- PYDANTIC MODELS ---
-
-class UserCreate(BaseModel):
-    username: str
-    password: str
-
-class User(BaseModel):
-    id: int
-    username: str
-    play_money_balance: float
-    model_config = ConfigDict(from_attributes=True) 
-
-class TokenData(BaseModel):
-    username: str | None = None
-
-class BetRequest(BaseModel):
-    client_seed: str = Field(..., min_length=1, max_length=100)
-    wager: float = Field(..., gt=0, le=100000.0)
-    engine_name: str = Field(..., min_length=1, max_length=50)
-    
-    @validator('client_seed')
-    def validate_client_seed(cls, v):
-        """Validate client_seed for subprocess safety."""
-        return StringSanitizer.validate_client_seed(v)
-    
-    @validator('wager')
-    def validate_wager(cls, v):
-        """Validate wager amount."""
-        return BetAmountValidator.validate(v)
-
-class MatchResult(BaseModel):
-    message: str
-    new_balance: float
-    server_seed: str
-    game_result: str
-
-# --- SECURITY FUNCTIONS ---
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        token_data = TokenData(username=username)
-    except JWTError:
-        raise credentials_exception
-    
-    user = db.query(DBUser).filter(DBUser.username == token_data.username).first()
-    if user is None:
-        raise credentials_exception
-    return user
+# Include Auth router (Cycle-023)
+try:
+    from backend.api.auth_routes import router as auth_router
+    app.include_router(auth_router)
+    print("✅ Auth router included")
+except Exception as e:
+    print(f"❌ Failed to include Auth router: {e}")
+    import traceback
+    traceback.print_exc()
 
 # --- API ENDPOINTS ---
 
@@ -572,18 +454,18 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session 
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for container orchestration."""
+    """Health check endpoint — checks PostgreSQL via async session."""
     try:
-        # Check database connection
-        db = SessionLocal()
-        db.execute(text("SELECT 1"))
-        db.close()
+        async with async_session_maker() as session:
+            await session.execute(text("SELECT 1"))
         db_status = "ok"
-    except Exception as e:
-        db_status = f"error: {str(e)}"
-    
+    except Exception:
+        db_status = "error"
+
+    overall = "healthy" if db_status == "ok" else "degraded"
+
     return {
-        "status": "healthy",
+        "status": overall,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "database": db_status,
         "version": "1.0.0",
@@ -720,31 +602,6 @@ class MarketResponse(BaseModel):
     total_volume: float
     virality_score: float
 
-
-class BetPlacement(BaseModel):
-    outcome: str = Field(..., min_length=1, max_length=10)
-    amount: float = Field(..., gt=0, le=100000.0)
-    
-    @validator('outcome')
-    def validate_outcome(cls, v):
-        """Validate outcome is YES or NO."""
-        v = v.upper().strip()
-        if v not in ['YES', 'NO']:
-            raise ValueError("Outcome must be 'YES' or 'NO'")
-        return v
-    
-    @validator('amount')
-    def validate_amount(cls, v):
-        """Validate bet amount."""
-        return BetAmountValidator.validate(v)
-
-
-class MarketBetResponse(BaseModel):
-    success: bool
-    message: str
-    bet_id: str | None = None
-    new_balance: float | None = None
-    potential_payout: float | None = None
 
 
 _orchestrator = None
@@ -1020,183 +877,6 @@ async def create_market(market: MarketCreate):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def get_user_or_wallet(
-    token: Optional[str] = Header(None, alias="Authorization"),
-    wallet_address: Optional[str] = Header(None, alias="X-Wallet-Address"),
-    db: Session = Depends(get_db)
-):
-    """Get user from JWT token OR wallet address."""
-    try:
-        print(f"🔍 [AUTH] get_user_or_wallet called - token: {bool(token)}, wallet: {wallet_address}")
-        
-        # Try JWT authentication first
-        if token and token.startswith("Bearer "):
-            try:
-                token_value = token.replace("Bearer ", "")
-                payload = jwt.decode(token_value, SECRET_KEY, algorithms=[ALGORITHM])
-                username: str = payload.get("sub")
-                if username:
-                    user = db.query(DBUser).filter(DBUser.username == username).first()
-                    if user:
-                        print(f"🔍 [AUTH] Found user via JWT: {user.username}")
-                        return user
-            except (JWTError, Exception) as e:
-                print(f"🔍 [AUTH] JWT auth failed: {e}")
-                pass  # Fall through to wallet auth
-        
-        # Try wallet address authentication
-        if wallet_address:
-            wallet_addr_lower = wallet_address.lower()
-            print(f"🔍 [AUTH] Looking up wallet: {wallet_addr_lower}")
-            # Find or create user by wallet address
-            user = db.query(DBUser).filter(DBUser.wallet_address == wallet_addr_lower).first()
-            if not user:
-                print(f"🔍 [AUTH] Creating new user for wallet: {wallet_addr_lower}")
-                # Create a new user for this wallet address
-                user = DBUser(
-                    username=f"wallet_{wallet_addr_lower[:8]}",
-                    email=f"{wallet_addr_lower[:8]}@wallet.local",
-                    hashed_password="",  # No password for wallet users
-                    wallet_address=wallet_addr_lower,
-                    play_money_balance=1000.0  # Starting balance
-                )
-                db.add(user)
-                db.commit()
-                db.refresh(user)
-                print(f"🔍 [AUTH] Created user: {user.username}, balance: {user.play_money_balance}")
-            else:
-                print(f"🔍 [AUTH] Found existing user: {user.username}, balance: {user.play_money_balance}")
-            return user
-        
-        # No authentication provided
-        print(f"🔍 [AUTH] No authentication provided")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials. Provide either JWT token or wallet address.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        import traceback
-        print(f"❌ [AUTH ERROR] Exception in get_user_or_wallet:")
-        print(f"   Error: {str(e)}")
-        print(f"   Type: {type(e).__name__}")
-        print(f"   Traceback:\n{traceback.format_exc()}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Authentication error: {str(e)}",
-        )
-
-@app.post("/markets/{market_id}/bet")
-async def place_bet(
-    market_id: str,
-    bet: BetPlacement,
-    current_user: Annotated[DBUser, Depends(get_user_or_wallet)],
-    db: Session = Depends(get_db)
-):
-    try:
-        import traceback
-        print(f"🔍 [BET] Starting bet placement for market {market_id}")
-        print(f"🔍 [BET] User: {current_user.username}, Balance: {current_user.play_money_balance}")
-        print(f"🔍 [BET] Bet: {bet.outcome} ${bet.amount}")
-        
-        orchestrator = get_orchestrator()
-
-        if market_id not in orchestrator.markets:
-            raise HTTPException(status_code=404, detail=f"Market {market_id} not found")
-
-        market = orchestrator.markets[market_id]
-
-        if market.status != "OPEN":
-            raise HTTPException(status_code=400, detail=f"Market is {market.status}, not accepting bets")
-
-        if bet.outcome not in market.outcomes:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid outcome. Choose from: {market.outcomes}"
-            )
-
-        if current_user.play_money_balance < bet.amount:
-            raise HTTPException(status_code=400, detail="Insufficient balance")
-
-        # Use CPMM for odds calculation
-        from backend.core.cpmm import CPMM
-        
-        # Initialize CPMM with current market liquidity
-        cpmm = CPMM(initial_liquidity=1.0)  # Will be overridden
-        cpmm.state.yes_shares = getattr(market, 'yes_shares', 1000.0)
-        cpmm.state.no_shares = getattr(market, 'no_shares', 1000.0)
-        
-        # DEBUG: Log shares BEFORE bet
-        print(f"🔍 [BET DEBUG] Market {market_id} BEFORE bet:")
-        print(f"   yes_shares: {cpmm.state.yes_shares}")
-        print(f"   no_shares: {cpmm.state.no_shares}")
-        print(f"   bet: {bet.outcome} ${bet.amount}")
-        
-        # Get current odds before trade
-        current_odds = cpmm.get_current_odds()
-        current_price = current_odds.get(bet.outcome, 0.5)
-        
-        # Execute trade through CPMM
-        shares_received, price_impact, new_odds = cpmm.execute_trade(
-            outcome=bet.outcome,
-            amount_in=bet.amount,
-            apply_fee=True
-        )
-        
-        # Calculate potential payout (shares * final price if outcome wins)
-        # For binary markets, if you win, you get: shares * (1 / final_price)
-        # Simplified: payout = bet_amount * (1 / current_price) * (1 - fee)
-        potential_payout = bet.amount * (1 / current_price) * 0.97  # 3% fee
-        
-        # Update user balance
-        current_user.play_money_balance -= bet.amount
-        db.commit()
-        db.refresh(current_user)
-
-        # Update market state
-        market.total_volume += bet.amount
-        market.yes_shares = cpmm.state.yes_shares
-        market.no_shares = cpmm.state.no_shares
-        market.outcome_odds = new_odds
-        
-        # DEBUG: Log shares AFTER bet
-        print(f"🔍 [BET DEBUG] Market {market_id} AFTER bet:")
-        print(f"   yes_shares: {market.yes_shares}")
-        print(f"   no_shares: {market.no_shares}")
-        print(f"   new_odds: {new_odds}")
-        
-        # CRITICAL: Save markets state after bet to persist CPMM state
-        orchestrator._save_markets_state()
-        
-        # Verify no-arbitrage (YES + NO should ≈ 1.0)
-        total_odds = sum(new_odds.values())
-        if abs(total_odds - 1.0) > 0.01:
-            # Normalize if slightly off due to floating point
-            for outcome in new_odds:
-                new_odds[outcome] = new_odds[outcome] / total_odds
-            market.outcome_odds = new_odds
-        
-        bet_id = f"BET_{market_id}_{datetime.now().strftime('%H%M%S')}"
-
-        return MarketBetResponse(
-            success=True,
-            message=f"Bet placed on {bet.outcome}. Price impact: {price_impact:.2%}",
-            bet_id=bet_id,
-            new_balance=current_user.play_money_balance,
-            potential_payout=round(potential_payout, 2),
-        )
-    except HTTPException:
-        raise  # Re-raise HTTP exceptions as-is
-    except Exception as e:
-        import traceback
-        error_trace = traceback.format_exc()
-        print(f"❌ [BET ERROR] Exception in place_bet:")
-        print(f"   Error: {str(e)}")
-        print(f"   Type: {type(e).__name__}")
-        print(f"   Traceback:\n{error_trace}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @app.get("/markets/{market_id}/quote")
@@ -1497,240 +1177,9 @@ async def get_premium_intel(
 async def get_root():
     return {"message": "Welcome to the AI Marketplace API!"}
 
-@app.post("/users/", response_model=User)
-async def create_user(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(DBUser).filter(DBUser.username == user.username).first()
-    if db_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
-        )
-    hashed_password = get_password_hash(user.password)
-    new_user = DBUser(username=user.username, hashed_password=hashed_password)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
 
-@app.post("/token")
-@limiter.limit(RATE_LIMITS["auth"])
-async def login_for_access_token(
-    request: Request,
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Session = Depends(get_db)
-):
-    print(f"🔍 [AUTH] Login attempt for username: {form_data.username}")
-    
-    user = db.query(DBUser).filter(DBUser.username == form_data.username).first()
-    
-    if not user:
-        print(f"❌ [AUTH] User '{form_data.username}' not found")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Check if user has a password (wallet users have empty hashed_password)
-    if not user.hashed_password or user.hashed_password == "":
-        print(f"❌ [AUTH] User '{form_data.username}' is a wallet-only user (no password set)")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="This account uses wallet authentication. Please connect your wallet instead.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Verify password
-    if not verify_password(form_data.password, user.hashed_password):
-        print(f"❌ [AUTH] Incorrect password for user '{form_data.username}'")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    print(f"✅ [AUTH] Login successful for user '{form_data.username}'")
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
-
-@app.get("/users/me", response_model=User)
-async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
-    return current_user
-
-
-@app.get("/users/me/simulations")
-async def get_user_simulations(current_user: Annotated[DBUser, Depends(get_current_user)]):
-    """Get user's active simulations/timeline forks."""
-    try:
-        from backend.simulation.timeline_manager import TimelineManager
-        tm = TimelineManager()
-        
-        # Get all timelines and filter for user's forks
-        # For now, return all active forks (in production, filter by user_id)
-        all_timelines = tm.list_timelines()
-        active_forks = [
-            {
-                "id": t.id,
-                "label": t.label,
-                "status": t.status.value,
-                "created_at": t.created_at.isoformat() if hasattr(t.created_at, 'isoformat') else str(t.created_at),
-                "fork_reason": t.fork_reason,
-                "parent_id": t.parent_id,
-            }
-            for t in all_timelines
-            if t.status.value == "active" and t.parent_id is not None
-        ]
-        
-        return {
-            "simulations": active_forks,
-            "total": len(active_forks),
-        }
-    except Exception as e:
-        # Return empty list on error
-        return {
-            "simulations": [],
-            "total": 0,
-            "error": str(e)
-        }
-
-@app.post("/play-match/", response_model=MatchResult)
-async def play_match(
-    bet: BetRequest,
-    current_user: Annotated[DBUser, Depends(get_current_user)],
-    db: Session = Depends(get_db)
-):
-    if bet.wager <= 0:
-        raise HTTPException(status_code=400, detail="Wager must be positive")
-    if current_user.play_money_balance < bet.wager:
-        raise HTTPException(status_code=400, detail="Insufficient funds")
-
-    server_seed = os.urandom(16).hex()
-    nonce = str(datetime.now(timezone.utc).timestamp())
-    
-    python_executable = sys.executable
-    engine_script = ""
-    
-    # Router for different game engines
-    if bet.engine_name == "geopolitics":
-        engine_script = "backend/simulation/sim_geopolitics_engine.py"
-    elif bet.engine_name == "market":
-        engine_script = "backend/simulation/sim_market_engine.py"
-    elif bet.engine_name == "election":
-        engine_script = "backend/simulation/sim_election_engine.py"
-    elif bet.engine_name == "duel":
-        engine_script = "backend/simulation/digital_twin_engine.py"
-    elif bet.engine_name == "chess":
-        engine_script = "backend/simulation/engine.py"
-    elif bet.engine_name == "football":
-        engine_script = "backend/simulation/sim_football_engine.py"
-    else:
-        raise HTTPException(status_code=400, detail="Invalid engine name")
-    
-    command = [
-        python_executable, 
-        engine_script, 
-        server_seed, 
-        bet.client_seed, 
-        nonce
-    ]
-    
-    try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=30 
-        )
-        
-        game_result = result.stdout.strip().split('\n')[-1]
-        
-        if "ERROR" in game_result:
-            raise HTTPException(status_code=500, detail=f"Game Engine Error: {game_result}")
-
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Engine script failed: {e.stderr}")
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=500, detail="Game engine timed out")
-
-    message = ""    
-    
-    # Settlement Logic based on Engine Type
-    if bet.engine_name == "geopolitics":
-        if game_result == "WAR_DECLARED":
-            current_user.play_money_balance += bet.wager
-            message = "You bet on WAR and won!"
-        elif game_result == "PEACE_MAINTAINED":
-            current_user.play_money_balance -= bet.wager
-            message = "You bet on WAR, but peace was maintained. You lost."
-        else:
-            message = "The simulation was a draw."
-
-    elif bet.engine_name == "market":
-        if game_result == "SAPL_UP":
-            current_user.play_money_balance += bet.wager
-            message = "You bet on SAPL to go UP and won!"
-        else:
-            current_user.play_money_balance -= bet.wager
-            message = f"You bet on SAPL UP, but the result was {game_result}. You lost."
-
-    elif bet.engine_name == "election":
-        if game_result == "CANDIDATE_A_WINS":
-            current_user.play_money_balance += bet.wager
-            message = "You bet on Candidate A and won!"
-        else:
-            current_user.play_money_balance -= bet.wager
-            message = "You bet on Candidate A, but Candidate B won. You lost."
-            
-    elif bet.engine_name == "duel":
-        if game_result == "AGENT_A_WINS":
-            current_user.play_money_balance += bet.wager
-            message = "You bet on Agent A and won!"
-        else:
-            current_user.play_money_balance -= bet.wager
-            message = f"You bet on Agent A, but the result was {game_result}. You lost."
-
-    elif bet.engine_name == "chess":
-        if game_result == "1-0":
-            # White wins - user wins
-            current_user.play_money_balance += bet.wager
-            message = "You bet on White and won!"
-        elif game_result == "0-1":
-            # Black wins - user loses
-            current_user.play_money_balance -= bet.wager
-            message = "You bet on White, but Black won. You lost."
-        elif game_result == "1/2-1/2":
-            # Draw - return stake (push)
-            message = "The game was a draw. Your stake is returned."
-        else:
-            # Unknown result - return stake to be safe
-            message = f"Unexpected game result: {game_result}. Your stake is returned."
-
-    elif bet.engine_name == "football":
-        # Football: HOME_WIN, AWAY_WIN, DRAW
-        if game_result == "HOME_WIN":
-            current_user.play_money_balance += bet.wager
-            message = "You bet on HOME and won!"
-        elif game_result == "AWAY_WIN":
-            current_user.play_money_balance -= bet.wager
-            message = "You bet on HOME, but AWAY won. You lost."
-        else:  # DRAW
-            current_user.play_money_balance -= bet.wager * 0.5  # Half loss on draw
-            message = "The match was a DRAW. Half stake returned."
-
-    # Final Database Update (Only happens once now!)
-    db.commit()
-    db.refresh(current_user)
-    
-    return MatchResult(
-        message=message,
-        new_balance=current_user.play_money_balance,
-        server_seed=server_seed,
-        game_result=game_result
-    )
+# (Old /users/, /token, /users/me, /users/me/simulations, /play-match endpoints
+#  removed in Cycle-023. Auth is now handled via /api/v1/auth/* routes.)
 
 
 # =============================================================================
