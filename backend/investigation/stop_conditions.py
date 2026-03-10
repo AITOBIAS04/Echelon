@@ -114,9 +114,9 @@ class InvestigationStopConditionEvaluator:
             return False, "no_milestone_timestamp_configured"
 
         milestone = datetime.fromisoformat(milestone_str)
-        # Ensure timezone-aware comparison
-        if milestone.tzinfo is None:
-            milestone = milestone.replace(tzinfo=timezone.utc)
+        # Strip timezone for naive comparison (DB uses TIMESTAMP WITHOUT TIME ZONE)
+        if milestone.tzinfo is not None:
+            milestone = milestone.replace(tzinfo=None)
 
         now = datetime.utcnow()
         if now >= milestone:
