@@ -63,7 +63,7 @@ export const scenarioPackApi = {
     limit?: number;
     offset?: number;
   }): Promise<TemplateListResponse> => {
-    const { data } = await apiClient.get('/api/v1/scenario-pack-templates', { params });
+    const { data } = await apiClient.get('/api/v1/scenario-pack-templates/', { params });
     return data;
   },
 
