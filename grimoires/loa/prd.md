@@ -1,293 +1,190 @@
-# PRD — Cycle-022: Investigation Template Infrastructure
+# PRD — Cycle-023: Production Database Unification + Railway Hardening
 
-**Cycle:** cycle-022
-**Date:** 8 March 2026
-**Depends on:** Cycle-021 (Live Investigation Intelligence + Deployment Operations), Cycle-019 (Investigation Persistence), Cycle-018 (Scenario Pack Templates — pattern precedent), Cycle-017 (Policy Surface / Registry Constraints)
-**Sprints:** 4 (0–3)
-**Builder:** Loa (backend/runtime + frontend wire-up)
+**Cycle:** cycle-023
+**Date:** 9 March 2026
+**Depends on:** Cycle-022 (Investigation Templates), all shipped cycles 017–021
+**Sprints:** 3 (0–2)
+**Builder:** Loa (backend only)
 
 ---
 
 ## 1. Problem Statement
 
-### 1.1 Investigation Templates Are Frontend-Static
+The deployed backend on Railway is running with a split-brain database architecture that renders 7 of 15 frontend surfaces non-functional (500 Internal Server Error).
 
-The CreateInvestigationWizard defines four investigation templates as a static TypeScript array:
+### 1.1 Two Separate Database Layers
 
-```typescript
-const TEMPLATES = [
-  { id: 'blank', label: 'Blank Investigation', ... },
-  { id: 'corporate_due_diligence', label: 'Corporate Due Diligence', ... },
-  { id: 'market_event', label: 'Market Event Analysis', ... },
-  { id: 'regulatory_action', label: 'Regulatory Action Tracking', ... },
-] as const;
-```
+The codebase has two independent database systems that were never unified:
 
-The wizard resolves template choice client-side — flattening it into `domain_filters` + `stop_condition` — and the backend never learns which template was used. The `createInvestigation` API payload has no `template_id` field.
+- **Old layer** (`backend/core/database.py`): Hardcoded `sqlite:///./database.db`, sync SQLAlchemy. Used by `main.py` startup (`Base.metadata.create_all`), the `/health` endpoint, the old `/token` and `/users/me` auth flow, and the `SessionLocal` dependency.
+- **New layer** (`backend/database/connection.py` + `backend/database/config.py` + `backend/database/models.py`): Async PostgreSQL via `asyncpg`, reads `DATABASE_URL` from env. Used by all Cycle 017–021 routes (agents, theatres, certificates, scenario packs, investigations, world-monitor, analytics, verification, positions).
 
-This violates the system's core principle: the backend is the source of truth, the frontend renders it. Templates that exist only in the frontend:
+On Railway, the old layer creates an ephemeral SQLite file (passes `/health` check), while the new layer attempts to connect to PostgreSQL which doesn't exist. Result: all Cycle 017–021 endpoints crash with 500.
 
-- cannot be audited
-- cannot be versioned
-- cannot appear in the certificate
-- cannot be queried or filtered server-side
-- cannot carry derived policy metadata (legal review, corroboration minimums)
+### 1.2 USE_MOCKS Inconsistency
 
-### 1.2 Scenario Pack Templates Already Prove The Pattern
+`USE_MOCKS` defaults to `"true"`. Only `butterfly_routes.py` and `paradox_routes.py` implement mock fallback. All other route files hit the async DB directly — no mock safety net. This is why butterfly/paradox return 200 (mock data) while theatre/agents/certificates return 500.
 
-Cycle 018 established backend-owned templates for Scenario Packs:
+### 1.3 Auth Layer is Entirely Disconnected
 
-- `ScenarioPackTemplate` model with 18 seeded records
-- `scenario_template_seeder.py` with idempotent seed logic
-- `GET /api/v1/scenario-pack-templates/` (paginated, filterable)
-- `GET /api/v1/scenario-pack-templates/{id}` (detail with checkpoints)
-- `template_status` (RUNNABLE / CATALOG_ONLY)
-- Frontend consumes these APIs exclusively
+`auth_routes.py` exists with `/api/v1/auth/login`, `/api/v1/auth/register`, `/api/v1/auth/me` — but:
 
-Investigation templates should follow this exact pattern.
+- It is **never registered** in `main.py`. Frontend calls all three on every session → 404.
+- It uses an **in-memory** `USERS = {}` dict — no database backing at all.
+- Its field assumptions (`hashed_password`, `play_money_balance`) do **not** match the existing `User` model in `backend/database/models.py`, which uses `password_hash`, `balance_usdc`, `balance_echelon`, and `id: String(50)` (not int).
 
-### 1.3 Domain Filter IDs Are Misaligned
+**Reconciliation required:** Loa must reconcile `auth_routes.py` field names against the **existing** `User` model in `models.py` — not invent a new schema. The existing model is the source of truth because it already participates in relationships with `Agent`, `UserPosition`, `WatchlistItem`, and `PrivateFork`.
 
-The frontend `DomainFilterSelector.tsx` defines 9 domain filter IDs:
+Additionally:
+- `investigation_routes.py` import may fail silently on Railway (import chain depends on modules that may not resolve).
 
-```
-financial_filings, regulatory, corporate_registry, litigation,
-media_news, social_sentiment, supply_chain, geopolitical, technical
-```
+### 1.4 Both Deploy Entrypoints Skip Migrations
 
-The backend `signal_scanner.py` `DomainFilter` enum defines 9 different IDs:
+Two active deploy configs exist — both bypass Alembic:
 
-```
-corporate_and_entity, finance_and_markets, maritime, airspace,
-geopolitical_and_conflict, cyber_threat, property_and_land,
-court_and_legal, satellite_and_earth_observation
-```
+- **`railway.toml`** runs `uvicorn backend.main:app` directly (no migrations).
+- **`nixpacks.toml`** also runs `uvicorn backend.main:app` directly (no migrations).
+- **`start.sh`** (which runs `alembic upgrade head` before starting) is never invoked by either.
 
-These two sets do not align. Backend-owned templates resolve this: the template carries the authoritative domain filter IDs from the backend enum, and the frontend renders what the backend provides.
-
-### 1.4 Inquiry Class Values Are Misaligned
-
-The backend `Investigation` model documents:
-
-```
-COUNTERFACTUAL | INVESTIGATIVE | INSPECTION | SURVEY | SCRUTINY
-```
-
-The frontend wizard currently defaults to `INVESTIGATIVE` but the full set of UI options has not been reconciled. Backend-owned templates carry the correct inquiry class per template type, eliminating frontend guessing.
+Even if PostgreSQL were attached, neither entrypoint creates tables via Alembic. **Both files must be updated as a pair** — Railway may use either depending on deployment mode.
 
 ---
 
-## 2. Product Contracts
+## 2. Goals
 
-### 2.1 Templates Are Backend-Owned
-
-The backend is the single source of truth for investigation templates. The frontend must not define, infer, or hardcode template metadata.
-
-### 2.2 Template ID and Committed Source Manifest Are Part of the Investigation Record
-
-When an investigation is created from a template, the following are persisted on the investigation record:
-
-- `template_id` — which template was selected
-- `committed_sources_json` — a snapshot of the source IDs that were resolved from the template's domain filters at creation time
-
-The committed source manifest is a point-in-time snapshot. If the OSINT registry or template defaults change later, the investigation record preserves exactly which sources were committed when the investigation was created. This is the auditable chain — not the template row, which may evolve.
-
-Both `template_id` and `committed_sources_json` are recorded in the certificate provenance metadata. This requires an explicit addition to the certificate builder's metadata assembly — the current certificate model has no provenance block for these fields. This is a targeted schema addition (new keys in the certificate metadata JSON), not a broad certificate redesign.
-
-### 2.3 Templates Carry Domain Filter Defaults
-
-Each template specifies which domain filters are pre-selected. The template's domain filter IDs must reference the backend `DomainFilter` enum values, not frontend-invented IDs.
-
-### 2.4 Templates Carry Policy-Derived Metadata
-
-Templates derive `requires_legal_review` from whether any of their default sources carry the `requires_legal_review` flag in the live OSINT registry surface. This is computed at seed time and stored on the template record.
-
-The authoritative OSINT source surface is `backend/core/osint_registry.py` and its source modules (`osint_sources_situation_room.py`, `osint_sources_financial.py`, `osint_sources_sports.py`, `osint_sources_extended.py`). The seeder must resolve sources from this live registry — not from `backend/osint/sources.json`, which is only a partial runtime subset (v0.4.0, 4 sources) and will drift from the full registry.
-
-### 2.5 Template Status Controls Visibility
-
-Templates use `ACTIVE` / `DRAFT` status (analogous to Scenario Pack `RUNNABLE` / `CATALOG_ONLY`). Only `ACTIVE` templates appear in the wizard's template selection step.
+| # | Goal | Success Criterion |
+|---|------|-------------------|
+| G1 | Single database layer | All routes use PostgreSQL via `backend/database/connection.py`. Old SQLite layer either deleted or reduced to a thin re-export shim (no direct SQLite usage). No file creates or queries SQLite. |
+| G2 | Railway PostgreSQL operational | `DATABASE_URL` env var from Railway Postgres plugin consumed correctly. All 15 surfaces return non-500 responses. |
+| G3 | Migrations run on deploy | **Both** `railway.toml` and `nixpacks.toml` start commands run `alembic upgrade head` before `uvicorn`. |
+| G4 | Auth flow functional | `/api/v1/auth/login`, `/api/v1/auth/register`, `/api/v1/auth/me` all registered and DB-backed. Auth routes reconciled against the **existing** `User` model in `backend/database/models.py` (field names: `password_hash`, `balance_usdc`, `balance_echelon`, `id: String(50)`). Frontend auth cycle completes. |
+| G5 | Health endpoint honest | `/health` checks PostgreSQL, not ephemeral SQLite. |
+| G6 | USE_MOCKS removed from codebase | `USE_MOCKS` env var, all checking code in `dependencies.py`, and mock fallback paths in `butterfly_routes.py` / `paradox_routes.py` are **deleted**. All routes use real DB unconditionally. No mock mode remains for any environment. |
 
 ---
 
-## 3. Scope Summary
+## 3. Non-Goals
 
-| Area | What Ships | What Doesn't |
-|------|-----------|--------------|
-| Database | `InvestigationTemplate` model, migration, `template_id` + `committed_sources_json` on `Investigation` | No changes to evidence, claims, drift schemas |
-| Seeder | 4 genesis templates + expandable seed infrastructure | No new template types beyond the current four |
-| API | `GET /api/v1/investigation-templates/` (list), `GET /api/v1/investigation-templates/{id}` (detail) | No template CRUD — templates are seeded, not user-created |
-| Investigation Create | `template_id` accepted in create payload, persisted, validated | Template does not override explicit user overrides for domain filters / stop condition |
-| Certificate | `template_id` + `committed_sources` added to certificate metadata JSON | No broad certificate schema redesign — targeted key additions only |
-| Frontend | Wizard Step 2 fetches templates from API, domain filter IDs aligned to backend enum | No visual redesign of the wizard |
-| Domain Filters | Frontend `DomainFilterSelector` aligned to backend `DomainFilter` enum values | No new domain filters added |
+- Frontend changes (Alexander handles those separately)
+- New feature work — this cycle is strictly infrastructure unification
+- Seed data population beyond what the existing seeders already handle
+- PostgreSQL provisioning on Railway (Tobias provisions manually; Loa wires the code)
 
 ---
 
-## 4. Success Criteria
+## 4. Scope
 
-### Sprint 0: Schema + Migration + Contract Freeze
-- [ ] `InvestigationTemplate` model defined with all required fields
-- [ ] `Investigation` model gains `template_id` FK (nullable, for backward compatibility)
-- [ ] Alembic migration created and applied
-- [ ] Template response schemas frozen
+### 4.1 Remove Old Database Layer
 
-### Sprint 1: Seeder + API Endpoints
-- [ ] 4 genesis templates seeded (blank, corporate_due_diligence, market_event, regulatory_action)
-- [ ] Seeder is idempotent — re-seeding skips existing templates
-- [ ] `GET /api/v1/investigation-templates/` returns full list, filterable by inquiry class and status
-- [ ] `GET /api/v1/investigation-templates/{id}` returns full template detail with domain filters and source manifest
+This is a **coordinated startup-path replacement**, not just deleting one file. The old layer is wired into main.py startup, the health endpoint, auth endpoints, and `start.sh`. All must be addressed together.
 
-### Sprint 2: Investigation Create Integration + Certificate Provenance
-- [ ] `POST /api/v1/investigations/` accepts optional `template_id`
-- [ ] Valid `template_id` is validated against the template table
-- [ ] `template_id` is persisted on the investigation record
-- [ ] Template defaults are applied when `template_id` is provided and user has not overridden specific fields
-- [ ] Resolved source IDs are snapshotted into `committed_sources_json` on the investigation record at creation time
-- [ ] Certificate builder includes `template_id`, `template_name`, and `committed_sources` in certificate metadata JSON (targeted key additions to the existing metadata structure)
-- [ ] Domain filter IDs in the investigation record use backend `DomainFilter` enum values
+**Delete or shim** `backend/core/database.py`:
+- Preferred: delete entirely once all imports are migrated.
+- Acceptable: reduce to a thin shim that re-exports from `backend.database.connection` (if test files or dev scripts still need it as a transitional step). The shim must **not** create any SQLite engine or session.
 
-### Sprint 3: Frontend Wire-Up + Alignment
-- [ ] Wizard Step 2 fetches templates from `GET /api/v1/investigation-templates/`
-- [ ] Static `TEMPLATES` array removed from `CreateInvestigationWizard.tsx`
-- [ ] `DomainFilterSelector.tsx` uses backend `DomainFilter` enum values
-- [ ] `createInvestigation` API call includes `template_id`
-- [ ] Inquiry class options in wizard match backend enum
-- [ ] Signal-origin launch context (from Signal Map / World Monitor / theatre jump-offs) preserved: URL search params (`signal_category`, `signal_class`, `theatre_id`) continue to drive deterministic template pre-selection and domain filter prefill — the `inferTemplate()` logic moves from frontend heuristic to a mapping table that resolves against the backend template list, not hardcoded IDs
-- [ ] `npm run build` passes
+**Remove from main.py:**
+- Line 34 import of `SessionLocal, engine, Base, User as DBUser` from `core.database`
+- Line 150 `Base.metadata.create_all(bind=engine)` (the old SQLite create_all)
+- Old `/token` endpoint (~line 1540) using sync `SessionLocal`
+- Old `/users/me` endpoint (~line 1584) using sync `SessionLocal`
+- Old sync `get_db()` function that yields `SessionLocal()`
 
----
+**Remove from start.sh:**
+- Old `core.database` initialization logic (line ~35)
 
-## 5. Codebase Grounding
+**User model:** A `User` model **already exists** in `backend/database/models.py` (line 78) with the correct async schema: `id: String(50)`, `username`, `email`, `password_hash`, `tier`, `balance_usdc`, `balance_echelon`, `wallet_address`, `created_at`, `updated_at`, plus relationships to Agent, UserPosition, WatchlistItem, PrivateFork. **Do not recreate or modify** — use as-is.
 
-### Existing Infrastructure
+### 4.2 Register Missing Routers in main.py
 
-| Component | Location | Relevance |
-|-----------|----------|-----------|
-| ScenarioPackTemplate model | `backend/database/models.py` (lines 753–792) | Pattern to follow |
-| Scenario template seeder | `backend/services/scenario_template_seeder.py` | Pattern to follow |
-| Scenario pack template API | `backend/api/scenario_pack_routes.py` | Pattern to follow |
-| Investigation model | `backend/database/models.py` (lines 1051–1103) | Model to extend with `template_id` |
-| Investigation routes | `backend/api/investigation_routes.py` | Create endpoint to extend |
-| Investigation schemas | `backend/schemas/investigation_schemas.py` | Request/response schemas to extend |
-| Signal Scanner DomainFilter enum | `backend/investigation/signal_scanner.py` (lines 14–25) | Authoritative domain filter IDs |
-| DOMAIN_FILTER_SOURCE_GROUPS | `backend/investigation/signal_scanner.py` (lines 29–54) | Source group mappings per domain filter |
-| OSINT master registry | `backend/core/osint_registry.py` | Live registry surface — source resolution and policy metadata |
-| OSINT source modules | `backend/core/osint_sources_situation_room.py`, `osint_sources_financial.py`, `osint_sources_sports.py`, `osint_sources_extended.py` | Source definitions backing the master registry |
-| OSINT runtime subset | `backend/osint/sources.json` | Partial runtime registry (v0.4.0, 4 sources) — NOT the seed source |
-| Frontend wizard | `frontend/src/components/investigation/CreateInvestigationWizard.tsx` | Static templates to replace |
-| Frontend domain filter selector | `frontend/src/components/investigation/DomainFilterSelector.tsx` | Frontend IDs to align |
-| Frontend investigation API | `frontend/src/api/investigation.ts` | Create call to extend |
-
-### Known Current Posture To Replace
-
-| Surface | Current State | Required 022 State |
-|---------|---------------|--------------------|
-| Investigation templates | 4-item static array in frontend | Backend-owned seeded model with API |
-| Template in create payload | absent | `template_id` field, validated, persisted |
-| Template in certificate | absent | recorded in provenance metadata |
-| Domain filter IDs | frontend-invented set ≠ backend enum | single authoritative set from backend |
-| Inquiry class options | frontend subset ≠ backend enum | template carries correct value |
-
----
-
-## 6. New / Updated Backend Services
-
-| Service | File | Purpose |
-|---------|------|---------|
-| InvestigationTemplateSeeder | `backend/services/investigation_template_seeder.py` (new) | Seed 4 genesis templates with domain filter defaults and source manifests |
-
-No other new services. This cycle adds a model, seeder, and two read-only endpoints — it does not add new processing services.
-
----
-
-## 7. API Changes
-
-### New Endpoints
-
-- `GET /api/v1/investigation-templates/` — full list, filterable by `inquiry_class` and `template_status`
-- `GET /api/v1/investigation-templates/{id}` — full detail with domain filters, default sources, policy metadata
-
-### Modified Endpoints
-
-- `POST /api/v1/investigations/` — accepts optional `template_id` in request body
-
-### Response Contracts
-
+Add to the router registration block:
 ```python
-class InvestigationTemplateListItem(BaseModel):
-    template_id: str
-    name: str
-    description: str
-    inquiry_class: str
-    template_status: str  # ACTIVE | DRAFT
-    domain_filter_count: int
-    requires_legal_review: bool
-
-class InvestigationTemplateDetail(BaseModel):
-    template_id: str
-    name: str
-    description: str
-    inquiry_class: str
-    domain_filters: list[str]  # backend DomainFilter enum values
-    default_sources: list[str]  # source_ids from OSINT registry
-    default_stop_condition: str
-    default_time_window_days: int | None
-    requires_legal_review: bool
-    min_corroboration_groups: int
-    template_status: str
-    is_seeded: bool
-    created_at: datetime
+# Auth router
+try:
+    from backend.api.auth_routes import router as auth_router
+    app.include_router(auth_router)
+    print("✅ Auth router included")
+except Exception as e:
+    print(f"❌ Failed to include Auth router: {e}")
 ```
 
+### 4.3 Fix Health Endpoint
+
+Replace `SessionLocal()` with async session from `backend.database.connection`:
+```python
+@app.get("/health")
+async def health_check():
+    try:
+        from backend.database.connection import async_session_maker
+        async with async_session_maker() as session:
+            await session.execute(text("SELECT 1"))
+        db_status = "ok"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    ...
+```
+
+### 4.4 Fix Both Deploy Entrypoints
+
+Both deploy configs must run migrations before the app starts. **Update as a pair:**
+
+`railway.toml`:
+```toml
+[deploy]
+startCommand = "sh -c 'cd backend && python -m alembic upgrade head && cd .. && uvicorn backend.main:app --host 0.0.0.0 --port \"$PORT\"'"
+```
+
+`nixpacks.toml`:
+```toml
+[start]
+cmd = "cd backend && python -m alembic upgrade head && cd .. && uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+```
+
+### 4.5 Remove USE_MOCKS Entirely
+
+**End state:** The `USE_MOCKS` env var, the checking code in `dependencies.py`, the `_EmptyRepo` stubs, and the mock-conditional branches in `butterfly_routes.py` and `paradox_routes.py` are all **deleted**. All routes hit the real database unconditionally. No mock mode remains for any environment (dev or production).
+
+### 4.6 Auth Routes Database Backing (Model Reconciliation Required)
+
+`auth_routes.py` currently uses in-memory `USERS = {}` dict. For production, this must persist to PostgreSQL via the **existing** `User` model in `backend/database/models.py`.
+
+**Critical reconciliation points:**
+- auth_routes uses `hashed_password` → model field is `password_hash`
+- auth_routes generates `USR_NNNN` string IDs → model `id` is `String(50)`, compatible but ID generation logic must produce UUIDs or similar
+- auth_routes references `play_money_balance` → model has `balance_usdc: Float` and `balance_echelon: int` (no `play_money_balance`)
+- auth_routes `tier` field matches model `tier: String(20)`
+
+Loa must rewrite `auth_routes.py` to use the model's actual field names and types. Do **not** modify the model to match auth_routes — the model is already in production with relationships and migrations.
+
 ---
 
-## 8. Template Seed Data
+## 5. Risk
 
-### Genesis Templates (4)
-
-| template_id | name | inquiry_class | domain_filters | default_stop_condition | default_time_window_days | min_corroboration_groups |
-|-------------|------|---------------|----------------|----------------------|-------------------------|------------------------|
-| `blank` | Blank Investigation | INVESTIGATIVE | [] (user selects) | OUTCOME_RESOLUTION | None | 2 |
-| `corporate_due_diligence` | Corporate Due Diligence | INSPECTION | corporate_and_entity, court_and_legal, property_and_land | EVIDENCE_THRESHOLD | 90 | 3 |
-| `market_event` | Market Event Analysis | INVESTIGATIVE | finance_and_markets, geopolitical_and_conflict | OUTCOME_RESOLUTION | 30 | 2 |
-| `regulatory_action` | Regulatory Action Tracking | SCRUTINY | corporate_and_entity, court_and_legal | SPONSOR_DEFINED | 180 | 2 |
-
-All 4 templates ship as `ACTIVE`. The `blank` template provides no defaults — the user configures everything manually, same as the current wizard behavior.
-
-`default_sources` for each template are derived from the live OSINT registry (`backend/core/osint_registry.py` and its source modules) — not from `backend/osint/sources.json`. The seeder maps domain filters → source groups via `DOMAIN_FILTER_SOURCE_GROUPS`, then resolves matching source IDs from the master registry.
-
-`requires_legal_review` is `True` if any source in `default_sources` carries `requires_legal_review: true` in the live registry.
-
-**Committed source snapshots:** When an investigation is created from a template, the resolved source IDs are snapshotted into `committed_sources_json` on the investigation record. This snapshot is immutable — it represents the source manifest at creation time, not the current template or registry state. If the template's `default_sources` change later (because the registry evolves), existing investigations are unaffected.
+| Risk | Mitigation |
+|------|------------|
+| Old code elsewhere still imports `backend.core.database` | Grep all imports; refactor or alias |
+| Alembic migrations fail on Railway PostgreSQL | Test migrations locally against PostgreSQL first |
+| Auth routes depend on modules that may not exist on Railway | Wrap in try/except consistent with other router registrations |
+| Removing old `/token` endpoint breaks existing auth flows | Old flow used `OAuth2PasswordRequestForm` — new auth_routes uses email/password JSON. Frontend already calls `/api/v1/auth/login`, not `/token`. |
 
 ---
 
-## 9. Test Targets
+## 6. Acceptance Criteria
 
-Required test classes:
+### Backend (curl / local test)
+1. `python -c "from backend.core.database import ..."` either raises ImportError (deleted) or returns shim with no SQLite (gutted)
+2. `alembic upgrade head` succeeds against Railway PostgreSQL
+3. `/health` returns `"database": "ok"` by checking PostgreSQL
+4. `/api/v1/auth/register` creates a user in PostgreSQL (using existing `User` model field names)
+5. `/api/v1/auth/login` returns JWT token
+6. `/api/v1/auth/me` returns user info with valid token
+7. All 7 previously-500 endpoints return non-500 (200 with empty data or appropriate response)
+8. `USE_MOCKS` env var, checking code, and mock fallback branches are **deleted** from codebase (grep returns zero results)
+9. Both `railway.toml` and `nixpacks.toml` run `alembic upgrade head` before `uvicorn`
 
-- template model validation tests
-- seeder idempotency tests
-- seeder source derivation from live registry (not sources.json) tests
-- template list/detail API tests
-- template filtering tests (by inquiry_class, by status)
-- investigation create with template_id tests
-- investigation create with invalid template_id rejection tests
-- template defaults application tests
-- committed_sources_json snapshot immutability tests
-- certificate metadata includes template_id + committed_sources tests
-- domain filter alignment tests (backend enum values round-trip correctly)
-- signal-origin prefill preserved through template selection tests
-- frontend domain filter selector alignment verification (build passes)
-
----
-
-## 10. Out of Scope
-
-- template CRUD (create/update/delete) — templates are seeded, not user-managed
-- new investigation templates beyond the existing four
-- new domain filters or source groups
-- investigation toolset redesign
-- visual redesign of the wizard
-- new OSINT source integrations
+### Frontend smoke check (post-deploy, browser)
+10. `/theatres` loads without 500/console errors
+11. `/investigations` loads without 500/console errors
+12. `/scenario-packs` loads without 500/console errors
+13. `/certificates` loads without 500/console errors
+14. `/verify` loads without 500/console errors
+15. Auth flow: register → login → `/me` returns user data → subsequent page loads maintain session
