@@ -522,8 +522,12 @@ async def get_theatre_certificate(
     db: AsyncSession = Depends(get_db),
 ):
     """Get certificate for a resolved theatre. Public endpoint."""
+    from sqlalchemy import or_
+
     result = await db.execute(
-        select(Theatre).where(Theatre.id == theatre_id)
+        select(Theatre).where(
+            or_(Theatre.id == theatre_id, Theatre.construct_id == theatre_id)
+        )
     )
     theatre = result.scalar_one_or_none()
     if theatre is None:
@@ -544,8 +548,12 @@ async def get_theatre_replay(
     db: AsyncSession = Depends(get_db),
 ):
     """Get RLMF export data for a resolved theatre. Public endpoint."""
+    from sqlalchemy import or_
+
     result = await db.execute(
-        select(Theatre).where(Theatre.id == theatre_id)
+        select(Theatre).where(
+            or_(Theatre.id == theatre_id, Theatre.construct_id == theatre_id)
+        )
     )
     theatre = result.scalar_one_or_none()
     if theatre is None:
@@ -788,10 +796,17 @@ async def resolve_gate(
 async def _get_user_theatre(
     db: AsyncSession, theatre_id: str, user_id: str
 ) -> Theatre:
-    """Load a theatre belonging to the given user, or raise 404."""
+    """Load a theatre belonging to the given user, or raise 404.
+
+    Looks up by primary key first, then falls back to construct_id.
+    This allows the frontend to navigate using either the UUID id or
+    the human-readable construct_id (e.g. timeline IDs like TL_*).
+    """
+    from sqlalchemy import or_
+
     result = await db.execute(
         select(Theatre).where(
-            Theatre.id == theatre_id,
+            or_(Theatre.id == theatre_id, Theatre.construct_id == theatre_id),
             Theatre.user_id == user_id,
         )
     )

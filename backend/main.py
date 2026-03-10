@@ -170,7 +170,7 @@ async def seed_core_data_on_startup():
 
     try:
         from sqlalchemy import select, func
-        from backend.database.models import User, Agent, Timeline, Paradox, WingFlap, UserPosition
+        from backend.database.models import User, Agent, Timeline, Paradox, WingFlap, UserPosition, Theatre
 
         async with async_session_maker() as session:
             counts = {}
@@ -192,8 +192,8 @@ async def seed_core_data_on_startup():
                 seed_paradoxes, seed_wing_flaps, seed_user_positions,
             )
 
-            # Clear all six tables (FK-safe order) then reseed from scratch
-            for model in [WingFlap, Paradox, UserPosition, Agent, Timeline, User]:
+            # Clear all tables (FK-safe order) then reseed from scratch
+            for model in [Theatre, WingFlap, Paradox, UserPosition, Agent, Timeline, User]:
                 await session.execute(model.__table__.delete())
             await session.commit()
 
@@ -268,6 +268,47 @@ async def seed_templates_on_startup():
         sync_engine.dispose()
     except Exception as e:
         print(f"⚠️ Template seeding failed: {e}")
+
+
+@app.on_event("startup")
+async def seed_theatres_on_startup():
+    """Seed theatre records (one per timeline) when SEED_ON_BOOT=true.
+
+    Depends on both core data (users, timelines) and theatre templates
+    being present, so runs after both seeders.  Idempotent — skips if
+    any theatre records already exist.
+    """
+    if os.getenv("SEED_ON_BOOT", "false").lower() != "true":
+        return
+
+    try:
+        from sqlalchemy import select, func
+        from backend.database.models import Theatre, Timeline, User
+
+        async with async_session_maker() as session:
+            result = await session.execute(select(func.count()).select_from(Theatre))
+            count = result.scalar()
+            if count and count > 0:
+                print(f"✅ Theatres already seeded ({count} records)")
+                return
+
+            # Load seeded timelines and users
+            tl_result = await session.execute(select(Timeline))
+            timelines = tl_result.scalars().all()
+            usr_result = await session.execute(select(User))
+            users = usr_result.scalars().all()
+
+            if not timelines or not users:
+                print("⚠️ Cannot seed theatres — timelines or users not yet seeded")
+                return
+
+            from backend.scripts.seed_database import seed_theatres
+            await seed_theatres(session, timelines, users)
+            await session.commit()
+    except Exception as e:
+        print(f"⚠️ Could not seed theatres: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 @app.on_event("startup")

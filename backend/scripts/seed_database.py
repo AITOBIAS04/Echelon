@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from backend.database.connection import async_session_maker, init_db
 from backend.database.models import (
-    User, Agent, Timeline, WingFlap, Paradox, UserPosition,
+    User, Agent, Timeline, WingFlap, Paradox, UserPosition, Theatre,
     AgentArchetype, WingFlapType, FlapDirection, ParadoxStatus, SeverityClass
 )
 
@@ -844,6 +844,64 @@ async def seed_user_positions(session, users: list, timelines: list) -> list:
     await session.flush()
     print(f"✅ Created {len(positions)} user positions")
     return positions
+
+
+async def seed_theatres(session, timelines: list, users: list) -> list:
+    """Create a theatre record for each seeded timeline.
+
+    Maps timelines to theatre templates by category so the marketplace
+    detail page can resolve timeline IDs via construct_id.
+    """
+    TIMELINE_TEMPLATE_MAP = {
+        # Geopolitical
+        "TL_GHOST_TANKER": "counterfactual_geopolitical_v1",
+        "TL_TEHRAN_BLACKOUT": "counterfactual_geopolitical_v1",
+        "TL_HORMUZ_CHOKEPOINT": "counterfactual_geopolitical_v1",
+        # Financial / Macro
+        "TL_FED_PIVOT": "counterfactual_financial_v1",
+        "TL_NVIDIA_EARNINGS": "counterfactual_financial_v1",
+        # Tech / AI
+        "TL_OPENAI_EXODUS": "counterfactual_tech_v1",
+        "TL_APPLE_AI_PIVOT": "counterfactual_tech_v1",
+        # Crypto
+        "TL_ETH_ETF": "counterfactual_crypto_v1",
+        "TL_TETHER_COLLAPSE": "counterfactual_crypto_v1",
+        # Science / Climate
+        "TL_ANTARCTIC_SHELF": "counterfactual_geopolitical_v1",
+    }
+
+    STATE_SPREAD = ["ACTIVE", "ACTIVE", "COMMITTED", "ACTIVE", "ACTIVE",
+                     "SETTLING", "ACTIVE", "ACTIVE", "ACTIVE", "DRAFT"]
+
+    owner = users[0]  # USR_001 / DeepStateTrader
+    theatres = []
+
+    for i, tl in enumerate(timelines):
+        template_id = TIMELINE_TEMPLATE_MAP.get(tl.id, "counterfactual_geopolitical_v1")
+        state = STATE_SPREAD[i % len(STATE_SPREAD)]
+        progress = {"DRAFT": 0, "COMMITTED": 0, "ACTIVE": 50 + i * 5,
+                     "SETTLING": 95, "RESOLVED": 100}.get(state, 0)
+
+        theatre = Theatre(
+            user_id=owner.id,
+            template_id=template_id,
+            state=state,
+            construct_id=tl.id,
+            inquiry_class="COUNTERFACTUAL",
+            progress=progress,
+            total_episodes=100,
+        )
+        # Set commitment fields for non-DRAFT theatres
+        if state != "DRAFT":
+            theatre.commitment_hash = f"0x{uuid.uuid4().hex[:64]}"
+            theatre.committed_at = datetime.utcnow() - timedelta(hours=24 - i)
+
+        session.add(theatre)
+        theatres.append(theatre)
+
+    await session.flush()
+    print(f"✅ Created {len(theatres)} theatres (linked to timelines via construct_id)")
+    return theatres
 
 
 async def main():
