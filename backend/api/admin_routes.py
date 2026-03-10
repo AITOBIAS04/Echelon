@@ -196,7 +196,7 @@ async def reseed_database(
     await session.execute(Timeline.__table__.delete())
     await session.execute(User.__table__.delete())
     await session.commit()
-    
+
     # Seed fresh data
     users = await seed_users(session)
     agents = await seed_agents(session, users)
@@ -204,9 +204,32 @@ async def reseed_database(
     paradoxes = await seed_paradoxes(session, timelines)
     wing_flaps = await seed_wing_flaps(session, timelines, agents)
     positions = await seed_user_positions(session, users, timelines)
-    
+
     await session.commit()
-    
+
+    # Also seed all template families (sync seeders — idempotent)
+    scenario_count = 0
+    investigation_count = 0
+    theatre_tpl_count = 0
+    try:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import Session as SyncSession
+        from backend.database.config import DatabaseConfig
+        sync_url = DatabaseConfig.SYNC_DATABASE_URL
+        sync_engine = create_engine(sync_url)
+        with SyncSession(sync_engine) as sync_session:
+            from backend.services.scenario_template_seeder import seed_templates
+            scenario_count = seed_templates(sync_session)
+        with SyncSession(sync_engine) as sync_session:
+            from backend.services.investigation_template_seeder import seed_investigation_templates
+            investigation_count = seed_investigation_templates(sync_session)
+        with SyncSession(sync_engine) as sync_session:
+            from backend.services.theatre_template_seeder import seed_theatre_templates
+            theatre_tpl_count = seed_theatre_templates(sync_session)
+        sync_engine.dispose()
+    except Exception as e:
+        logger.warning("Could not seed templates during reseed: %s", e)
+
     return {
         "success": True,
         "message": "Database reseeded",
@@ -217,6 +240,9 @@ async def reseed_database(
             "paradoxes": len(paradoxes),
             "wing_flaps": len(wing_flaps),
             "positions": len(positions),
+            "scenario_templates": scenario_count,
+            "investigation_templates": investigation_count,
+            "theatre_templates": theatre_tpl_count,
         },
     }
 

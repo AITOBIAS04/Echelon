@@ -16,6 +16,9 @@ import type {
   Certificate,
 } from '../types/verification';
 
+// Stable empty array reference for useSyncExternalStore (avoids infinite re-render)
+const EMPTY_CERTS: CertificateSummary[] = [];
+
 export function useCertificates(filters: CertFilters = {}) {
   const isDemo = isDemoModeEnabled();
 
@@ -26,7 +29,7 @@ export function useCertificates(filters: CertFilters = {}) {
   }, [isDemo]);
 
   const getSnapshot = useMemo(() => {
-    if (!isDemo) return () => [] as CertificateSummary[];
+    if (!isDemo) return () => EMPTY_CERTS;
     return () => demoStore.getCertificates() as unknown as CertificateSummary[];
   }, [isDemo]);
 

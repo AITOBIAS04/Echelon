@@ -154,26 +154,119 @@ async def shutdown_db():
 
 
 @app.on_event("startup")
-async def seed_investigation_templates_on_startup():
-    """Seed investigation templates if not already present (Cycle-022)."""
+async def seed_core_data_on_startup():
+    """Seed core operational data when SEED_ON_BOOT=true and operational tables are empty.
+
+    Gated behind an explicit env var so production-like environments never
+    silently boot with synthetic data.  Checks all operational tables — not
+    just users — so partially-initialised databases are also handled.
+    """
+    if os.getenv("SEED_ON_BOOT", "false").lower() != "true":
+        print("ℹ️  SEED_ON_BOOT not enabled — skipping core data seeding")
+        return
+
+    try:
+        from sqlalchemy import select, func
+        from backend.database.models import User, Agent, Timeline, Paradox, WingFlap, UserPosition
+
+        async with async_session_maker() as session:
+            counts = {}
+            for label, model in [
+                ("users", User), ("agents", Agent), ("timelines", Timeline),
+                ("paradoxes", Paradox), ("wing_flaps", WingFlap), ("positions", UserPosition),
+            ]:
+                result = await session.execute(select(func.count()).select_from(model))
+                counts[label] = result.scalar()
+
+            missing = [k for k, v in counts.items() if v == 0]
+            if not missing:
+                print(f"✅ Core data present — {counts}")
+                return
+
+            print(f"🌱 SEED_ON_BOOT: missing data in {missing} — seeding...")
+            from backend.scripts.seed_database import (
+                seed_users, seed_agents, seed_timelines,
+                seed_paradoxes, seed_wing_flaps, seed_user_positions,
+            )
+
+            # Clear any partial data so FKs don't collide
+            for model in [WingFlap, Paradox, UserPosition, Agent, Timeline, User]:
+                if counts.get(model.__tablename__, 0) > 0:
+                    continue
+                # Only seed, don't nuke existing rows
+
+            users = await seed_users(session) if counts["users"] == 0 else (await session.execute(select(User))).scalars().all()
+            agents = await seed_agents(session, users) if counts["agents"] == 0 else (await session.execute(select(Agent))).scalars().all()
+            timelines = await seed_timelines(session, users) if counts["timelines"] == 0 else (await session.execute(select(Timeline))).scalars().all()
+            if counts["paradoxes"] == 0:
+                paradoxes = await seed_paradoxes(session, timelines)
+            if counts["wing_flaps"] == 0:
+                wing_flaps = await seed_wing_flaps(session, timelines, agents)
+            if counts["positions"] == 0:
+                positions = await seed_user_positions(session, users, timelines)
+
+            await session.commit()
+            print("✅ Core data seeded (SEED_ON_BOOT)")
+    except Exception as e:
+        print(f"⚠️ Could not seed core data: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+@app.on_event("startup")
+async def seed_templates_on_startup():
+    """Seed all template families on startup (idempotent — skips existing rows).
+
+    These are reference/catalog data, not synthetic demo data, so they run
+    unconditionally without SEED_ON_BOOT.
+    """
     try:
         from sqlalchemy import create_engine
         from sqlalchemy.orm import Session as SyncSession
         from backend.database.config import DatabaseConfig
-        from backend.services.investigation_template_seeder import seed_investigation_templates
 
-        # Seeder uses sync Session, so create a temporary sync engine
         sync_url = DatabaseConfig.SYNC_DATABASE_URL
         sync_engine = create_engine(sync_url)
-        with SyncSession(sync_engine) as session:
-            count = seed_investigation_templates(session)
-            if count > 0:
-                print(f"✅ Seeded {count} investigation templates")
-            else:
-                print("✅ Investigation templates already seeded")
+
+        # 1. Investigation templates (Cycle-022)
+        try:
+            from backend.services.investigation_template_seeder import seed_investigation_templates
+            with SyncSession(sync_engine) as session:
+                count = seed_investigation_templates(session)
+                if count > 0:
+                    print(f"✅ Seeded {count} investigation templates")
+                else:
+                    print("✅ Investigation templates already seeded")
+        except Exception as e:
+            print(f"⚠️ Could not seed investigation templates: {e}")
+
+        # 2. Scenario pack templates (Cycle-018)
+        try:
+            from backend.services.scenario_template_seeder import seed_templates
+            with SyncSession(sync_engine) as session:
+                count = seed_templates(session)
+                if count > 0:
+                    print(f"✅ Seeded {count} scenario pack templates")
+                else:
+                    print("✅ Scenario pack templates already seeded")
+        except Exception as e:
+            print(f"⚠️ Could not seed scenario pack templates: {e}")
+
+        # 3. Theatre templates (Cycle-017 foundation)
+        try:
+            from backend.services.theatre_template_seeder import seed_theatre_templates
+            with SyncSession(sync_engine) as session:
+                count = seed_theatre_templates(session)
+                if count > 0:
+                    print(f"✅ Seeded {count} theatre templates")
+                else:
+                    print("✅ Theatre templates already seeded")
+        except Exception as e:
+            print(f"⚠️ Could not seed theatre templates: {e}")
+
         sync_engine.dispose()
     except Exception as e:
-        print(f"⚠️ Could not seed investigation templates: {e}")
+        print(f"⚠️ Template seeding failed: {e}")
 
 
 @app.on_event("startup")
