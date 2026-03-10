@@ -1,0 +1,11 @@
+{
+  "composite": 0.9375,
+  "per_criterion": {
+    "distribution_adjustment": 0.9375,
+    "grace_period_enforcement": 0.9375,
+    "ladder_balance_protection": 0.9375,
+    "ladder_redirection_arithmetic": 0.9375,
+    "reserve_fund_impact": 0.9375,
+    "state_transition_validity": 0.9375
+  }
+}

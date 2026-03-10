@@ -1,0 +1,36 @@
+{
+  "request": {
+    "episode_id": "PR-29",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "summary": "Replaced OrderBookPanel with new ImpactCostPanel showing CFPM/LMSR market engine data, renamed DEPTH CHART tab to IMPACT CURVE, upgraded tab styling with elevation and badges, fixed overlay z-indices, and replaced inline styles with design system tokens.",
+      "key_claims": [
+        "Added new ImpactCostPanel.tsx component with CFPM/LMSR market engine functionality",
+        "Removed OrderBookPanel and useOrderBook hook dependency",
+        "Renamed 'DEPTH CHART' tab label to 'IMPACT CURVE' in CHART_MODE_LABELS",
+        "Updated tab styling with elevation-1 active state and CFPM badge display",
+        "Fixed overlay z-indices: backdrops to z-[300], panels to z-[310] with shadow-elevation-3",
+        "Replaced inline styles with design system tokens (section-header, section-title-accented, max-h-[400px])",
+        "Added liquidity parameters display including depth (b=142.5) and max loss bound calculation",
+        "Implemented LMSR cost function calculator and impact ladder with +1/5/10/25% scenarios",
+        "Added instant probability display with current price conversion",
+        "Included market information footer with volume and subsidy pool data"
+      ],
+      "follow_up_question": "What is the exact value of the LIQUIDITY_B constant defined in the new ImpactCostPanel component?",
+      "follow_up_response": "Based on the diff content, the exact value of the `LIQUIDITY_B` constant defined in the new `ImpactCostPanel` component is `142.5`.\n\nThis is defined on line 17 of the new file:\n```typescript\nconst LIQUIDITY_B = 142.5;\n```",
+      "episode_id": "PR-29",
+      "metadata": {
+        "model": "claude-sonnet-4-20250514",
+        "latency_ms": 25560
+      }
+    },
+    "scores": {
+      "precision": 1.0,
+      "recall": 0.7,
+      "reply_accuracy": 1.0
+    },
+    "composite": 0.88
+  }
+}

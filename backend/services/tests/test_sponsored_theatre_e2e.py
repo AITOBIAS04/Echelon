@@ -60,7 +60,7 @@ from backend.services.theatre_evidence import EvidenceSnapshot, TheatreEvidenceC
 from backend.services.theatre_resolution import TheatreResolutionEngine
 from backend.services.theatre_status import build_theatre_status
 
-from theatre.engine.canonical_json import canonical_json
+from backend.utils.canonical_json import canonical_json
 
 
 # ===================================================================

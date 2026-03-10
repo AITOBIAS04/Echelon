@@ -1,0 +1,10 @@
+{
+  "composite": 0.9333333333333333,
+  "per_criterion": {
+    "cap_table_consistency": 0.9333333333333333,
+    "ledger_reconciliation": 0.9333333333333333,
+    "noi_pool_conservation": 0.9333333333333333,
+    "rounding_policy_compliance": 0.9333333333333333,
+    "waterfall_arithmetic": 0.9333333333333333
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "schema_version": "2.0.1",
+  "template_family": "PRODUCT",
+  "execution_path": "replay",
+  "theatre_id": "product_replay_engine_v1",
+  "display_name": "CONSTRUCT_CALIBRATION_V1 \u2014 Semantic Accuracy Calibration",
+  "description": "Deterministic replay theatre for construct output calibration. Scores precision, recall, and reply accuracy of construct-generated PR summaries against pre-annotated ground truth.",
+  "criteria": {
+    "criteria_ids": [
+      "precision",
+      "recall",
+      "reply_accuracy"
+    ],
+    "criteria_human": "Precision: fraction of oracle claims supported by PR diff. Recall: fraction of important changes surfaced. Reply Accuracy: factual grounding of follow-up responses.",
+    "weights": {
+      "precision": 0.4,
+      "recall": 0.4,
+      "reply_accuracy": 0.2
+    }
+  },
+  "version_pins": {
+    "constructs": {
+      "community_oracle_v1": "8714daab947dd3b94391265046ee110cd2751461e06e70721a1184357538604f"
+    },
+    "scorer_version": "construct-calibration-v1.0"
+  },
+  "dataset_hashes": {
+    "community_oracle_v1_fixtures.json": "c3a95cf1063f95180f13bd7aa477878337a0390d4bda61b492ad99d985e25b8b"
+  },
+  "product_theatre_config": {
+    "construct_under_test": "community_oracle_v1",
+    "adapter_type": "local",
+    "adapter_endpoint": "python:theatre.scoring.deterministic_oracle",
+    "replay_data_path": "theatre/fixtures/construct_calibration/datasets/community_oracle_v1_fixtures.json",
+    "ground_truth_source": "DETERMINISTIC_COMPUTATION"
+  },
+  "fork_definitions": [
+    {
+      "fork_id": "f_01",
+      "options": [
+        {
+          "option_id": "pass",
+          "label": "Pass"
+        },
+        {
+          "option_id": "fail",
+          "label": "Fail"
+        }
+      ],
+      "deadline_ms": 0
+    }
+  ],
+  "resolution_programme": [
+    {
+      "step_id": "ingest",
+      "type": "deterministic_computation"
+    },
+    {
+      "step_id": "invoke_oracle",
+      "type": "deterministic_computation"
+    },
+    {
+      "step_id": "score",
+      "type": "deterministic_computation"
+    },
+    {
+      "step_id": "certify",
+      "type": "aggregation"
+    }
+  ],
+  "scoring": {}
+}

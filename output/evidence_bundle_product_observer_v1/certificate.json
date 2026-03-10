@@ -1,0 +1,43 @@
+{
+  "certificate_id": "402f03b0-7852-48e2-8881-f82ea5bc005a",
+  "theatre_id": "product_replay_engine_v1",
+  "template_id": "product_observer_v1",
+  "construct_id": "community_oracle_v1",
+  "criteria": {
+    "criteria_ids": [
+      "precision",
+      "recall",
+      "reply_accuracy"
+    ],
+    "criteria_human": "Precision: fraction of oracle claims supported by the PR diff. Recall: fraction of important changes surfaced in the summary. Reply Accuracy: factual grounding of follow-up question responses.",
+    "weights": {
+      "precision": 0.4,
+      "recall": 0.4,
+      "reply_accuracy": 0.2
+    }
+  },
+  "scores": {
+    "precision": 0.8,
+    "recall": 0.55,
+    "reply_accuracy": 0.8
+  },
+  "composite_score": 0.7000000000000002,
+  "precision": 0.8,
+  "recall": 0.55,
+  "reply_accuracy": 0.8,
+  "replay_count": 10,
+  "evidence_bundle_hash": "b50cb63cfdc92def25124000d04c1b76bd7e5c5411568660f6fd5696c89ec47c",
+  "ground_truth_hash": "90979b7bf59f72fed10245bf24602a7008c99e0c6221fe505f488ef632b1b08a",
+  "construct_version": "0000000",
+  "scorer_version": "anthropic-claude-sonnet-4-20250514",
+  "methodology_version": "1.0.0",
+  "dataset_hash": "90979b7bf59f72fed10245bf24602a7008c99e0c6221fe505f488ef632b1b08a",
+  "verification_tier": "UNVERIFIED",
+  "commitment_hash": "57dcd06ce1bfc24307898c05a02169d0df7d37bcc6cf84c9eef249e9cf62a9fc",
+  "issued_at": "2026-02-20T23:28:24.657527",
+  "expires_at": "2099-12-31T23:59:59",
+  "theatre_committed_at": "2026-02-20T23:05:44.435416",
+  "theatre_resolved_at": "2026-02-20T23:28:24.657398",
+  "ground_truth_source": "GITHUB_API",
+  "execution_path": "replay"
+}

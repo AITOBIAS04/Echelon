@@ -299,8 +299,7 @@
           "tasks": 13
         }
       ]
-    }
-    ,
+    },
     {
       "cycle_id": "cycle-012",
       "label": "Sponsored Theatre End-to-End",
@@ -407,8 +406,7 @@
           "tasks": 8
         }
       ]
-    }
-    ,
+    },
     {
       "cycle_id": "cycle-015",
       "label": "WorldMonitor Live Deployment + First Non-WM Collector",
@@ -579,13 +577,14 @@
           "tasks": 5
         }
       ]
-    }
-    ,
+    },
     {
       "cycle_id": "cycle-018",
       "label": "Scenario Packs Engine",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-07T00:00:00Z",
+      "archived": "2026-03-07T12:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-07-scenario-packs-engine",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -633,11 +632,232 @@
           "tasks": 5
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-019",
+      "label": "Agent Deployment + Investigation Persistence + Paradox Risk",
+      "status": "archived",
+      "created_at": "2026-03-07T12:00:00Z",
+      "archived": "2026-03-07T13:30:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-07-agent-deployment-investigation-paradox-risk",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 54,
+          "label": "Schema Foundation + Migration",
+          "status": "completed",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 55,
+          "label": "Agent Deployment Service + API",
+          "status": "completed",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 56,
+          "label": "Investigation Persistence",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 57,
+          "label": "Paradox Risk Service",
+          "status": "completed",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-4",
+          "global_id": 58,
+          "label": "Certificate Persistence + Deployment Lifecycle",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-5",
+          "global_id": 59,
+          "label": "WebSocket Events + Integration + E2E",
+          "status": "completed",
+          "tasks": 5
+        }
+      ]
+    },
+    {
+      "cycle_id": "cycle-020",
+      "label": "Scenario Pack Evaluator v2 + Paradox Risk Orchestration",
+      "status": "archived",
+      "created_at": "2026-03-07T14:00:00Z",
+      "archived": "2026-03-07T18:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-07-scenario-pack-evaluator-v2-paradox-risk-orchestration",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 60,
+          "label": "Runtime Contract Tightening",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 61,
+          "label": "Schema-Driven Checkpoint Evaluation",
+          "status": "completed",
+          "tasks": 7
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 62,
+          "label": "Environment RNG + Mode Semantics",
+          "status": "completed",
+          "tasks": 6
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 63,
+          "label": "Derived Theatre Rules + Run Integrity",
+          "status": "completed",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-4",
+          "global_id": 64,
+          "label": "Paradox Risk Orchestration",
+          "status": "completed",
+          "tasks": 6
+        },
+        {
+          "local_id": "sprint-5",
+          "global_id": 65,
+          "label": "WebSocket Emission + Integration + E2E",
+          "status": "completed",
+          "tasks": 7
+        }
+      ]
+    },
+    {
+      "cycle_id": "cycle-021",
+      "label": "Investigation Certificate Lifecycle + Domain Filter Enforcement",
+      "status": "archived",
+      "created_at": "2026-03-07T18:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 66,
+          "label": "Foundation — Migration + Domain Filter Enforcement",
+          "status": "completed",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 67,
+          "label": "Automated Stop Condition Evaluation",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 68,
+          "label": "Certificate Lifecycle + Batch Anchor",
+          "status": "completed",
+          "tasks": 5
+        }
+      ],
+      "archived": "2026-03-08T23:03:09Z",
+      "archive_path": "grimoires/loa/archive/2026-03-08-certificate-lifecycle-domain-filter"
+    },
+    {
+      "cycle_id": "cycle-022",
+      "label": "Investigation Template Infrastructure",
+      "status": "archived",
+      "created_at": "2026-03-08T23:05:28Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 69,
+          "label": "Schema + Migration + Contract Freeze",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 70,
+          "label": "Seeder + API Endpoints",
+          "status": "completed",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 71,
+          "label": "Investigation Create Integration + Certificate Provenance",
+          "status": "completed",
+          "tasks": 7,
+          "audited_at": "2026-03-08T23:45:00Z"
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 72,
+          "label": "Frontend Wire-Up + Alignment",
+          "status": "completed",
+          "tasks": 5,
+          "audited_at": "2026-03-09T00:00:00Z"
+        }
+      ],
+      "archived": "2026-03-10T09:40:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-10-investigation-template-infrastructure"
+    },
+    {
+      "cycle_id": "cycle-023",
+      "label": "Production Database Unification + Railway Hardening",
+      "status": "archived",
+      "created_at": "2026-03-10T10:00:00Z",
+      "archived": "2026-03-10T13:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-10-production-database-unification",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 73,
+          "label": "Grep Sweep + User Model Migration",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 74,
+          "label": "Coordinated Startup-Path Replacement",
+          "status": "completed",
+          "tasks": 8
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 75,
+          "label": "Auth Routes + Railway Config + Validation",
+          "status": "completed",
+          "tasks": 5
+        }
+      ]
     }
   ],
-  "active_cycle": "cycle-018",
+  "active_cycle": null,
   "active_bugfix": null,
-  "global_sprint_counter": 53,
+  "global_sprint_counter": 75,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

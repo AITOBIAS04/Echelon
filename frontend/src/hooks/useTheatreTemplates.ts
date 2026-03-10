@@ -24,6 +24,7 @@ export function useTheatreTemplates() {
     isLoading: query.isLoading,
     error: query.error,
     isEmpty: !query.isLoading && (query.data?.templates?.length ?? 0) === 0,
+    refetch: query.refetch,
   };
 }
 

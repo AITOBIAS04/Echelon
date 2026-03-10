@@ -1,0 +1,77 @@
+{
+  "accrual_schedule": {
+    "billing_cycles_in_scope": 3,
+    "billing_frequency": "monthly",
+    "first_due_date": "2026-03-01",
+    "rent_amount": 1500.0,
+    "total_rent_due": 4500.0
+  },
+  "arrears_policy": {
+    "arrears_threshold": 1500.0,
+    "grace_period_days": 5
+  },
+  "current_date": "2026-05-06",
+  "lease_state": {
+    "accrued_ladder_balance": 1500.0,
+    "currency": "GBP",
+    "deposit_amount": 2500.0,
+    "ladder_contribution": 150.0,
+    "ladder_plan_active": true,
+    "lease_id": "lease_008",
+    "payment_due_date": "2026-03-01",
+    "rent_amount": 1500.0,
+    "tenant_id": "tenant_008"
+  },
+  "payment_events": [
+    {
+      "amount": 1500.0,
+      "currency": "GBP",
+      "note": "April rent only, missed plan instalment 1",
+      "payment_id": "pay_arr_008a",
+      "received_at": "2026-04-01T10:00:00Z",
+      "settlement_reference": "BANKREF-arr_008a"
+    },
+    {
+      "amount": 1500.0,
+      "currency": "GBP",
+      "note": "May rent only, missed plan instalment 2",
+      "payment_id": "pay_arr_008b",
+      "received_at": "2026-05-01T10:00:00Z",
+      "settlement_reference": "BANKREF-arr_008b"
+    }
+  ],
+  "payment_plan": {
+    "agreed_at": "2026-03-15T14:00:00Z",
+    "breach_threshold_missed_instalments": 2,
+    "instalments": [
+      {
+        "amount": 250.0,
+        "due_date": "2026-04-01",
+        "instalment_id": 1,
+        "paid": false
+      },
+      {
+        "amount": 250.0,
+        "due_date": "2026-05-01",
+        "instalment_id": 2,
+        "paid": false
+      },
+      {
+        "amount": 250.0,
+        "due_date": "2026-06-01",
+        "instalment_id": 3,
+        "paid": false
+      },
+      {
+        "amount": 250.0,
+        "due_date": "2026-07-01",
+        "instalment_id": 4,
+        "paid": false
+      }
+    ],
+    "plan_id": "plan_008",
+    "total_arrears": 1000.0
+  },
+  "prior_outstanding": 1000.0,
+  "prior_state": "PAYMENT_PLAN"
+}

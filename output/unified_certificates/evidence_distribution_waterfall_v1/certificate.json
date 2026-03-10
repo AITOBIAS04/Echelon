@@ -1,0 +1,65 @@
+{
+  "all_criteria_passed": true,
+  "certificate_id": "742a1baa-3f73-42c2-9a6a-3d3b67ce9b25",
+  "certificate_version": "1.0.0",
+  "commitment_hash": "910e99e75528b5db373b490b62fa8fba4776bec62bf1be8897890d5e38cdb6a6",
+  "composite_score": 0.9333333333333333,
+  "corroboration_met": false,
+  "counter_signals_checked": 0,
+  "counter_signals_found": 0,
+  "criterion_scores": [
+    {
+      "criterion_id": "waterfall_arithmetic",
+      "detail": "waterfall_arithmetic: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "noi_pool_conservation",
+      "detail": "noi_pool_conservation: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "rounding_policy_compliance",
+      "detail": "rounding_policy_compliance: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "cap_table_consistency",
+      "detail": "cap_table_consistency: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    },
+    {
+      "criterion_id": "ledger_reconciliation",
+      "detail": "ledger_reconciliation: 0.9333 across 15 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9333333333333333
+    }
+  ],
+  "distinct_upstream_count": 0,
+  "evidence_bundle_hash": "eb265898357e138e9ac866c71741b5d2727736472e38b2b7eb19547c7e49a24b",
+  "execution_path": "replay",
+  "inquiry_class": "INSPECTION",
+  "issued_at": "2026-03-01T20:33:48.834302Z",
+  "oracle_id": "replay_distribution_waterfall_v1",
+  "pipeline_version": "0.7.0",
+  "sources_failed": 0,
+  "sources_queried": 15,
+  "sources_succeeded": 15,
+  "target_entity": {
+    "construct_id": "two_rail_marketplace_core",
+    "dataset_id": "waterfall_v0_2_16",
+    "record_count": 15,
+    "template_id": "distribution_waterfall_v1"
+  },
+  "theatre_id": "distribution_waterfall_v1",
+  "verification_tier": "UNVERIFIED"
+}

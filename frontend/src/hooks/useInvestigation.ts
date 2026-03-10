@@ -15,6 +15,12 @@ import {
   fetchDrift,
   fetchCertificate,
   createInvestigation,
+  submitEvidence,
+  submitClaim,
+  submitCounterSignal,
+  submitDrift,
+  fetchReadiness,
+  buildCertificate,
 } from '../api/investigation';
 import type {
   InvestigationSummary,
@@ -23,7 +29,11 @@ import type {
   ClaimGraphSummary,
   CounterSignal,
   DriftEvent,
-  InvestigationCertificate,
+  CertificateRecordResponse,
+  EvidenceSubmitRequest,
+  ClaimCreateRequest,
+  CounterSignalCreateRequest,
+  DriftCreateRequest,
 } from '../types/investigation';
 
 // ── List ─────────────────────────────────────────────────────────────────
@@ -143,7 +153,7 @@ export function useCertificate(investigationId: string | null) {
   });
 
   return {
-    certificate: (query.data ?? null) as InvestigationCertificate | null,
+    certificate: (query.data ?? null) as CertificateRecordResponse | null,
     isLoading: query.isLoading,
     error: query.error,
   };
@@ -158,6 +168,101 @@ export function useCreateInvestigation() {
     mutationFn: createInvestigation,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['investigations'] });
+    },
+  });
+}
+
+// ── Submit Evidence ─────────────────────────────────────────────────────
+
+export function useSubmitEvidence(investigationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: EvidenceSubmitRequest) => submitEvidence(investigationId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investigation', investigationId] });
+      queryClient.invalidateQueries({ queryKey: ['investigation', investigationId, 'evidence'] });
+    },
+  });
+}
+
+// ── Submit Claim ────────────────────────────────────────────────────────
+
+export function useSubmitClaim(investigationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: ClaimCreateRequest) => submitClaim(investigationId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investigation', investigationId] });
+      queryClient.invalidateQueries({ queryKey: ['investigation', investigationId, 'claims'] });
+    },
+  });
+}
+
+// ── Submit Counter-Signal ───────────────────────────────────────────────
+
+export function useSubmitCounterSignal(investigationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: CounterSignalCreateRequest) => submitCounterSignal(investigationId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investigation', investigationId] });
+      queryClient.invalidateQueries({
+        queryKey: ['investigation', investigationId, 'counter-signals'],
+      });
+    },
+  });
+}
+
+// ── Submit Drift ────────────────────────────────────────────────────────
+
+export function useSubmitDrift(investigationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: DriftCreateRequest) => submitDrift(investigationId, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investigation', investigationId] });
+      queryClient.invalidateQueries({ queryKey: ['investigation', investigationId, 'drift'] });
+    },
+  });
+}
+
+// ── Readiness ───────────────────────────────────────────────────────────
+
+export function useReadiness(investigationId: string | null) {
+  const query = useQuery({
+    queryKey: ['investigation', investigationId, 'readiness'],
+    queryFn: () => fetchReadiness(investigationId!),
+    enabled: !!investigationId,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+  });
+
+  return {
+    readiness: query.data ?? null,
+    isLoading: query.isLoading,
+    error: query.error,
+  };
+}
+
+// ── Build Certificate ───────────────────────────────────────────────────
+
+export function useBuildCertificate(investigationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => buildCertificate(investigationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['investigation', investigationId] });
+      queryClient.invalidateQueries({
+        queryKey: ['investigation', investigationId, 'readiness'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['investigation', investigationId, 'certificate'],
+      });
     },
   });
 }

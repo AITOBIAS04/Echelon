@@ -16,7 +16,7 @@ from backend.database.models import (
     Timeline, Agent, WingFlap,
     WingFlapType, FlapDirection,
 )
-from backend.database.connection import get_async_session
+from backend.database.connection import get_db as get_async_session
 
 logger = logging.getLogger(__name__)
 

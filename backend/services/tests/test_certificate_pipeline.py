@@ -32,7 +32,7 @@ from backend.services.certificate_pipeline import (
 )
 from backend.services.theatre_resolution import TheatreResolutionResult
 
-from theatre.engine.canonical_json import canonical_json
+from backend.utils.canonical_json import canonical_json
 
 
 # ===================================================================

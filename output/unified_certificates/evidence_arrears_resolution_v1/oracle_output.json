@@ -1,0 +1,67 @@
+{
+  "bundle_hash": "",
+  "collection": {
+    "bundles": [],
+    "gaps": [],
+    "query_window_end": null,
+    "query_window_start": null,
+    "theatre_id": "product_replay_engine_v1",
+    "total_sources_attempted": 16,
+    "total_sources_failed": 0,
+    "total_sources_succeeded": 16
+  },
+  "composite_score": 0.9375,
+  "corroboration_results": [],
+  "counter_signal_results": [],
+  "counter_signals_checked": 0,
+  "counter_signals_found": 0,
+  "coverage_percentage": 0.0,
+  "criterion_scores": [
+    {
+      "criterion_id": "state_transition_validity",
+      "detail": "state_transition_validity: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    },
+    {
+      "criterion_id": "ladder_redirection_arithmetic",
+      "detail": "ladder_redirection_arithmetic: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    },
+    {
+      "criterion_id": "reserve_fund_impact",
+      "detail": "reserve_fund_impact: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    },
+    {
+      "criterion_id": "distribution_adjustment",
+      "detail": "distribution_adjustment: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    },
+    {
+      "criterion_id": "grace_period_enforcement",
+      "detail": "grace_period_enforcement: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    },
+    {
+      "criterion_id": "ladder_balance_protection",
+      "detail": "ladder_balance_protection: 0.9375 across 16 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9375
+    }
+  ],
+  "evaluated_at": "2026-01-01T00:00:00Z",
+  "gap_report": [],
+  "oracle_id": "replay_arrears_resolution_v1",
+  "theatre_id": "product_replay_engine_v1"
+}

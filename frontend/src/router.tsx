@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate, useParams } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 
 /** Redirect that preserves :agentId param from old /agent/:agentId to /fleet/:agentId */
@@ -7,13 +7,28 @@ function AgentRedirect() {
   const { agentId } = useParams();
   return <Navigate to={`/fleet/${agentId}`} replace />;
 }
+function LaunchpadRedirect() {
+  return <Navigate to="/scenario-packs" replace />;
+}
+
+function LaunchpadNewRedirect() {
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get('mode');
+
+  if (mode === 'theatre') {
+    return <Navigate to="/theatres/create" replace />;
+  }
+
+  if (mode === 'incident' || mode === 'osint') {
+    return <Navigate to="/investigation/create" replace />;
+  }
+
+  return <Navigate to="/theatres/create" replace />;
+}
 import { PortfolioPage } from './pages/PortfolioPage';
 import { TimelineDetailPage } from './pages/TimelineDetailPage';
 import { MarketplacePage } from './pages/MarketplacePage';
 import { BlackboxPage } from './pages/BlackboxPage';
-import { LaunchpadPage } from './pages/LaunchpadPage';
-import { LaunchpadDetailPage } from './pages/LaunchpadDetailPage';
-import { LaunchpadNewPage } from './pages/LaunchpadNewPage';
 import { AgentRoster } from './components/agents/AgentRoster';
 import { AgentDetail } from './components/agents/AgentDetail';
 import { ErrorBoundary } from './components/system/ErrorBoundary';
@@ -30,10 +45,12 @@ import { ConvergencePage } from './pages/ConvergencePage';
 
 // ── New pages (Cycle 017 integration) ─────────────────────────────────
 import { WorldMonitorPage } from './pages/WorldMonitorPage';
+import { WorldMonitorLivePage } from './pages/WorldMonitorLivePage';
 import { SignalMapPage } from './pages/SignalMapPage';
 import { CertificatesPage } from './pages/CertificatesPage';
 import { CreateTheatrePage } from './pages/CreateTheatrePage';
 import { ScenarioPacksPage } from './pages/ScenarioPacksPage';
+import { ScenarioPackDetailPage } from './pages/ScenarioPackDetailPage';
 
 const VerifyPage = lazy(() =>
   import('./pages/VerifyPage').then((m) => ({ default: m.VerifyPage }))
@@ -142,6 +159,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'world-monitor/live',
+        element: (
+          <ErrorBoundary>
+            <WorldMonitorLivePage />
+          </ErrorBoundary>
+        ),
+      },
+      {
         path: 'signal-map',
         element: (
           <ErrorBoundary>
@@ -162,6 +187,14 @@ export const router = createBrowserRouter([
         element: (
           <ErrorBoundary>
             <ScenarioPacksPage />
+          </ErrorBoundary>
+        ),
+      },
+      {
+        path: 'scenario-packs/:templateId',
+        element: (
+          <ErrorBoundary>
+            <ScenarioPackDetailPage />
           </ErrorBoundary>
         ),
       },
@@ -271,15 +304,15 @@ export const router = createBrowserRouter([
       },
       {
         path: 'launchpad',
-        element: <LaunchpadPage />,
+        element: <LaunchpadRedirect />,
       },
       {
         path: 'launchpad/:id',
-        element: <LaunchpadDetailPage />,
+        element: <LaunchpadRedirect />,
       },
       {
         path: 'launchpad/new',
-        element: <LaunchpadNewPage />,
+        element: <LaunchpadNewRedirect />,
       },
     ],
   },

@@ -203,6 +203,8 @@ export interface InvestigationSummary {
   theatre_id: string;
   construct_id: string;
   inquiry_class: string;
+  template_id?: string | null;
+  template_name?: string | null;
   status: string;
   evidence_count: number;
   claim_count: number;
@@ -232,9 +234,13 @@ export interface InvestigationDetail {
   theatre_id: string;
   construct_id: string;
   inquiry_class: string;
+  template_id?: string | null;
+  template_name?: string | null;
   status: string;
   stop_condition: string;
   stop_config: Record<string, unknown>;
+  domain_filters?: string[];
+  committed_sources?: string[];
   created_at: string;
   updated_at: string;
   evidence: EvidenceEnvelopeManifest;
@@ -242,4 +248,97 @@ export interface InvestigationDetail {
   counter_signals: CounterSignalFeedResponse;
   drift: DriftFeedResponse;
   has_legal_review_requirement?: boolean;
+}
+
+// ============================================
+// SUBMISSION REQUEST TYPES
+// ============================================
+
+export interface EvidenceSubmitRequest {
+  content_base64: string;
+  provenance_class: ProvenanceClass;
+  content_type?: string;
+  source_description?: string;
+  source_id?: string;
+  receipt_body?: string;
+  references?: string[];
+}
+
+export interface ClaimCreateRequest {
+  claim_text: string;
+  claim_type: ClaimType;
+  evidence_refs?: string[];
+}
+
+export interface CounterSignalCreateRequest {
+  signal_class: string;
+  material?: boolean;
+  resolution_impact?: string;
+  detection_method?: string;
+  evidence_ref?: string;
+}
+
+export type DriftType =
+  | 'entity_restructure'
+  | 'contract_amendment'
+  | 'market_rule_change'
+  | 'regulatory_status_change'
+  | 'jurisdiction_change';
+
+export type ImpactAssessment = 'non_material' | 'material';
+
+export interface DriftCreateRequest {
+  drift_type: DriftType;
+  original_value?: string;
+  new_value?: string;
+  impact_assessment?: ImpactAssessment;
+  evidence_ref?: string;
+}
+
+// ============================================
+// READINESS RESPONSE
+// ============================================
+
+export type CertificateLifecycleStatus = 'READY' | 'ANCHORED' | 'ISSUED';
+
+export interface ReadinessResponse {
+  investigation_id: string;
+  status: string;
+  stop_condition: string;
+  stop_condition_status: string | null;
+  stop_condition_reason: string | null;
+  stop_condition_evaluated_at: string | null;
+  has_certificate: boolean;
+  certificate_status: CertificateLifecycleStatus | null;
+}
+
+// ============================================
+// CERTIFICATE RECORD (lifecycle states)
+// ============================================
+
+export interface CertificateRecordResponse {
+  certificate_id: string;
+  investigation_id: string;
+  certificate_status: CertificateLifecycleStatus;
+  certificate_hash: string;
+  routing_decision: RoutingDecision;
+  routing_reason: string;
+  ready_at: string | null;
+  anchored_at: string | null;
+  issued_at: string | null;
+  batch_anchor_hash: string | null;
+  certificate_json: Record<string, unknown>;
+}
+
+export interface CertificateBuildResponse {
+  certificate_id: string;
+  certificate_status: CertificateLifecycleStatus;
+  certificate_hash: string;
+  ready_at: string;
+  routing_decision: RoutingDecision;
+}
+
+export interface AnchorBatchResponse {
+  issued_count: number;
+  issued_certificate_ids: string[];
 }

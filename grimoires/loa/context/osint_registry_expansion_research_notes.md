@@ -4,10 +4,19 @@
 **Date:** 3 March 2026
 **Sources:** Gemini research output (pre-build, ~Feb 2026), Strategic Architecture PDF (v1), Opus review (2 March 2026), Spatial Intelligence source analysis (3 March 2026)
 **Current registry:** v0.4.0 (57 sources, 7 jurisdictions) — shipped Cycle-005
+**Live intake queue:** `grimoires/loa/context/worldmonitor_echelon_integration_log.md`
 
 ---
 
 ## Context
+
+WorldMonitor now ships layers independently of Echelon's cycle cadence. To prevent silent drift between WorldMonitor capabilities and Echelon's OSINT registry/collector surfaces, use `worldmonitor_echelon_integration_log.md` as the lightweight operating log:
+
+- log notable WorldMonitor additions immediately
+- map them to source groups/domain filters immediately
+- integrate them in batch during registry-expansion or collector cycles
+
+This note remains the deeper research/reference layer. The integration log is the operational queue.
 
 Gemini conducted source research before any build cycles were implemented. The PDF ("Strategic Architecture of OSINT Data Signals for Deterministic Financial Auditing") was produced from this research. Both documents use correct Composed Oracle field names but contain one known error:
 

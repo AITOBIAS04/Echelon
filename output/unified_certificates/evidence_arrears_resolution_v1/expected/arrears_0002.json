@@ -1,0 +1,36 @@
+{
+  "accrued_ladder_balance": 750.0,
+  "criteria_verdicts": {
+    "distribution_adjustment": true,
+    "grace_period_enforcement": true,
+    "ladder_balance_protection": true,
+    "ladder_redirection_arithmetic": true,
+    "reserve_fund_impact": true,
+    "state_transition_validity": true
+  },
+  "distribution_adjustment": "none",
+  "final_state": "CURRENT",
+  "ladder_action": "normal_equity_purchase",
+  "ladder_balance_protected": true,
+  "ladder_equity_purchased": 150.0,
+  "outstanding_balance": 0.0,
+  "reserve_fund_impact": {
+    "drawdown_amount": 0.0,
+    "minimum_coverage_breached": false,
+    "reserve_after_drawdown": null
+  },
+  "state_transitions": [
+    {
+      "from": "CURRENT",
+      "timestamp": "2026-03-01T00:00:01Z",
+      "to": "GRACE_PERIOD",
+      "trigger": "payment_due_date_passed"
+    },
+    {
+      "from": "GRACE_PERIOD",
+      "timestamp": "2026-03-04T14:22:00Z",
+      "to": "CURRENT",
+      "trigger": "full_payment_received"
+    }
+  ]
+}

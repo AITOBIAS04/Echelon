@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Analytics</title>
+<!--
+  ═══════════════════════════════════════════════════════════
+  MOCK DATA ANNOTATIONS — for engineering team, not UI
+  ═══════════════════════════════════════════════════════════
+  Data sources pending endpoint confirmation:
+  - Portfolio timeseries (GET /api/v1/analytics/portfolio?range=30d)
+  - Platform activity (GET /api/v1/analytics/platform?range=30d)
+  - Breakdowns by domain/type/archetype (GET /api/v1/analytics/breakdowns)
+  - Risk trend data (GET /api/v1/analytics/risk-trend)
+
+  PAGE STATE MACHINE (3 mutually exclusive states):
+  normal       → healthy metrics, positive trends
+  risk         → elevated paradox/stale counts, declining health
+  sparse       → limited data (<7d), intentional early-state feel
+
+  TAB SYSTEM:
+  Portfolio → equity curve hero, position outcomes, domain perf
+  Platform  → activity trends, resolution velocity, paradox/health
+
+  CHART BUDGET: max 4-6 charts per tab
+  ═══════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══ MAIN ═══ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-5)}
+.page-header-left{display:flex;flex-direction:column;gap:2px}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:2px}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700}
+.page-header-right{display:flex;align-items:center;gap:var(--space-2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-ghost:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.btn-sm{height:28px;padding:0 var(--space-3);font-size:11px;border-radius:var(--radius-sm)}
+.filter-select{height:36px;padding:0 28px 0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 3.75l2.5 2.5 2.5-2.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+
+/* ═══ TAB CONTROL ═══ */
+.tab-bar{display:flex;align-items:center;gap:0;margin-bottom:var(--space-4);border-bottom:1px solid var(--border-primary)}
+.tab-btn{height:40px;padding:0 var(--space-5);border:none;background:transparent;font-family:var(--font-sans);font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;position:relative;white-space:nowrap}
+.tab-btn:hover{color:var(--text-primary)}
+.tab-btn.active{color:var(--purple-700)}
+.tab-btn.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--purple-500);border-radius:1px 1px 0 0}
+
+/* ═══ KPI STRIP ═══ */
+.an-summary{display:flex;gap:var(--space-3);margin-bottom:var(--space-4)}
+.an-kpi{flex:1;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:2px}
+.an-kpi-top{display:flex;align-items:center;justify-content:space-between}
+.an-kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);line-height:16px}
+.an-kpi-window{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-disabled);background:var(--bg-sunken);padding:1px 5px;border-radius:3px;border:1px solid var(--border-secondary)}
+.an-kpi-row{display:flex;align-items:baseline;gap:var(--space-2)}
+.an-kpi-value{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:32px;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.an-kpi-value.success{color:var(--green-600)}.an-kpi-value.danger{color:var(--status-danger)}.an-kpi-value.warning{color:oklch(0.430 0.130 85)}.an-kpi-value.zero{color:var(--text-disabled)}
+.an-kpi-delta{font-family:var(--font-mono);font-size:11px;font-weight:500;font-variant-numeric:tabular-nums}
+.an-kpi-delta.up{color:var(--green-600)}.an-kpi-delta.down{color:var(--status-danger)}.an-kpi-delta.flat{color:var(--text-muted)}
+.an-kpi.kpi-alert{border-color:oklch(0.545 0.185 25/0.25);background:var(--red-50)}
+.an-kpi.kpi-alert .an-kpi-value{color:var(--status-danger)}
+
+/* ═══ CHART CARDS ═══ */
+.chart-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);margin-bottom:var(--space-4);overflow:hidden}
+.chart-card-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-5);border-bottom:1px solid var(--border-secondary)}
+.chart-card-title{font-size:13px;font-weight:600;color:var(--text-primary)}
+.chart-card-meta{font-family:var(--font-mono);font-size:10px;color:var(--text-disabled);font-variant-numeric:tabular-nums}
+.chart-area{padding:var(--space-4) var(--space-5);position:relative}
+.chart-area svg{width:100%;display:block}
+
+/* SVG chart styling */
+.chart-grid{stroke:var(--border-secondary);stroke-width:0.5}
+.chart-axis-label{font-family:var(--font-mono);font-size:9px;fill:var(--text-disabled);font-variant-numeric:tabular-nums}
+.chart-line{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chart-line.primary{stroke:var(--purple-500)}
+.chart-line.success{stroke:var(--green-500)}
+.chart-line.danger{stroke:var(--status-danger)}
+.chart-line.warning{stroke:var(--status-warning)}
+.chart-line.muted{stroke:var(--text-disabled);stroke-dasharray:4 4}
+.chart-area-fill{opacity:0.08}
+.chart-area-fill.primary{fill:var(--purple-500)}
+.chart-area-fill.success{fill:var(--green-500)}
+.chart-area-fill.danger{fill:var(--status-danger)}
+.chart-dot{r:3;stroke-width:1.5;stroke:var(--bg-card)}
+.chart-bar{rx:2}
+
+/* Sparse chart overlay */
+.chart-sparse-note{position:absolute;bottom:var(--space-4);left:50%;transform:translateX(-50%);font-size:11px;color:var(--text-disabled);font-style:italic;background:oklch(0.993 0.001 265/0.9);padding:2px 10px;border-radius:var(--radius-sm)}
+
+/* ═══ BREAKDOWN GRID ═══ */
+.breakdown-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-4)}
+.breakdown-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.breakdown-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-secondary)}
+.breakdown-title{font-size:12px;font-weight:600;color:var(--text-primary)}
+.breakdown-body{padding:var(--space-3) var(--space-4)}
+
+/* Horizontal bar chart rows */
+.bar-row{display:flex;align-items:center;gap:var(--space-3);padding:5px 0;border-bottom:1px solid var(--border-secondary)}
+.bar-row:last-child{border-bottom:none}
+.bar-label{font-size:12px;font-weight:500;color:var(--text-secondary);width:90px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;height:6px;background:var(--bg-sunken);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width var(--duration-normal) var(--ease-out)}
+.bar-fill.purple{background:var(--purple-400)}
+.bar-fill.green{background:var(--green-400)}
+.bar-fill.orange{background:var(--orange-400)}
+.bar-fill.blue{background:var(--status-info)}
+.bar-fill.red{background:var(--status-danger)}
+.bar-value{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-primary);width:48px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
+.bar-delta{font-family:var(--font-mono);font-size:10px;font-weight:500;width:40px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
+.bar-delta.up{color:var(--green-600)}.bar-delta.down{color:var(--status-danger)}.bar-delta.flat{color:var(--text-disabled)}
+
+/* Table breakdown */
+.breakdown-table{width:100%;border-collapse:collapse}
+.breakdown-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);padding:var(--space-2) 0;text-align:left;border-bottom:1px solid var(--border-primary)}
+.breakdown-table th.right{text-align:right}
+.breakdown-table td{font-size:12px;padding:6px 0;border-bottom:1px solid var(--border-secondary);vertical-align:middle}
+.breakdown-table tr:last-child td{border-bottom:none}
+.breakdown-table .mono{font-family:var(--font-mono);font-weight:600;font-variant-numeric:tabular-nums}
+.breakdown-table .right{text-align:right}
+
+/* Risk link */
+.risk-link{font-size:11px;font-weight:600;color:var(--purple-700);cursor:pointer;text-decoration:none;padding:2px 6px;border-radius:var(--radius-sm)}
+.risk-link:hover{color:var(--purple-500);background:var(--purple-50)}
+
+/* ═══ STATE TOGGLE ═══ */
+.state-toggle{position:fixed;bottom:var(--space-6);right:var(--space-6);z-index:100;display:flex;align-items:center;gap:var(--space-2);background:var(--bg-elevated);border:1px solid var(--border-primary);border-radius:var(--radius-full);padding:4px 6px;box-shadow:var(--shadow-md)}
+.state-toggle-btn{height:28px;padding:0 var(--space-3);border:none;background:transparent;font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);border-radius:var(--radius-full);cursor:pointer;white-space:nowrap}
+.state-toggle-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.state-toggle-btn.active-btn{background:var(--purple-500);color:var(--text-inverse)}
+
+@media(prefers-reduced-motion:reduce){*{transition-duration:0s!important}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left"><a class="header-logo" href="#"><div class="header-logo-mark">E</div><span class="header-logo-text">Echelon</span><span class="header-logo-version">v4.2</span></a><button class="sidebar-toggle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button></div>
+  <div class="header-center"><div class="header-search"><span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><input type="text" placeholder="Search analytics..."><span class="header-search-kbd">⌘K</span></div></div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span> Mainnet</div>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="header-badge">3</span></button>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
+    <div class="wallet-btn"><div class="wallet-balance"><div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span> 12,847</div><div class="wallet-divider"></div><div class="wallet-balance-item"><span class="wallet-balance-label">ECH</span> 3,291</div></div><div class="wallet-avatar"></div></div>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group"><div class="nav-group-label">Operations</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span class="nav-item-label">Dashboard</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">23</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span class="nav-item-label">Positions</span></a>
+    </div>
+    <div class="nav-group"><div class="nav-group-label">Intelligence</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></span><span class="nav-item-label">WorldMonitor</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="nav-item-label">Signal Map</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge count">7</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">2</span></a>
+    </div>
+    <div class="nav-group"><div class="nav-group-label">Fleet</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg></span><span class="nav-item-label">Agents</span><span class="nav-badge live">34</span></a>
+    </div>
+    <div class="nav-group"><div class="nav-group-label">Analytics</div>
+      <a class="nav-item active" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="nav-item-label">Analytics</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span><span class="nav-item-label">RLMF Exports</span></a>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span><span class="nav-item-label">Settings</span></a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-breadcrumb"><span>Analytics</span><span class="page-breadcrumb-sep">/</span><span class="page-breadcrumb-current" id="breadcrumbTab">Portfolio</span></div>
+      <h1 class="page-title">Analytics</h1>
+    </div>
+    <div class="page-header-right">
+      <select class="filter-select" id="timeSelect">
+        <option>30d</option><option>7d</option><option>90d</option><option>All Time</option>
+      </select>
+      <button class="btn btn-secondary btn-sm"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export</button>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('portfolio')">Portfolio</button>
+    <button class="tab-btn" onclick="switchTab('platform')">Platform</button>
+  </div>
+
+  <!-- KPI strip -->
+  <div class="an-summary" id="kpiStrip"></div>
+
+  <!-- Content area -->
+  <div id="contentArea"></div>
+</main>
+
+<!-- State toggle -->
+<div class="state-toggle">
+  <button class="state-toggle-btn active-btn" onclick="setPageState('normal')">Normal</button>
+  <button class="state-toggle-btn" onclick="setPageState('risk')">Risk Elevated</button>
+  <button class="state-toggle-btn" onclick="setPageState('sparse')">Sparse Data</button>
+</div>
+
+<script>
+let currentState = 'normal';
+let currentTab = 'portfolio';
+
+function setPageState(state) {
+  currentState = state;
+  document.querySelectorAll('.state-toggle-btn').forEach(b => {
+    b.classList.toggle('active-btn',
+      (state==='normal'&&b.textContent==='Normal') ||
+      (state==='risk'&&b.textContent==='Risk Elevated') ||
+      (state==='sparse'&&b.textContent==='Sparse Data'));
+  });
+  render();
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === tab));
+  document.getElementById('breadcrumbTab').textContent = tab.charAt(0).toUpperCase()+tab.slice(1);
+  render();
+}
+
+function render() {
+  renderKPIs();
+  renderContent();
+}
+
+/* ═══ SVG CHART HELPERS ═══ */
+function makeLine(points, w, h, pad) {
+  return points.map((p,i) => {
+    const x = pad + (i/(points.length-1)) * (w - pad*2);
+    const y = pad + (1 - p) * (h - pad*2);
+    return `${i===0?'M':'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+}
+function makeArea(points, w, h, pad) {
+  const line = makeLine(points, w, h, pad);
+  const lastX = pad + (w - pad*2);
+  const firstX = pad;
+  const bottom = h - pad;
+  return `${line} L${lastX},${bottom} L${firstX},${bottom} Z`;
+}
+function gridLines(w, h, pad, rows) {
+  let s = '';
+  for(let i=0;i<=rows;i++){
+    const y = pad + (i/rows)*(h-pad*2);
+    s += `<line class="chart-grid" x1="${pad}" y1="${y}" x2="${w-pad}" y2="${y}"/>`;
+  }
+  return s;
+}
+function xLabels(labels, w, h, pad) {
+  return labels.map((l,i)=>{
+    const x = pad + (i/(labels.length-1))*(w-pad*2);
+    return `<text class="chart-axis-label" x="${x}" y="${h-2}" text-anchor="middle">${l}</text>`;
+  }).join('');
+}
+
+/* ═══ KPIs ═══ */
+function renderKPIs() {
+  const el = document.getElementById('kpiStrip');
+  if (currentTab === 'portfolio') {
+    const d = {
+      normal:{ val:'$14,291', valD:'+$1,840', valDC:'up', uPnL:'+$2,184', uC:'success', rPnL:'+$968', rC:'success', wr:'64%', wrC:'', ear:'$3,120', earC:'', pos:'12', posD:'' },
+      risk:  { val:'$11,402', valD:'-$1,247', valDC:'down', uPnL:'-$889', uC:'danger', rPnL:'+$412', rC:'success', wr:'51%', wrC:'warning', ear:'$5,870', earC:'kpi-alert', pos:'12', posD:'' },
+      sparse:{ val:'$2,100', valD:'+$100', valDC:'up', uPnL:'+$47', uC:'success', rPnL:'$0', rC:'zero', wr:'—', wrC:'zero', ear:'$840', earC:'', pos:'3', posD:'' }
+    }[currentState];
+    el.innerHTML = `
+      <div class="an-kpi"><div class="an-kpi-top"><span class="an-kpi-label">Portfolio Value</span><span class="an-kpi-window">now</span></div><div class="an-kpi-row"><span class="an-kpi-value">${d.val}</span><span class="an-kpi-delta ${d.valDC}">${d.valD} / 30d</span></div></div>
+      <div class="an-kpi"><div class="an-kpi-top"><span class="an-kpi-label">Unrealised P&L</span><span class="an-kpi-window">now</span></div><div class="an-kpi-row"><span class="an-kpi-value ${d.uC}">${d.uPnL}</span></div></div>
+      <div class="an-kpi"><div class="an-kpi-top"><span class="an-kpi-label">Realised P&L</span><span class="an-kpi-window">30d</span></div><div class="an-kpi-row"><span class="an-kpi-value ${d.rC}">${d.rPnL}</span></div></div>
+      <div class="an-kpi"><div class="an-kpi-top"><span class="an-kpi-label">Win Rate</span><span class="an-kpi-window">all time</span></div><div class="an-kpi-row"><span class="an-kpi-value ${d.wrC}">${d.wr}</span></div></div>
+      <div class="an-kpi ${d.earC}"><div class="an-kpi-top"><span class="an-kpi-label">Exposure at Risk</span><span class="an-kpi-window">now</span></div><div class="an-kpi-row"><span class="an-kpi-value">${d.ear}</span></div></div>
+      <div class="an-kpi"><div class="an-kpi-top"><span class="an-kpi-label">Open Positions</span><span class="an-kpi-window">now</span></div><div class="an-kpi-row"><span class="an-kpi-value">${d.pos}</span></div></div>`;
+  } else {
+    const d = {
+      normal:{ theatres:'23', agents:'34/42', aClass:'', invs:'7', certs:'18', certD:'+5', px:'3', pxC:'', health:'0.87', hClass:'success' },
+      risk:  { theatres:'23', agents:'28/42', aClass:'warning', invs:'9', certs:'14', certD:'+2', px:'8', pxC:'kpi-alert', health:'0.61', hClass:'warning' },
+      sparse:{ theatres:'4', agents:'8/10', aClass:'', invs:'1', certs:'2', certD:'+2', px:'0', pxC:'', health:'0.92', hClass:'success' }
+    }[currentState];
+    el.innerHTML = `
+      <div class="an-kpi"><div class="an-kpi-top"><span class="an-kpi-label">Active Theatres</span><span class="an-kpi-window">now</span></div><div class="an-kpi-row"><span class="an-kpi-value">${d.theatres}</span></div></div>
+      <div class="an-kpi"><div class="an-kpi-top"><span class="an-kpi-label">Agents Online</span><span class="an-kpi-window">now</span></div><div class="an-kpi-row"><span class="an-kpi-value ${d.aClass}">${d.agents}</span></div></div>
+      <div class="an-kpi"><div class="an-kpi-top"><span class="an-kpi-label">Investigations</span><span class="an-kpi-window">active</span></div><div class="an-kpi-row"><span class="an-kpi-value">${d.invs}</span></div></div>
+      <div class="an-kpi"><div class="an-kpi-top"><span class="an-kpi-label">Certificates</span><span class="an-kpi-window">30d</span></div><div class="an-kpi-row"><span class="an-kpi-value">${d.certs}</span><span class="an-kpi-delta up">${d.certD}</span></div></div>
+      <div class="an-kpi ${d.pxC}"><div class="an-kpi-top"><span class="an-kpi-label">Paradoxes</span><span class="an-kpi-window">7d</span></div><div class="an-kpi-row"><span class="an-kpi-value${parseInt(d.px)>5?' danger':''}">${d.px}</span></div></div>
+      <div class="an-kpi"><div class="an-kpi-top"><span class="an-kpi-label">System Health</span><span class="an-kpi-window">now</span></div><div class="an-kpi-row"><span class="an-kpi-value ${d.hClass}">${d.health}</span></div></div>`;
+  }
+}
+
+/* ═══ CONTENT ═══ */
+function renderContent() {
+  const el = document.getElementById('contentArea');
+  if (currentTab === 'portfolio') renderPortfolio(el);
+  else renderPlatform(el);
+}
+
+function renderPortfolio(el) {
+  const W = 720, H = 260, P = 40;
+  const isSparse = currentState === 'sparse';
+  const isRisk = currentState === 'risk';
+
+  // Equity curve data
+  const equityNormal = [0.35,0.38,0.40,0.42,0.41,0.45,0.48,0.46,0.50,0.53,0.55,0.54,0.58,0.60,0.62,0.61,0.65,0.68,0.70,0.72,0.71,0.74,0.76,0.78,0.80,0.79,0.82,0.84,0.86,0.88];
+  const equityRisk = [0.65,0.63,0.60,0.62,0.58,0.55,0.53,0.56,0.52,0.48,0.50,0.47,0.45,0.48,0.44,0.42,0.45,0.43,0.40,0.42,0.39,0.41,0.38,0.40,0.37,0.39,0.36,0.38,0.35,0.34];
+  const equitySparse = [0.40,0.42,0.43,0.44,0.45,0.44,0.46];
+  const equity = isSparse ? equitySparse : (isRisk ? equityRisk : equityNormal);
+  const xlabels = isSparse ? ['Mar 1','','','','','','Mar 7'] : ['Mar 1','','Mar 8','','Mar 15','','Mar 22','','Mar 30'];
+  const xlabelsFull = isSparse ? ['Mar 1','Mar 2','Mar 3','Mar 4','Mar 5','Mar 6','Mar 7'] : Array.from({length:30},(_,i)=>{const d=i+1;return d%7===1?`Mar ${d}`:'';});
+
+  // PnL overlay line
+  const pnlNormal = [0.50,0.52,0.53,0.54,0.53,0.56,0.58,0.57,0.60,0.62,0.63,0.62,0.65,0.67,0.68,0.67,0.70,0.72,0.73,0.75,0.74,0.76,0.78,0.80,0.81,0.80,0.83,0.85,0.87,0.89];
+  const pnlRisk = [0.50,0.48,0.46,0.47,0.44,0.42,0.40,0.42,0.39,0.36,0.37,0.35,0.33,0.35,0.32,0.30,0.32,0.31,0.28,0.30,0.27,0.29,0.26,0.28,0.25,0.27,0.24,0.26,0.23,0.22];
+  const pnlSparse = [0.50,0.51,0.52,0.52,0.53,0.52,0.54];
+  const pnl = isSparse ? pnlSparse : (isRisk ? pnlRisk : pnlNormal);
+
+  const equityLine = makeLine(equity,W,H,P);
+  const equityArea = makeArea(equity,W,H,P);
+  const pnlLine = makeLine(pnl,W,H,P);
+  const lineClass = isRisk ? 'danger' : 'primary';
+
+  let html = `
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">Portfolio Performance</span>
+        <span class="chart-card-meta">${isSparse?'7':'30'} days · USDC</span>
+      </div>
+      <div class="chart-area" style="position:relative">
+        <svg viewBox="0 0 ${W} ${H}">
+          ${gridLines(W,H,P,4)}
+          <path class="chart-area-fill ${lineClass}" d="${equityArea}"/>
+          <path class="chart-line muted" d="${pnlLine}"/>
+          <path class="chart-line ${lineClass}" d="${equityLine}"/>
+          ${xLabels(isSparse?xlabels:['Mar 1','Mar 8','Mar 15','Mar 22','Mar 30'],W,H,P)}
+          <text class="chart-axis-label" x="${P-4}" y="${P+4}" text-anchor="end">${isSparse?'$2.2K':(isRisk?'$13K':'$15K')}</text>
+          <text class="chart-axis-label" x="${P-4}" y="${H-P}" text-anchor="end">${isSparse?'$2.0K':(isRisk?'$10K':'$10K')}</text>
+        </svg>
+        ${isSparse?'<div class="chart-sparse-note">7 days of data · trends strengthen with time</div>':''}
+        <div style="display:flex;gap:var(--space-5);padding:0 var(--space-5);margin-top:var(--space-1)">
+          <span style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--text-muted)"><span style="width:12px;height:2px;background:var(--${lineClass==='danger'?'status-danger':'purple-500'});border-radius:1px;display:inline-block"></span> Portfolio Value</span>
+          <span style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--text-muted)"><span style="width:12px;height:0;border-top:1.5px dashed var(--text-disabled);display:inline-block"></span> Cost Basis</span>
+        </div>
+      </div>
+    </div>`;
+
+  // Position Outcomes chart — compact bar
+  const outcomes = isSparse
+    ? [{l:'Binary',w:100,v:'Won 1',c:'green'},{l:'Temporal',w:0,v:'—',c:'purple'}]
+    : isRisk
+    ? [{l:'Won',w:51,v:'18',c:'green'},{l:'Lost',w:49,v:'17',c:'red'}]
+    : [{l:'Won',w:64,v:'23',c:'green'},{l:'Lost',w:36,v:'13',c:'red'}];
+
+  html += `
+    <div class="breakdown-grid">
+      <div class="breakdown-card">
+        <div class="breakdown-header"><span class="breakdown-title">Position Outcomes</span><span style="font-size:10px;color:var(--text-disabled);font-family:var(--font-mono)">all time</span></div>
+        <div class="breakdown-body">
+          ${isSparse ? '<div style="text-align:center;padding:var(--space-4);color:var(--text-muted);font-size:12px">1 settled position · outcomes accumulate over time</div>' : outcomes.map(o=>`
+            <div class="bar-row">
+              <span class="bar-label">${o.l}</span>
+              <div class="bar-track"><div class="bar-fill ${o.c}" style="width:${o.w}%"></div></div>
+              <span class="bar-value">${o.v}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="breakdown-card">
+        <div class="breakdown-header"><span class="breakdown-title">Performance by Domain</span><span style="font-size:10px;color:var(--text-disabled);font-family:var(--font-mono)">30d</span></div>
+        <div class="breakdown-body">
+          ${(isSparse?[{l:'Macro',v:'+$47',d:'',w:30,c:'green'}]:(isRisk?[
+            {l:'Macro',v:'-$420',d:'down',w:55,c:'red'},{l:'Tech',v:'-$312',d:'down',w:40,c:'red'},
+            {l:'Commodities',v:'+$180',d:'up',w:30,c:'green'},{l:'Policy',v:'-$95',d:'down',w:15,c:'red'}
+          ]:[
+            {l:'Macro',v:'+$840',d:'up',w:80,c:'green'},{l:'Tech',v:'+$520',d:'up',w:55,c:'green'},
+            {l:'Commodities',v:'+$310',d:'up',w:35,c:'green'},{l:'Policy',v:'+$170',d:'up',w:20,c:'green'},
+            {l:'Geopolitics',v:'+$44',d:'up',w:8,c:'green'}
+          ])).map(o=>`
+            <div class="bar-row">
+              <span class="bar-label">${o.l}</span>
+              <div class="bar-track"><div class="bar-fill ${o.c}" style="width:${o.w}%"></div></div>
+              <span class="bar-value" style="color:var(--${o.c==='red'?'status-danger':'green-600'})">${o.v}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  // Second row breakdowns
+  html += `
+    <div class="breakdown-grid">
+      <div class="breakdown-card">
+        <div class="breakdown-header"><span class="breakdown-title">Performance by Theatre Type</span></div>
+        <div class="breakdown-body">
+          <table class="breakdown-table">
+            <thead><tr><th>Type</th><th class="right">Positions</th><th class="right">Win Rate</th><th class="right">P&L</th></tr></thead>
+            <tbody>
+              ${(isSparse?[{t:'Binary',p:'2',w:'—',pnl:'+$47'}]:(isRisk?[
+                {t:'Binary',p:'8',w:'50%',pnl:'-$380'},{t:'Temporal',p:'4',w:'25%',pnl:'-$510'},
+                {t:'Continuous',p:'5',w:'60%',pnl:'+$290'},{t:'Composite',p:'0',w:'—',pnl:'—'}
+              ]:[
+                {t:'Binary',p:'14',w:'71%',pnl:'+$1,120'},{t:'Temporal',p:'6',w:'50%',pnl:'+$340'},
+                {t:'Continuous',p:'8',w:'63%',pnl:'+$480'},{t:'Composite',p:'0',w:'—',pnl:'—'}
+              ])).map(r=>`
+                <tr>
+                  <td>${r.t}</td>
+                  <td class="right mono">${r.p}</td>
+                  <td class="right mono">${r.w}</td>
+                  <td class="right mono" style="color:${r.pnl.startsWith('-')?'var(--status-danger)':r.pnl==='—'?'var(--text-disabled)':'var(--green-600)'}">${r.pnl}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="breakdown-card">
+        <div class="breakdown-header"><span class="breakdown-title">Top Performing Theatres</span><span style="font-size:10px;color:var(--text-disabled);font-family:var(--font-mono)">30d</span></div>
+        <div class="breakdown-body">
+          ${(isSparse?[{n:'Fed Rate Cut Q2',pnl:'+$47'}]:(isRisk?[
+            {n:'Brent >$95 by Q3',pnl:'+$180'},{n:'EU AI Compliance',pnl:'+$95'},
+            {n:'Fed Rate Cut Q2',pnl:'-$420'},{n:'TSMC Supply Chain',pnl:'-$312'}
+          ]:[
+            {n:'Fed Rate Cut Q2',pnl:'+$520'},{n:'TSMC Supply Chain',pnl:'+$340'},
+            {n:'Brent >$95 by Q3',pnl:'+$280'},{n:'EU AI Compliance',pnl:'+$170'}
+          ])).map(t=>`
+            <div class="bar-row" style="border-bottom:1px solid var(--border-secondary)">
+              <span class="bar-label" style="width:auto;flex:1">${t.n}</span>
+              <span class="bar-value" style="color:${t.pnl.startsWith('-')?'var(--status-danger)':'var(--green-600)'}">${t.pnl}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  el.innerHTML = html;
+}
+
+function renderPlatform(el) {
+  const W = 720, H = 220, P = 40;
+  const isSparse = currentState === 'sparse';
+  const isRisk = currentState === 'risk';
+
+  // Platform activity chart — theatres created, investigations, certificates
+  const theatresN = [0.3,0.35,0.4,0.38,0.42,0.45,0.5,0.48,0.52,0.55,0.53,0.58,0.6,0.62,0.65,0.63,0.68,0.7,0.72,0.75,0.73,0.78,0.8,0.82,0.85,0.83,0.88,0.9,0.92,0.95];
+  const theatresR = [0.3,0.32,0.35,0.33,0.36,0.38,0.4,0.38,0.41,0.43,0.42,0.44,0.45,0.43,0.46,0.44,0.47,0.45,0.48,0.46,0.49,0.47,0.50,0.48,0.51,0.49,0.52,0.50,0.53,0.51];
+  const theatresS = [0.2,0.3,0.35,0.4,0.42,0.45,0.48];
+  const certsN = [0.1,0.12,0.15,0.18,0.2,0.22,0.25,0.28,0.3,0.33,0.35,0.38,0.4,0.42,0.45,0.48,0.5,0.52,0.55,0.58,0.6,0.62,0.65,0.68,0.7,0.72,0.75,0.78,0.8,0.82];
+  const certsR = [0.1,0.12,0.14,0.16,0.18,0.2,0.22,0.24,0.26,0.28,0.3,0.31,0.33,0.34,0.36,0.37,0.39,0.40,0.42,0.43,0.45,0.46,0.48,0.49,0.51,0.52,0.54,0.55,0.57,0.58];
+  const certsS = [0.0,0.05,0.1,0.15,0.18,0.22,0.28];
+  const theatres = isSparse?theatresS:(isRisk?theatresR:theatresN);
+  const certs = isSparse?certsS:(isRisk?certsR:certsN);
+
+  let html = `
+    <div class="chart-card">
+      <div class="chart-card-header">
+        <span class="chart-card-title">Platform Activity</span>
+        <span class="chart-card-meta">${isSparse?'7':'30'} days</span>
+      </div>
+      <div class="chart-area" style="position:relative">
+        <svg viewBox="0 0 ${W} ${H}">
+          ${gridLines(W,H,P,3)}
+          <path class="chart-line primary" d="${makeLine(theatres,W,H,P)}"/>
+          <path class="chart-line success" d="${makeLine(certs,W,H,P)}"/>
+          ${xLabels(isSparse?['Mar 1','','','','','','Mar 7']:['Mar 1','Mar 8','Mar 15','Mar 22','Mar 30'],W,H,P)}
+        </svg>
+        ${isSparse?'<div class="chart-sparse-note">7 days of data · trends strengthen with time</div>':''}
+        <div style="display:flex;gap:var(--space-5);padding:0 var(--space-5);margin-top:var(--space-1)">
+          <span style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--text-muted)"><span style="width:12px;height:2px;background:var(--purple-500);border-radius:1px;display:inline-block"></span> Theatres Created</span>
+          <span style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--text-muted)"><span style="width:12px;height:2px;background:var(--green-500);border-radius:1px;display:inline-block"></span> Certificates Issued</span>
+        </div>
+      </div>
+    </div>`;
+
+  // Resolution velocity + Risk trend side by side
+  html += `<div class="breakdown-grid">`;
+
+  // Resolution Velocity
+  html += `
+    <div class="breakdown-card">
+      <div class="breakdown-header"><span class="breakdown-title">Resolution Velocity</span><span style="font-size:10px;color:var(--text-disabled);font-family:var(--font-mono)">30d avg</span></div>
+      <div class="breakdown-body">
+        <table class="breakdown-table">
+          <thead><tr><th>Metric</th><th class="right">Current</th><th class="right">30d Avg</th><th class="right">Trend</th></tr></thead>
+          <tbody>
+            ${(isSparse?[
+              {m:'Verification Time',c:'—',a:'—',t:'—',tc:'flat'},
+              {m:'Investigation Close',c:'—',a:'—',t:'—',tc:'flat'},
+              {m:'Settlement',c:'4.2h',a:'—',t:'—',tc:'flat'}
+            ]:(isRisk?[
+              {m:'Verification Time',c:'6.8h',a:'4.2h',t:'+62%',tc:'down'},
+              {m:'Investigation Close',c:'18d',a:'12d',t:'+50%',tc:'down'},
+              {m:'Settlement',c:'3.8h',a:'3.1h',t:'+23%',tc:'down'},
+              {m:'Certificate Issue',c:'2.1h',a:'1.8h',t:'+17%',tc:'down'}
+            ]:[
+              {m:'Verification Time',c:'3.4h',a:'4.2h',t:'-19%',tc:'up'},
+              {m:'Investigation Close',c:'9d',a:'12d',t:'-25%',tc:'up'},
+              {m:'Settlement',c:'2.8h',a:'3.1h',t:'-10%',tc:'up'},
+              {m:'Certificate Issue',c:'1.5h',a:'1.8h',t:'-17%',tc:'up'}
+            ])).map(r=>`
+              <tr>
+                <td>${r.m}</td>
+                <td class="right mono">${r.c}</td>
+                <td class="right mono" style="color:var(--text-muted)">${r.a}</td>
+                <td class="right"><span class="bar-delta ${r.tc}">${r.t}</span></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  // Risk Trend
+  html += `
+    <div class="breakdown-card"${isRisk?' style="border-color:oklch(0.545 0.185 25/0.25)"':''}>
+      <div class="breakdown-header"><span class="breakdown-title"${isRisk?' style="color:var(--status-danger)"':''}>Risk Trend</span><span style="font-size:10px;color:var(--text-disabled);font-family:var(--font-mono)">7d</span></div>
+      <div class="breakdown-body">
+        ${(isSparse?[
+          {l:'Paradoxes triggered',v:'0',d:'flat',link:'Paradox Console'},
+          {l:'Stale investigations',v:'0',d:'flat',link:'Investigations'},
+          {l:'Low liquidity markets',v:'1',d:'flat',link:'Theatres'}
+        ]:(isRisk?[
+          {l:'Paradoxes triggered',v:'8',d:'up',link:'Paradox Console'},
+          {l:'Stale investigations',v:'3',d:'up',link:'Investigations'},
+          {l:'Low liquidity markets',v:'5',d:'up',link:'Theatres'},
+          {l:'Degraded agents',v:'4',d:'up',link:'Agents'}
+        ]:[
+          {l:'Paradoxes triggered',v:'3',d:'flat',link:'Paradox Console'},
+          {l:'Stale investigations',v:'1',d:'down',link:'Investigations'},
+          {l:'Low liquidity markets',v:'2',d:'flat',link:'Theatres'},
+          {l:'Degraded agents',v:'0',d:'flat',link:'Agents'}
+        ])).map(r=>`
+          <div class="bar-row">
+            <span class="bar-label" style="width:auto;flex:1">${r.l}</span>
+            <span class="bar-value${r.d==='up'&&parseInt(r.v)>3?' style="color:var(--status-danger)"':''}">${r.v}</span>
+            <span class="bar-delta ${r.d==='up'?'down':'flat'}">${r.d==='up'?'↑':'—'}</span>
+            <a class="risk-link">${r.link} →</a>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  html += `</div>`;
+
+  // Archetype performance + Paradox trend
+  html += `<div class="breakdown-grid">
+    <div class="breakdown-card">
+      <div class="breakdown-header"><span class="breakdown-title">Archetype Performance</span><span style="font-size:10px;color:var(--text-disabled);font-family:var(--font-mono)">30d</span></div>
+      <div class="breakdown-body">
+        ${(isSparse?[{l:'SHARK',v:'+$30',w:20,c:'green'},{l:'DIPLOMAT',v:'+$17',w:12,c:'green'}]:(isRisk?[
+          {l:'SHARK',v:'-$280',w:50,c:'red'},{l:'TITAN',v:'+$190',w:35,c:'green'},
+          {l:'DIPLOMAT',v:'+$80',w:15,c:'green'},{l:'SHADOW',v:'-$140',w:25,c:'red'},
+          {l:'CARDINAL',v:'-$90',w:16,c:'red'}
+        ]:[
+          {l:'TITAN',v:'+$420',w:80,c:'green'},{l:'SHARK',v:'+$310',w:60,c:'green'},
+          {l:'DIPLOMAT',v:'+$180',w:35,c:'green'},{l:'SHADOW',v:'+$120',w:22,c:'green'},
+          {l:'CARDINAL',v:'+$68',w:13,c:'green'}
+        ])).map(o=>`
+          <div class="bar-row">
+            <span class="bar-label" style="font-family:var(--font-mono);font-weight:600">${o.l}</span>
+            <div class="bar-track"><div class="bar-fill ${o.c}" style="width:${o.w}%"></div></div>
+            <span class="bar-value" style="color:var(--${o.c==='red'?'status-danger':'green-600'})">${o.v}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="breakdown-card">
+      <div class="breakdown-header"><span class="breakdown-title">Paradox Trigger vs Resolution</span><span style="font-size:10px;color:var(--text-disabled);font-family:var(--font-mono)">30d</span></div>
+      <div class="breakdown-body">
+        <div style="padding:var(--space-2)">
+          <svg viewBox="0 0 280 120">
+            ${gridLines(280,120,20,3)}
+            ${isSparse ? '<text style="font-family:var(--font-sans);font-size:10px;fill:var(--text-disabled);font-style:italic" x="140" y="65" text-anchor="middle">Insufficient data for trend</text>' : `
+            <path class="chart-line danger" d="${makeLine(isRisk?[0.2,0.25,0.3,0.28,0.35,0.4,0.38,0.45,0.5,0.55,0.52,0.6,0.58,0.65,0.7]:[0.3,0.28,0.32,0.25,0.3,0.22,0.28,0.2,0.25,0.18,0.22,0.15,0.2,0.12,0.15],280,120,20)}"/>
+            <path class="chart-line success" d="${makeLine(isRisk?[0.2,0.22,0.25,0.2,0.28,0.25,0.22,0.3,0.28,0.32,0.3,0.35,0.32,0.38,0.35]:[0.3,0.32,0.35,0.38,0.4,0.42,0.38,0.45,0.42,0.48,0.45,0.5,0.48,0.52,0.50],280,120,20)}"/>`}
+          </svg>
+          ${isSparse?'':`<div style="display:flex;gap:var(--space-4);margin-top:4px">
+            <span style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:600;color:var(--text-muted)"><span style="width:10px;height:2px;background:var(--status-danger);border-radius:1px;display:inline-block"></span> Triggered</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:600;color:var(--text-muted)"><span style="width:10px;height:2px;background:var(--green-500);border-radius:1px;display:inline-block"></span> Resolved</span>
+          </div>`}
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+/* INIT */
+render();
+</script>
+</body>
+</html>

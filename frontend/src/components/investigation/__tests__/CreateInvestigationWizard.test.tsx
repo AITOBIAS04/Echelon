@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { CreateInvestigationWizard } from '../CreateInvestigationWizard';
 
+// Mock the API client
 vi.mock('../../../api/client', () => ({
   apiClient: {
     get: vi.fn(),
@@ -11,10 +12,108 @@ vi.mock('../../../api/client', () => ({
   },
 }));
 
+// Mock investigation API
 vi.mock('../../../api/investigation', () => ({
-  createInvestigation: vi.fn(),
+  createInvestigation: vi.fn().mockResolvedValue({
+    id: 'INV-TEST',
+    theatre_id: null,
+    construct_id: null,
+    inquiry_class: 'INVESTIGATIVE',
+    status: 'active',
+    evidence_count: 0,
+    claim_count: 0,
+    counter_signal_count: 0,
+    drift_event_count: 0,
+    created_at: '2026-03-08T00:00:00Z',
+  }),
   fetchInvestigations: vi.fn().mockResolvedValue({ investigations: [], total: 0 }),
 }));
+
+// Mock investigation templates API
+vi.mock('../../../api/investigationTemplates', () => ({
+  fetchInvestigationTemplates: vi.fn().mockResolvedValue({
+    templates: [
+      {
+        template_id: 'blank',
+        name: 'Blank Investigation',
+        description: 'Start with a neutral bounded-inquiry shell and select every constraint directly.',
+        inquiry_class: 'INVESTIGATIVE',
+        template_status: 'ACTIVE',
+        domain_filter_count: 0,
+        requires_legal_review: false,
+      },
+      {
+        template_id: 'corporate_due_diligence',
+        name: 'Corporate Due Diligence',
+        description: 'Bias toward registries, filings, legal coverage, and identity/provenance checks.',
+        inquiry_class: 'INSPECTION',
+        template_status: 'ACTIVE',
+        domain_filter_count: 3,
+        requires_legal_review: false,
+      },
+      {
+        template_id: 'market_event',
+        name: 'Market Event Analysis',
+        description: 'Prepare for event-driven evidence, counter-signals, and fast routing pressure.',
+        inquiry_class: 'INVESTIGATIVE',
+        template_status: 'ACTIVE',
+        domain_filter_count: 2,
+        requires_legal_review: false,
+      },
+      {
+        template_id: 'regulatory_action',
+        name: 'Regulatory Action Tracking',
+        description: 'Center the investigation on policy, regulatory filings, and formal status changes.',
+        inquiry_class: 'SCRUTINY',
+        template_status: 'ACTIVE',
+        domain_filter_count: 2,
+        requires_legal_review: false,
+      },
+    ],
+    total: 4,
+  }),
+  fetchInvestigationTemplate: vi.fn().mockImplementation((id: string) => {
+    if (id === 'corporate_due_diligence') {
+      return Promise.resolve({
+        template_id: 'corporate_due_diligence',
+        name: 'Corporate Due Diligence',
+        description: 'Bias toward registries, filings, legal coverage, and identity/provenance checks.',
+        inquiry_class: 'INSPECTION',
+        domain_filters: ['corporate_and_entity', 'court_and_legal', 'property_and_land'],
+        default_sources: ['companies_house', 'opencorporates'],
+        default_stop_condition: 'EVIDENCE_THRESHOLD',
+        default_time_window_days: 90,
+        requires_legal_review: false,
+        min_corroboration_groups: 3,
+        template_status: 'ACTIVE',
+        is_seeded: true,
+        created_at: '2026-03-08T00:00:00Z',
+      });
+    }
+    if (id === 'regulatory_action') {
+      return Promise.resolve({
+        template_id: 'regulatory_action',
+        name: 'Regulatory Action Tracking',
+        description: 'Center the investigation on policy, regulatory filings, and formal status changes.',
+        inquiry_class: 'SCRUTINY',
+        domain_filters: ['corporate_and_entity', 'court_and_legal'],
+        default_sources: [],
+        default_stop_condition: 'SPONSOR_DEFINED',
+        default_time_window_days: 180,
+        requires_legal_review: false,
+        min_corroboration_groups: 2,
+        template_status: 'ACTIVE',
+        is_seeded: true,
+        created_at: '2026-03-08T00:00:00Z',
+      });
+    }
+    return Promise.reject(new Error('Not found'));
+  }),
+}));
+
+import { createInvestigation } from '../../../api/investigation';
+
+const mockCreateInvestigation = vi.mocked(createInvestigation);
 
 function renderWithProviders(ui: React.ReactElement, route = '/investigation/create') {
   const queryClient = new QueryClient({
@@ -31,100 +130,105 @@ function renderWithProviders(ui: React.ReactElement, route = '/investigation/cre
 
 describe('CreateInvestigationWizard', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockCreateInvestigation.mockClear();
   });
 
-  it('renders step 1 with inquiry question input', () => {
+  // Test 1: Wizard renders template list from API (mock)
+  it('renders template list from API on step 1', async () => {
     renderWithProviders(<CreateInvestigationWizard />);
 
-    expect(screen.getByText('Step 1: Inquiry Question')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/What are you investigating/)).toBeInTheDocument();
-    expect(screen.getByText('Investigative')).toBeInTheDocument();
-    expect(screen.getByText('Monitoring')).toBeInTheDocument();
-    expect(screen.getByText('Verification')).toBeInTheDocument();
+    // Step 1 should show API-loaded templates in the select
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Blank Investigation')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('option', { name: 'Corporate Due Diligence' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Market Event Analysis' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Regulatory Action Tracking' })).toBeInTheDocument();
   });
 
-  it('navigates forward and backward through steps', () => {
+  // Test 2: Template selection populates wizard state with correct defaults
+  it('populates wizard state with template defaults on selection', async () => {
     renderWithProviders(<CreateInvestigationWizard />);
 
-    // Step 1: fill inquiry question to enable Next
+    // Select corporate_due_diligence on step 1
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Blank Investigation')).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'corporate_due_diligence' },
+    });
+    await waitFor(() => {
+      fireEvent.click(screen.getByText('Next'));
+    });
+
+    // Step 2 is inquiry question; provide the required question and advance
     const textarea = screen.getByPlaceholderText(/What are you investigating/);
     fireEvent.change(textarea, { target: { value: 'Test inquiry' } });
-
-    // Go to step 2
     fireEvent.click(screen.getByText('Next'));
-    expect(screen.getByText('Step 2: Template')).toBeInTheDocument();
 
-    // Go back
-    fireEvent.click(screen.getByText('Back'));
-    expect(screen.getByText('Step 1: Inquiry Question')).toBeInTheDocument();
+    // The domain filter step should show 3 pre-selected filters from the template
+    await waitFor(() => {
+      expect(screen.getByText('3 of 9 categories selected')).toBeInTheDocument();
+    });
   });
 
-  it('shows cancel button on step 1', () => {
-    const onCancel = vi.fn();
-    renderWithProviders(<CreateInvestigationWizard onCancel={onCancel} />);
+  // Test 3: Signal-origin URL params prefill correct template from backend list
+  it('prefills correct template from signal-origin URL params', async () => {
+    renderWithProviders(
+      <CreateInvestigationWizard />,
+      '/investigation/create?signal_category=regulatory&signal_class=regulatory_clearance&theatre_id=TH_123',
+    );
 
-    fireEvent.click(screen.getByText('Cancel'));
-    expect(onCancel).toHaveBeenCalled();
+    // Should have pre-selected regulatory_action template in the dropdown
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Regulatory Action Tracking')).toBeInTheDocument();
+    });
   });
 
-  it('shows immutability warning on review step', () => {
+  // Test 4: Domain filter IDs in create payload match backend enum values
+  it('sends backend-aligned domain filter IDs and template_id in create payload', async () => {
     renderWithProviders(<CreateInvestigationWizard />);
 
-    // Navigate to step 5 (review)
+    // Step 1 — wait for templates, stay on blank (default), advance
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Blank Investigation')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Next'));
+
+    // Step 2 — inquiry question
     const textarea = screen.getByPlaceholderText(/What are you investigating/);
-    fireEvent.change(textarea, { target: { value: 'Test inquiry' } });
-    fireEvent.click(screen.getByText('Next')); // → step 2
+    fireEvent.change(textarea, { target: { value: 'Domain filter test' } });
+    fireEvent.click(screen.getByText('Next'));
 
-    fireEvent.click(screen.getByText('Next')); // → step 3
+    // Step 3 — select domain filters using backend enum labels
+    fireEvent.click(screen.getByText('Corporate & Entity'));
+    fireEvent.click(screen.getByText('Court & Legal'));
+    fireEvent.click(screen.getByText('Next'));
 
-    // Select a domain filter
-    fireEvent.click(screen.getByText('Financial Filings'));
-    fireEvent.click(screen.getByText('Next')); // → step 4
+    // Step 4 — stop condition (advance to review)
+    fireEvent.click(screen.getByText('Next'));
 
-    fireEvent.click(screen.getByText('Next')); // → step 5
+    // Step 5 — review, commit
+    fireEvent.click(screen.getByText('Commit Investigation'));
 
-    expect(screen.getByText('Immutability Warning')).toBeInTheDocument();
-    expect(screen.getByText(/Once committed, the investigation parameters cannot be changed/)).toBeInTheDocument();
-    expect(screen.getByText('Commit Investigation')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockCreateInvestigation).toHaveBeenCalled();
+      const callArgs = mockCreateInvestigation.mock.calls[0][0];
+      expect(callArgs.domain_filters).toEqual(['corporate_and_entity', 'court_and_legal']);
+      expect(callArgs.template_id).toBe('blank');
+    });
   });
 
-  it('shows domain filter selector on step 3 with 9 categories', () => {
+  // Test 5: Inquiry class options match backend enum (5 values)
+  it('shows all 5 backend inquiry class options', () => {
     renderWithProviders(<CreateInvestigationWizard />);
 
-    // Navigate to step 3
-    const textarea = screen.getByPlaceholderText(/What are you investigating/);
-    fireEvent.change(textarea, { target: { value: 'Test inquiry' } });
-    fireEvent.click(screen.getByText('Next')); // → step 2
-    fireEvent.click(screen.getByText('Next')); // → step 3
+    fireEvent.click(screen.getByText('Next'));
 
-    expect(screen.getByText('Step 3: Domain Filters')).toBeInTheDocument();
-    expect(screen.getByText('Financial Filings')).toBeInTheDocument();
-    expect(screen.getByText('Regulatory')).toBeInTheDocument();
-    expect(screen.getByText('Corporate Registry')).toBeInTheDocument();
-    expect(screen.getByText('Litigation')).toBeInTheDocument();
-    expect(screen.getByText('Media & News')).toBeInTheDocument();
-    expect(screen.getByText('Social Sentiment')).toBeInTheDocument();
-    expect(screen.getByText('Supply Chain')).toBeInTheDocument();
-    expect(screen.getByText('Geopolitical')).toBeInTheDocument();
-    expect(screen.getByText('Technical')).toBeInTheDocument();
-    expect(screen.getByText('0 of 9 categories selected')).toBeInTheDocument();
-  });
-
-  it('shows stop condition configurator on step 4 with 3 types', () => {
-    renderWithProviders(<CreateInvestigationWizard />);
-
-    // Navigate to step 4
-    const textarea = screen.getByPlaceholderText(/What are you investigating/);
-    fireEvent.change(textarea, { target: { value: 'Test inquiry' } });
-    fireEvent.click(screen.getByText('Next')); // → step 2
-    fireEvent.click(screen.getByText('Next')); // → step 3
-    fireEvent.click(screen.getByText('Financial Filings'));
-    fireEvent.click(screen.getByText('Next')); // → step 4
-
-    expect(screen.getByText('Step 4: Stop Condition')).toBeInTheDocument();
-    expect(screen.getByText('Outcome Resolution')).toBeInTheDocument();
-    expect(screen.getByText('Evidence Threshold')).toBeInTheDocument();
-    expect(screen.getByText('Sponsor Defined')).toBeInTheDocument();
+    expect(screen.getByText('Investigative')).toBeInTheDocument();
+    expect(screen.getByText('Inspection')).toBeInTheDocument();
+    expect(screen.getByText('Scrutiny')).toBeInTheDocument();
+    expect(screen.getByText('Survey')).toBeInTheDocument();
+    expect(screen.getByText('Counterfactual')).toBeInTheDocument();
   });
 });

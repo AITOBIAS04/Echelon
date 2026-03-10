@@ -1,0 +1,35 @@
+{
+  "accrual_schedule": {
+    "billing_cycles_in_scope": 1,
+    "billing_frequency": "monthly",
+    "first_due_date": "2026-04-01",
+    "rent_amount": 1500.0,
+    "total_rent_due": 1500.0
+  },
+  "arrears_policy": {
+    "arrears_threshold": 1500.0,
+    "grace_period_days": 5
+  },
+  "current_date": "2026-04-20",
+  "dispute": {
+    "description": "Heating system failure reported 2026-03-28, not repaired",
+    "dispute_id": "disp_006",
+    "dispute_type": "habitability",
+    "filed_at": "2026-04-15T11:00:00Z",
+    "resolution": null
+  },
+  "lease_state": {
+    "accrued_ladder_balance": 3000.0,
+    "currency": "GBP",
+    "deposit_amount": 2500.0,
+    "ladder_contribution": 150.0,
+    "ladder_plan_active": true,
+    "lease_id": "lease_006",
+    "payment_due_date": "2026-04-01",
+    "rent_amount": 1500.0,
+    "tenant_id": "tenant_006"
+  },
+  "payment_events": [],
+  "prior_outstanding": 1500.0,
+  "prior_state": "ARREARS"
+}

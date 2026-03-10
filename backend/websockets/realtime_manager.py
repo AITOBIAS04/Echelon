@@ -226,6 +226,93 @@ class ConnectionManager:
         await self.broadcast_global("THEATRE_SPAWNED", payload)
         await self.broadcast_to_channel(f"scenario_pack:{pack_id}", "THEATRE_SPAWNED", payload)
 
+    async def broadcast_agent_deployed(self, agent_id: str, theatre_id: str, strategy_profile: str, deployed_by: str):
+        """Broadcast agent deployment event."""
+        payload = {
+            "agent_id": agent_id,
+            "theatre_id": theatre_id,
+            "strategy_profile": strategy_profile,
+            "deployed_by": deployed_by,
+        }
+        await self.broadcast_global("AGENT_DEPLOYED", payload)
+        await self.broadcast_to_channel(f"theatre:{theatre_id}", "AGENT_DEPLOYED", payload)
+        await self.broadcast_to_channel(f"agent:{agent_id}", "AGENT_DEPLOYED", payload)
+
+    async def broadcast_agent_withdrawn(self, agent_id: str, theatre_id: str, withdrawn_by: str):
+        """Broadcast agent withdrawal event."""
+        payload = {
+            "agent_id": agent_id,
+            "theatre_id": theatre_id,
+            "withdrawn_by": withdrawn_by,
+        }
+        await self.broadcast_global("AGENT_WITHDRAWN", payload)
+        await self.broadcast_to_channel(f"theatre:{theatre_id}", "AGENT_WITHDRAWN", payload)
+        await self.broadcast_to_channel(f"agent:{agent_id}", "AGENT_WITHDRAWN", payload)
+
+    async def broadcast_paradox_risk_changed(
+        self,
+        theatre_id: str,
+        old_level: str,
+        new_level: str,
+        factors: dict,
+        reason: str | None = None,
+    ):
+        """Broadcast paradox risk level change."""
+        payload = {
+            "theatre_id": theatre_id,
+            "old_level": old_level,
+            "new_level": new_level,
+            "factors": factors,
+        }
+        if reason is not None:
+            payload["reason"] = reason
+        await self.broadcast_global("PARADOX_RISK_CHANGED", payload)
+        await self.broadcast_to_channel(f"theatre:{theatre_id}", "PARADOX_RISK_CHANGED", payload)
+
+    async def broadcast_investigation_stop_condition_met(
+        self, investigation_id: str, reason: str, trigger: str, drift_material: bool = False,
+    ):
+        """Broadcast investigation stop condition met (NOT_READY -> READY)."""
+        payload = {
+            "investigation_id": investigation_id,
+            "reason": reason,
+            "trigger": trigger,
+            "drift_material": drift_material,
+        }
+        await self.broadcast_global("INVESTIGATION_STOP_CONDITION_MET", payload)
+
+    async def broadcast_investigation_certificate_ready(
+        self, investigation_id: str, certificate_id: str, ready_at: str,
+    ):
+        """Broadcast investigation certificate transitioned to READY."""
+        payload = {
+            "investigation_id": investigation_id,
+            "certificate_id": certificate_id,
+            "ready_at": ready_at,
+        }
+        await self.broadcast_global("INVESTIGATION_CERTIFICATE_READY", payload)
+
+    async def broadcast_investigation_certificate_issued(
+        self, investigation_id: str, certificate_id: str, issued_at: str, batch_anchor_hash: str,
+    ):
+        """Broadcast investigation certificate issued via batch anchor."""
+        payload = {
+            "investigation_id": investigation_id,
+            "certificate_id": certificate_id,
+            "issued_at": issued_at,
+            "batch_anchor_hash": batch_anchor_hash,
+        }
+        await self.broadcast_global("INVESTIGATION_CERTIFICATE_ISSUED", payload)
+
+    async def broadcast_investigation_status_changed(self, investigation_id: str, old_status: str, new_status: str):
+        """Broadcast investigation status change."""
+        payload = {
+            "investigation_id": investigation_id,
+            "old_status": old_status,
+            "new_status": new_status,
+        }
+        await self.broadcast_global("INVESTIGATION_STATUS_CHANGED", payload)
+
     async def send_position_update(self, user_id: str, position: dict):
         """Send position update to specific user."""
         await self.send_to_user(user_id, "POSITION_UPDATE", position)
@@ -324,6 +411,5 @@ async def websocket_endpoint(websocket: WebSocket):
     
     except WebSocketDisconnect:
         manager.disconnect(connection_id)
-
 
 

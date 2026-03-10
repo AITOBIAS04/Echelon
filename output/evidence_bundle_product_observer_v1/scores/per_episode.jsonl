@@ -1,0 +1,15 @@
+{"composite_score": 0.0, "episode_id": "PR-32", "scores": {"precision": 0.0, "recall": 0.0, "reply_accuracy": 0.0}, "status": "ERROR"}
+{"composite_score": 0.0, "episode_id": "PR-31", "scores": {"precision": 0.0, "recall": 0.0, "reply_accuracy": 0.0}, "status": "ERROR"}
+{"composite_score": 0.0, "episode_id": "PR-30", "scores": {"precision": 0.0, "recall": 0.0, "reply_accuracy": 0.0}, "status": "ERROR"}
+{"composite_score": 0.0, "episode_id": "PR-29", "scores": {"precision": 0.0, "recall": 0.0, "reply_accuracy": 0.0}, "status": "ERROR"}
+{"composite_score": 0.0, "episode_id": "PR-28", "scores": {"precision": 0.0, "recall": 0.0, "reply_accuracy": 0.0}, "status": "ERROR"}
+{"composite_score": 0.88, "episode_id": "PR-32", "scores": {"precision": 1.0, "recall": 0.7, "reply_accuracy": 1.0}, "status": "SUCCESS"}
+{"composite_score": 0.8400000000000001, "episode_id": "PR-31", "scores": {"precision": 1.0, "recall": 0.6, "reply_accuracy": 1.0}, "status": "SUCCESS"}
+{"composite_score": 0.8400000000000001, "episode_id": "PR-30", "scores": {"precision": 1.0, "recall": 0.6, "reply_accuracy": 1.0}, "status": "SUCCESS"}
+{"composite_score": 0.88, "episode_id": "PR-29", "scores": {"precision": 1.0, "recall": 0.7, "reply_accuracy": 1.0}, "status": "SUCCESS"}
+{"composite_score": 0.8, "episode_id": "PR-28", "scores": {"precision": 1.0, "recall": 0.5, "reply_accuracy": 1.0}, "status": "SUCCESS"}
+{"composite_score": 0.8, "episode_id": "PR-27", "scores": {"precision": 1.0, "recall": 0.5, "reply_accuracy": 1.0}, "status": "SUCCESS"}
+{"composite_score": 0.0, "episode_id": "PR-26", "scores": {"precision": 0.0, "recall": 0.0, "reply_accuracy": 0.0}, "status": "TIMEOUT"}
+{"composite_score": 1.0, "episode_id": "PR-25", "scores": {"precision": 1.0, "recall": 1.0, "reply_accuracy": 1.0}, "status": "SUCCESS"}
+{"composite_score": 0.9600000000000001, "episode_id": "PR-24", "scores": {"precision": 1.0, "recall": 0.9, "reply_accuracy": 1.0}, "status": "SUCCESS"}
+{"composite_score": 0.0, "episode_id": "PR-23", "scores": {"precision": 0.0, "recall": 0.0, "reply_accuracy": 0.0}, "status": "TIMEOUT"}

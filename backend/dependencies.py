@@ -18,9 +18,6 @@ from backend.mechanics.butterfly_engine import ButterflyEngine
 from backend.mechanics.paradox_engine import ParadoxEngine
 from backend.core.osint_registry import get_osint_registry
 
-# Check if we should use mocks
-USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-
 # Global instances (singleton pattern)
 _butterfly_engine: Optional[ButterflyEngine] = None
 _paradox_engine: Optional[ParadoxEngine] = None
@@ -41,48 +38,21 @@ async def get_db():
 # REPOSITORY DEPENDENCIES
 # =============================================================================
 
-if USE_MOCKS:
-    # Use mock implementations
-    from backend.mocks.mock_data import (
-        MockTimelineRepository,
-        MockAgentRepository,
-        MockParadoxRepository,
-        MockUserRepository
-    )
-    
-    def get_timeline_repo():
-        """Get timeline repository (mock)."""
-        return MockTimelineRepository()
-    
-    def get_agent_repo():
-        """Get agent repository (mock)."""
-        return MockAgentRepository()
-    
-    def get_paradox_repo():
-        """Get paradox repository (mock)."""
-        return MockParadoxRepository()
-    
-    def get_user_repo():
-        """Get user repository (mock)."""
-        return MockUserRepository()
+async def get_timeline_repo(db: AsyncSession = Depends(get_db_session)):
+    """Get timeline repository (real database)."""
+    return TimelineRepository(db)
 
-else:
-    # Use real database repositories
-    async def get_timeline_repo(db: AsyncSession = Depends(get_db_session)):
-        """Get timeline repository (real database)."""
-        return TimelineRepository(db)
-    
-    async def get_agent_repo(db: AsyncSession = Depends(get_db_session)):
-        """Get agent repository (real database)."""
-        return AgentRepository(db)
-    
-    async def get_paradox_repo(db: AsyncSession = Depends(get_db_session)):
-        """Get paradox repository (real database)."""
-        return ParadoxRepository(db)
-    
-    async def get_user_repo(db: AsyncSession = Depends(get_db_session)):
-        """Get user repository (real database)."""
-        return UserRepository(db)
+async def get_agent_repo(db: AsyncSession = Depends(get_db_session)):
+    """Get agent repository (real database)."""
+    return AgentRepository(db)
+
+async def get_paradox_repo(db: AsyncSession = Depends(get_db_session)):
+    """Get paradox repository (real database)."""
+    return ParadoxRepository(db)
+
+async def get_user_repo(db: AsyncSession = Depends(get_db_session)):
+    """Get user repository (real database)."""
+    return UserRepository(db)
 
 
 # =============================================================================
@@ -92,47 +62,19 @@ else:
 def get_butterfly_engine() -> Optional[ButterflyEngine]:
     """
     Get or create the Butterfly Engine singleton.
-    
-    Returns None if USE_MOCKS=false (routes will create their own engines).
+
+    Returns None — routes create their own engines with request-scoped sessions.
     """
-    global _butterfly_engine
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if not USE_MOCKS:
-        # When using real database, routes create their own engines
-        return None
-    
-    if _butterfly_engine is None:
-        # TODO: Initialize with actual repositories
-        # For now, this will need to be set up in main.py
-        raise HTTPException(
-            status_code=503,
-            detail="Butterfly Engine not initialized. Please configure repositories in main.py"
-        )
-    return _butterfly_engine
+    return None
 
 
 def get_paradox_engine() -> Optional[ParadoxEngine]:
     """
     Get or create the Paradox Engine singleton.
-    
-    Returns None if USE_MOCKS=false (routes will create their own engines).
+
+    Returns None — routes create their own engines with request-scoped sessions.
     """
-    global _paradox_engine
-    USE_MOCKS = os.getenv("USE_MOCKS", "true").lower() == "true"
-    
-    if not USE_MOCKS:
-        # When using real database, routes create their own engines
-        return None
-    
-    if _paradox_engine is None:
-        # TODO: Initialize with actual repositories
-        # For now, this will need to be set up in main.py
-        raise HTTPException(
-            status_code=503,
-            detail="Paradox Engine not initialized. Please configure repositories in main.py"
-        )
-    return _paradox_engine
+    return None
 
 
 def init_butterfly_engine(engine: ButterflyEngine):
@@ -150,14 +92,12 @@ def init_paradox_engine(engine: ParadoxEngine):
 def get_user_service():
     """
     Get or create the User Service singleton.
-    
+
     Note: In production, this should be initialized with proper
     repositories for positions, private forks, watchlist, etc.
     """
     global _user_service
     if _user_service is None:
-        # TODO: Initialize with actual repositories
-        # For now, this will need to be set up in main.py
         raise HTTPException(
             status_code=503,
             detail="User Service not initialized. Please configure repositories in main.py"
@@ -186,13 +126,13 @@ async def get_current_user(
 ) -> TokenData:
     """
     Get current authenticated user from JWT token.
-    
+
     Requires:
         Bearer token in Authorization header
-        
+
     Returns:
         TokenData with user information
-        
+
     Raises:
         HTTPException 401 if not authenticated or token invalid
     """
@@ -201,14 +141,14 @@ async def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated"
         )
-    
+
     token_data = decode_token(credentials.credentials)
     if not token_data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
-    
+
     return token_data
 
 
@@ -217,10 +157,10 @@ async def get_current_user_optional(
 ) -> Optional[TokenData]:
     """
     Get current authenticated user from JWT token (optional).
-    
+
     This version doesn't raise an error if no token is provided.
     Useful for endpoints that work with or without authentication.
-    
+
     Returns:
         TokenData if authenticated, None otherwise
     """

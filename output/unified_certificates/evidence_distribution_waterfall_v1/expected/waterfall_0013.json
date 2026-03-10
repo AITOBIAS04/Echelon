@@ -1,0 +1,20 @@
+{
+  "criteria_verdicts": {
+    "cap_table_consistency": true,
+    "ledger_reconciliation": true,
+    "noi_pool_conservation": true,
+    "rounding_policy_compliance": false,
+    "waterfall_arithmetic": true
+  },
+  "distribution_statement": {
+    "distribution_per_token": 0.00720003,
+    "distributions": 720.003,
+    "gross_amount": 1500.0,
+    "ladder_credit": 150.0,
+    "noi_allocations_sum": 900.003,
+    "noi_pool": 900.0,
+    "operating_costs": 600.0,
+    "platform_fee": 30.0,
+    "splits_sum": 1500.0
+  }
+}

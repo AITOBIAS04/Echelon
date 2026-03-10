@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Investigations</title>
+<!--
+  ═══════════════════════════════════════════════════════════
+  MOCK DATA ANNOTATIONS — for engineering team, not UI
+  ═══════════════════════════════════════════════════════════
+  Mock values pending endpoint confirmation:
+  - Evidence counts (GET /api/v1/investigations/{id}/evidence)
+  - Claim graph status summaries
+  - DeltaBrief scanner results
+  - Counter-signal feeds
+  - Drift event metadata
+
+  All structure is production-ready. Wire real data from
+  investigation_routes.py when endpoints are confirmed.
+
+  DOMAIN MODEL:
+  Investigation = bounded inquiry with evidence chain + claim graph
+  ├── Evidence Envelope: provenance-tagged evidence items (E001, E002...)
+  │   Provenance: PUBLIC_PRIMARY | PUBLIC_SECONDARY | PRIVATE_LEAK | ANALYST_DERIVED | THIRD_PARTY
+  ├── Claim Graph: FACT / CAUSAL / ATTRIBUTION nodes
+  │   Status: SUPPORTED | PARTIALLY_SUPPORTED | UNCONFIRMED | CONTRADICTED
+  ├── Domain Filters: committed at creation, enforced at evidence/signal ingestion
+  ├── Counter-Signal Feed: contradicting evidence stream
+  └── Drift Events: commitment monitor changes
+
+  Stop conditions (immutable after commit):
+  OUTCOME_RESOLUTION | EVIDENCE_THRESHOLD | SPONSOR_DEFINED
+
+  PAGE STATE MACHINE (3 mutually exclusive states):
+  if (total === 0)             → EMPTY state
+  else if (stalled > 0)        → ALERT state (orange, stalled investigation)
+  else                         → ACTIVE state (green, all progressing)
+  ═══════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   TASTE TOKENS v1.0
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER (locked) ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR (locked) ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.nav-badge.warn{background:oklch(0.540 0.150 85/0.10);color:oklch(0.430 0.130 85);border:1px solid oklch(0.540 0.150 85/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN + PAGE CHROME
+   ═══════════════════════════════════════════════════════════ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-5)}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:2px}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-ghost:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.btn-sm{height:28px;padding:0 var(--space-3);font-size:11px;border-radius:var(--radius-sm)}
+
+/* ═══════════════════════════════════════════════════════════
+   ATTENTION STRIP
+   ═══════════════════════════════════════════════════════════ */
+.attention-strip{display:flex;align-items:center;gap:var(--space-4);padding:var(--space-3) var(--space-5);border-radius:var(--radius-md);margin-bottom:var(--space-5);font-size:13px;line-height:20px}
+.attention-strip.alert-state{background:oklch(0.540 0.150 85/0.06);border:1px solid oklch(0.540 0.150 85/0.18)}
+.attention-strip.alert-state .attention-icon{color:oklch(0.430 0.130 85)}
+.attention-strip.alert-state .attention-label{color:oklch(0.430 0.130 85)}
+.attention-strip.active-state{background:oklch(0.545 0.170 152/0.06);border:1px solid oklch(0.545 0.170 152/0.18)}
+.attention-strip.active-state .attention-icon{color:var(--green-600)}
+.attention-strip.active-state .attention-label{color:var(--green-700)}
+.attention-strip.empty-state{background:var(--bg-sunken);border:1px solid var(--border-primary)}
+.attention-strip.empty-state .attention-icon{color:var(--text-muted)}
+.attention-strip.empty-state .attention-label{color:var(--text-muted)}
+.attention-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.attention-label{font-weight:600;white-space:nowrap}
+.attention-msg{color:var(--text-secondary);font-weight:500}
+.attention-msg-success{color:var(--green-700);font-weight:500}
+
+/* ═══════════════════════════════════════════════════════════
+   SUMMARY KPIs
+   ═══════════════════════════════════════════════════════════ */
+.inv-summary{display:flex;gap:var(--space-3);margin-bottom:var(--space-5)}
+.inv-kpi{flex:1;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:2px}
+.inv-kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);line-height:16px}
+.inv-kpi-value{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:32px;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.inv-kpi-value.success{color:var(--green-600)}
+.inv-kpi-value.warning{color:oklch(0.430 0.130 85)}
+.inv-kpi-value.zero{color:var(--text-disabled)}
+.inv-kpi-sub{font-size:10px;color:var(--text-disabled);font-family:var(--font-mono);font-weight:500;font-variant-numeric:tabular-nums}
+.inv-kpi.kpi-warn{border-color:oklch(0.540 0.150 85/0.25);background:oklch(0.540 0.150 85/0.04)}
+
+/* ═══════════════════════════════════════════════════════════
+   LAYOUT — list + right rail (spacious per direction.md)
+   ═══════════════════════════════════════════════════════════ */
+.inv-layout{display:grid;grid-template-columns:1fr 300px;gap:var(--space-5);align-items:start}
+
+/* ═══════════════════════════════════════════════════════════
+   INVESTIGATION CARDS — spacious browse surfaces
+   ═══════════════════════════════════════════════════════════ */
+.inv-list{display:flex;flex-direction:column;gap:var(--space-3)}
+
+.inv-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);padding:var(--space-5);cursor:pointer;transition:all var(--duration-normal) var(--ease-out)}
+.inv-card:hover{border-color:var(--purple-200);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+.inv-card.stalled{border-left:3px solid var(--status-warning)}
+.inv-card.stalled:hover{border-color:var(--status-warning);border-left-color:var(--status-warning)}
+
+.inv-card-top{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2)}
+.inv-card-id{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-muted)}
+.inv-card-status{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em}
+.inv-card-status.active{color:var(--green-600)}
+.inv-card-status.active::before{content:'';width:5px;height:5px;border-radius:var(--radius-full);background:var(--status-success);animation:pulse-dot 2s ease-in-out infinite}
+.inv-card-status.stalled{color:oklch(0.430 0.130 85)}
+.inv-card-status.stalled::before{content:'';width:5px;height:5px;border-radius:var(--radius-full);background:var(--status-warning)}
+.inv-card-status.complete{color:var(--text-muted)}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.inv-card-question{font-size:15px;font-weight:600;line-height:22px;color:var(--text-primary);margin-bottom:var(--space-3)}
+
+.inv-card-meta{display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4);flex-wrap:wrap}
+.inv-card-meta-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary)}
+.inv-card-meta-item .mono{font-family:var(--font-mono);font-weight:600;font-variant-numeric:tabular-nums}
+.inv-card-meta-item .label{color:var(--text-muted)}
+
+/* Theatre link chip */
+.inv-theatre-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;color:var(--purple-600);background:var(--purple-50);padding:2px 8px;border-radius:4px;text-decoration:none}
+.inv-theatre-chip:hover{background:var(--purple-100)}
+
+/* Evidence + Claims summary bar */
+.inv-card-progress{display:flex;gap:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--border-secondary)}
+.inv-progress-item{display:flex;flex-direction:column;gap:2px;min-width:0}
+.inv-progress-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted)}
+.inv-progress-value{font-family:var(--font-mono);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.inv-progress-value.supported{color:var(--green-600)}
+.inv-progress-value.partial{color:oklch(0.430 0.130 85)}
+.inv-progress-value.contradicted{color:var(--status-danger)}
+
+/* Claim status mini-bar */
+.claim-bar{display:flex;height:4px;border-radius:2px;overflow:hidden;width:120px;margin-top:2px}
+.claim-bar-seg{height:100%}
+.claim-bar-seg.supported{background:var(--green-400)}
+.claim-bar-seg.partial{background:var(--status-warning)}
+.claim-bar-seg.unconfirmed{background:var(--border-primary)}
+.claim-bar-seg.contradicted{background:var(--status-danger)}
+
+/* Stalled warning badge */
+.inv-stalled-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:oklch(0.430 0.130 85);background:oklch(0.540 0.150 85/0.08);padding:2px 8px;border-radius:4px;margin-top:var(--space-2)}
+
+/* Card open affordance — quiet trailing link */
+.inv-card-open{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--text-muted);margin-left:auto;white-space:nowrap;transition:color var(--duration-instant) ease}
+.inv-card:hover .inv-card-open{color:var(--purple-600)}
+
+/* Claims micro-legend (inline under bar) */
+.claim-legend{font-size:10px;color:var(--text-disabled);font-family:var(--font-mono);font-weight:500;margin-top:2px;font-variant-numeric:tabular-nums}
+
+/* Provenance dots */
+.prov-dots{display:flex;gap:3px;align-items:center}
+.prov-dot{width:6px;height:6px;border-radius:var(--radius-full)}
+.prov-dot.public-primary{background:var(--green-400)}
+.prov-dot.public-secondary{background:var(--status-info)}
+.prov-dot.private-leak{background:var(--orange-500)}
+.prov-dot.analyst-derived{background:var(--purple-400)}
+.prov-dot.third-party{background:var(--text-disabled)}
+
+/* ═══════════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════════ */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:var(--space-12) var(--space-8);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs)}
+.empty-state-icon{width:64px;height:64px;border-radius:var(--radius-lg);background:var(--bg-sunken);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-5);color:var(--text-disabled)}
+.empty-state-title{font-size:17px;font-weight:700;color:var(--text-primary);margin-bottom:var(--space-2)}
+.empty-state-desc{font-size:13px;color:var(--text-muted);max-width:340px;line-height:20px;margin-bottom:var(--space-5)}
+
+/* ═══════════════════════════════════════════════════════════
+   RIGHT RAIL
+   ═══════════════════════════════════════════════════════════ */
+.rail{display:flex;flex-direction:column;gap:var(--space-4)}
+.rail-panel{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.rail-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-secondary)}
+.rail-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.rail-body{padding:var(--space-3) var(--space-4)}
+.empty-rail-msg{font-size:12px;color:var(--text-disabled);padding:var(--space-4);text-align:center;font-style:italic}
+
+/* Signal feed items */
+.signal-item{display:flex;align-items:flex-start;gap:var(--space-2);padding:var(--space-2) 0;border-bottom:1px solid var(--border-secondary);font-size:12px;line-height:16px}
+.signal-item:last-child{border-bottom:none}
+.signal-dot{width:5px;height:5px;border-radius:var(--radius-full);margin-top:5px;flex-shrink:0}
+.signal-dot.new-evidence{background:var(--green-500)}
+.signal-dot.counter{background:var(--status-danger)}
+.signal-dot.drift{background:var(--orange-500)}
+.signal-dot.claim{background:var(--purple-400)}
+.signal-text{flex:1;color:var(--text-secondary)}
+.signal-text strong{color:var(--text-primary);font-weight:600}
+.signal-time{font-family:var(--font-mono);font-size:10px;color:var(--text-disabled);font-variant-numeric:tabular-nums;flex-shrink:0}
+
+/* Scanner status rows */
+.scanner-row{display:flex;align-items:center;justify-content:space-between;padding:var(--space-1) 0}
+.scanner-row + .scanner-row{border-top:1px solid var(--border-secondary)}
+.scanner-label{font-size:12px;color:var(--text-secondary)}
+.scanner-value{font-family:var(--font-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.scanner-value.ok{color:var(--green-600)}
+.scanner-value.warn{color:oklch(0.430 0.130 85)}
+.scanner-value.idle{color:var(--text-disabled)}
+
+/* Provenance legend */
+.prov-legend{display:flex;flex-direction:column;gap:var(--space-2)}
+.prov-row{display:flex;align-items:center;gap:var(--space-2)}
+.prov-row-dot{width:8px;height:8px;border-radius:var(--radius-full);flex-shrink:0}
+.prov-row-label{font-size:11px;color:var(--text-secondary);flex:1}
+.prov-row-count{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-muted);font-variant-numeric:tabular-nums}
+
+/* ═══════════════════════════════════════════════════════════
+   INVESTIGATION DETAIL LAYOUT — sidebar list + main content
+   ═══════════════════════════════════════════════════════════ */
+.detail-layout{display:grid;grid-template-columns:280px 1fr;gap:0;min-height:calc(100vh - var(--header-height) - var(--space-6) * 2 - 60px)}
+
+/* --- Investigation sidebar list --- */
+.inv-sidebar{border-right:1px solid var(--border-primary);background:var(--bg-card);border-radius:var(--radius-md) 0 0 var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.inv-sidebar-header{padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-secondary);display:flex;align-items:center;justify-content:space-between}
+.inv-sidebar-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.inv-sidebar-count{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-disabled)}
+.inv-sidebar-list{display:flex;flex-direction:column}
+.inv-sidebar-item{padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-secondary);cursor:pointer;transition:background var(--duration-instant) ease}
+.inv-sidebar-item:hover{background:var(--bg-hover)}
+.inv-sidebar-item:last-child{border-bottom:none}
+.inv-sidebar-item.selected{background:var(--purple-50);border-left:3px solid var(--purple-500)}
+.inv-sidebar-item-id{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:2px;display:flex;align-items:center;gap:var(--space-2)}
+.inv-sidebar-item-question{font-size:13px;font-weight:600;line-height:18px;color:var(--text-primary);margin-bottom:var(--space-1)}
+.inv-sidebar-item-meta{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:var(--space-2)}
+.inv-sidebar-item-status{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em}
+.inv-sidebar-item-status.active{color:var(--green-600)}
+.inv-sidebar-item-status.active::before{content:'';width:5px;height:5px;border-radius:var(--radius-full);background:var(--status-success);animation:pulse-dot-detail 2s ease-in-out infinite}
+@keyframes pulse-dot-detail{0%,100%{opacity:1}50%{opacity:0.3}}
+.cert-ready-badge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:1px 6px;border-radius:4px;background:var(--green-50);color:var(--green-700);border:1px solid var(--green-200)}
+
+/* --- Detail main area --- */
+.detail-main{background:var(--bg-card);border-radius:0 var(--radius-md) var(--radius-md) 0;box-shadow:var(--shadow-xs);overflow:hidden}
+
+/* --- Tab bar --- */
+.tab-bar{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border-primary);padding:0 var(--space-4);background:var(--bg-sunken)}
+.tab-item{display:flex;align-items:center;gap:var(--space-1);padding:var(--space-3) var(--space-4);font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color var(--duration-fast) ease;white-space:nowrap}
+.tab-item:hover{color:var(--text-secondary)}
+.tab-item.active{color:var(--purple-700);font-weight:600;border-bottom-color:var(--purple-500)}
+.tab-new-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:1px 5px;border-radius:4px;background:var(--purple-50);color:var(--purple-600);border:1px solid var(--purple-200)}
+
+/* --- Detail content area --- */
+.detail-content{padding:var(--space-6)}
+
+/* ═══════════════════════════════════════════════════════════
+   DETAIL SECTIONS (card pattern)
+   ═══════════════════════════════════════════════════════════ */
+.detail-section{background:var(--bg-elevated);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden;margin-bottom:var(--space-5)}
+.detail-section:last-child{margin-bottom:0}
+.detail-section-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-5);border-bottom:1px solid var(--border-secondary);background:var(--bg-sunken)}
+.detail-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.detail-section-body{padding:var(--space-5)}
+
+/* ═══════════════════════════════════════════════════════════
+   READINESS STATUS
+   ═══════════════════════════════════════════════════════════ */
+.readiness-status{display:flex;align-items:center;gap:var(--space-4);margin-bottom:var(--space-4)}
+.readiness-badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:6px 14px;border-radius:var(--radius-sm);white-space:nowrap}
+.readiness-badge.ready{background:oklch(0.545 0.170 152/0.08);color:var(--green-700);border:1px solid oklch(0.545 0.170 152/0.20)}
+.readiness-badge.ready::before{content:'';width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success)}
+.readiness-badge.not-ready{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-primary)}
+.readiness-badge.not-ready::before{content:'';width:8px;height:8px;border-radius:var(--radius-full);background:var(--text-disabled)}
+
+.readiness-meta{display:flex;flex-direction:column;gap:var(--space-2)}
+.readiness-meta-row{display:flex;align-items:center;gap:var(--space-3);font-size:13px}
+.readiness-meta-label{font-weight:600;color:var(--text-muted);min-width:120px;font-size:12px}
+.readiness-meta-value{color:var(--text-primary);font-weight:500}
+.readiness-meta-value.mono{font-family:var(--font-mono);font-size:12px;font-weight:500;font-variant-numeric:tabular-nums}
+
+/* ═══════════════════════════════════════════════════════════
+   CERTIFICATE LIFECYCLE STEPPER
+   ═══════════════════════════════════════════════════════════ */
+.lifecycle-stepper{display:flex;align-items:flex-start;justify-content:center;gap:0;padding:var(--space-6) var(--space-8)}
+
+.lifecycle-step{display:flex;flex-direction:column;align-items:center;gap:var(--space-2);min-width:120px;position:relative;z-index:1}
+.lifecycle-circle{width:40px;height:40px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;border:2px solid var(--border-primary);background:var(--bg-card);color:var(--text-disabled);transition:all var(--duration-normal) var(--ease-out)}
+.lifecycle-circle.reached{background:oklch(0.545 0.170 152/0.10);border-color:var(--green-400);color:var(--green-700)}
+.lifecycle-circle.active{background:oklch(0.530 0.230 295/0.10);border-color:var(--purple-400);color:var(--purple-600);animation:pulse-circle 2s ease-in-out infinite}
+.lifecycle-circle.pending{background:var(--bg-sunken);border-color:var(--border-primary);color:var(--text-disabled)}
+@keyframes pulse-circle{0%,100%{box-shadow:0 0 0 0 oklch(0.530 0.230 295/0.20)}50%{box-shadow:0 0 0 8px oklch(0.530 0.230 295/0)}}
+.lifecycle-label{font-size:12px;font-weight:600;color:var(--text-secondary);text-align:center}
+.lifecycle-label.reached{color:var(--green-700)}
+.lifecycle-label.active{color:var(--purple-700)}
+.lifecycle-label.pending{color:var(--text-disabled)}
+.lifecycle-timestamp{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-muted);text-align:center;font-variant-numeric:tabular-nums;min-height:14px}
+
+.lifecycle-connector{flex:1;display:flex;align-items:center;padding-top:0;margin-top:20px;min-width:60px}
+.lifecycle-line{height:2px;width:100%;background:var(--border-primary);border-radius:1px}
+.lifecycle-line.reached{background:var(--green-400)}
+
+/* ═══════════════════════════════════════════════════════════
+   ROUTING DECISION
+   ═══════════════════════════════════════════════════════════ */
+.routing-row{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4) var(--space-5);border-top:1px solid var(--border-secondary)}
+.routing-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:var(--radius-sm);white-space:nowrap}
+.routing-badge.allowed{background:oklch(0.545 0.170 152/0.08);color:var(--green-700);border:1px solid oklch(0.545 0.170 152/0.20)}
+.routing-badge.allowed::before{content:'';width:6px;height:6px;border-radius:var(--radius-full);background:var(--status-success)}
+.routing-badge.review-required{background:oklch(0.540 0.175 62/0.08);color:var(--orange-700);border:1px solid oklch(0.540 0.175 62/0.20)}
+.routing-badge.review-required::before{content:'';width:6px;height:6px;border-radius:var(--radius-full);background:var(--orange-500)}
+.routing-reason{font-size:12px;color:var(--text-secondary);line-height:16px}
+
+/* ═══════════════════════════════════════════════════════════
+   BUILD CERTIFICATE BUTTON AREA
+   ═══════════════════════════════════════════════════════════ */
+.build-cert-area{display:flex;align-items:center;justify-content:space-between;padding:var(--space-4) var(--space-5);background:oklch(0.530 0.230 295/0.03);border:1px solid oklch(0.530 0.230 295/0.12);border-radius:var(--radius-md);margin-bottom:var(--space-5)}
+.build-cert-text{font-size:13px;color:var(--text-secondary);line-height:20px}
+.build-cert-text strong{color:var(--text-primary)}
+
+/* ═══════════════════════════════════════════════════════════
+   TAB PANEL (hidden by default, shown when tab is active)
+   ═══════════════════════════════════════════════════════════ */
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* ═══════════════════════════════════════════════════════════
+   STATE TOGGLE (demo)
+   ═══════════════════════════════════════════════════════════ */
+.state-toggle{position:fixed;bottom:var(--space-5);right:var(--space-5);display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-full);box-shadow:var(--shadow-md);font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer;z-index:100}
+.state-toggle:hover{border-color:var(--purple-200);color:var(--text-primary)}
+.state-toggle-dot{width:8px;height:8px;border-radius:var(--radius-full)}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+@media(max-width:1400px){.inv-layout{grid-template-columns:1fr 260px}.inv-summary{flex-wrap:wrap}.inv-kpi{min-width:calc(50% - var(--space-3))}}
+@media(max-width:1024px){.sidebar{width:64px}.sidebar .nav-item-label,.sidebar .nav-badge{display:none}.sidebar .nav-group-label{font-size:0;padding:var(--space-2) var(--space-4)}.sidebar .nav-group-label::after{content:'';display:block;width:16px;height:1px;background:var(--border-primary);margin:0 auto}.sidebar .nav-item{padding:0;justify-content:center;margin:1px var(--space-1);width:calc(100% - var(--space-2))}.main{margin-left:64px}.inv-layout{grid-template-columns:1fr}.detail-layout{grid-template-columns:240px 1fr}}
+@media(max-width:768px){.sidebar{display:none}.main{margin-left:0;padding:var(--space-4)}.inv-layout{grid-template-columns:1fr}.inv-summary{flex-direction:column}.detail-layout{grid-template-columns:1fr}.inv-sidebar{display:none}}
+</style>
+</head>
+<body>
+
+<!-- HEADER (locked) -->
+<header class="header">
+  <div class="header-left">
+    <a href="#" class="header-logo"><div class="header-logo-mark">E</div><span class="header-logo-text">Echelon</span><span class="header-logo-version">v2</span></a>
+    <button class="sidebar-toggle"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4.5h12M3 9h12M3 13.5h12"/></svg></button>
+  </div>
+  <div class="header-center"><div class="header-search"><span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg></span><input type="text" placeholder="Search theatres, agents, investigations..."><span class="header-search-kbd">/</span></div></div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span>Base</div>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 12.73A6 6 0 0 0 15 9V7.5a6 6 0 1 0-12 0V9a6 6 0 0 0 1.27 3.73L3 15h12l-1.27-2.27z"/><path d="M7.5 15a1.5 1.5 0 0 0 3 0"/></svg><span class="header-badge">3</span></button>
+    <button class="wallet-btn"><div class="wallet-balance"><div class="wallet-balance-item"><span class="wallet-balance-label">ETH</span>2.45</div><span class="wallet-divider"></span><div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span>1,250</div></div><div class="wallet-avatar"></div></button>
+  </div>
+</header>
+
+<!-- SIDEBAR (locked) -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group"><div class="nav-group-label">Command</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg></span><span class="nav-item-label">Dashboard</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Markets</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14l4-5 3 3 5-7"/><path d="M11 5h3v3"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">5</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Intelligence</div><a href="#" class="nav-item active"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge warn" id="nav-inv-badge">2</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="14" height="14" rx="1"/><path d="M2 6h14M6 2v14M10 2v14M2 10h14"/></svg></span><span class="nav-item-label">Signal Map</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="3"/><circle cx="9" cy="9" r="1"/></svg></span><span class="nav-item-label">WorldMonitor</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Verification</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l2.5 2.5L13 6"/><circle cx="9" cy="9" r="7"/></svg></span><span class="nav-item-label">Verify</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="12" height="14" rx="1"/><path d="M7 6h4M7 9h4M7 12h2"/></svg></span><span class="nav-item-label">Certificates</span><span class="nav-badge warn">4</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Portfolio</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4z"/><path d="M2 7h14"/><path d="M12 11h2"/></svg></span><span class="nav-item-label">Positions</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Agents</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="6" r="3"/><path d="M3 15a6 6 0 0 1 12 0"/></svg></span><span class="nav-item-label">Fleet</span><span class="nav-badge live">34</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Operations</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">3</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 14V4M7 14V8M11 14V6M15 14V2"/></svg></span><span class="nav-item-label">Analytics</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Data Products</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h10v2H4zM4 8h10v2H4zM4 12h10v2H4z"/></svg></span><span class="nav-item-label">RLMF Exports</span></a></div>
+  </div>
+  <div class="sidebar-footer"><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M14.5 9a5.5 5.5 0 0 0-.4-1.5l1.5-1.2-1-1.7-1.8.6A5.5 5.5 0 0 0 11.5 4l.2-1.9h-2L9.5 4a5.5 5.5 0 0 0-1.3 1.2l-1.8-.6-1 1.7 1.5 1.2A5.5 5.5 0 0 0 6.5 9a5.5 5.5 0 0 0 .4 1.5l-1.5 1.2 1 1.7 1.8-.6a5.5 5.5 0 0 0 1.3 1.2l-.2 1.9h2l.2-1.9a5.5 5.5 0 0 0 1.3-1.2l1.8.6 1-1.7-1.5-1.2A5.5 5.5 0 0 0 14.5 9z"/></svg></span><span class="nav-item-label">Settings</span></a></div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     INVESTIGATIONS — 3 mutually exclusive states
+     ═══════════════════════════════════════════════════════════ -->
+
+<main class="main" id="browse-view">
+
+  <div class="page-header">
+    <div>
+      <div class="page-breadcrumb"><span>Intelligence</span><span class="page-breadcrumb-sep">/</span><span class="page-breadcrumb-current">Investigations</span></div>
+      <h1 class="page-title">Investigations</h1>
+    </div>
+    <div style="display:flex;gap:var(--space-2)">
+      <button class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h12M4 8h8M6 12h4"/></svg>Filter</button>
+      <button class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>New Investigation</button>
+    </div>
+  </div>
+
+  <!-- Attention strip -->
+  <div class="attention-strip" id="attention-strip"></div>
+
+  <!-- Summary KPIs -->
+  <div class="inv-summary" id="inv-summary"></div>
+
+  <!-- Layout: list + rail -->
+  <div class="inv-layout" id="inv-layout">
+    <div id="inv-list-area"></div>
+    <div class="rail" id="right-rail"></div>
+  </div>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     INVESTIGATION DETAIL VIEW (hidden by default, shown on card click)
+     ═══════════════════════════════════════════════════════════ -->
+
+<main class="main" id="detail-view" style="display:none">
+
+  <div class="page-header">
+    <div>
+      <div class="page-breadcrumb"><span>Intelligence</span><span class="page-breadcrumb-sep">/</span><span style="cursor:pointer;color:var(--purple-600)" onclick="showBrowseView()">Investigations</span><span class="page-breadcrumb-sep">/</span><span class="page-breadcrumb-current" id="detail-inv-id">INV-0039</span></div>
+      <h1 class="page-title" id="detail-inv-question">Will the Fed cut rates at the June 2026 FOMC meeting?</h1>
+    </div>
+    <div style="display:flex;gap:var(--space-2)">
+      <button class="btn btn-secondary" onclick="showBrowseView()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 4L6 8l4 4"/></svg>Back</button>
+      <button class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 6l-4 4-4-4"/></svg>Export</button>
+      <button class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5"/></svg>History</button>
+    </div>
+  </div>
+
+  <div class="detail-layout">
+
+    <!-- Investigation sidebar list -->
+    <div class="inv-sidebar">
+      <div class="inv-sidebar-header">
+        <span class="inv-sidebar-title">Investigations</span>
+        <span class="inv-sidebar-count">3</span>
+      </div>
+      <div class="inv-sidebar-list">
+        <div class="inv-sidebar-item">
+          <div class="inv-sidebar-item-id">
+            <span>INV-0042</span>
+            <span class="inv-sidebar-item-status active">Active</span>
+          </div>
+          <div class="inv-sidebar-item-question">Will SpaceX complete orbital refueling by August 2026?</div>
+          <div class="inv-sidebar-item-meta"><span>8 evidence</span><span>|</span><span>4 claims</span></div>
+        </div>
+        <div class="inv-sidebar-item selected">
+          <div class="inv-sidebar-item-id">
+            <span>INV-0039</span>
+            <span class="cert-ready-badge" id="sidebar-cert-badge">CERT READY</span>
+            <span class="inv-sidebar-item-status active">Active</span>
+          </div>
+          <div class="inv-sidebar-item-question">Will the Fed cut rates at the June 2026 FOMC meeting?</div>
+          <div class="inv-sidebar-item-meta"><span>18 evidence</span><span>|</span><span>8 claims</span></div>
+        </div>
+        <div class="inv-sidebar-item">
+          <div class="inv-sidebar-item-id">
+            <span>INV-0041</span>
+            <span class="inv-sidebar-item-status active">Active</span>
+          </div>
+          <div class="inv-sidebar-item-question">Taiwan Strait escalation index trajectory through Q3 2026</div>
+          <div class="inv-sidebar-item-meta"><span>14 evidence</span><span>|</span><span>7 claims</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detail main area -->
+    <div class="detail-main">
+
+      <!-- Tab bar -->
+      <div class="tab-bar" id="detail-tab-bar">
+        <div class="tab-item" data-tab="evidence" onclick="switchTab('evidence')">Evidence</div>
+        <div class="tab-item" data-tab="claims" onclick="switchTab('claims')">Claims</div>
+        <div class="tab-item" data-tab="counter-signals" onclick="switchTab('counter-signals')">Counter-Signals</div>
+        <div class="tab-item" data-tab="drift" onclick="switchTab('drift')">Drift</div>
+        <div class="tab-item active" data-tab="readiness" onclick="switchTab('readiness')">Readiness <span class="tab-new-tag">new</span></div>
+      </div>
+
+      <!-- Tab panels -->
+      <div class="tab-panel" data-panel="evidence">
+        <div class="detail-content">
+          <div class="detail-section">
+            <div class="detail-section-header"><span class="detail-section-title">Evidence Envelope</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">18 items</span></div>
+            <div class="detail-section-body" style="text-align:center;color:var(--text-muted);font-size:13px;padding:var(--space-8)">Evidence items are displayed here when wired to the API.<br><span style="font-size:11px;color:var(--text-disabled)">GET /api/v1/investigations/{id}/evidence</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="claims">
+        <div class="detail-content">
+          <div class="detail-section">
+            <div class="detail-section-header"><span class="detail-section-title">Claim Graph</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">8 claims</span></div>
+            <div class="detail-section-body" style="text-align:center;color:var(--text-muted);font-size:13px;padding:var(--space-8)">Claim graph nodes (FACT / CAUSAL / ATTRIBUTION) rendered here.<br><span style="font-size:11px;color:var(--text-disabled)">GET /api/v1/investigations/{id}/claims</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="counter-signals">
+        <div class="detail-content">
+          <div class="detail-section">
+            <div class="detail-section-header"><span class="detail-section-title">Counter-Signal Feed</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">contradicting evidence</span></div>
+            <div class="detail-section-body" style="text-align:center;color:var(--text-muted);font-size:13px;padding:var(--space-8)">Contradicting evidence stream displayed here.<br><span style="font-size:11px;color:var(--text-disabled)">GET /api/v1/investigations/{id}/counter-signals</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" data-panel="drift">
+        <div class="detail-content">
+          <div class="detail-section">
+            <div class="detail-section-header"><span class="detail-section-title">Drift Events</span><span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">commitment monitor</span></div>
+            <div class="detail-section-body" style="text-align:center;color:var(--text-muted);font-size:13px;padding:var(--space-8)">Commitment monitoring drift events displayed here.<br><span style="font-size:11px;color:var(--text-disabled)">GET /api/v1/investigations/{id}/drift</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel active" data-panel="readiness">
+        <div class="detail-content" id="readiness-content">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- State toggle -->
+<button class="state-toggle" onclick="cycleState()">
+  <span class="state-toggle-dot" id="toggle-dot"></span>
+  <span id="toggle-label"></span>
+</button>
+
+<script>
+const STATES = ['alert', 'active', 'empty'];
+let stateIdx = 0;
+
+function setPageState(state) {
+  renderStrip(state);
+  renderKPIs(state);
+  renderList(state);
+  renderRail(state);
+  renderNav(state);
+  renderToggle(state);
+}
+
+// ── ATTENTION STRIP ──
+// Fix 1: No banner in empty state — the empty state card is the onboarding surface
+function renderStrip(state) {
+  const el = document.getElementById('attention-strip');
+  if (state === 'alert') {
+    el.style.display = '';
+    el.className = 'attention-strip alert-state';
+    el.innerHTML = `
+      <div class="attention-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2L1.5 15h15L9 2z"/><path d="M9 7v3M9 12.5v.5"/></svg></div>
+      <span class="attention-label">Stalled</span>
+      <span class="attention-msg">INV-0042 has no new evidence in 72h \u2014 market expires in 6d</span>`;
+  } else if (state === 'active') {
+    el.style.display = '';
+    el.className = 'attention-strip active-state';
+    el.innerHTML = `
+      <div class="attention-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l3 3 5-5"/><circle cx="9" cy="9" r="7"/></svg></div>
+      <span class="attention-label">All Active</span>
+      <span class="attention-msg-success">All 4 investigations progressing \u2014 scanner nominal</span>`;
+  } else {
+    el.style.display = 'none';
+    el.innerHTML = '';
+  }
+}
+
+// ── KPIs ──
+function renderKPIs(state) {
+  const el = document.getElementById('inv-summary');
+  if (state === 'empty') {
+    el.innerHTML = `
+      <div class="inv-kpi"><span class="inv-kpi-label">Active</span><span class="inv-kpi-value zero">0</span></div>
+      <div class="inv-kpi"><span class="inv-kpi-label">Evidence Items</span><span class="inv-kpi-value zero">0</span></div>
+      <div class="inv-kpi"><span class="inv-kpi-label">Claims Tracked</span><span class="inv-kpi-value zero">0</span></div>
+      <div class="inv-kpi"><span class="inv-kpi-label">Stalled</span><span class="inv-kpi-value zero">0</span></div>`;
+    return;
+  }
+  if (state === 'active') {
+    el.innerHTML = `
+      <div class="inv-kpi"><span class="inv-kpi-label">Active</span><span class="inv-kpi-value success">4</span><span class="inv-kpi-sub">0 stalled</span></div>
+      <div class="inv-kpi"><span class="inv-kpi-label">Evidence Items</span><span class="inv-kpi-value">47</span><span class="inv-kpi-sub">+6 / 24h</span></div>
+      <div class="inv-kpi"><span class="inv-kpi-label">Claims Tracked</span><span class="inv-kpi-value">23</span><span class="inv-kpi-sub">15 supported \u00b7 5 partial \u00b7 3 unconfirmed</span></div>
+      <div class="inv-kpi"><span class="inv-kpi-label">Stalled</span><span class="inv-kpi-value success">0</span></div>`;
+    return;
+  }
+  // alert
+  el.innerHTML = `
+    <div class="inv-kpi"><span class="inv-kpi-label">Active</span><span class="inv-kpi-value">4</span><span class="inv-kpi-sub">1 stalled</span></div>
+    <div class="inv-kpi"><span class="inv-kpi-label">Evidence Items</span><span class="inv-kpi-value">47</span><span class="inv-kpi-sub">+2 / 24h</span></div>
+    <div class="inv-kpi"><span class="inv-kpi-label">Claims Tracked</span><span class="inv-kpi-value">23</span><span class="inv-kpi-sub">14 supported \u00b7 5 partial \u00b7 1 contradicted \u00b7 3 unconfirmed</span></div>
+    <div class="inv-kpi kpi-warn"><span class="inv-kpi-label">Stalled</span><span class="inv-kpi-value warning">1</span><span class="inv-kpi-sub">no evidence in 72h</span></div>`;
+}
+
+// ── INVESTIGATION LIST ──
+// Fix 2: "Open \u2192" affordance on cards
+// Fix 3: Humanized stop condition labels
+// Fix 4: Option B (inline micro-legend) for claims bar, Option A (tooltips) for source dots
+// Fix 5: Stalled warning scoped to INV-0042
+function renderList(state) {
+  const el = document.getElementById('inv-list-area');
+
+  if (state === 'empty') {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <circle cx="14" cy="14" r="10"/>
+            <path d="M22 22l6 6"/>
+            <path d="M11 14h6M14 11v6"/>
+          </svg>
+        </div>
+        <div class="empty-state-title">No investigations yet</div>
+        <div class="empty-state-desc">Investigations gather evidence, build claim graphs, and track counter-signals to inform market positions. Create your first to begin.</div>
+        <button class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>New Investigation</button>
+      </div>`;
+    return;
+  }
+
+  let cards = '<div class="inv-list">';
+
+  // Card 1: SpaceX (stalled in alert state, active in active state)
+  const spacexStalled = state === 'alert';
+  cards += `
+    <div class="inv-card${spacexStalled ? ' stalled' : ''}">
+      <div class="inv-card-top">
+        <span class="inv-card-id">INV-0042</span>
+        <span class="inv-card-open">Open \u2192</span>
+        <span class="inv-card-status ${spacexStalled ? 'stalled' : 'active'}">${spacexStalled ? 'Stalled' : 'Active'}</span>
+      </div>
+      <div class="inv-card-question">Will SpaceX complete orbital refueling by August 2026?</div>
+      <div class="inv-card-meta">
+        <span class="inv-card-meta-item"><span class="label">Theatre:</span> <a class="inv-theatre-chip" href="#">SpaceX Refuel</a></span>
+        <span class="inv-card-meta-item"><span class="label">Created:</span> <span class="mono">18 Feb</span></span>
+        <span class="inv-card-meta-item"><span class="label">Ends at:</span> <span class="mono">Market resolution</span></span>
+        <span class="inv-card-meta-item"><span class="label">Sources:</span>
+          <span class="prov-dots">
+            <span class="prov-dot public-primary" title="Public primary"></span>
+            <span class="prov-dot public-primary" title="Public primary"></span>
+            <span class="prov-dot analyst-derived" title="Analyst derived"></span>
+            <span class="prov-dot third-party" title="Third party"></span>
+          </span>
+        </span>
+      </div>
+      ${spacexStalled ? '<div class="inv-stalled-badge"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="6" r="5"/><path d="M6 3.5v3M6 8.5v.5"/></svg>No new evidence for INV-0042 in 72h \u2014 last source update expired</div>' : ''}
+      <div class="inv-card-progress">
+        <div class="inv-progress-item"><span class="inv-progress-label">Evidence</span><span class="inv-progress-value">8 items</span></div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Claims</span><span class="inv-progress-value">4 / 4</span>
+          <div class="claim-bar">
+            <div class="claim-bar-seg supported" style="width:${spacexStalled ? '25' : '50'}%"></div>
+            <div class="claim-bar-seg partial" style="width:25%"></div>
+            <div class="claim-bar-seg unconfirmed" style="width:${spacexStalled ? '25' : '25'}%"></div>
+            ${spacexStalled ? '<div class="claim-bar-seg contradicted" style="width:25%"></div>' : ''}
+          </div>
+          <div class="claim-legend">${spacexStalled ? '1 supported \u00b7 1 partial \u00b7 1 unconfirmed \u00b7 1 contradicted' : '2 supported \u00b7 1 partial \u00b7 1 unconfirmed'}</div>
+        </div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Counter-Signals</span><span class="inv-progress-value${spacexStalled ? ' contradicted' : ''}">2</span></div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Drift Events</span><span class="inv-progress-value">${spacexStalled ? '3' : '1'}</span></div>
+      </div>
+    </div>`;
+
+  // Card 2: Fed Rate Cut (always active)
+  cards += `
+    <div class="inv-card">
+      <div class="inv-card-top">
+        <span class="inv-card-id">INV-0039</span>
+        <span class="inv-card-open">Open \u2192</span>
+        <span class="inv-card-status active">Active</span>
+      </div>
+      <div class="inv-card-question">Will the Fed cut rates at the June 2026 FOMC meeting?</div>
+      <div class="inv-card-meta">
+        <span class="inv-card-meta-item"><span class="label">Theatre:</span> <a class="inv-theatre-chip" href="#">Fed Rate Cut</a></span>
+        <span class="inv-card-meta-item"><span class="label">Created:</span> <span class="mono">4 Feb</span></span>
+        <span class="inv-card-meta-item"><span class="label">Ends at:</span> <span class="mono">Evidence threshold</span></span>
+        <span class="inv-card-meta-item"><span class="label">Sources:</span>
+          <span class="prov-dots">
+            <span class="prov-dot public-primary" title="Public primary"></span>
+            <span class="prov-dot public-primary" title="Public primary"></span>
+            <span class="prov-dot public-secondary" title="Public secondary"></span>
+            <span class="prov-dot public-secondary" title="Public secondary"></span>
+            <span class="prov-dot analyst-derived" title="Analyst derived"></span>
+          </span>
+        </span>
+      </div>
+      <div class="inv-card-progress">
+        <div class="inv-progress-item"><span class="inv-progress-label">Evidence</span><span class="inv-progress-value">18 items</span></div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Claims</span><span class="inv-progress-value">8 / 8</span>
+          <div class="claim-bar">
+            <div class="claim-bar-seg supported" style="width:62.5%"></div>
+            <div class="claim-bar-seg partial" style="width:25%"></div>
+            <div class="claim-bar-seg unconfirmed" style="width:12.5%"></div>
+          </div>
+          <div class="claim-legend">5 supported \u00b7 2 partial \u00b7 1 unconfirmed</div>
+        </div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Counter-Signals</span><span class="inv-progress-value">0</span></div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Drift Events</span><span class="inv-progress-value">0</span></div>
+      </div>
+    </div>`;
+
+  // Card 3: Taiwan Strait (always active)
+  cards += `
+    <div class="inv-card">
+      <div class="inv-card-top">
+        <span class="inv-card-id">INV-0041</span>
+        <span class="inv-card-open">Open \u2192</span>
+        <span class="inv-card-status active">Active</span>
+      </div>
+      <div class="inv-card-question">Taiwan Strait escalation index trajectory through Q3 2026</div>
+      <div class="inv-card-meta">
+        <span class="inv-card-meta-item"><span class="label">Theatre:</span> <a class="inv-theatre-chip" href="#">Taiwan Strait</a></span>
+        <span class="inv-card-meta-item"><span class="label">Created:</span> <span class="mono">12 Feb</span></span>
+        <span class="inv-card-meta-item"><span class="label">Ends at:</span> <span class="mono">Sponsor milestone</span></span>
+        <span class="inv-card-meta-item"><span class="label">Sources:</span>
+          <span class="prov-dots">
+            <span class="prov-dot public-primary" title="Public primary"></span>
+            <span class="prov-dot public-secondary" title="Public secondary"></span>
+            <span class="prov-dot private-leak" title="Private leak"></span>
+            <span class="prov-dot analyst-derived" title="Analyst derived"></span>
+            <span class="prov-dot analyst-derived" title="Analyst derived"></span>
+            <span class="prov-dot third-party" title="Third party"></span>
+          </span>
+        </span>
+      </div>
+      <div class="inv-card-progress">
+        <div class="inv-progress-item"><span class="inv-progress-label">Evidence</span><span class="inv-progress-value">14 items</span></div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Claims</span><span class="inv-progress-value">7 / 7</span>
+          <div class="claim-bar">
+            <div class="claim-bar-seg supported" style="width:43%"></div>
+            <div class="claim-bar-seg partial" style="width:28.5%"></div>
+            <div class="claim-bar-seg unconfirmed" style="width:28.5%"></div>
+          </div>
+          <div class="claim-legend">3 supported \u00b7 2 partial \u00b7 2 unconfirmed</div>
+        </div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Counter-Signals</span><span class="inv-progress-value">1</span></div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Drift Events</span><span class="inv-progress-value">2</span></div>
+      </div>
+    </div>`;
+
+  // Card 4: BTC (always active)
+  cards += `
+    <div class="inv-card">
+      <div class="inv-card-top">
+        <span class="inv-card-id">INV-0040</span>
+        <span class="inv-card-open">Open \u2192</span>
+        <span class="inv-card-status active">Active</span>
+      </div>
+      <div class="inv-card-question">Will BTC exceed $150K before July 2026?</div>
+      <div class="inv-card-meta">
+        <span class="inv-card-meta-item"><span class="label">Theatre:</span> <a class="inv-theatre-chip" href="#">BTC $150K</a></span>
+        <span class="inv-card-meta-item"><span class="label">Created:</span> <span class="mono">6 Feb</span></span>
+        <span class="inv-card-meta-item"><span class="label">Ends at:</span> <span class="mono">Market resolution</span></span>
+        <span class="inv-card-meta-item"><span class="label">Sources:</span>
+          <span class="prov-dots">
+            <span class="prov-dot public-primary" title="Public primary"></span>
+            <span class="prov-dot public-secondary" title="Public secondary"></span>
+            <span class="prov-dot public-secondary" title="Public secondary"></span>
+            <span class="prov-dot analyst-derived" title="Analyst derived"></span>
+          </span>
+        </span>
+      </div>
+      <div class="inv-card-progress">
+        <div class="inv-progress-item"><span class="inv-progress-label">Evidence</span><span class="inv-progress-value">7 items</span></div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Claims</span><span class="inv-progress-value">4 / 4</span>
+          <div class="claim-bar">
+            <div class="claim-bar-seg supported" style="width:50%"></div>
+            <div class="claim-bar-seg partial" style="width:25%"></div>
+            <div class="claim-bar-seg unconfirmed" style="width:25%"></div>
+          </div>
+          <div class="claim-legend">2 supported \u00b7 1 partial \u00b7 1 unconfirmed</div>
+        </div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Counter-Signals</span><span class="inv-progress-value">0</span></div>
+        <div class="inv-progress-item"><span class="inv-progress-label">Drift Events</span><span class="inv-progress-value">0</span></div>
+      </div>
+    </div>`;
+
+  cards += '</div>';
+  el.innerHTML = cards;
+}
+
+// ── RIGHT RAIL ──
+function renderRail(state) {
+  const el = document.getElementById('right-rail');
+
+  if (state === 'empty') {
+    el.innerHTML = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Domain Filters</span></div>
+        <div class="rail-body">
+          <div class="scanner-row"><span class="scanner-label">Committed</span><span class="scanner-value idle">None</span></div>
+        </div>
+        <div class="empty-rail-msg">No domain filters committed at creation.</div>
+      </div>
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Evidence Feed</span></div>
+        <div class="empty-rail-msg">No evidence collected yet.</div>
+      </div>`;
+    return;
+  }
+
+  // Scanner panel
+  let scanner = `
+    <div class="rail-panel">
+      <div class="rail-header"><span class="rail-title">Domain Filters</span><span style="font-family:var(--font-mono);font-size:10px;color:var(--text-disabled)">committed at creation</span></div>
+      <div class="rail-body">
+        <div class="scanner-row"><span class="scanner-label">Filters</span><span class="scanner-value" style="color:var(--text-primary)">macro-economics, fed-policy, rates, employment</span></div>
+        <div class="scanner-row"><span class="scanner-label">Enforcement</span><span class="scanner-value ok">Active</span></div>
+        <div class="scanner-row"><span class="scanner-label">Last DeltaBrief</span><span class="scanner-value" style="color:var(--text-primary)">8m ago</span></div>
+        <div class="scanner-row"><span class="scanner-label">Sources / 24h</span><span class="scanner-value" style="color:var(--text-primary)">142</span></div>
+      </div>
+    </div>`;
+
+  // Provenance breakdown
+  let provenance = `
+    <div class="rail-panel">
+      <div class="rail-header"><span class="rail-title">Evidence by Provenance</span><span style="font-size:11px;color:var(--text-muted);font-weight:500">47 total</span></div>
+      <div class="rail-body">
+        <div class="prov-legend">
+          <div class="prov-row"><div class="prov-row-dot" style="background:var(--green-400)"></div><span class="prov-row-label">Public Primary</span><span class="prov-row-count">18</span></div>
+          <div class="prov-row"><div class="prov-row-dot" style="background:var(--status-info)"></div><span class="prov-row-label">Public Secondary</span><span class="prov-row-count">12</span></div>
+          <div class="prov-row"><div class="prov-row-dot" style="background:var(--purple-400)"></div><span class="prov-row-label">Analyst Derived</span><span class="prov-row-count">9</span></div>
+          <div class="prov-row"><div class="prov-row-dot" style="background:var(--text-disabled)"></div><span class="prov-row-label">Third Party</span><span class="prov-row-count">5</span></div>
+          <div class="prov-row"><div class="prov-row-dot" style="background:var(--orange-500)"></div><span class="prov-row-label">Private Leak</span><span class="prov-row-count">3</span></div>
+        </div>
+      </div>
+    </div>`;
+
+  // Signal feed
+  let feed = '';
+  if (state === 'alert') {
+    feed = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Activity Feed</span></div>
+        <div class="rail-body" style="padding:var(--space-2) var(--space-4)">
+          <div class="signal-item"><span class="signal-dot counter"></span><span class="signal-text"><strong>INV-0042</strong> counter-signal: NASA budget hearing contradicts timeline</span><span class="signal-time">2h</span></div>
+          <div class="signal-item"><span class="signal-dot drift"></span><span class="signal-text"><strong>INV-0042</strong> drift: source RSS feed offline 72h</span><span class="signal-time">3h</span></div>
+          <div class="signal-item"><span class="signal-dot new-evidence"></span><span class="signal-text"><strong>INV-0039</strong> new evidence: Fed minutes released (public primary)</span><span class="signal-time">4h</span></div>
+          <div class="signal-item"><span class="signal-dot claim"></span><span class="signal-text"><strong>INV-0041</strong> claim C04 upgraded to SUPPORTED</span><span class="signal-time">6h</span></div>
+          <div class="signal-item"><span class="signal-dot new-evidence"></span><span class="signal-text"><strong>INV-0041</strong> new evidence: satellite imagery analysis (analyst derived)</span><span class="signal-time">8h</span></div>
+          <div class="signal-item"><span class="signal-dot new-evidence"></span><span class="signal-text"><strong>INV-0039</strong> new evidence: employment data (public primary)</span><span class="signal-time">12h</span></div>
+        </div>
+      </div>`;
+  } else {
+    feed = `
+      <div class="rail-panel">
+        <div class="rail-header"><span class="rail-title">Activity Feed</span></div>
+        <div class="rail-body" style="padding:var(--space-2) var(--space-4)">
+          <div class="signal-item"><span class="signal-dot new-evidence"></span><span class="signal-text"><strong>INV-0042</strong> new evidence: SpaceX filing with FAA (public primary)</span><span class="signal-time">1h</span></div>
+          <div class="signal-item"><span class="signal-dot new-evidence"></span><span class="signal-text"><strong>INV-0039</strong> new evidence: Fed minutes released (public primary)</span><span class="signal-time">4h</span></div>
+          <div class="signal-item"><span class="signal-dot claim"></span><span class="signal-text"><strong>INV-0041</strong> claim C04 upgraded to SUPPORTED</span><span class="signal-time">6h</span></div>
+          <div class="signal-item"><span class="signal-dot new-evidence"></span><span class="signal-text"><strong>INV-0041</strong> new evidence: satellite imagery analysis (analyst derived)</span><span class="signal-time">8h</span></div>
+          <div class="signal-item"><span class="signal-dot claim"></span><span class="signal-text"><strong>INV-0040</strong> claim C02 upgraded to PARTIALLY_SUPPORTED</span><span class="signal-time">10h</span></div>
+          <div class="signal-item"><span class="signal-dot new-evidence"></span><span class="signal-text"><strong>INV-0039</strong> new evidence: employment data (public primary)</span><span class="signal-time">12h</span></div>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = scanner + provenance + feed;
+}
+
+// ── NAV BADGE ──
+function renderNav(state) {
+  const badge = document.getElementById('nav-inv-badge');
+  if (state === 'empty') {
+    badge.textContent = '0';
+    badge.className = 'nav-badge count';
+  } else if (state === 'alert') {
+    badge.textContent = '1';
+    badge.className = 'nav-badge warn';
+  } else {
+    badge.textContent = '4';
+    badge.className = 'nav-badge live';
+  }
+}
+
+// ── TOGGLE ──
+function renderToggle(state) {
+  const dot = document.getElementById('toggle-dot');
+  const label = document.getElementById('toggle-label');
+  if (state === 'alert') {
+    dot.style.background = 'var(--status-warning)';
+    label.textContent = 'Alert (click to cycle)';
+  } else if (state === 'active') {
+    dot.style.background = 'var(--green-500)';
+    label.textContent = 'Active (click to cycle)';
+  } else {
+    dot.style.background = 'var(--text-disabled)';
+    label.textContent = 'Empty (click to cycle)';
+  }
+}
+
+function cycleState() {
+  if (currentView === 'detail') {
+    cycleReadinessState();
+  } else {
+    stateIdx = (stateIdx + 1) % STATES.length;
+    setPageState(STATES[stateIdx]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// INVESTIGATION DETAIL — READINESS TAB
+// ═══════════════════════════════════════════════════════════
+
+const READINESS_MOCK = {
+  investigation: {
+    id: 'INV-0039',
+    question: 'Will the Fed cut rates at the June 2026 FOMC meeting?',
+    stop_condition_type: 'EVIDENCE_THRESHOLD',
+    stop_condition_reason: 'Requires 15+ corroborating evidence items from public primary sources with >= 5 SUPPORTED claims'
+  },
+  states: {
+    not_ready: {
+      readiness: 'NOT_READY',
+      evaluated_at: '2026-03-07T08:14:22Z',
+      reason: 'Evidence threshold not met: 12/15 public primary items collected, 4/5 claims SUPPORTED',
+      certificate: null,
+      routing: null
+    },
+    ready: {
+      readiness: 'READY',
+      evaluated_at: '2026-03-07T14:32:08Z',
+      reason: 'Evidence threshold met: 18 public primary items collected, 6 claims SUPPORTED',
+      certificate: null,
+      routing: { decision: 'ALLOWED', reason: 'All governance checks passed. Evidence chain verified.' }
+    },
+    anchored: {
+      readiness: 'READY',
+      evaluated_at: '2026-03-07T14:32:08Z',
+      reason: 'Evidence threshold met: 18 public primary items collected, 6 claims SUPPORTED',
+      certificate: {
+        id: 'CERT-00291',
+        ready_at: '2026-03-07T14:32:08Z',
+        anchored_at: '2026-03-08T00:00:00Z',
+        issued_at: null
+      },
+      routing: { decision: 'ALLOWED', reason: 'All governance checks passed. Evidence chain verified.' }
+    },
+    issued: {
+      readiness: 'READY',
+      evaluated_at: '2026-03-07T14:32:08Z',
+      reason: 'Evidence threshold met: 18 public primary items collected, 6 claims SUPPORTED',
+      certificate: {
+        id: 'CERT-00291',
+        ready_at: '2026-03-07T14:32:08Z',
+        anchored_at: '2026-03-08T00:00:00Z',
+        issued_at: '2026-03-08T00:00:00Z'
+      },
+      routing: { decision: 'ALLOWED', reason: 'All governance checks passed. Evidence chain verified.' }
+    }
+  }
+};
+
+const READINESS_STATES = ['not_ready', 'ready', 'anchored', 'issued'];
+let readinessStateIdx = 0;
+
+function formatTimestamp(iso) {
+  if (!iso) return '\u2014';
+  const d = new Date(iso);
+  const mon = d.toLocaleString('en-US', { month: 'short' });
+  const day = d.getDate();
+  const h = d.getHours().toString().padStart(2, '0');
+  const m = d.getMinutes().toString().padStart(2, '0');
+  return day + ' ' + mon + ' ' + h + ':' + m + ' UTC';
+}
+
+/* SVG icons for lifecycle */
+const checkSVG = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l3 3 5-5"/></svg>';
+const pendingSVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2"/></svg>';
+const buildSVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="10" height="12" rx="1"/><path d="M6 6h4M6 9h4M6 12h2"/></svg>';
+
+function renderReadiness(stateName) {
+  const state = READINESS_MOCK.states[stateName];
+  const el = document.getElementById('readiness-content');
+  const badge = document.getElementById('sidebar-cert-badge');
+
+  // Update sidebar badge
+  if (stateName === 'not_ready') {
+    badge.style.display = 'none';
+  } else if (stateName === 'ready') {
+    badge.style.display = '';
+    badge.textContent = 'CERT READY';
+    badge.style.background = 'var(--green-50)';
+    badge.style.color = 'var(--green-700)';
+    badge.style.borderColor = 'var(--green-200)';
+  } else if (stateName === 'anchored') {
+    badge.style.display = '';
+    badge.textContent = 'ANCHORED';
+    badge.style.background = 'var(--purple-50)';
+    badge.style.color = 'var(--purple-600)';
+    badge.style.borderColor = 'var(--purple-200)';
+  } else {
+    badge.style.display = '';
+    badge.textContent = 'ISSUED';
+    badge.style.background = 'var(--purple-50)';
+    badge.style.color = 'var(--purple-600)';
+    badge.style.borderColor = 'var(--purple-200)';
+  }
+
+  let html = '';
+
+  /* --- Stop Condition Readiness panel --- */
+  html += '<div class="detail-section">' +
+    '<div class="detail-section-header">' +
+    '<span class="detail-section-title">Stop Condition Readiness</span>' +
+    '<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-disabled)">evaluated ' + formatTimestamp(state.evaluated_at) + '</span>' +
+    '</div>' +
+    '<div class="detail-section-body">' +
+    '<div class="readiness-status">' +
+    '<div class="readiness-badge ' + (state.readiness === 'READY' ? 'ready' : 'not-ready') + '">' + state.readiness + '</div>' +
+    '</div>' +
+    '<div class="readiness-meta">' +
+    '<div class="readiness-meta-row">' +
+    '<span class="readiness-meta-label">Stop Condition</span>' +
+    '<span class="readiness-meta-value">' + READINESS_MOCK.investigation.stop_condition_type.replace(/_/g, ' ') + '</span>' +
+    '</div>' +
+    '<div class="readiness-meta-row">' +
+    '<span class="readiness-meta-label">Detail</span>' +
+    '<span class="readiness-meta-value">' + state.reason + '</span>' +
+    '</div>' +
+    '<div class="readiness-meta-row">' +
+    '<span class="readiness-meta-label">Last Evaluated</span>' +
+    '<span class="readiness-meta-value mono">' + formatTimestamp(state.evaluated_at) + '</span>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
+
+  /* --- Build Certificate button (only in READY state with no certificate) --- */
+  if (state.readiness === 'READY' && !state.certificate) {
+    html += '<div class="build-cert-area">' +
+      '<div class="build-cert-text"><strong>Stop condition met.</strong> This investigation is ready for certificate issuance. The certificate will be queued for the next 00:00 UTC batch-anchor cycle.</div>' +
+      '<button class="btn btn-primary">' + buildSVG + ' Build Certificate</button>' +
+      '</div>';
+  }
+
+  /* --- Certificate Lifecycle panel (READY, ANCHORED, or ISSUED) --- */
+  if (state.readiness === 'READY') {
+    var cert = state.certificate;
+    var readyReached = true;
+    var anchoredReached = cert && cert.anchored_at;
+    var issuedReached = cert && cert.issued_at;
+
+    // Determine step states
+    var readyState, anchoredState, issuedState;
+    if (issuedReached) {
+      readyState = 'reached'; anchoredState = 'reached'; issuedState = 'reached';
+    } else if (anchoredReached) {
+      readyState = 'reached'; anchoredState = 'reached'; issuedState = 'active';
+    } else if (cert) {
+      readyState = 'reached'; anchoredState = 'active'; issuedState = 'pending';
+    } else {
+      readyState = 'active'; anchoredState = 'pending'; issuedState = 'pending';
+    }
+
+    html += '<div class="detail-section">' +
+      '<div class="detail-section-header">' +
+      '<span class="detail-section-title">Certificate Lifecycle</span>' +
+      (cert ? '<span style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--purple-600)">' + cert.id + '</span>' : '<span style="font-size:11px;color:var(--text-disabled);font-style:italic">No certificate yet</span>') +
+      '</div>' +
+      '<div class="detail-section-body" style="padding:0">' +
+      '<div class="lifecycle-stepper">' +
+
+      '<div class="lifecycle-step">' +
+      '<div class="lifecycle-circle ' + readyState + '">' + (readyState === 'reached' ? checkSVG : '1') + '</div>' +
+      '<div class="lifecycle-label ' + readyState + '">READY</div>' +
+      '<div class="lifecycle-timestamp">' + (cert ? formatTimestamp(cert.ready_at || state.evaluated_at) : (readyState === 'active' ? 'Now' : '\u2014')) + '</div>' +
+      '</div>' +
+
+      '<div class="lifecycle-connector"><div class="lifecycle-line ' + (anchoredReached || anchoredState === 'reached' ? 'reached' : '') + '"></div></div>' +
+
+      '<div class="lifecycle-step">' +
+      '<div class="lifecycle-circle ' + anchoredState + '">' + (anchoredState === 'reached' ? checkSVG : '2') + '</div>' +
+      '<div class="lifecycle-label ' + anchoredState + '">ANCHORED</div>' +
+      '<div class="lifecycle-timestamp">' + (anchoredReached ? formatTimestamp(cert.anchored_at) : '\u2014') + '</div>' +
+      '</div>' +
+
+      '<div class="lifecycle-connector"><div class="lifecycle-line ' + (issuedReached ? 'reached' : '') + '"></div></div>' +
+
+      '<div class="lifecycle-step">' +
+      '<div class="lifecycle-circle ' + issuedState + '">' + (issuedState === 'reached' ? checkSVG : '3') + '</div>' +
+      '<div class="lifecycle-label ' + issuedState + '">ISSUED</div>' +
+      '<div class="lifecycle-timestamp">' + (issuedReached ? formatTimestamp(cert.issued_at) : '\u2014') + '</div>' +
+      '</div>' +
+
+      '</div>' +
+
+      (state.routing ? '<div class="routing-row">' +
+      '<div class="routing-badge ' + (state.routing.decision === 'ALLOWED' ? 'allowed' : 'review-required') + '">' + state.routing.decision.replace(/_/g, ' ') + '</div>' +
+      '<span class="routing-reason">' + state.routing.reason + '</span>' +
+      '</div>' : '') +
+
+      '</div>' +
+      '</div>';
+  }
+
+  /* --- NOT_READY: show placeholder lifecycle --- */
+  if (state.readiness === 'NOT_READY') {
+    html += '<div class="detail-section">' +
+      '<div class="detail-section-header">' +
+      '<span class="detail-section-title">Certificate Lifecycle</span>' +
+      '<span style="font-size:11px;color:var(--text-disabled);font-style:italic">Awaiting readiness</span>' +
+      '</div>' +
+      '<div class="detail-section-body" style="padding:0">' +
+      '<div class="lifecycle-stepper">' +
+      '<div class="lifecycle-step"><div class="lifecycle-circle pending">' + pendingSVG + '</div><div class="lifecycle-label pending">READY</div><div class="lifecycle-timestamp">\u2014</div></div>' +
+      '<div class="lifecycle-connector"><div class="lifecycle-line"></div></div>' +
+      '<div class="lifecycle-step"><div class="lifecycle-circle pending">' + pendingSVG + '</div><div class="lifecycle-label pending">ANCHORED</div><div class="lifecycle-timestamp">\u2014</div></div>' +
+      '<div class="lifecycle-connector"><div class="lifecycle-line"></div></div>' +
+      '<div class="lifecycle-step"><div class="lifecycle-circle pending">' + pendingSVG + '</div><div class="lifecycle-label pending">ISSUED</div><div class="lifecycle-timestamp">\u2014</div></div>' +
+      '</div>' +
+      '</div>' +
+      '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+// ── TAB SWITCHING ──
+function switchTab(tabName) {
+  // Update tab bar
+  document.querySelectorAll('#detail-tab-bar .tab-item').forEach(function(t) {
+    t.classList.toggle('active', t.getAttribute('data-tab') === tabName);
+  });
+  // Update tab panels
+  document.querySelectorAll('.tab-panel').forEach(function(p) {
+    p.classList.toggle('active', p.getAttribute('data-panel') === tabName);
+  });
+}
+
+// ── NAVIGATION: BROWSE <-> DETAIL ──
+let currentView = 'browse';
+
+function showDetailView() {
+  document.getElementById('browse-view').style.display = 'none';
+  document.getElementById('detail-view').style.display = '';
+  currentView = 'detail';
+  renderReadiness(READINESS_STATES[readinessStateIdx]);
+}
+
+function showBrowseView() {
+  document.getElementById('detail-view').style.display = 'none';
+  document.getElementById('browse-view').style.display = '';
+  currentView = 'browse';
+}
+
+// Add click handlers to investigation cards (delegated)
+document.addEventListener('click', function(e) {
+  var card = e.target.closest('.inv-card');
+  if (card) {
+    showDetailView();
+  }
+});
+
+// ── READINESS STATE CYCLING ──
+function cycleReadinessState() {
+  readinessStateIdx = (readinessStateIdx + 1) % READINESS_STATES.length;
+  renderReadiness(READINESS_STATES[readinessStateIdx]);
+  renderReadinessToggle(READINESS_STATES[readinessStateIdx]);
+}
+
+function renderReadinessToggle(stateName) {
+  var dot = document.getElementById('toggle-dot');
+  var label = document.getElementById('toggle-label');
+  if (stateName === 'not_ready') {
+    dot.style.background = 'var(--text-disabled)';
+    label.textContent = 'NOT_READY (click to cycle)';
+  } else if (stateName === 'ready') {
+    dot.style.background = 'var(--purple-500)';
+    label.textContent = 'READY (click to cycle)';
+  } else if (stateName === 'anchored') {
+    dot.style.background = 'oklch(0.530 0.230 295)';
+    label.textContent = 'ANCHORED (click to cycle)';
+  } else {
+    dot.style.background = 'var(--green-500)';
+    label.textContent = 'ISSUED (click to cycle)';
+  }
+}
+
+// Initialize on alert state (shows stalled investigation)
+setPageState(STATES[0]);
+</script>
+
+</body>
+</html>

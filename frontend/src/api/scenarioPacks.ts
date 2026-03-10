@@ -7,6 +7,15 @@
  */
 
 import { apiClient } from './client';
+import type {
+  ScenarioPackCreate,
+  ScenarioPackResponse,
+  ScenarioRunResponse,
+  EpisodeTreeResponse,
+  ForkReplayResponse,
+  DerivedTheatreResponse,
+  BranchProbabilitiesResponse,
+} from '../types/scenarioPack';
 
 export interface ScenarioPackTemplateSummary {
   id: string;
@@ -60,6 +69,57 @@ export const scenarioPackApi = {
 
   getTemplate: async (templateId: string): Promise<ScenarioPackTemplateDetail> => {
     const { data } = await apiClient.get(`/api/v1/scenario-pack-templates/${templateId}`);
+    return data;
+  },
+
+};
+
+// ── Pack Lifecycle ─────────────────────────────────────────────────────────
+
+export const scenarioPackLifecycleApi = {
+  createPack: async (req: ScenarioPackCreate): Promise<ScenarioPackResponse> => {
+    const { data } = await apiClient.post('/api/v1/scenario-packs', req);
+    return data;
+  },
+
+  getPack: async (packId: string): Promise<ScenarioPackResponse> => {
+    const { data } = await apiClient.get(`/api/v1/scenario-packs/${packId}`);
+    return data;
+  },
+
+  commitPack: async (packId: string): Promise<ScenarioPackResponse> => {
+    const { data } = await apiClient.post(`/api/v1/scenario-packs/${packId}/commit`);
+    return data;
+  },
+
+  startRun: async (packId: string): Promise<ScenarioRunResponse> => {
+    const { data } = await apiClient.post(`/api/v1/scenario-packs/${packId}/run`);
+    return data;
+  },
+
+  getRunTree: async (packId: string, runId: string): Promise<EpisodeTreeResponse> => {
+    const { data } = await apiClient.get(
+      `/api/v1/scenario-packs/${packId}/runs/${runId}/tree`,
+    );
+    return data;
+  },
+
+  getReplay: async (packId: string, runId: string): Promise<ForkReplayResponse> => {
+    const { data } = await apiClient.get(
+      `/api/v1/scenario-packs/${packId}/runs/${runId}/replay`,
+    );
+    return data;
+  },
+
+  getDerivedTheatres: async (packId: string): Promise<DerivedTheatreResponse[]> => {
+    const { data } = await apiClient.get(`/api/v1/scenario-packs/${packId}/derived-theatres`);
+    return data;
+  },
+
+  getBranchProbabilities: async (templateId: string): Promise<BranchProbabilitiesResponse> => {
+    const { data } = await apiClient.get(
+      `/api/v1/scenario-pack-templates/${templateId}/branch-probabilities`,
+    );
     return data;
   },
 };

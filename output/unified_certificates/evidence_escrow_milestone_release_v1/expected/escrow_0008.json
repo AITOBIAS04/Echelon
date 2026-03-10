@@ -1,0 +1,17 @@
+{
+  "criteria_verdicts": {
+    "idempotency": true,
+    "release_amount_correct": true,
+    "required_evidence_present": true,
+    "signature_policy_satisfied": false,
+    "validity_window_respected": true
+  },
+  "release_instruction": {
+    "milestone_id": "ms_008_foundation_complete",
+    "missing_signer_roles": [
+      "administrator"
+    ],
+    "rejection_reason": "INCOMPLETE_SIGNER_POLICY",
+    "release_allowed": false
+  }
+}

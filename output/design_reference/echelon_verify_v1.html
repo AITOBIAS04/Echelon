@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Verify Certificate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   TASTE TOKENS v1.0
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --shadow-lg:0 8px 24px oklch(0.20 0.01 265/0.12),0 2px 8px oklch(0.20 0.01 265/0.05);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-xl:16px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;--duration-slow:300ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER (locked) ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR (locked) ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.nav-badge.warn{background:oklch(0.540 0.150 85/0.10);color:oklch(0.430 0.130 85);border:1px solid oklch(0.540 0.150 85/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}
+.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN
+   ═══════════════════════════════════════════════════════════ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+
+/* ═══════════════════════════════════════════════════════════
+   VERIFY — PUBLIC CERTIFICATE CHECKER
+   One input. One result. No auth required.
+   ═══════════════════════════════════════════════════════════ */
+.verify-container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding-top: var(--space-8);
+}
+
+/* ── Hero / search ── */
+.verify-hero {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+.verify-hero-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--purple-50);
+  border: 1px solid var(--purple-200);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--purple-500);
+}
+.verify-hero h1 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+  margin-bottom: var(--space-2);
+}
+.verify-hero p {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 24px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* ── Search input ── */
+.verify-search {
+  position: relative;
+  margin-bottom: var(--space-3);
+}
+.verify-search input {
+  width: 100%;
+  height: 52px;
+  padding: 0 52px 0 var(--space-5);
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+  outline: none;
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+}
+.verify-search input::placeholder {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.verify-search input:focus {
+  border-color: var(--purple-500);
+  box-shadow: 0 0 0 3px oklch(0.530 0.230 295/0.10), var(--shadow-sm);
+}
+.verify-search-btn {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: var(--purple-500);
+  color: var(--text-inverse);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--duration-fast) ease;
+}
+.verify-search-btn:hover { background: var(--purple-400); }
+.verify-search-btn:active { transform: translateY(-50%) scale(0.95); }
+
+.verify-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-10);
+}
+.verify-hint code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--bg-sunken);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-secondary);
+  color: var(--text-secondary);
+}
+
+/* ── Stats bar (raw data, no conclusions) ── */
+.verify-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  padding: var(--space-4) 0;
+  margin-bottom: var(--space-10);
+  border-top: 1px solid var(--border-secondary);
+  border-bottom: 1px solid var(--border-secondary);
+}
+.verify-stat {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.verify-stat strong {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.verify-stat-sep {
+  color: var(--border-primary);
+  font-size: 11px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESULT CARD — appears after search
+   ═══════════════════════════════════════════════════════════ */
+.result {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  animation: result-enter 0.3s var(--ease-out);
+}
+@keyframes result-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Outcome header ── */
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-bottom: 1px solid var(--border-secondary);
+}
+.result-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+.result-badge.valid {
+  background: var(--green-50);
+  border: 2px solid var(--green-200);
+  color: var(--green-600);
+}
+.result-badge.invalid {
+  background: var(--red-50);
+  border: 2px solid var(--red-100);
+  color: var(--red-500);
+}
+.result-badge.disputed {
+  background: oklch(0.540 0.150 85/0.08);
+  border: 2px solid oklch(0.540 0.150 85/0.20);
+  color: oklch(0.430 0.130 85);
+}
+.result-info { flex: 1; }
+.result-status {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 16px;
+}
+.result-status.valid { color: var(--green-700); }
+.result-status.invalid { color: var(--red-600); }
+.result-status.disputed { color: oklch(0.430 0.130 85); }
+.result-theatre {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 24px;
+  margin-top: 2px;
+}
+.result-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 20px;
+  margin-top: 2px;
+}
+.result-meta .mono {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.result-id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-disabled);
+  flex-shrink: 0;
+}
+
+/* ── Outcome summary ── */
+.result-outcome {
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border-secondary);
+}
+.result-outcome-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-2);
+}
+.result-outcome-value {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 32px;
+}
+.result-outcome-detail {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+  line-height: 20px;
+}
+
+/* ── Evidence summary ── */
+.result-evidence {
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--border-secondary);
+}
+.result-evidence-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+}
+.evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+.evidence-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.evidence-item-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 16px;
+}
+.evidence-item-value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  line-height: 20px;
+}
+.evidence-item-value.yes { color: var(--green-600); }
+.evidence-item-value.no { color: var(--text-disabled); }
+
+/* ── Technical details (expandable) ── */
+.result-technical {
+  border-top: none;
+}
+.technical-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-4) var(--space-6);
+  background: var(--bg-sunken);
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+  transition: color var(--duration-instant) ease;
+}
+.technical-toggle:hover { color: var(--text-primary); }
+.technical-toggle svg {
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+.technical-toggle.open svg {
+  transform: rotate(180deg);
+}
+.technical-body {
+  display: none;
+  padding: var(--space-4) var(--space-6) var(--space-5);
+  background: var(--bg-sunken);
+  border-top: 1px solid var(--border-secondary);
+}
+.technical-body.open { display: block; }
+
+.tech-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: var(--space-2) 0;
+}
+.tech-row + .tech-row {
+  border-top: 1px solid var(--border-secondary);
+}
+.tech-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  min-width: 160px;
+}
+.tech-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  word-break: break-all;
+  max-width: 400px;
+}
+.tech-value a {
+  color: var(--purple-600);
+  text-decoration: none;
+}
+.tech-value a:hover { color: var(--purple-500); text-decoration: underline; }
+
+/* ═══════════════════════════════════════════════════════════
+   EMPTY STATE — before search
+   ═══════════════════════════════════════════════════════════ */
+.recent-lookups {
+  text-align: center;
+  padding-top: var(--space-6);
+}
+.recent-lookups-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-disabled);
+  margin-bottom: var(--space-4);
+}
+.recent-ids {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: center;
+}
+.recent-id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border-secondary);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--duration-instant) ease;
+}
+.recent-id:hover {
+  border-color: var(--purple-200);
+  color: var(--purple-600);
+  background: var(--purple-50);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .sidebar{width:64px}
+  .sidebar .nav-item-label,.sidebar .nav-badge{display:none}
+  .sidebar .nav-group-label{font-size:0;padding:var(--space-2) var(--space-4)}
+  .sidebar .nav-group-label::after{content:'';display:block;width:16px;height:1px;background:var(--border-primary);margin:0 auto}
+  .sidebar .nav-item{padding:0;justify-content:center;margin:1px var(--space-1);width:calc(100% - var(--space-2))}
+  .main{margin-left:64px}
+  .header-search{display:none}
+}
+@media (max-width: 768px) {
+  .sidebar{display:none}
+  .main{margin-left:0;padding:var(--space-4)}
+  .verify-container{padding-top:var(--space-4)}
+  .evidence-grid{grid-template-columns:repeat(2,1fr)}
+  .verify-stats{flex-wrap:wrap;gap:var(--space-3)}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <a href="#" class="header-logo"><div class="header-logo-mark">E</div><span class="header-logo-text">Echelon</span><span class="header-logo-version">v2</span></a>
+    <button class="sidebar-toggle"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4.5h12M3 9h12M3 13.5h12"/></svg></button>
+  </div>
+  <div class="header-center"><div class="header-search"><span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg></span><input type="text" placeholder="Search theatres, agents, investigations..."><span class="header-search-kbd">/</span></div></div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span>Base</div>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 12.73A6 6 0 0 0 15 9V7.5a6 6 0 1 0-12 0V9a6 6 0 0 0 1.27 3.73L3 15h12l-1.27-2.27z"/><path d="M7.5 15a1.5 1.5 0 0 0 3 0"/></svg><span class="header-badge">3</span></button>
+    <button class="wallet-btn"><div class="wallet-balance"><div class="wallet-balance-item"><span class="wallet-balance-label">ETH</span>2.45</div><span class="wallet-divider"></span><div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span>1,250</div></div><div class="wallet-avatar"></div></button>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group"><div class="nav-group-label">Command</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg></span><span class="nav-item-label">Dashboard</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Markets</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14l4-5 3 3 5-7"/><path d="M11 5h3v3"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">5</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Intelligence</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge count">2</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="14" height="14" rx="1"/><path d="M2 6h14M6 2v14M10 2v14M2 10h14"/></svg></span><span class="nav-item-label">Signal Map</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="3"/><circle cx="9" cy="9" r="1"/></svg></span><span class="nav-item-label">WorldMonitor</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Verification</div><a href="#" class="nav-item active"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l2.5 2.5L13 6"/><circle cx="9" cy="9" r="7"/></svg></span><span class="nav-item-label">Verify</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="12" height="14" rx="1"/><path d="M7 6h4M7 9h4M7 12h2"/></svg></span><span class="nav-item-label">Certificates</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Portfolio</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4z"/><path d="M2 7h14"/><path d="M12 11h2"/></svg></span><span class="nav-item-label">Positions</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Agents</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="6" r="3"/><path d="M3 15a6 6 0 0 1 12 0"/></svg></span><span class="nav-item-label">Fleet</span><span class="nav-badge live">12</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Operations</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">3</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 14V4M7 14V8M11 14V6M15 14V2"/></svg></span><span class="nav-item-label">Analytics</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Data Products</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h10v2H4zM4 8h10v2H4zM4 12h10v2H4z"/></svg></span><span class="nav-item-label">RLMF Exports</span></a></div>
+  </div>
+  <div class="sidebar-footer"><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M14.5 9a5.5 5.5 0 0 0-.4-1.5l1.5-1.2-1-1.7-1.8.6A5.5 5.5 0 0 0 11.5 4l.2-1.9h-2L9.5 4a5.5 5.5 0 0 0-1.3 1.2l-1.8-.6-1 1.7 1.5 1.2A5.5 5.5 0 0 0 6.5 9a5.5 5.5 0 0 0 .4 1.5l-1.5 1.2 1 1.7 1.8-.6a5.5 5.5 0 0 0 1.3 1.2l-.2 1.9h2l.2-1.9a5.5 5.5 0 0 0 1.3-1.2l1.8.6 1-1.7-1.5-1.2A5.5 5.5 0 0 0 14.5 9z"/></svg></span><span class="nav-item-label">Settings</span></a></div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     VERIFY — Public Certificate Checker
+     No auth. No wallet. Read-only.
+     ═══════════════════════════════════════════════════════════ -->
+
+<main class="main">
+<div class="verify-container">
+
+  <!-- Hero + search -->
+  <div class="verify-hero">
+    <div class="verify-hero-icon">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 14l3 3 6-6"/>
+        <circle cx="14" cy="14" r="11"/>
+      </svg>
+    </div>
+    <h1>Verify a Certificate</h1>
+    <p>Paste a certificate ID or commitment hash to check its validity. No account required.</p>
+  </div>
+
+  <div class="verify-search">
+    <input type="text" id="verify-input" placeholder="VRF-0847 or 0x3a7f...b2c1" spellcheck="false" autocomplete="off">
+    <button class="verify-search-btn" id="verify-btn">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 9l3 3 5-5"/></svg>
+    </button>
+  </div>
+  <div class="verify-hint">
+    Accepts <code>#VRF-0847</code>, <code>VRF-0847</code>, or full commitment hash <code>0x3a7f...</code>
+  </div>
+
+  <!-- Raw stats — no self-grading -->
+  <div class="verify-stats">
+    <div class="verify-stat"><strong>28</strong> certificates issued</div>
+    <span class="verify-stat-sep">&middot;</span>
+    <div class="verify-stat"><strong>27</strong> verified</div>
+    <span class="verify-stat-sep">&middot;</span>
+    <div class="verify-stat"><strong>1</strong> disputed</div>
+  </div>
+
+  <!-- ═══ RESULT (shown after search) ═══ -->
+  <div id="result-area">
+
+    <!-- DEMO: Valid certificate result -->
+    <div class="result" id="result-card" style="display:none">
+
+      <!-- Outcome header -->
+      <div class="result-header" id="result-header">
+        <div class="result-badge valid" id="result-badge">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12l5 5 9-9"/></svg>
+        </div>
+        <div class="result-info">
+          <div class="result-status valid" id="result-status">Valid Certificate</div>
+          <div class="result-theatre" id="result-theatre">Nvidia Q1 FY27 Revenue Above $40B</div>
+          <div class="result-meta">Resolved <span class="mono" id="result-date">28 Feb 2026</span> &middot; Binary &middot; Mode 0 (Fast)</div>
+        </div>
+        <div class="result-id" id="result-id">#VRF-0847</div>
+      </div>
+
+      <!-- Outcome -->
+      <div class="result-outcome">
+        <div class="result-outcome-label">Outcome</div>
+        <div class="result-outcome-value" id="result-outcome" style="color:var(--green-600)">YES</div>
+        <div class="result-outcome-detail" id="result-detail">Nvidia reported Q1 FY27 revenue of $44.1B, exceeding the $40B threshold. Resolution based on official earnings release filed with SEC.</div>
+      </div>
+
+      <!-- Evidence summary -->
+      <div class="result-evidence">
+        <div class="result-evidence-title">Evidence Summary</div>
+        <div class="evidence-grid">
+          <div class="evidence-item">
+            <span class="evidence-item-label">Sources checked</span>
+            <span class="evidence-item-value">14</span>
+          </div>
+          <div class="evidence-item">
+            <span class="evidence-item-label">Collection window</span>
+            <span class="evidence-item-value">3h 42m</span>
+          </div>
+          <div class="evidence-item">
+            <span class="evidence-item-label">Counter-signals</span>
+            <span class="evidence-item-value yes">Checked (0 found)</span>
+          </div>
+          <div class="evidence-item">
+            <span class="evidence-item-label">Independence</span>
+            <span class="evidence-item-value yes">Verified</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Technical details -->
+      <div class="result-technical">
+        <button class="technical-toggle" id="tech-toggle" onclick="toggleTechnical()">
+          Technical Details
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 5l4 4 4-4"/></svg>
+        </button>
+        <div class="technical-body" id="tech-body">
+          <div class="tech-row">
+            <span class="tech-label">Evidence bundle hash</span>
+            <span class="tech-value">0x3a7f8c21e9b4d6f0a5e2c7b1d8f3a9e6c4b0d7f2a8e5c1b4d9f6a3e0c7b2d5</span>
+          </div>
+          <div class="tech-row">
+            <span class="tech-label">Claim graph root</span>
+            <span class="tech-value">0xe1d4b7a2f8c5e9d3b6a0f4c8e2d5b9a3f7c1e6d0b4a8f2c5e9d3b7a1f4c8e2</span>
+          </div>
+          <div class="tech-row">
+            <span class="tech-label">Anchor block (Base)</span>
+            <span class="tech-value"><a href="#">14,198,347</a></span>
+          </div>
+          <div class="tech-row">
+            <span class="tech-label">Anchor timestamp</span>
+            <span class="tech-value">2026-02-28T14:32:18Z</span>
+          </div>
+          <div class="tech-row">
+            <span class="tech-label">Independence summary</span>
+            <span class="tech-value">14 sources from 8 providers, 3 jurisdictions. No single provider &gt;30% weight.</span>
+          </div>
+          <div class="tech-row">
+            <span class="tech-label">Routing hint</span>
+            <span class="tech-value">sec-filings &rarr; earnings-parser &rarr; revenue-extractor</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Empty state: recent lookups -->
+    <div class="recent-lookups" id="empty-state">
+      <div class="recent-lookups-title">Recent Certificates</div>
+      <div class="recent-ids">
+        <a href="#" class="recent-id" onclick="lookup('VRF-0847')">VRF-0847</a>
+        <a href="#" class="recent-id" onclick="lookup('VRF-0842')">VRF-0842</a>
+        <a href="#" class="recent-id" onclick="lookup('VRF-0839')">VRF-0839</a>
+        <a href="#" class="recent-id" onclick="lookup('VRF-0835')">VRF-0835</a>
+        <a href="#" class="recent-id" onclick="lookup('VRF-0831')">VRF-0831</a>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</main>
+
+<script>
+const certs = {
+  'VRF-0847': {
+    status: 'valid', theatre: 'Nvidia Q1 FY27 Revenue Above $40B',
+    date: '28 Feb 2026', type: 'Binary', mode: 'Fast',
+    outcome: 'YES', outcomeColor: 'var(--green-600)',
+    detail: 'Nvidia reported Q1 FY27 revenue of $44.1B, exceeding the $40B threshold. Resolution based on official earnings release filed with SEC.',
+    sources: 14, window: '3h 42m', counterSignals: 'Checked (0 found)', independence: 'Verified',
+    bundleHash: '0x3a7f8c21e9b4d6f0a5e2c7b1d8f3a9e6c4b0d7f2a8e5c1b4d9f6a3e0c7b2d5',
+    claimRoot: '0xe1d4b7a2f8c5e9d3b6a0f4c8e2d5b9a3f7c1e6d0b4a8f2c5e9d3b7a1f4c8e2',
+    block: '14,198,347', timestamp: '2026-02-28T14:32:18Z',
+    indepSummary: '14 sources from 8 providers, 3 jurisdictions. No single provider >30% weight.',
+    routing: 'sec-filings → earnings-parser → revenue-extractor'
+  },
+  'VRF-0842': {
+    status: 'valid', theatre: 'ECB March 2026 Rate Decision',
+    date: '27 Feb 2026', type: 'Binary', mode: 'Fast',
+    outcome: 'HOLD (as predicted)', outcomeColor: 'var(--green-600)',
+    detail: 'ECB held rates at 2.65% at the March 2026 meeting, matching the market consensus. Resolution based on official ECB press release.',
+    sources: 11, window: '2h 18m', counterSignals: 'Checked (0 found)', independence: 'Verified',
+    bundleHash: '0xb8c2d4e6f0a1b3c5d7e9f2a4b6c8d0e3f5a7b9c1d4e6f8a0b2c4d6e8f1a3b5',
+    claimRoot: '0xf4a8c2e6d0b4f8a2c6e0d4b8f2a6c0e4d8b2f6a0c4e8d2b6f0a4c8e2d6b0f4',
+    block: '14,186,912', timestamp: '2026-02-27T16:45:03Z',
+    indepSummary: '11 sources from 6 providers, 4 jurisdictions.',
+    routing: 'central-bank-feeds → rate-decision-parser'
+  },
+  'VRF-0839': {
+    status: 'valid', theatre: 'US Feb 2026 Non-Farm Payrolls',
+    date: '25 Feb 2026', type: 'Continuous', mode: 'Reviewed',
+    outcome: '151K', outcomeColor: 'var(--text-primary)',
+    detail: 'BLS reported February 2026 non-farm payrolls at 151,000. Continuous resolution with human adjudicator review confirming the figure.',
+    sources: 8, window: '8h 15m', counterSignals: 'Checked (1 found, rejected)', independence: 'Verified',
+    bundleHash: '0xd1e3f5a7b9c2d4e6f8a0b3c5d7e9f1a4b6c8d0e2f5a7b9c1d3e6f8a0b2c4d6',
+    claimRoot: '0xa0b2c4d6e8f1a3b5c7d9e2f4a6b8c0d3e5f7a9b1c4d6e8f0a2b5c7d9e1f3a6',
+    block: '14,172,405', timestamp: '2026-02-25T19:22:41Z',
+    indepSummary: '8 sources from 5 providers. BLS primary, cross-checked with wire services.',
+    routing: 'gov-data-feeds → employment-parser → adjudicator-review'
+  },
+  'VRF-0835': {
+    status: 'disputed', theatre: 'OSINT Source Reliability Ranking Q1',
+    date: '22 Feb 2026', type: 'Ranking', mode: 'Full Audit',
+    outcome: 'UNDER REVIEW', outcomeColor: 'var(--status-danger)',
+    detail: 'Full audit identified conflicting reliability scores across 3 ranking positions. One source provider filed a dispute citing methodology concerns. Arbitration pending.',
+    sources: 23, window: '52h 08m', counterSignals: 'Checked (3 found, 1 unresolved)', independence: 'Partial — 2 providers share data lineage',
+    bundleHash: '0xf9a1b3c5d7e0f2a4b6c8d1e3f5a8b0c2d4e7f9a1b3c6d8e0f2a4b7c9d1e3f5',
+    claimRoot: '0xc4d6e8f0a2b5c7d9e1f4a6b8c0d2e5f7a9b2c4d6e8f1a3b5c8d0e2f4a7b9c1',
+    block: '14,158,221', timestamp: '2026-02-22T11:08:54Z',
+    indepSummary: '23 sources from 12 providers. 2 providers flagged for shared upstream (GDELT + ACLED).',
+    routing: 'osint-aggregator → reliability-scorer → adversarial-review → arbitration-queue'
+  },
+  'VRF-0831': {
+    status: 'valid', theatre: 'Taiwan Strait Q1 2026 Stability Index',
+    date: '20 Feb 2026', type: 'Composite', mode: 'Reviewed',
+    outcome: 'STABLE (0.72)', outcomeColor: 'var(--green-600)',
+    detail: 'Composite stability index resolved at 0.72 (threshold: 0.50 for "stable" classification). Based on military positioning data, trade flow analysis, and diplomatic signal monitoring.',
+    sources: 19, window: '14h 33m', counterSignals: 'Checked (2 found, both resolved)', independence: 'Verified',
+    bundleHash: '0xa7b9c1d3e5f8a0b2c4d7e9f1a3b6c8d0e2f4a7b9c2d4e6f8a1b3c5d7e0f2a4',
+    claimRoot: '0xe8f0a2b4c6d9e1f3a5b7c0d2e4f6a8b1c3d5e7f9a2b4c6d8e0f3a5b7c9d1e4',
+    block: '14,143,890', timestamp: '2026-02-20T08:15:27Z',
+    indepSummary: '19 sources from 9 providers, 5 jurisdictions. No single provider >25% weight.',
+    routing: 'geopolitical-feeds → stability-compositor → adjudicator-review'
+  }
+};
+
+function toggleTechnical() {
+  const toggle = document.getElementById('tech-toggle');
+  const body = document.getElementById('tech-body');
+  toggle.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+function lookup(id) {
+  const key = id.replace('#','').trim().toUpperCase();
+  const cert = certs[key];
+  if (!cert) return;
+
+  document.getElementById('verify-input').value = key;
+  document.getElementById('empty-state').style.display = 'none';
+
+  const card = document.getElementById('result-card');
+  card.style.display = 'block';
+  card.style.animation = 'none';
+  void card.offsetHeight;
+  card.style.animation = '';
+
+  // Badge
+  const badge = document.getElementById('result-badge');
+  badge.className = 'result-badge ' + cert.status;
+  if (cert.status === 'valid') {
+    badge.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12l5 5 9-9"/></svg>';
+  } else if (cert.status === 'disputed') {
+    badge.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 8v4M12 16v.5"/></svg>';
+  } else {
+    badge.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  }
+
+  // Status
+  const status = document.getElementById('result-status');
+  status.className = 'result-status ' + cert.status;
+  status.textContent = cert.status === 'valid' ? 'Valid Certificate' : cert.status === 'disputed' ? 'Disputed — Under Review' : 'Invalid Certificate';
+
+  // Info
+  document.getElementById('result-theatre').textContent = cert.theatre;
+  document.querySelector('.result-meta').innerHTML = 'Resolved <span class="mono">' + cert.date + '</span> &middot; ' + cert.type + ' &middot; Mode: ' + cert.mode;
+  document.getElementById('result-id').textContent = '#' + key;
+
+  // Outcome
+  const outcomeEl = document.getElementById('result-outcome');
+  outcomeEl.textContent = cert.outcome;
+  outcomeEl.style.color = cert.outcomeColor;
+  document.getElementById('result-detail').textContent = cert.detail;
+
+  // Evidence
+  const evidenceValues = document.querySelectorAll('.evidence-item-value');
+  evidenceValues[0].textContent = cert.sources;
+  evidenceValues[1].textContent = cert.window;
+  evidenceValues[2].textContent = cert.counterSignals;
+  evidenceValues[2].className = 'evidence-item-value ' + (cert.counterSignals.includes('0 found') ? 'yes' : cert.counterSignals.includes('unresolved') ? 'no' : 'yes');
+  evidenceValues[3].textContent = cert.independence;
+  evidenceValues[3].className = 'evidence-item-value ' + (cert.independence === 'Verified' ? 'yes' : '');
+
+  // Technical
+  const techValues = document.querySelectorAll('.tech-value');
+  techValues[0].textContent = cert.bundleHash;
+  techValues[1].textContent = cert.claimRoot;
+  techValues[2].innerHTML = '<a href="#">' + cert.block + '</a>';
+  techValues[3].textContent = cert.timestamp;
+  techValues[4].textContent = cert.indepSummary;
+  techValues[5].textContent = cert.routing;
+
+  // Collapse technical
+  document.getElementById('tech-toggle').classList.remove('open');
+  document.getElementById('tech-body').classList.remove('open');
+}
+
+// Wire up search
+document.getElementById('verify-btn').addEventListener('click', function() {
+  const val = document.getElementById('verify-input').value;
+  if (val) lookup(val);
+});
+document.getElementById('verify-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    const val = this.value;
+    if (val) lookup(val);
+  }
+});
+
+// Auto-focus
+document.getElementById('verify-input').focus();
+</script>
+
+</body>
+</html>

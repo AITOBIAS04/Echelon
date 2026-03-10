@@ -1,662 +1,688 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  User,
-  TrendingUp,
-  Activity,
-  Search,
-  Copy,
-  Briefcase,
-  Users,
-  MapPin,
-  History,
   AlertTriangle,
-  AlertCircle,
-  CheckCircle,
-  ArrowRight,
-  ArrowLeft,
-  Zap,
-  Flame,
-  ShieldAlert,
+  ArrowDownToLine,
+  ChevronDown,
+  Eye,
+  Search,
+  Users,
 } from 'lucide-react';
-import { useAgents } from '../../hooks/useAgents';
-import { AgentSanityIndicator } from './AgentSanityIndicator';
-import { TaskAgentModal } from './TaskAgentModal';
-import { DeployAgentModal } from './DeployAgentModal';
-import { useRegisterTopActionBarActions } from '../../contexts/TopActionBarActionsContext';
-import { useAgentsUi } from '../../contexts/AgentsUiContext';
-import { LocalErrorBoundary } from '../common/LocalErrorBoundary';
-import { EmptyState } from '../empty-states/EmptyState';
 import { clsx } from 'clsx';
+import { useAgentRoster } from '../../hooks/useAgents';
+import { useDeploymentList, useWithdrawDeployment } from '../../hooks/useAgentDeployments';
 import { getArchetypeTheme } from '../../theme/agentsTheme';
+import DeployAgentModal from './DeployAgentModal';
+import type { EnrichedAgent } from '../../hooks/useAgents';
+import type { AgentDeploymentSummary } from '../../types/agentDeployment';
 
-// Mock data for Global Intelligence dashboard
-const mockStats = {
-  totalAgents: 12,
-  deployedAgents: 8,
-  movements24h: 47,
-  activeConflicts: 3,
-};
+type AgentStatus = 'FAILED' | 'DEPLOYED' | 'IDLE';
+type PageState = 'EMPTY' | 'CRITICAL' | 'HEALTHY';
 
-const mockTheatres = [
-  { name: 'ORB_SALVAGE_F7', agents: 12, activity: 'high', stability: 87, volume: '$142K', gap: 12 },
-  { name: 'VEN_OIL_TANKER', agents: 8, activity: 'medium', stability: 92, volume: '$89K', gap: 8 },
-  { name: 'FED_RATE_DECISION', agents: 15, activity: 'high', stability: 78, volume: '$215K', gap: 18 },
-  { name: 'TAIWAN_STRAIT', agents: 5, activity: 'low', stability: 95, volume: '$45K', gap: 5 },
-  { name: 'NVDA_EARNINGS', agents: 9, activity: 'medium', stability: 84, volume: '$128K', gap: 14 },
-  { name: 'BTC_HALVING', agents: 4, activity: 'low', stability: 97, volume: '$32K', gap: 3 },
-];
-
-const mockMovements = [
-  { time: '14:32:45', agent: 'LEVIATHAN', action: 'deployed to', theatre: 'ORB_SALVAGE_F7', velocity: '+3', type: 'deploy' as const },
-  { time: '14:32:42', agent: 'VIPER', action: 'withdrew from', theatre: 'VEN_OIL_TANKER', velocity: '-2', type: 'withdraw' as const },
-  { time: '14:32:38', agent: 'CHAOS', action: 'deployed to', theatre: 'FED_RATE_DECISION', velocity: '+4', type: 'deploy' as const },
-  { time: '14:32:35', agent: 'AMBASSADOR', action: 'deployed to', theatre: 'TAIWAN_STRAIT', velocity: '+2', type: 'deploy' as const },
-  { time: '14:32:30', agent: 'CARDINAL', action: 'withdrew from', theatre: 'ORB_SALVAGE_F7', velocity: '-1', type: 'withdraw' as const },
-  { time: '14:32:25', agent: 'TITAN', action: 'shifted to', theatre: 'conservative strategy', velocity: '~0', type: 'strategy' as const },
-  { time: '14:32:20', agent: 'SHADOW', action: 'deployed to', theatre: 'NVDA_EARNINGS', velocity: '+1', type: 'deploy' as const },
-];
-
-const mockClusters = [
-  { name: 'SHARK', archetype: 'SHARK', count: 12, focus: 'High-volatility', avgPosition: '$8,450', winRate: 68 },
-  { name: 'DIPLOMAT', archetype: 'DIPLOMAT', count: 8, focus: 'Stability', avgPosition: '$4,200', winRate: 72 },
-  { name: 'SABOTEUR', archetype: 'SABOTEUR', count: 6, focus: 'Adversarial', avgPosition: '$3,800', winRate: 42 },
-];
-
-const mockConflicts = [
-  { severity: 'high' as const, agents: ['VIPER', 'CHAOS'], theatre: 'ORB_SALVAGE_F7', positions: '$12,450 vs $8,200', impact: -15 },
-  { severity: 'medium' as const, agents: ['LEVIATHAN', 'TITAN'], theatre: 'FED_RATE_DECISION', positions: '$24,500 vs $18,200', impact: 8 },
-  { severity: 'low' as const, agents: ['AEGIS', 'SABOTEUR'], theatre: 'VEN_OIL_TANKER', positions: '$6,800 vs $5,200', impact: -5 },
-];
-
-/** Render an archetype icon from the centralized theme */
-function ArchetypeIcon({ archetype, className }: { archetype: string; className?: string }) {
-  const theme = getArchetypeTheme(archetype);
-  const Icon = theme.icon;
-  return <Icon className={className} />;
+function deriveStatus(agent: EnrichedAgent): AgentStatus {
+  if (!agent.is_alive) return 'FAILED';
+  if (agent.active_deployments_count > 0) return 'DEPLOYED';
+  return 'IDLE';
 }
 
-// Mock lineage data for demo
-const getMockLineage = (agentName: string) => {
-  const lineages: Record<string, { gen: number; parents: string }> = {
-    'MEGALODON': { gen: 1, parents: 'GENESIS' },
-    'CARDINAL': { gen: 2, parents: 'MEGALODON × PHANTOM' },
-    'ENVOY': { gen: 1, parents: 'GENESIS' },
-    'VIPER': { gen: 3, parents: 'CARDINAL × SPECTER' },
-    'ORACLE': { gen: 2, parents: 'ENVOY × CARDINAL' },
-    'LEVIATHAN': { gen: 1, parents: 'GENESIS' },
-  };
-  return lineages[agentName] || { gen: 1, parents: 'GENESIS' };
-};
+function derivePageState(agents: EnrichedAgent[]): PageState {
+  if (agents.length === 0) return 'EMPTY';
+  if (agents.some((agent) => !agent.is_alive)) return 'CRITICAL';
+  return 'HEALTHY';
+}
+
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const totalMinutes = Math.max(0, Math.floor(diffMs / 60000));
+  if (totalMinutes < 1) return 'just now';
+  if (totalMinutes < 60) return `${totalMinutes}m ago`;
+  const totalHours = Math.floor(totalMinutes / 60);
+  if (totalHours < 24) return `${totalHours}h ago`;
+  const totalDays = Math.floor(totalHours / 24);
+  return `${totalDays}d ago`;
+}
+
+function latestDeploymentForAgent(
+  deployments: AgentDeploymentSummary[],
+): AgentDeploymentSummary | null {
+  if (deployments.length === 0) return null;
+  return [...deployments].sort(
+    (left, right) =>
+      new Date(right.created_at ?? right.deployed_at).getTime() -
+      new Date(left.created_at ?? left.deployed_at).getTime(),
+  )[0] ?? null;
+}
+
+function StatusCell({ status }: { status: AgentStatus }) {
+  const dotClass =
+    status === 'FAILED'
+      ? 'bg-[var(--status-danger)] shadow-[0_0_0_2px_oklch(0.545_0.185_25_/_0.18)]'
+      : status === 'DEPLOYED'
+        ? 'bg-[var(--status-success)] shadow-[0_0_0_2px_oklch(0.545_0.170_152_/_0.18)]'
+        : 'bg-[var(--e-text-disabled)]';
+  const labelClass =
+    status === 'FAILED'
+      ? 'text-[var(--status-danger)]'
+      : status === 'DEPLOYED'
+        ? 'text-[var(--e-green-600)]'
+        : 'text-[var(--e-text-disabled)]';
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className={clsx('inline-block h-2 w-2 rounded-full', dotClass)} />
+      <span className={clsx('text-[11px] font-semibold uppercase tracking-[0.03em]', labelClass)}>
+        {status === 'FAILED' ? 'Failed' : status === 'DEPLOYED' ? 'Healthy' : 'Idle'}
+      </span>
+    </div>
+  );
+}
+
+function FleetKpi({
+  label,
+  value,
+  breakdown,
+  tone,
+}: {
+  label: string;
+  value: number;
+  breakdown?: string;
+  tone?: 'success' | 'warning' | 'danger' | 'muted';
+}) {
+  const valueClass =
+    tone === 'success'
+      ? 'text-[var(--e-green-600)]'
+      : tone === 'warning'
+        ? 'text-[var(--e-orange-600)]'
+        : tone === 'danger'
+          ? 'text-[var(--e-red-600)]'
+          : tone === 'muted'
+            ? 'text-[var(--e-text-disabled)]'
+            : 'text-[var(--e-text-primary)]';
+
+  return (
+    <div className="flex-1 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-3 shadow-[var(--e-shadow-xs)]">
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+        {label}
+      </div>
+      <div className={clsx('font-mono text-[24px] font-bold leading-8 tabular-nums', valueClass)}>
+        {value}
+      </div>
+      {breakdown ? (
+        <div className="mt-1 font-mono text-[10px] text-[var(--e-text-disabled)]">{breakdown}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function AttentionStrip({
+  pageState,
+  total,
+  alive,
+  failed,
+}: {
+  pageState: PageState;
+  total: number;
+  alive: number;
+  failed: number;
+}) {
+  if (pageState === 'EMPTY') return null;
+
+  const critical = pageState === 'CRITICAL';
+
+  return (
+    <div
+      className={clsx(
+        'mb-4 flex items-center gap-4 rounded-md px-5 py-3 text-[13px] leading-5',
+        critical
+          ? 'border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[color:oklch(0.545_0.185_25_/_0.06)]'
+          : 'border border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[color:oklch(0.545_0.170_152_/_0.06)]',
+      )}
+    >
+      <AlertTriangle
+        className={clsx(
+          'h-5 w-5 shrink-0',
+          critical ? 'text-[var(--status-danger)]' : 'text-[var(--e-green-600)]',
+        )}
+      />
+      <span
+        className={clsx(
+          'font-semibold',
+          critical ? 'text-[var(--status-danger)]' : 'text-[var(--e-green-600)]',
+        )}
+      >
+        {critical
+          ? `${failed} agent${failed === 1 ? '' : 's'} failed — requires intervention`
+          : `All ${alive} agents healthy — scheduler nominal`}
+      </span>
+      <span className="text-[var(--e-text-secondary)]">{total} total provisioned</span>
+    </div>
+  );
+}
+
+function SparsePanel({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="overflow-hidden rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+      <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-2.5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+          {title}
+        </h3>
+      </div>
+      <div className="px-4 py-5 text-[12px] leading-5 text-[var(--e-text-muted)]">
+        {description}
+      </div>
+    </div>
+  );
+}
+
+function FilterSelect({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<{ value: string; label: string }>;
+  label: string;
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label={label}
+        className="h-[30px] appearance-none rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 pr-8 text-[12px] font-medium text-[var(--e-text-secondary)] outline-none transition hover:border-[var(--e-purple-200)] focus:border-[var(--e-border-focus)]"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--e-text-muted)]" />
+    </div>
+  );
+}
 
 export function AgentRoster() {
-  const { data: agentsData, isLoading } = useAgents();
-  const agents = agentsData?.agents || [];
-  const [taskingAgent, setTaskingAgent] = useState<any | null>(null);
-  const [deployModalOpen, setDeployModalOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const { activeTab, setActiveTab } = useAgentsUi();
-  const [movementFilter, setMovementFilter] = useState<string>('all');
-  const [movements, setMovements] = useState(mockMovements);
+  const { agents, isLoading } = useAgentRoster();
+  const { deployments } = useDeploymentList();
+  const withdrawDeployment = useWithdrawDeployment();
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [deployAgentId, setDeployAgentId] = useState<string | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [archetypeFilter, setArchetypeFilter] = useState('all');
+  const [theatreFilter, setTheatreFilter] = useState('all');
 
-  // Register TopActionBar action handlers
-  useRegisterTopActionBarActions({
-    agentRoster: () => setActiveTab('roster'),
-    globalIntel: () => setActiveTab('intel'),
-    deployAgent: () => setDeployModalOpen(true),
-  });
+  const activeDeployments = useMemo(
+    () => deployments.filter((deployment) => deployment.status === 'ACTIVE'),
+    [deployments],
+  );
 
-  // Auto-dismiss toast
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timer = setTimeout(() => setToastMessage(null), 3000);
-    return () => clearTimeout(timer);
-  }, [toastMessage]);
+  const deploymentsByAgent = useMemo(() => {
+    const grouped = new Map<string, AgentDeploymentSummary[]>();
+    for (const deployment of deployments) {
+      const existing = grouped.get(deployment.agent_id) ?? [];
+      existing.push(deployment);
+      grouped.set(deployment.agent_id, existing);
+    }
+    return grouped;
+  }, [deployments]);
 
-  // Simulate live movement feed updates
-  useEffect(() => {
-    if (activeTab !== 'intel') return;
+  const theatreOptions = useMemo(() => {
+    const uniqueIds = [...new Set(activeDeployments.map((deployment) => deployment.theatre_id))].sort();
+    return uniqueIds.map((id) => ({ value: id, label: id.slice(0, 12) }));
+  }, [activeDeployments]);
 
-    const interval = setInterval(() => {
-      if (Math.random() > 0.5) {
-        const newMovement = {
-          time: new Date().toISOString().slice(11, 19),
-          agent: ['LEVIATHAN', 'VIPER', 'TITAN', 'SHADOW', 'CHAOS', 'AMBASSADOR'][Math.floor(Math.random() * 6)],
-          action: ['deployed to', 'withdrew from', 'shifted to'][Math.floor(Math.random() * 3)],
-          theatre: ['ORB_SALVAGE_F7', 'VEN_OIL_TANKER', 'FED_RATE_DECISION', 'NVDA_EARNINGS'][Math.floor(Math.random() * 4)],
-          velocity: ['+1', '+2', '+3', '+4', '-1', '-2', '~0'][Math.floor(Math.random() * 7)],
-          type: ['deploy', 'withdraw', 'strategy'][Math.floor(Math.random() * 3)] as 'deploy' | 'withdraw' | 'strategy',
-        };
-        setMovements(prev => [newMovement, ...prev.slice(0, 19)]);
-      }
-    }, 5000);
+  const archetypeOptions = useMemo(
+    () =>
+      [...new Set(agents.map((agent) => agent.archetype))].sort().map((value) => ({
+        value,
+        label: value,
+      })),
+    [agents],
+  );
 
-    return () => clearInterval(interval);
-  }, [activeTab]);
+  const kpis = useMemo(() => {
+    const total = agents.length;
+    const alive = agents.filter((agent) => agent.is_alive).length;
+    const deployed = agents.filter((agent) => agent.active_deployments_count > 0).length;
+    const idle = agents.filter((agent) => agent.is_alive && agent.active_deployments_count === 0).length;
+    const failed = agents.filter((agent) => !agent.is_alive).length;
+    return { total, alive, deployed, idle, failed };
+  }, [agents]);
 
-  const handleTaskAgent = (agent: any, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setTaskingAgent(agent);
+  const pageState = derivePageState(agents);
+
+  const openDeployModal = (agentId?: string) => {
+    setDeployAgentId(agentId);
+    setShowDeployModal(true);
   };
 
-  const handleCopyAgent = (_agent: any, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setToastMessage('Copy trading coming soon — connect wallet');
-  };
+  const filteredAgents = useMemo(() => {
+    const search = searchQuery.trim().toLowerCase();
+    const order: Record<AgentStatus, number> = { FAILED: 0, DEPLOYED: 1, IDLE: 2 };
 
-  const handleHireAgent = (_agent: any, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setToastMessage('Agent hiring coming soon — connect wallet');
-  };
+    return [...agents]
+      .filter((agent) => {
+        const status = deriveStatus(agent);
+        const agentDeployments = deploymentsByAgent.get(agent.id) ?? [];
+        const deployedTo = agentDeployments.map((deployment) => deployment.theatre_id);
 
-  const filteredMovements = movements.filter(m => {
-    if (movementFilter === 'all') return true;
-    if (movementFilter === 'deploy') return m.type === 'deploy';
-    if (movementFilter === 'withdraw') return m.type === 'withdraw';
-    if (movementFilter === 'strategy') return m.type === 'strategy';
-    return true;
-  });
+        if (search) {
+          const haystack = `${agent.name} ${agent.archetype} ${agent.id}`.toLowerCase();
+          if (!haystack.includes(search)) return false;
+        }
+
+        if (statusFilter !== 'all' && status !== statusFilter) return false;
+        if (archetypeFilter !== 'all' && agent.archetype !== archetypeFilter) return false;
+        if (theatreFilter !== 'all' && !deployedTo.includes(theatreFilter)) return false;
+
+        return true;
+      })
+      .sort((left, right) => {
+        const statusDiff = order[deriveStatus(left)] - order[deriveStatus(right)];
+        if (statusDiff !== 0) return statusDiff;
+        return left.name.localeCompare(right.name);
+      });
+  }, [agents, archetypeFilter, deploymentsByAgent, searchQuery, statusFilter, theatreFilter]);
+
+  const archetypeDistribution = useMemo(() => {
+    return archetypeOptions.map(({ value }) => {
+      const count = agents.filter((agent) => agent.archetype === value).length;
+      const pct = agents.length > 0 ? Math.round((count / agents.length) * 100) : 0;
+      return { archetype: value, count, pct };
+    });
+  }, [agents, archetypeOptions]);
+
+  const recentEvents = useMemo(() => {
+    return [...deployments]
+      .sort(
+        (left, right) =>
+          new Date(right.created_at ?? right.deployed_at).getTime() -
+          new Date(left.created_at ?? left.deployed_at).getTime(),
+      )
+      .slice(0, 6);
+  }, [deployments]);
 
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-cyan-400 animate-pulse">Loading agents...</div>
+      <div className="p-6">
+        <div className="mx-auto max-w-7xl animate-pulse rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-10 text-sm text-[var(--e-text-muted)] shadow-[var(--e-shadow-xs)]">
+          Loading agents…
+        </div>
       </div>
     );
   }
 
-  if (agents.length === 0) {
-    return (
-      <EmptyState
-        type="ZERO_STATE"
-        icon={<User className="w-7 h-7" />}
-        title="No agents deployed"
-        description="Agents appear here once they are deployed to theatres. Deploy your first agent to begin trading."
-        actions={[
-          {
-            label: 'Deploy Agent',
-            onClick: () => setDeployModalOpen(true),
-            variant: 'primary',
-          },
-        ]}
-      />
-    );
-  }
-
   return (
-    <div
-      className="h-full flex flex-col"
-      data-testid={activeTab === 'roster' ? 'agents-tab-roster' : 'agents-tab-intel'}
-    >
-      {/* Agent Roster View */}
-      {activeTab === 'roster' && (
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-echelon-cyan flex items-center gap-3">
-                <User className="w-6 h-6" />
-                AGENT ROSTER
-              </h1>
-              <span className="text-terminal-muted text-sm">
-                {agents.length} agents active
-              </span>
+    <div className="p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-2">
+            <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--e-text-muted)]">
+              Fleet
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {agents.map((agent) => {
-                const sanity = agent.sanity || 75;
-                const maxSanity = agent.max_sanity || 100;
-const sanityPercent = (sanity / maxSanity) * 100;
-                const lineage = getMockLineage(agent.name);
-
-                return (
-                  <div
-                    key={agent.id}
-                    className={clsx(
-                      'bg-terminal-panel border rounded-lg p-4 transition-all group relative overflow-hidden',
-                      sanityPercent > 40
-                        ? 'border-terminal-border hover:border-echelon-cyan/50'
-                        : sanityPercent > 20
-                          ? 'border-echelon-amber/30 hover:border-echelon-amber/50'
-                          : 'border-echelon-red/50 hover:border-echelon-red animate-pulse',
-                      // Glitch effect for critical sanity
-                      sanityPercent <= 20 && 'relative overflow-hidden'
-                    )}
-                  >
-                    {/* Glitch overlay for critical agents */}
-                    {sanityPercent <= 20 && (
-                      <div
-                        className="absolute inset-0 pointer-events-none opacity-20"
-                        style={{
-                          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,0,0,0.1) 2px, rgba(255,0,0,0.1) 4px)',
-                          animation: 'glitch 0.3s infinite'
-                        }}
-                      />
-                    )}
-
-                    <Link
-                      to={`/fleet/${agent.id}`}
-                      className="block"
-                    >
-                      <div className="flex items-start justify-between mb-3 relative z-10">
-                        <div className="flex items-center gap-3">
-                          <div className={clsx(
-                            'w-9 h-9 rounded-lg flex items-center justify-center border',
-                            getArchetypeTheme(agent.archetype).bgClass,
-                            getArchetypeTheme(agent.archetype).borderClass,
-                            sanityPercent <= 20 && 'animate-pulse'
-                          )}>
-                            <ArchetypeIcon
-                              archetype={agent.archetype}
-                              className={clsx('w-5 h-5', getArchetypeTheme(agent.archetype).textClass)}
-                            />
-                          </div>
-                          <div>
-                            <h3 className={clsx(
-                              'font-bold transition',
-                              sanityPercent <= 20 ? 'text-echelon-red' : 'text-terminal-text group-hover:text-echelon-cyan'
-                            )}>
-                              {agent.name}
-                            </h3>
-                            <span className="text-xs text-terminal-muted uppercase">
-                              {agent.archetype}
-                            </span>
-                          </div>
-                        </div>
-                        <span className={clsx(
-                          'text-lg font-mono font-bold',
-                          (agent.total_pnl_usd || 0) >= 0 ? 'text-echelon-green' : 'text-echelon-red'
-                        )}>
-                          ${(agent.total_pnl_usd || 0).toLocaleString()}
-                        </span>
-                      </div>
-                    </Link>
-
-                    {/* Genealogy Metadata */}
-                    <div className="flex items-center gap-2 mt-2 text-xs relative z-10">
-                      <span className="bg-echelon-purple/20 border border-echelon-purple/30 px-2 py-0.5 rounded text-echelon-purple font-mono">
-                        GEN {lineage.gen}
-                      </span>
-                      <span className="text-terminal-muted">•</span>
-                      <span className="text-terminal-muted">
-                        {lineage.parents === 'GENESIS' ? (
-                          <span className="text-echelon-cyan/60">GENESIS AGENT</span>
-                        ) : (
-                          <>LINEAGE: <span className="text-echelon-purple">{lineage.parents}</span></>
-                        )}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-xs text-terminal-muted mb-3 mt-2 relative z-10">
-                      <span className="flex items-center gap-1">
-                        <Activity className="w-3 h-3" />
-                        {agent.actions || 0} actions
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="w-3 h-3" />
-                        {((agent.win_rate || 0) * 100).toFixed(0)}% win rate
-                      </span>
-                    </div>
-
-                    {/* Sanity Indicator */}
-                    <div className="relative z-10">
-                      <AgentSanityIndicator
-                        sanity={sanity}
-                        maxSanity={maxSanity}
-                        name={agent.name}
-                      />
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 mt-4 pt-3 border-t border-terminal-border relative z-10">
-                      {/* Task Button - Primary for Spies and Sharks */}
-                      {(agent.archetype === 'SPY' || agent.archetype === 'SHARK') && (
-                        <button
-                          onClick={(e) => handleTaskAgent(agent, e)}
-                          className="flex-1 px-3 py-2 border rounded text-sm font-bold transition-all flex items-center justify-center gap-2 bg-echelon-purple/20 border-echelon-purple/50 text-echelon-purple hover:bg-echelon-purple/30"
-                        >
-                          <Search className="w-4 h-4" />
-                          TASK
-                        </button>
-                      )}
-
-                      {/* Copy Button - For social trading */}
-                      <button
-                        onClick={(e) => handleCopyAgent(agent, e)}
-                        className="flex-1 px-3 py-2 bg-echelon-cyan/20 border border-echelon-cyan/50 text-echelon-cyan rounded text-sm font-bold hover:bg-echelon-cyan/30 transition-all flex items-center justify-center gap-2"
-                      >
-                        <Copy className="w-4 h-4" />
-                        COPY
-                      </button>
-
-                      {/* Hire Button */}
-                      <button
-                        onClick={(e) => handleHireAgent(agent, e)}
-                        className="px-3 py-2 bg-echelon-amber/20 border border-echelon-amber/50 text-echelon-amber rounded text-sm font-bold hover:bg-echelon-amber/30 transition-all"
-                      >
-                        <Briefcase className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+            <div>
+              <h1 className="text-[44px] font-semibold tracking-[-0.04em] text-[var(--e-text-primary)]">
+                Agents
+              </h1>
+              <p className="mt-2 max-w-2xl text-[16px] leading-7 text-[var(--e-text-secondary)]">
+                Review provisioned operators, inspect live deployments, and route new agent deployment through known theatre context.
+              </p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => openDeployModal()}
+            className="inline-flex items-center gap-2 rounded-md border border-[var(--e-purple-500)] bg-[var(--e-purple-500)] px-4 py-2.5 text-[14px] font-semibold text-white shadow-[var(--e-shadow-sm)] transition hover:border-[var(--e-purple-600)] hover:bg-[var(--e-purple-600)]"
+          >
+            Deploy Agent
+          </button>
         </div>
-      )}
 
-      {/* Global Intelligence View */}
-      {activeTab === 'intel' && (
-        <LocalErrorBoundary name="Global Intelligence">
-          <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
-            {/* Stats Row - KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-cyan/20 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-echelon-cyan" />
-                  </div>
-                  <span className="text-xs text-echelon-green">+2 this week</span>
-                </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.totalAgents}</div>
-                <div className="text-sm text-terminal-muted">Total Agents</div>
-              </div>
+        {agents.length === 0 ? (
+          <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-8 py-14 text-center shadow-[var(--e-shadow-sm)]">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]">
+              <Users className="h-6 w-6" />
+            </div>
+            <h2 className="mb-2 text-[24px] font-bold tracking-[-0.02em] text-[var(--e-text-primary)]">
+              No agents provisioned
+            </h2>
+            <p className="mx-auto max-w-xl text-[14px] leading-6 text-[var(--e-text-secondary)]">
+              Fleet is empty. To deploy an agent, open a theatre detail page and use the deploy action from that known theatre context.
+            </p>
+          </div>
+        ) : (
+          <>
+            <AttentionStrip
+              pageState={pageState}
+              total={kpis.total}
+              alive={kpis.alive}
+              failed={kpis.failed}
+            />
 
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-green/20 flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-echelon-green" />
-                  </div>
-                  <span className="text-xs text-terminal-muted">67% utilization</span>
-                </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.deployedAgents}</div>
-                <div className="text-sm text-terminal-muted">Deployed</div>
-              </div>
-
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-purple/20 flex items-center justify-center">
-                    <History className="w-5 h-5 text-echelon-purple" />
-                  </div>
-                  <span className="text-xs text-echelon-green">+12 from yesterday</span>
-                </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.movements24h}</div>
-                <div className="text-sm text-terminal-muted">Movements (24h)</div>
-              </div>
-
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded bg-echelon-red/20 flex items-center justify-center">
-                    <AlertTriangle className="w-5 h-5 text-echelon-red" />
-                  </div>
-                  <span className="text-xs text-echelon-green">-1 from yesterday</span>
-                </div>
-                <div className="text-2xl font-bold text-terminal-text">{mockStats.activeConflicts}</div>
-                <div className="text-sm text-terminal-muted">Active Conflicts</div>
-              </div>
+            <div className="flex flex-wrap gap-3">
+              <FleetKpi label="Total" value={kpis.total} />
+              <FleetKpi
+                label="Alive"
+                value={kpis.alive}
+                breakdown={`${kpis.total > 0 ? Math.round((kpis.alive / kpis.total) * 100) : 0}% alive`}
+                tone={kpis.alive === kpis.total ? 'success' : undefined}
+              />
+              <FleetKpi
+                label="Deployed"
+                value={kpis.deployed}
+                breakdown={`${kpis.deployed} assigned`}
+                tone={kpis.deployed > 0 ? 'success' : undefined}
+              />
+              <FleetKpi
+                label="Idle"
+                value={kpis.idle}
+                breakdown={`${kpis.idle} awaiting assignment`}
+                tone={kpis.idle > 0 ? 'warning' : undefined}
+              />
+              <FleetKpi
+                label="Failed"
+                value={kpis.failed}
+                breakdown={`${kpis.failed} intervention`}
+                tone={kpis.failed > 0 ? 'danger' : 'muted'}
+              />
             </div>
 
-            {/* Dashboard Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              {/* Deployment Heat Map */}
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-echelon-cyan" />
-                    <span className="font-semibold text-terminal-text">Deployment Heat Map</span>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_300px]">
+              <div>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--e-text-muted)]" />
+                      <input
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        placeholder="Search agents..."
+                        className="h-[30px] w-[200px] rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] pl-8 pr-3 text-[12px] text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)]"
+                      />
+                    </div>
+                    <FilterSelect
+                      label="Status"
+                      value={statusFilter}
+                      onChange={setStatusFilter}
+                      options={[
+                        { value: 'all', label: 'All statuses' },
+                        { value: 'DEPLOYED', label: 'Deployed' },
+                        { value: 'IDLE', label: 'Idle' },
+                        { value: 'FAILED', label: 'Failed' },
+                      ]}
+                    />
+                    <FilterSelect
+                      label="Archetype"
+                      value={archetypeFilter}
+                      onChange={setArchetypeFilter}
+                      options={[{ value: 'all', label: 'All archetypes' }, ...archetypeOptions]}
+                    />
+                    <FilterSelect
+                      label="Theatre"
+                      value={theatreFilter}
+                      onChange={setTheatreFilter}
+                      options={[{ value: 'all', label: 'All theatres' }, ...theatreOptions]}
+                    />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-echelon-green animate-pulse"></span>
-                      <span className="text-xs text-terminal-muted">LIVE</span>
-                    </span>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    {mockTheatres.map((theatre) => (
-                      <div
-                        key={theatre.name}
-                        className={clsx(
-                          'rounded border p-3 transition-all',
-                          theatre.activity === 'high' && 'border-echelon-red/50 bg-echelon-red/10',
-                          theatre.activity === 'medium' && 'border-echelon-amber/50 bg-echelon-amber/10',
-                          theatre.activity === 'low' && 'border-echelon-green/50 bg-echelon-green/10'
-                        )}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-mono text-xs text-terminal-text">{theatre.name}</span>
-                          <span className={clsx(
-                            'text-xs font-medium flex items-center',
-                            theatre.activity === 'high' && 'text-echelon-red',
-                            theatre.activity === 'medium' && 'text-echelon-amber',
-                            theatre.activity === 'low' && 'text-echelon-green'
-                          )}>
-                            {theatre.activity === 'high' && <Flame className="w-3.5 h-3.5" />}
-                            {theatre.activity === 'medium' && <AlertCircle className="w-3.5 h-3.5" />}
-                            {theatre.activity === 'low' && <CheckCircle className="w-3.5 h-3.5" />}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-terminal-muted">
-                          <span>{theatre.agents} agents</span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-2 text-xs">
-                          <span><span className="text-terminal-muted">Stab</span> <span className="text-terminal-text">{theatre.stability}%</span></span>
-                          <span><span className="text-terminal-muted">Vol</span> <span className="text-terminal-text">{theatre.volume}</span></span>
-                          <span><span className="text-terminal-muted">Gap</span> <span className="text-terminal-text">{theatre.gap}%</span></span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Movement Feed */}
-              <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
-                  <div className="flex items-center gap-2">
-                    <History className="w-4 h-4 text-echelon-purple" />
-                    <span className="font-semibold text-terminal-text">Movement Feed</span>
-                  </div>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-echelon-green animate-pulse"></span>
-                    <span className="text-xs text-terminal-muted">LIVE</span>
+                  <span className="text-[12px] font-medium text-[var(--e-text-muted)]">
+                    {filteredAgents.length} agent{filteredAgents.length === 1 ? '' : 's'}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 px-4 py-2 border-b border-terminal-border">
-                  <button
-                    onClick={() => setMovementFilter('all')}
-                    className={clsx(
-                      'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'all' ? 'bg-echelon-cyan/20 text-echelon-cyan' : 'text-terminal-muted hover:text-terminal-text'
-                    )}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setMovementFilter('deploy')}
-                    className={clsx(
-                      'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'deploy' ? 'bg-echelon-green/20 text-echelon-green' : 'text-terminal-muted hover:text-terminal-text'
-                    )}
-                  >
-                    Deploy
-                  </button>
-                  <button
-                    onClick={() => setMovementFilter('withdraw')}
-                    className={clsx(
-                      'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'withdraw' ? 'bg-echelon-red/20 text-echelon-red' : 'text-terminal-muted hover:text-terminal-text'
-                    )}
-                  >
-                    Withdraw
-                  </button>
-                  <button
-                    onClick={() => setMovementFilter('strategy')}
-                    className={clsx(
-                      'px-3 py-1 text-xs rounded transition-all',
-                      movementFilter === 'strategy' ? 'bg-echelon-amber/20 text-echelon-amber' : 'text-terminal-muted hover:text-terminal-text'
-                    )}
-                  >
-                    Strategy
-                  </button>
+
+                <div className="overflow-hidden rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr>
+                        {['Status', 'Name', 'Archetype', 'Deployed to', 'Last Action', 'P&L', 'Actions'].map(
+                          (header, index) => (
+                            <th
+                              key={header}
+                              className={clsx(
+                                'bg-[var(--e-bg-sunken)] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]',
+                                index >= 5 && 'text-right',
+                              )}
+                            >
+                              {header}
+                            </th>
+                          ),
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAgents.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-10 text-center text-[13px] text-[var(--e-text-muted)]">
+                            No agents match the current filters.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredAgents.map((agent) => {
+                          const status = deriveStatus(agent);
+                          const agentDeployments = deploymentsByAgent.get(agent.id) ?? [];
+                          const activeForAgent = agentDeployments.filter((deployment) => deployment.status === 'ACTIVE');
+                          const lastDeployment = latestDeploymentForAgent(agentDeployments);
+                          const archetypeTheme = getArchetypeTheme(agent.archetype);
+
+                          return (
+                            <tr
+                              key={agent.id}
+                              className={clsx(
+                                'border-b border-[var(--e-border-secondary)] transition hover:bg-[var(--e-bg-hover)]',
+                                status === 'FAILED' && 'bg-[color:oklch(0.545_0.185_25_/_0.03)]',
+                              )}
+                            >
+                              <td className={clsx('px-3 py-2.5', status === 'FAILED' && 'shadow-[inset_3px_0_0_var(--status-danger)]')}>
+                                <StatusCell status={status} />
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <Link
+                                  to={`/fleet/${agent.id}`}
+                                  className="font-semibold text-[var(--e-text-primary)] no-underline hover:text-[var(--e-purple-700)]"
+                                >
+                                  {agent.name}
+                                </Link>
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <span
+                                  className={clsx(
+                                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em]',
+                                    archetypeTheme.bgClass,
+                                    archetypeTheme.borderClass,
+                                    archetypeTheme.textClass,
+                                  )}
+                                >
+                                  {agent.archetype}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5">
+                                {activeForAgent.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {activeForAgent.slice(0, 2).map((deployment) => (
+                                      <span
+                                        key={deployment.id}
+                                        className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-2 py-0.5 font-mono text-[10px] text-[var(--e-text-secondary)]"
+                                      >
+                                        {deployment.theatre_id.slice(0, 12)}
+                                      </span>
+                                    ))}
+                                    {activeForAgent.length > 2 ? (
+                                      <span className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-2 py-0.5 font-mono text-[10px] text-[var(--e-text-secondary)]">
+                                        +{activeForAgent.length - 2}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                ) : (
+                                  <span className="text-[12px] text-[var(--e-text-muted)]">Undeployed</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <div className="text-[13px] text-[var(--e-text-primary)]">
+                                  {status === 'FAILED'
+                                    ? 'Agent heartbeat missing'
+                                    : lastDeployment
+                                      ? `${lastDeployment.status === 'WITHDRAWN' ? 'Recalled' : 'Deployed'} ${formatRelativeTime(lastDeployment.created_at ?? lastDeployment.deployed_at)}`
+                                      : 'Awaiting assignment'}
+                                </div>
+                                <div className="text-[11px] text-[var(--e-text-muted)]">
+                                  {lastDeployment
+                                    ? lastDeployment.strategy_profile
+                                    : status === 'FAILED'
+                                      ? 'Intervention required'
+                                      : 'No deployment events yet'}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-right">
+                                <span
+                                  className={clsx(
+                                    'font-mono text-[13px] font-semibold tabular-nums',
+                                    agent.total_pnl_usd > 0
+                                      ? 'text-[var(--e-green-600)]'
+                                      : agent.total_pnl_usd < 0
+                                        ? 'text-[var(--e-red-600)]'
+                                        : 'text-[var(--e-text-muted)]',
+                                  )}
+                                >
+                                  {agent.total_pnl_usd > 0 ? '+' : agent.total_pnl_usd < 0 ? '-' : ''}
+                                  ${Math.abs(agent.total_pnl_usd).toLocaleString()}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <Link
+                                    to={`/fleet/${agent.id}`}
+                                    className="inline-flex items-center gap-1 rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--e-text-secondary)] no-underline transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
+                                  >
+                                    <Eye className="h-3 w-3" />
+                                    View
+                                  </Link>
+                                  {status === 'DEPLOYED' && activeForAgent[0] ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => withdrawDeployment.mutate(activeForAgent[0].id)}
+                                      disabled={withdrawDeployment.isPending}
+                                      className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-[var(--e-text-muted)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-red-600)]"
+                                    >
+                                      <ArrowDownToLine className="h-3 w-3" />
+                                      Recall
+                                    </button>
+                                  ) : null}
+                                  {status === 'IDLE' ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => openDeployModal(agent.id)}
+                                      className="inline-flex items-center gap-1 rounded-md border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-2.5 py-1.5 text-[11px] font-semibold text-[var(--e-purple-700)] transition hover:bg-[var(--e-purple-100)]"
+                                    >
+                                      Deploy Agent
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="max-h-80 overflow-y-auto">
-                  {filteredMovements.map((movement, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-3 px-4 py-2 border-b border-terminal-border/50 hover:bg-terminal-card/50 transition-colors"
-                    >
-                      <span className="font-mono text-xs text-terminal-muted w-16">{movement.time}</span>
-                      <div className={clsx(
-                        'w-6 h-6 rounded flex items-center justify-center text-xs font-bold',
-                        movement.type === 'deploy' && 'bg-echelon-green/20 text-echelon-green',
-                        movement.type === 'withdraw' && 'bg-echelon-red/20 text-echelon-red',
-                        movement.type === 'strategy' && 'bg-echelon-amber/20 text-echelon-amber'
-                      )}>
-                        {movement.type === 'deploy' && <ArrowRight className="w-3 h-3" />}
-                        {movement.type === 'withdraw' && <ArrowLeft className="w-3 h-3" />}
-                        {movement.type === 'strategy' && <Zap className="w-3 h-3" />}
+              </div>
+
+              <div className="space-y-4">
+                <SparsePanel
+                  title="Scheduler Status"
+                  description="No scheduler API is available yet. This panel will show queue depth, heartbeat, and cycle timing when the scheduler surface ships."
+                />
+
+                <div className="overflow-hidden rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+                  <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-2.5">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                      Archetype Distribution
+                    </h3>
+                  </div>
+                  <div className="space-y-3 px-4 py-4">
+                    {archetypeDistribution.map(({ archetype, count, pct }) => {
+                      const theme = getArchetypeTheme(archetype);
+                      return (
+                        <div key={archetype} className="flex items-center gap-2">
+                          <span className={clsx('w-16 text-[11px] font-medium', theme.textClass)}>
+                            {archetype}
+                          </span>
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--e-bg-sunken)]">
+                            <div className={clsx('h-full rounded-full', theme.bgClass)} style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="w-7 text-right font-mono text-[11px] text-[var(--e-text-secondary)]">
+                            {count}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="overflow-hidden rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+                  <div className="border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-2.5">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                      Recent Events
+                    </h3>
+                  </div>
+                  <div className="px-4 py-3">
+                    {recentEvents.length > 0 ? (
+                      <div className="space-y-2">
+                        {recentEvents.map((event) => (
+                          <div key={event.id} className="flex items-center gap-2 text-[12px]">
+                            <span
+                              className={clsx(
+                                'h-2 w-2 rounded-full',
+                                event.status === 'WITHDRAWN'
+                                  ? 'bg-[var(--e-orange-600)]'
+                                  : event.status === 'PAUSED'
+                                    ? 'bg-[var(--status-warning)]'
+                                    : 'bg-[var(--status-success)]',
+                              )}
+                            />
+                            <span className="min-w-0 flex-1 truncate text-[var(--e-text-primary)]">
+                              {event.status === 'WITHDRAWN'
+                                ? `Deployment withdrawn from ${event.theatre_id.slice(0, 12)}`
+                                : event.status === 'PAUSED'
+                                  ? `Deployment paused in ${event.theatre_id.slice(0, 12)}`
+                                  : `Deployment active in ${event.theatre_id.slice(0, 12)}`}
+                            </span>
+                            <span className="font-mono text-[10px] text-[var(--e-text-muted)]">
+                              {formatRelativeTime(event.created_at ?? event.deployed_at)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium text-terminal-text">{movement.agent}</span>
-                        <span className="text-terminal-muted text-xs"> {movement.action} </span>
-                        <span className="text-echelon-cyan text-xs">{movement.theatre}</span>
+                    ) : (
+                      <div className="text-[12px] text-[var(--e-text-muted)]">
+                        No deployment events yet.
                       </div>
-                      <span className={clsx(
-                        'text-xs font-mono font-bold',
-                        movement.velocity.includes('+') && 'text-echelon-green',
-                        movement.velocity.includes('-') && 'text-echelon-red',
-                        movement.velocity === '~0' && 'text-terminal-muted'
-                      )}>
-                        {movement.velocity}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Strategy Clusters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-              {mockClusters.map((cluster) => (
-                <div key={cluster.name} className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border">
-                    <div className="flex items-center gap-2">
-                      <ArchetypeIcon
-                        archetype={cluster.archetype}
-                        className={clsx('w-4 h-4', getArchetypeTheme(cluster.archetype).textClass)}
-                      />
-                      <span className="font-semibold text-terminal-text">{cluster.name} Cluster</span>
-                    </div>
-                    <span className="text-xs text-terminal-muted">{cluster.count} agents</span>
-                  </div>
-                  <div className="p-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-terminal-muted">Focus</span>
-                      <span className="text-terminal-text">{cluster.focus}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-terminal-muted">Avg Position</span>
-                      <span className="text-terminal-text">{cluster.avgPosition}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-terminal-muted">Win Rate</span>
-                      <span className={clsx(
-                        'font-bold',
-                        cluster.winRate >= 60 ? 'text-echelon-green' : cluster.winRate >= 40 ? 'text-echelon-amber' : 'text-echelon-red'
-                      )}>
-                        {cluster.winRate}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Agent Conflicts & Interactions */}
-            <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-terminal-border">
-                <AlertTriangle className="w-4 h-4 text-echelon-red" />
-                <span className="font-semibold text-terminal-text">Agent Conflicts & Interactions</span>
-              </div>
-              <div className="p-4 space-y-3">
-                {mockConflicts.map((conflict, idx) => (
-                  <div
-                    key={idx}
-                    className={clsx(
-                      'rounded border p-4',
-                      conflict.severity === 'high' && 'border-echelon-red/50 bg-echelon-red/5',
-                      conflict.severity === 'medium' && 'border-echelon-amber/50 bg-echelon-amber/5',
-                      conflict.severity === 'low' && 'border-echelon-green/50 bg-echelon-green/5'
                     )}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={clsx(
-                        'text-xs font-bold px-2 py-0.5 rounded flex items-center gap-1',
-                        conflict.severity === 'high' && 'bg-echelon-red/20 text-echelon-red',
-                        conflict.severity === 'medium' && 'bg-echelon-amber/20 text-echelon-amber',
-                        conflict.severity === 'low' && 'bg-echelon-green/20 text-echelon-green'
-                      )}>
-                        {conflict.severity === 'high' && <><AlertTriangle className="w-3 h-3" /> HIGH IMPACT</>}
-                        {conflict.severity === 'medium' && <><AlertCircle className="w-3 h-3" /> MEDIUM</>}
-                        {conflict.severity === 'low' && <><CheckCircle className="w-3 h-3" /> LOW</>}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-terminal-text">
-                        <span className="font-semibold">{conflict.agents[0]}</span>
-                        <span className="text-terminal-muted mx-1">vs</span>
-                        <span className="font-semibold">{conflict.agents[1]}</span>
-                      </span>
-                      <span className="text-xs text-echelon-cyan">{conflict.theatre}</span>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-terminal-muted">Opposing positions: <span className="text-terminal-text">{conflict.positions}</span></span>
-                      <span className={clsx(
-                        'font-medium',
-                        conflict.impact > 0 ? 'text-echelon-green' : 'text-echelon-red'
-                      )}>
-                        Stability impact: {conflict.impact > 0 ? '+' : ''}{conflict.impact}%
-                      </span>
-                    </div>
                   </div>
-                ))}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </LocalErrorBoundary>
-      )}
+          </>
+        )}
+      </div>
 
-      {/* Task Agent Modal */}
-      {taskingAgent && (
-        <TaskAgentModal
-          agent={taskingAgent}
-          isOpen={!!taskingAgent}
-          onClose={() => setTaskingAgent(null)}
-        />
-      )}
-
-      {/* Deploy Agent Modal */}
       <DeployAgentModal
-        open={deployModalOpen}
-        onClose={() => setDeployModalOpen(false)}
+        open={showDeployModal}
+        onClose={() => {
+          setShowDeployModal(false);
+          setDeployAgentId(undefined);
+        }}
+        preselectedAgentId={deployAgentId}
       />
-
-      {/* Coming Soon Toast */}
-      {toastMessage && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] animate-fade-in">
-          <div className="bg-terminal-panel border border-echelon-cyan/30 rounded-lg px-4 py-3 shadow-lg flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-echelon-cyan flex-shrink-0" />
-            <span className="text-sm text-terminal-text font-sans">{toastMessage}</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

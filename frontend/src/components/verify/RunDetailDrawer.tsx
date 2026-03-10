@@ -1,23 +1,13 @@
-/**
- * RunDetailDrawer — Slide-in drawer for verification run details.
- *
- * Same drawer pattern as VRFPage (fixed right, 420px, z-[310]).
- */
-
 import { useEffect } from 'react';
 import type { VerificationRun } from '../../types/verification';
 import { ACTIVE_STATUSES } from '../../types/verification';
 
-// ── Status chip ──────────────────────────────────────────────────────────
-
 function statusChipClass(status: string): string {
-  if (status === 'COMPLETED') return 'chip chip-success';
-  if (status === 'FAILED') return 'chip chip-danger';
-  if (status === 'PENDING') return 'chip chip-neutral';
-  return 'chip chip-info animate-pulse';
+  if (status === 'COMPLETED') return 'border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[var(--e-green-50)] text-[var(--e-green-600)]';
+  if (status === 'FAILED') return 'border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] text-[var(--e-red-600)]';
+  if (status === 'PENDING') return 'border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]';
+  return 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]';
 }
-
-// ── Component ────────────────────────────────────────────────────────────
 
 interface RunDetailDrawerProps {
   run: VerificationRun | null;
@@ -26,7 +16,6 @@ interface RunDetailDrawerProps {
 }
 
 export function RunDetailDrawer({ run, onClose, onViewCertificate }: RunDetailDrawerProps) {
-  // Escape key to close
   useEffect(() => {
     if (!run) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -42,72 +31,57 @@ export function RunDetailDrawer({ run, onClose, onViewCertificate }: RunDetailDr
 
   return (
     <>
-      {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[300] bg-black/50"
+        className="fixed inset-0 z-[300] bg-[color:oklch(0.205_0.015_265_/_0.14)] backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Drawer */}
       <div
-        className="fixed top-[60px] right-6 w-[420px] max-h-[calc(100vh-80px)] rounded-xl flex flex-col overflow-hidden z-[310] shadow-elevation-3 bg-terminal-overlay border border-terminal-border"
+        className="fixed right-6 top-[72px] z-[310] flex max-h-[calc(100vh-96px)] w-[440px] flex-col overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-lg)]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-labelledby="run-drawer-title"
       >
-        {/* Header */}
-        <div className="section-header">
-          <div className="flex items-center gap-2 min-w-0">
-            <span id="run-drawer-title" className="section-header-title truncate">
-              {run.construct_id}
-            </span>
-            <span className={statusChipClass(run.status)}>{run.status}</span>
+        <div className="flex items-start justify-between border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-4">
+          <div className="min-w-0">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+              Verification Run
+            </div>
+            <div className="flex items-center gap-2">
+              <span id="run-drawer-title" className="truncate text-[15px] font-semibold text-[var(--e-text-primary)]">
+                {run.construct_id}
+              </span>
+              <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.04em] ${statusChipClass(run.status)}`}>
+                {run.status}
+              </span>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded transition-colors text-terminal-text-muted hover:text-terminal-text flex-shrink-0"
+            className="rounded p-1 text-[var(--e-text-muted)] transition hover:text-[var(--e-text-primary)]"
           >
             &#x2715;
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-4 overflow-y-auto space-y-4">
-          {/* Details */}
-          <div className="space-y-3">
-            <div className="flex justify-between text-xs">
-              <span className="data-label">Repository</span>
-              <span className="font-mono text-[11px] text-terminal-text-secondary break-all text-right max-w-[260px]">
-                {run.repo_url}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="data-label">Created</span>
-              <span className="font-mono text-terminal-text-muted">
-                {new Date(run.created_at).toLocaleString()}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="data-label">Updated</span>
-              <span className="font-mono text-terminal-text-muted">
-                {new Date(run.updated_at).toLocaleString()}
-              </span>
-            </div>
-          </div>
+        <div className="space-y-5 overflow-y-auto p-5">
+          <section className="space-y-3 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] p-4">
+            <DataRow label="Repository" value={run.repo_url} multiline />
+            <DataRow label="Created" value={new Date(run.created_at).toLocaleString()} />
+            <DataRow label="Updated" value={new Date(run.updated_at).toLocaleString()} />
+          </section>
 
-          {/* Progress section (active runs) */}
-          {(isActive || run.status === 'COMPLETED') && run.total > 0 && (
-            <div className="space-y-2">
-              <div className="h-px bg-terminal-border/40" />
-              <div className="flex justify-between text-xs">
-                <span className="data-label">Progress</span>
-                <span className="font-mono text-terminal-text tabular-nums">
+          {(isActive || run.status === 'COMPLETED') && run.total > 0 ? (
+            <section className="space-y-3 rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] p-4">
+              <div className="flex justify-between text-[12px]">
+                <span className="font-semibold uppercase tracking-[0.05em] text-[var(--e-text-muted)]">Progress</span>
+                <span className="font-mono tabular-nums text-[var(--e-text-primary)]">
                   {run.progress} / {run.total} replays completed
                 </span>
               </div>
-              <div className="h-2 bg-terminal-border/30 rounded-full overflow-hidden">
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--e-bg-sunken)]">
                 <div
-                  className="h-full bg-echelon-cyan rounded-full transition-all duration-500"
+                  className="h-full rounded-full bg-[var(--e-purple-500)] transition-all duration-500"
                   style={{ width: `${(run.progress / run.total) * 100}%` }}
                   role="progressbar"
                   aria-valuenow={run.progress}
@@ -115,36 +89,50 @@ export function RunDetailDrawer({ run, onClose, onViewCertificate }: RunDetailDr
                   aria-valuemax={run.total}
                 />
               </div>
-            </div>
-          )}
+            </section>
+          ) : null}
 
-          {/* Error section (FAILED) */}
-          {run.status === 'FAILED' && run.error && (
-            <>
-              <div className="h-px bg-terminal-border/40" />
-              <div className="bg-status-danger/10 border border-status-danger/20 rounded-lg p-3">
-                <span className="data-label text-status-danger">Error</span>
-                <p className="text-xs text-status-danger mt-1 font-mono break-all">
-                  {run.error}
-                </p>
-              </div>
-            </>
-          )}
+          {run.status === 'FAILED' && run.error ? (
+            <section className="rounded-lg border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] p-4">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-red-600)]">Error</span>
+              <p className="mt-2 break-all font-mono text-[12px] text-[var(--e-red-600)]">{run.error}</p>
+            </section>
+          ) : null}
 
-          {/* Certificate link (COMPLETED) */}
-          {run.status === 'COMPLETED' && run.certificate_id && (
-            <>
-              <div className="h-px bg-terminal-border/40" />
-              <button
-                className="btn-cyan w-full"
-                onClick={() => onViewCertificate(run.certificate_id!)}
-              >
-                View Certificate
-              </button>
-            </>
-          )}
+          {run.status === 'COMPLETED' && run.certificate_id ? (
+            <button
+              className="inline-flex h-11 w-full items-center justify-center rounded-md border border-[var(--e-purple-500)] bg-[var(--e-purple-500)] px-4 text-[13px] font-semibold text-white transition hover:bg-[var(--e-purple-400)]"
+              onClick={() => onViewCertificate(run.certificate_id!)}
+            >
+              View Certificate
+            </button>
+          ) : null}
         </div>
       </div>
     </>
+  );
+}
+
+function DataRow({
+  label,
+  value,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  multiline?: boolean;
+}) {
+  return (
+    <div className="flex justify-between gap-4 text-[12px]">
+      <span className="font-semibold uppercase tracking-[0.05em] text-[var(--e-text-muted)]">{label}</span>
+      <span
+        className={[
+          'text-right font-mono text-[var(--e-text-secondary)]',
+          multiline ? 'max-w-[250px] break-all' : '',
+        ].join(' ')}
+      >
+        {value}
+      </span>
+    </div>
   );
 }

@@ -1,355 +1,460 @@
-// Portfolio Page Component
-// Portfolio overview with positions from real API
-
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  TrendingUp,
   AlertTriangle,
+  ArrowUpRight,
+  Briefcase,
+  Download,
   Filter,
   Loader2,
-  Briefcase,
+  Search,
+  ShieldCheck,
 } from 'lucide-react';
-import { usePositions, usePortfolioSummary, useEquityChart, usePortfolioStatus } from '../hooks/usePortfolio';
-import { EmptyState } from '../components/empty-states/EmptyState';
-import type { ChartTimeframe, PositionTab } from '../types/portfolio';
+import { usePortfolioSummary, usePositions } from '../hooks/usePortfolio';
+
+type PositionView = 'active' | 'all' | 'settled';
+
+function formatCurrency(value: number) {
+  return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 })}`;
+}
+
+function formatSignedCurrency(value: number) {
+  const sign = value >= 0 ? '+' : '-';
+  return `${sign}$${Math.abs(value).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  })}`;
+}
+
+function formatPrice(value: number) {
+  return `${Math.round(value * 100)}c`;
+}
+
+function metricTone(value: number) {
+  if (value > 0) return 'text-[var(--e-green-600)]';
+  if (value < 0) return 'text-[var(--e-red-600)]';
+  return 'text-[var(--e-text-primary)]';
+}
+
+function exportRowsAsCsv(rows: Array<Record<string, string | number>>) {
+  const headers = Object.keys(rows[0] ?? {});
+  const csv = [
+    headers.join(','),
+    ...rows.map((row) =>
+      headers
+        .map((header) => {
+          const value = String(row[header] ?? '');
+          return `"${value.replace(/"/g, '""')}"`;
+        })
+        .join(','),
+    ),
+  ].join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'echelon_positions.csv';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function KpiCard({
+  label,
+  value,
+  windowLabel,
+  sub,
+  tone,
+  accent,
+}: {
+  label: string;
+  value: string;
+  windowLabel: string;
+  sub?: string;
+  tone?: string;
+  accent?: 'warning' | 'success';
+}) {
+  return (
+    <div
+      className={`rounded-xl border px-4 py-4 shadow-[var(--e-shadow-xs)] ${
+        accent === 'warning'
+          ? 'border-[var(--e-amber-200)] bg-[var(--e-amber-50)]'
+          : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)]'
+      }`}
+    >
+      <div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--e-text-muted)]">
+        <span>{label}</span>
+        <span>{windowLabel}</span>
+      </div>
+      <div className={`font-mono text-[28px] font-bold leading-none tabular-nums ${tone ?? 'text-[var(--e-text-primary)]'}`}>
+        {value}
+      </div>
+      {sub ? <div className="mt-2 text-[12px] text-[var(--e-text-secondary)]">{sub}</div> : null}
+    </div>
+  );
+}
+
+function RiskChip({ label, tone }: { label: string; tone: 'paradox' | 'soon' | 'nominal' }) {
+  const className =
+    tone === 'paradox'
+      ? 'border-[var(--e-red-200)] bg-[var(--e-red-50)] text-[var(--e-red-600)]'
+      : tone === 'soon'
+        ? 'border-[var(--e-amber-200)] bg-[var(--e-amber-50)] text-[var(--e-amber-700)]'
+        : 'border-[var(--e-green-200)] bg-[var(--e-green-50)] text-[var(--e-green-700)]';
+
+  return (
+    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em] ${className}`}>
+      {label}
+    </span>
+  );
+}
 
 export function PortfolioPage() {
   const navigate = useNavigate();
   const { positions, totals, isLoading, error } = usePositions();
   const { summary } = usePortfolioSummary();
-  const { timeframe: chartTimeframe, setTimeframe: setChartTimeframe } = useEquityChart();
-  usePortfolioStatus();
+  const [view, setView] = useState<PositionView>('active');
 
-  const [positionTab, setPositionTab] = useState<PositionTab>('positions');
+  const activeCount = positions.length;
+  const settledCount = 0;
+  const allCount = activeCount + settledCount;
+  const atRiskCount = positions.filter((position) => position.has_active_paradox || (position.hours_until_reaper ?? Infinity) <= 168).length;
 
-  const formatPL = (value: number): string => {
-    const prefix = value >= 0 ? '+' : '';
-    return `${prefix}$${Math.abs(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const rows = useMemo(() => {
+    const mapped = positions.map((position) => ({
+      ...position,
+      riskRank: position.has_active_paradox ? 0 : (position.hours_until_reaper ?? Infinity) <= 168 ? 1 : 2,
+    }));
+    return mapped.sort((a, b) => a.riskRank - b.riskRank || b.unrealised_pnl_usd - a.unrealised_pnl_usd);
+  }, [positions]);
+
+  const filteredRows = useMemo(() => {
+    if (view === 'settled') return [];
+    return rows;
+  }, [rows, view]);
+
+  const exportCurrentView = () => {
+    if (filteredRows.length === 0) return;
+    exportRowsAsCsv(
+      filteredRows.map((position) => ({
+        theatre: position.timeline_name,
+        side: position.side,
+        entry_price: formatPrice(position.average_entry_price),
+        current_price: formatPrice(position.current_price),
+        quantity: position.shards_held,
+        pnl_usd: position.unrealised_pnl_usd,
+        stability: Math.round(position.timeline_stability),
+      })),
+    );
   };
 
   if (error) {
     return (
-      <div className="h-full flex items-center justify-center bg-terminal-bg text-terminal-text">
-        <div className="text-center">
-          <AlertTriangle size={32} className="text-status-danger mx-auto mb-3" />
-          <div className="text-sm font-semibold mb-1">Failed to load portfolio</div>
-          <div className="text-xs text-terminal-text-muted">Check that the backend is running</div>
+      <div className="p-6">
+        <div className="mx-auto max-w-7xl">
+          <section className="rounded-xl border border-[var(--e-red-200)] bg-[var(--e-red-50)] px-5 py-4 text-[13px] text-[var(--e-red-600)] shadow-[var(--e-shadow-xs)]">
+            Failed to load positions. Check that the positions and portfolio summary services are available.
+          </section>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 bg-terminal-bg text-terminal-text">
-      <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div className="flex-1 flex min-w-0 overflow-hidden gap-4 p-4">
-          {/* Left Column */}
-          <div className="flex-1 min-w-0 overflow-y-auto pr-6 custom-scrollbar">
-            <div className="bg-terminal-bg border border-terminal-border rounded-2xl flex flex-col overflow-hidden">
-              {/* Header */}
-              <div className="px-4 py-4 border-b border-terminal-border">
-                <div className="text-sm font-semibold text-terminal-text mb-1">
-                  Portfolio Overview
+    <div className="p-6">
+      <div className="mx-auto max-w-7xl space-y-5">
+        <section className="flex items-start justify-between gap-4">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--e-text-muted)]">
+              <span>Portfolio</span>
+              <span className="text-[var(--e-text-muted)]/60">/</span>
+              <span>Positions</span>
+            </div>
+            <h1 className="text-[42px] font-semibold leading-none tracking-[-0.03em] text-[var(--e-text-primary)]">Positions</h1>
+          </div>
+          <button
+            type="button"
+            onClick={exportCurrentView}
+            disabled={filteredRows.length === 0}
+            className="inline-flex items-center gap-2 rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-2.5 text-[13px] font-semibold text-[var(--e-text-secondary)] shadow-[var(--e-shadow-xs)] transition hover:text-[var(--e-text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </button>
+        </section>
+
+        <div className="flex flex-wrap gap-2">
+          {([
+            ['active', 'Active', activeCount],
+            ['all', 'All', allCount],
+            ['settled', 'Settled', settledCount],
+          ] as const).map(([key, label, count]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setView(key)}
+              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-[13px] font-semibold transition ${
+                view === key
+                  ? 'border-[var(--e-purple-300)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+                  : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-secondary)] hover:text-[var(--e-text-primary)]'
+              }`}
+            >
+              {label}
+              <span className="rounded-full bg-[var(--e-bg-sunken)] px-2 py-0.5 font-mono text-[11px] text-[var(--e-text-muted)]">
+                {count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {atRiskCount > 0 ? (
+          <section className="flex items-center gap-3 rounded-xl border border-[var(--e-amber-200)] bg-[var(--e-amber-50)] px-5 py-4 text-[14px] text-[var(--e-amber-800)] shadow-[var(--e-shadow-xs)]">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold">Attention</span>
+              <span>{atRiskCount} position{atRiskCount === 1 ? '' : 's'} flagged for paradox or expiry pressure.</span>
+            </div>
+          </section>
+        ) : activeCount > 0 ? (
+          <section className="flex items-center gap-3 rounded-xl border border-[var(--e-green-200)] bg-[var(--e-green-50)] px-5 py-4 text-[14px] text-[var(--e-green-800)] shadow-[var(--e-shadow-xs)]">
+            <ShieldCheck className="h-5 w-5 shrink-0" />
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold">All Clear</span>
+              <span>All positions nominal. No paradox or reaper risk currently flagged.</span>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="grid gap-4 xl:grid-cols-6">
+          <KpiCard label="Portfolio Value" windowLabel="total" value={isLoading ? '—' : formatCurrency(summary?.total_value_usd ?? 0)} />
+          <KpiCard
+            label="Unrealised P/L"
+            windowLabel="open"
+            value={isLoading ? '—' : formatSignedCurrency(summary?.total_unrealised_pnl_usd ?? 0)}
+            tone={metricTone(summary?.total_unrealised_pnl_usd ?? 0)}
+            sub={summary ? `${summary.total_unrealised_pnl_percent.toFixed(1)}%` : undefined}
+          />
+          <KpiCard label="Open Positions" windowLabel="active" value={isLoading ? '—' : String(activeCount)} sub={summary ? `across ${summary.timelines_at_risk + Math.max(activeCount - summary.timelines_at_risk, 0)} signals` : undefined} />
+          <KpiCard label="Settled" windowLabel="30d" value={isLoading ? '—' : String(settledCount)} />
+          <KpiCard label="Win Rate" windowLabel="all time" value={isLoading ? '—' : activeCount > 0 ? `${totals.winRate.toFixed(0)}%` : '—'} />
+          <KpiCard
+            label="Exposure at Risk"
+            windowLabel="flagged"
+            value={isLoading ? '—' : formatCurrency(positions.filter((position) => position.has_active_paradox || (position.hours_until_reaper ?? Infinity) <= 168).reduce((sum, position) => sum + position.shards_held * position.current_price, 0))}
+            accent={atRiskCount > 0 ? 'warning' : 'success'}
+            sub={atRiskCount > 0 ? `${atRiskCount} position${atRiskCount === 1 ? '' : 's'} flagged` : 'No exposure flagged'}
+          />
+        </section>
+
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <section className="overflow-hidden rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--e-text-muted)]" />
+                  <input
+                    type="text"
+                    readOnly
+                    value=""
+                    placeholder="Search positions..."
+                    className="w-[220px] rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] py-2 pl-9 pr-3 text-[13px] text-[var(--e-text-secondary)] placeholder:text-[var(--e-text-muted)]"
+                  />
                 </div>
-                <div className="text-xs text-terminal-text-muted">
-                  Live positions and performance from real market data
+                <div className="rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[13px] text-[var(--e-text-muted)]">
+                  All Types
+                </div>
+                <div className="rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[13px] text-[var(--e-text-muted)]">
+                  {atRiskCount > 0 ? 'At Risk + Nominal' : 'All Risk'}
                 </div>
               </div>
-
-              {/* Top Metrics */}
-              <div className="grid grid-cols-3 gap-3 p-4">
-                <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                  <div className="text-[10px] font-semibold text-terminal-text-muted uppercase tracking-wider mb-1">
-                    Total P/L
-                  </div>
-                  <div className={`text-2xl font-bold mono ${totals.totalPL >= 0 ? 'text-status-success' : 'text-status-danger'}`}>
-                    {isLoading ? '---' : formatPL(totals.totalPL)}
-                  </div>
-                </div>
-                <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                  <div className="text-[10px] font-semibold text-terminal-text-muted uppercase tracking-wider mb-1">
-                    Win Rate
-                  </div>
-                  <div className="text-2xl font-bold text-terminal-text mono">
-                    {isLoading ? '---' : `${totals.winRate.toFixed(0)}%`}
-                  </div>
-                </div>
-                <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                  <div className="text-[10px] font-semibold text-terminal-text-muted uppercase tracking-wider mb-1">
-                    Positions
-                  </div>
-                  <div className="text-2xl font-bold text-terminal-text mono">
-                    {isLoading ? '---' : positions.length}
-                  </div>
-                </div>
-              </div>
-
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-auto px-4 pb-4">
-                {/* Portfolio Summary */}
-                {summary && (
-                  <div className="mt-4 p-3 bg-terminal-bg border border-terminal-border rounded-xl">
-                    <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider mb-3">
-                      Portfolio Summary
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <div className="text-[11px] text-terminal-text-secondary mb-1">Total Value</div>
-                        <div className="text-sm font-semibold text-terminal-text mono">
-                          ${summary.total_value_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[11px] text-terminal-text-secondary mb-1">Unrealised P/L</div>
-                        <div className={`text-sm font-semibold mono ${summary.total_unrealised_pnl_usd >= 0 ? 'text-status-success' : 'text-status-danger'}`}>
-                          {formatPL(summary.total_unrealised_pnl_usd)} ({summary.total_unrealised_pnl_percent.toFixed(1)}%)
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[11px] text-terminal-text-secondary mb-1">Founder Yield</div>
-                        <div className="text-sm font-semibold text-status-success mono">
-                          +${summary.total_founder_yield_earned_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[11px] text-terminal-text-secondary mb-1">At Risk</div>
-                        <div className="text-sm font-semibold text-terminal-text mono">
-                          {summary.timelines_at_risk} timeline{summary.timelines_at_risk !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Exposure Summary */}
-                <div className="mt-4 p-3 bg-terminal-bg border border-terminal-border rounded-xl">
-                  <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider mb-3">
-                    Exposure Summary
-                  </div>
-                  <div className="mb-3">
-                    <div className="flex justify-between mb-1">
-                      <span className="text-[11px] text-terminal-text-secondary">Total Notional</span>
-                      <span className="text-xs font-semibold text-terminal-text mono">
-                        ${totals.totalNotional.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-                  {totals.totalNotional > 0 && (
-                    <>
-                      <div className="mb-3">
-                        <div className="flex justify-between mb-1">
-                          <span className="text-[11px] text-terminal-text-secondary">Net YES Notional</span>
-                          <span className="text-xs font-semibold text-status-success mono">
-                            ${totals.yesNotional.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                        <div className="h-1.5 bg-terminal-bg rounded overflow-hidden">
-                          <div className="h-full bg-status-success" style={{ width: `${(totals.yesNotional / totals.totalNotional) * 100}%` }}></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-[11px] text-terminal-text-secondary">Net NO Notional</span>
-                          <span className="text-xs font-semibold text-status-danger mono">
-                            ${totals.noNotional.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                        <div className="h-1.5 bg-terminal-bg rounded overflow-hidden">
-                          <div className="h-full bg-status-danger" style={{ width: `${(totals.noNotional / totals.totalNotional) * 100}%` }}></div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Equity Curve placeholder */}
-                <div className="mt-4 p-3 bg-terminal-bg border border-terminal-border rounded-xl">
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider">Equity Curve</div>
-                    <div className="flex gap-1">
-                      {(['1D', '7D', '30D', 'ALL'] as ChartTimeframe[]).map((tf) => (
-                        <button
-                          key={tf}
-                          onClick={() => setChartTimeframe(tf)}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] cursor-pointer transition-all ${chartTimeframe === tf ? 'bg-echelon-cyan/10 border border-echelon-cyan/30 text-echelon-cyan' : 'bg-transparent border border-terminal-border text-terminal-text-muted hover:text-terminal-text-secondary'}`}
-                        >
-                          {tf}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="relative h-[120px] bg-terminal-bg rounded-lg overflow-hidden flex items-center justify-center">
-                    <span className="text-xs text-terminal-text-muted">Equity history coming soon</span>
-                  </div>
-                </div>
-
-                {/* Positions Panel */}
-                <div className="flex-1 bg-terminal-bg border border-terminal-border rounded-xl flex flex-col mt-4 overflow-hidden">
-                  <div className="flex items-center justify-between p-3 border-b border-terminal-border">
-                    <div className="flex gap-3">
-                      {(['positions', 'foldovers'] as PositionTab[]).map((tab) => (
-                        <button
-                          key={tab}
-                          onClick={() => setPositionTab(tab)}
-                          className={`px-3 py-1 rounded-lg text-[11px] font-medium capitalize cursor-pointer transition-all ${positionTab === tab ? 'bg-echelon-cyan/10 border border-echelon-cyan/30 text-echelon-cyan' : 'bg-transparent border border-terminal-border text-terminal-text-muted hover:text-terminal-text-secondary'}`}
-                        >
-                          {tab}
-                        </button>
-                      ))}
-                    </div>
-                    <button className="flex items-center gap-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded-lg text-[11px] font-medium text-terminal-text-secondary hover:border-echelon-cyan/50 hover:text-echelon-cyan transition-all cursor-pointer">
-                      <Filter size={12} />
-                      Filter
-                    </button>
-                  </div>
-                  <div className="flex-1 overflow-auto">
-                    {isLoading ? (
-                      <div className="flex items-center justify-center p-8">
-                        <Loader2 size={20} className="animate-spin text-terminal-text-muted" />
-                        <span className="ml-2 text-xs text-terminal-text-muted">Loading positions...</span>
-                      </div>
-                    ) : positions.length === 0 ? (
-                      <EmptyState
-                        type="ZERO_STATE"
-                        icon={<Briefcase className="w-7 h-7" />}
-                        title="No open positions"
-                        description="Positions appear here once you trade on a theatre. Browse active theatres to get started."
-                        actions={[
-                          {
-                            label: 'Browse Theatres',
-                            onClick: () => navigate('/theatres'),
-                            variant: 'primary',
-                          },
-                        ]}
-                      />
-                    ) : (
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Timeline</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Side</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Shards</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Entry</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Current</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">P/L</th>
-                            <th className="text-left p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Stability</th>
-                            <th className="text-center p-2 text-[9px] font-semibold text-terminal-text-muted uppercase tracking-wider bg-terminal-bg border-b border-terminal-border sticky top-0">Risk</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {positions.map((p) => (
-                            <tr key={`${p.timeline_id}-${p.side}`} className="border-b border-terminal-border">
-                              <td className="p-2">
-                                <div className="text-xs font-semibold text-terminal-text mono">{p.timeline_name}</div>
-                                <div className="text-[10px] text-terminal-text-muted mono">{p.timeline_id}</div>
-                              </td>
-                              <td className="p-2">
-                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold" style={{ background: p.side === 'YES' ? 'rgba(74,222,128,0.1)' : 'rgba(251,113,133,0.1)', color: p.side === 'YES' ? '#4ADE80' : '#FB7185' }}>
-                                  {p.side}
-                                </span>
-                              </td>
-                              <td className="p-2"><span className="text-xs text-terminal-text mono">{p.shards_held.toLocaleString()}</span></td>
-                              <td className="p-2"><span className="text-xs text-terminal-text mono">${p.average_entry_price.toFixed(2)}</span></td>
-                              <td className="p-2"><span className="text-xs text-terminal-text mono">${p.current_price.toFixed(2)}</span></td>
-                              <td className="p-2">
-                                <span className={`text-xs font-semibold mono ${p.unrealised_pnl_usd >= 0 ? 'text-status-success' : 'text-status-danger'}`}>
-                                  {formatPL(p.unrealised_pnl_usd)}
-                                </span>
-                                <div className="text-[10px] text-terminal-text-muted">
-                                  {p.unrealised_pnl_percent >= 0 ? '+' : ''}{p.unrealised_pnl_percent.toFixed(1)}%
-                                </div>
-                              </td>
-                              <td className="p-2">
-                                <span className="text-xs mono" style={{ color: p.timeline_stability >= 70 ? '#4ADE80' : p.timeline_stability >= 30 ? '#F59E0B' : '#FB7185' }}>
-                                  {p.timeline_stability.toFixed(0)}%
-                                </span>
-                              </td>
-                              <td className="p-2 text-center">
-                                {p.has_active_paradox && (
-                                  <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold bg-status-danger/10 text-status-danger">
-                                    PARADOX
-                                  </span>
-                                )}
-                                {p.is_founder && (
-                                  <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold bg-echelon-cyan/10 text-echelon-cyan ml-1">
-                                    FOUNDER
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                </div>
+              <div className="text-[12px] text-[var(--e-text-muted)]">
+                {view === 'settled' ? '0 settled' : `${filteredRows.length} active · ${settledCount} settled`}
               </div>
             </div>
-          </div>
 
-          {/* Right Sidebar */}
-          <aside className="w-[360px] flex-shrink-0 flex flex-col gap-4 self-start sticky top-6">
-            {/* Summary Card */}
-            {summary && (
-              <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                <div className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider mb-3">Quick Stats</div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="text-center p-2 bg-terminal-bg border border-terminal-border rounded-lg">
-                    <div className="text-xl font-bold text-terminal-text mono">{summary.active_position_count}</div>
-                    <div className="text-[10px] text-terminal-text-muted mt-0.5">Active Positions</div>
+            {isLoading ? (
+              <div className="flex items-center justify-center gap-2 px-5 py-14 text-[13px] text-[var(--e-text-muted)]">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading positions...
+              </div>
+            ) : filteredRows.length === 0 ? (
+              <div className="flex min-h-[360px] flex-col items-center justify-center px-8 py-14 text-center">
+                <div className="mb-5 rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] p-5 text-[var(--e-text-muted)]">
+                  <Briefcase className="h-8 w-8" />
+                </div>
+                <div className="text-[32px] font-semibold tracking-[-0.02em] text-[var(--e-text-primary)]">
+                  {view === 'settled' ? 'No settled positions yet' : 'No positions yet'}
+                </div>
+                <div className="mt-3 max-w-xl text-[17px] leading-8 text-[var(--e-text-secondary)]">
+                  {view === 'settled'
+                    ? 'Settled outcomes will appear here once your theatres resolve and produce position history.'
+                    : 'Open a position in any theatre to start building your portfolio. Active and settled positions will appear here.'}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/theatres')}
+                  className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[var(--e-purple-600)] px-5 py-3 text-[14px] font-semibold text-white shadow-[var(--e-shadow-sm)] transition hover:bg-[var(--e-purple-700)]"
+                >
+                  Browse Theatres
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto px-5 py-4">
+                <table className="min-w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-[var(--e-border-secondary)] text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--e-text-muted)]">
+                      <th className="pb-3 pr-4">Theatre</th>
+                      <th className="pb-3 pr-4">Side</th>
+                      <th className="pb-3 pr-4">Entry</th>
+                      <th className="pb-3 pr-4">Current</th>
+                      <th className="pb-3 pr-4 text-right">Qty</th>
+                      <th className="pb-3 pr-4 text-right">P/L</th>
+                      <th className="pb-3 pr-4">Risk</th>
+                      <th className="pb-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRows.map((position) => {
+                      const isParadox = position.has_active_paradox;
+                      const isExpiring = !isParadox && (position.hours_until_reaper ?? Infinity) <= 168;
+                      return (
+                        <tr
+                          key={`${position.timeline_id}-${position.side}`}
+                          className={`border-b border-[var(--e-border-secondary)]/70 text-[13px] ${
+                            isParadox
+                              ? 'bg-[var(--e-red-50)]/50'
+                              : isExpiring
+                                ? 'bg-[var(--e-amber-50)]/40'
+                                : ''
+                          }`}
+                        >
+                          <td className="py-4 pr-4">
+                            <div className="font-semibold text-[var(--e-text-primary)]">{position.timeline_name}</div>
+                            <div className="mt-1 text-[11px] text-[var(--e-text-muted)]">
+                              {position.is_founder ? 'Founder position' : 'Active market'}
+                            </div>
+                          </td>
+                          <td className="py-4 pr-4">
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.04em] ${
+                                position.side === 'YES'
+                                  ? 'bg-[var(--e-green-50)] text-[var(--e-green-700)]'
+                                  : 'bg-[var(--e-red-50)] text-[var(--e-red-700)]'
+                              }`}
+                            >
+                              {position.side}
+                            </span>
+                          </td>
+                          <td className="py-4 pr-4 font-mono text-[var(--e-text-primary)]">{formatPrice(position.average_entry_price)}</td>
+                          <td className="py-4 pr-4 font-mono text-[var(--e-text-primary)]">{formatPrice(position.current_price)}</td>
+                          <td className="py-4 pr-4 text-right font-mono text-[var(--e-text-primary)]">{position.shards_held.toLocaleString()}</td>
+                          <td className={`py-4 pr-4 text-right font-mono font-semibold ${metricTone(position.unrealised_pnl_usd)}`}>
+                            <div>{formatSignedCurrency(position.unrealised_pnl_usd)}</div>
+                            <div className="mt-1 text-[11px]">{position.unrealised_pnl_percent.toFixed(1)}%</div>
+                          </td>
+                          <td className="py-4 pr-4">
+                            <div className="flex flex-wrap gap-1.5">
+                              {isParadox ? <RiskChip label="Paradox" tone="paradox" /> : null}
+                              {isExpiring ? <RiskChip label={`${Math.ceil((position.hours_until_reaper ?? 0) / 24)}d`} tone="soon" /> : null}
+                              {!isParadox && !isExpiring ? <RiskChip label="Nominal" tone="nominal" /> : null}
+                            </div>
+                          </td>
+                          <td className="py-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/theatre/${position.timeline_id}`)}
+                              className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--e-purple-700)] transition hover:text-[var(--e-purple-800)]"
+                            >
+                              Open Market
+                              <ArrowUpRight className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <aside className="space-y-4">
+            <section className="rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] p-4 shadow-[var(--e-shadow-xs)]">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--e-text-muted)]">
+                Portfolio posture
+              </div>
+              <div className="space-y-3">
+                <div className="rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                    Active positions
                   </div>
-                  <div className="text-center p-2 bg-terminal-bg border border-terminal-border rounded-lg">
-                    <div className="text-xl font-bold text-terminal-text mono">{summary.active_founder_positions}</div>
-                    <div className="text-[10px] text-terminal-text-muted mt-0.5">Founder Positions</div>
+                  <div className="mt-2 font-mono text-[22px] font-bold text-[var(--e-text-primary)]">
+                    {summary ? summary.active_position_count : '—'}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                    Founder positions
+                  </div>
+                  <div className="mt-2 font-mono text-[22px] font-bold text-[var(--e-text-primary)]">
+                    {summary ? summary.active_founder_positions : '—'}
                   </div>
                 </div>
               </div>
-            )}
+            </section>
 
-            {/* Highest Risk Timeline */}
-            {summary?.highest_risk_timeline_id && (
-              <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle size={14} className="text-status-warning" />
-                  <span className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider">Highest Risk</span>
-                </div>
-                <div className="text-xs font-semibold text-terminal-text mono">{summary.highest_risk_timeline_name}</div>
-                <div className="text-[10px] text-terminal-text-muted mono">{summary.highest_risk_timeline_id}</div>
-                <div className="mt-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-terminal-text-muted">Stability</span>
-                    <span className="text-xs font-semibold mono" style={{ color: (summary.highest_risk_stability ?? 0) >= 30 ? '#F59E0B' : '#FB7185' }}>
-                      {summary.highest_risk_stability?.toFixed(0) ?? '?'}%
-                    </span>
-                  </div>
-                  <div className="h-1.5 bg-terminal-bg rounded overflow-hidden">
-                    <div className="h-full rounded" style={{ width: `${summary.highest_risk_stability ?? 0}%`, background: (summary.highest_risk_stability ?? 0) >= 30 ? '#F59E0B' : '#FB7185' }}></div>
-                  </div>
-                </div>
+            <section className="rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] p-4 shadow-[var(--e-shadow-xs)]">
+              <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--e-text-muted)]">
+                Highest risk theatre
               </div>
-            )}
+              {summary?.highest_risk_timeline_name ? (
+                <>
+                  <div className="text-[15px] font-semibold text-[var(--e-text-primary)]">{summary.highest_risk_timeline_name}</div>
+                  <div className="mt-1 text-[12px] text-[var(--e-text-secondary)]">
+                    Stability {summary.highest_risk_stability ? `${Math.round(summary.highest_risk_stability)}%` : '—'}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/theatre/${summary.highest_risk_timeline_id}`)}
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-3 py-2 text-[12px] font-semibold text-[var(--e-text-secondary)] transition hover:text-[var(--e-text-primary)]"
+                  >
+                    Open theatre
+                  </button>
+                </>
+              ) : (
+                <div className="text-[13px] text-[var(--e-text-muted)]">No elevated risk detected across active positions.</div>
+              )}
+            </section>
 
-            {/* Founder Yield Card */}
-            {summary && summary.total_founder_yield_earned_usd > 0 && (
-              <div className="bg-terminal-bg border border-terminal-border rounded-xl p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[11px] font-semibold text-terminal-text uppercase tracking-wider flex items-center gap-2">
-                    <TrendingUp size={14} className="text-echelon-cyan" />
-                    Founder Yield
+            <section className="rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] p-4 shadow-[var(--e-shadow-xs)]">
+              <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--e-text-muted)]">
+                <Filter className="h-4 w-4" />
+                Coverage
+              </div>
+              <div className="space-y-3 text-[13px] text-[var(--e-text-secondary)]">
+                <div className="flex items-center justify-between gap-3">
+                  <span>YES exposure</span>
+                  <span className="font-mono text-[var(--e-text-primary)]">{formatCurrency(totals.yesNotional)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span>NO exposure</span>
+                  <span className="font-mono text-[var(--e-text-primary)]">{formatCurrency(totals.noNotional)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span>Founder yield</span>
+                  <span className="font-mono text-[var(--e-green-600)]">
+                    {summary ? formatCurrency(summary.total_founder_yield_earned_usd) : '—'}
                   </span>
                 </div>
-                <div className="text-xl font-bold text-status-success mono">
-                  +${summary.total_founder_yield_earned_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-                <div className="text-[10px] text-terminal-text-muted mt-1">
-                  Across {summary.active_founder_positions} founder position{summary.active_founder_positions !== 1 ? 's' : ''}
+                <div className="flex items-center justify-between gap-3">
+                  <span>Timelines at risk</span>
+                  <span className="font-mono text-[var(--e-text-primary)]">{summary ? summary.timelines_at_risk : '—'}</span>
                 </div>
               </div>
-            )}
+            </section>
           </aside>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

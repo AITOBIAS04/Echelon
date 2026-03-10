@@ -132,6 +132,46 @@ class EvidenceEnvelope:
         payload = "|".join(item.content_hash for item in self._items)
         return hashlib.sha256(payload.encode()).hexdigest()
 
+    def add_item_from_persisted(
+        self,
+        evidence_id: str,
+        content_hash: str,
+        provenance_class: ProvenanceClass,
+        submitted_at: datetime,
+        content_type: str,
+        source_description: str,
+        references: list[str] | None = None,
+        source_id: str = "",
+        query_determinism: str = "",
+    ) -> EvidenceItem:
+        """Replay a persisted evidence item into the envelope.
+
+        Unlike submit(), this accepts pre-existing IDs and timestamps
+        rather than generating new ones. Used for toolset rebuild from DB.
+        """
+        item = EvidenceItem(
+            evidence_id=evidence_id,
+            content_hash=content_hash,
+            provenance_class=provenance_class,
+            submitted_at=submitted_at,
+            content_type=content_type,
+            source_description=source_description,
+            references=references or [],
+            source_id=source_id,
+            query_determinism=query_determinism,
+        )
+        self._items.append(item)
+        # Keep counter in sync so any subsequent submit() continues correctly
+        try:
+            num = int(evidence_id.lstrip("E")) if evidence_id.startswith("E") and evidence_id[1:].isdigit() else None
+        except (ValueError, IndexError):
+            num = None
+        if num is not None and num > self._counter:
+            self._counter = num
+        else:
+            self._counter += 1
+        return item
+
     @property
     def items(self) -> list[EvidenceItem]:
         return list(self._items)

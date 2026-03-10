@@ -1,17 +1,8 @@
-/**
- * StartVerificationModal — Form modal for creating a new verification run.
- *
- * Client-side validation matching backend Pydantic constraints.
- * Escape key + backdrop click to close.
- */
-
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { clsx } from 'clsx';
 import { demoStore } from '../../demo/demoStore';
 import type { VerificationRunCreateRequest } from '../../types/verification';
-
-// ── Validation ───────────────────────────────────────────────────────────
 
 interface FormErrors {
   repo_url?: string;
@@ -38,35 +29,23 @@ function validate(form: FormState): FormErrors {
     errors.construct_id = 'Max 255 characters';
   }
 
-  if (form.oracle_type === 'http') {
-    if (!form.oracle_url.trim()) {
-      errors.oracle_url = 'Required for HTTP oracle';
-    }
+  if (form.oracle_type === 'http' && !form.oracle_url.trim()) {
+    errors.oracle_url = 'Required for HTTP oracle';
   }
 
   if (form.oracle_type === 'python') {
-    if (!form.oracle_module.trim()) {
-      errors.oracle_module = 'Required for Python oracle';
-    }
-    if (!form.oracle_callable.trim()) {
-      errors.oracle_callable = 'Required for Python oracle';
-    }
+    if (!form.oracle_module.trim()) errors.oracle_module = 'Required for Python oracle';
+    if (!form.oracle_callable.trim()) errors.oracle_callable = 'Required for Python oracle';
   }
 
   const limit = Number(form.limit);
-  if (isNaN(limit) || limit < 1 || limit > 1000) {
-    errors.limit = 'Must be 1–1000';
-  }
+  if (isNaN(limit) || limit < 1 || limit > 1000) errors.limit = 'Must be 1–1000';
 
   const minReplays = Number(form.min_replays);
-  if (isNaN(minReplays) || minReplays < 1 || minReplays > 500) {
-    errors.min_replays = 'Must be 1–500';
-  }
+  if (isNaN(minReplays) || minReplays < 1 || minReplays > 500) errors.min_replays = 'Must be 1–500';
 
   return errors;
 }
-
-// ── Form state ───────────────────────────────────────────────────────────
 
 interface FormState {
   repo_url: string;
@@ -92,8 +71,6 @@ const INITIAL_FORM: FormState = {
   min_replays: '50',
 };
 
-// ── Component ────────────────────────────────────────────────────────────
-
 interface StartVerificationModalProps {
   open: boolean;
   onClose: () => void;
@@ -111,7 +88,6 @@ export function StartVerificationModal({
   const [errors, setErrors] = useState<FormErrors>({});
   const [showToken, setShowToken] = useState(false);
 
-  // Reset form when opening
   useEffect(() => {
     if (open) {
       setForm(INITIAL_FORM);
@@ -120,7 +96,6 @@ export function StartVerificationModal({
     }
   }, [open]);
 
-  // Escape key to close
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -134,7 +109,6 @@ export function StartVerificationModal({
 
   const updateField = (field: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    // Clear error on change
     if (errors[field as keyof FormErrors]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -159,16 +133,12 @@ export function StartVerificationModal({
       min_replays: Number(form.min_replays),
     };
 
-    if (form.oracle_type === 'http' && form.oracle_url.trim()) {
-      body.oracle_url = form.oracle_url.trim();
-    }
+    if (form.oracle_type === 'http' && form.oracle_url.trim()) body.oracle_url = form.oracle_url.trim();
     if (form.oracle_type === 'python') {
       if (form.oracle_module.trim()) body.oracle_module = form.oracle_module.trim();
       if (form.oracle_callable.trim()) body.oracle_callable = form.oracle_callable.trim();
     }
-    if (form.github_token.trim()) {
-      body.github_token = form.github_token.trim();
-    }
+    if (form.github_token.trim()) body.github_token = form.github_token.trim();
 
     try {
       await onSubmit(body);
@@ -182,42 +152,38 @@ export function StartVerificationModal({
 
   return (
     <>
-      {/* Overlay */}
       <div
-        className="fixed inset-0 z-[300] bg-black/50"
+        className="fixed inset-0 z-[300] bg-[color:oklch(0.205_0.015_265_/_0.14)] backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div
-        className="fixed inset-0 z-[310] flex items-start justify-center pt-[10vh] pointer-events-none"
-      >
+      <div className="fixed inset-0 z-[310] flex items-start justify-center pt-[10vh]">
         <div
-          className="max-w-lg w-full bg-terminal-overlay border border-terminal-border rounded-xl shadow-elevation-3 pointer-events-auto flex flex-col max-h-[80vh]"
+          className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-lg)]"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
           aria-labelledby="modal-title"
         >
-          {/* Header */}
-          <div className="section-header flex-shrink-0">
-            <span id="modal-title" className="section-header-title">Start Verification</span>
+          <div className="flex flex-shrink-0 items-center justify-between border-b border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-5 py-4">
+            <div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+                Verification Run
+              </div>
+              <span id="modal-title" className="text-[15px] font-semibold text-[var(--e-text-primary)]">
+                Start Verification
+              </span>
+            </div>
             <button
               onClick={onClose}
-              className="p-1 rounded transition-colors text-terminal-text-muted hover:text-terminal-text"
+              className="rounded p-1 text-[var(--e-text-muted)] transition hover:text-[var(--e-text-primary)]"
             >
               &#x2715;
             </button>
           </div>
 
-          {/* Body */}
-          <div className="p-4 space-y-4 overflow-y-auto">
-            {/* repo_url */}
-            <Field
-              label="Repository URL"
-              required
-              error={errors.repo_url}
-            >
+          <div className="space-y-4 overflow-y-auto p-4">
+            <Field label="Repository URL" required error={errors.repo_url}>
               <input
                 type="text"
                 className={fieldClass(errors.repo_url)}
@@ -227,12 +193,7 @@ export function StartVerificationModal({
               />
             </Field>
 
-            {/* construct_id */}
-            <Field
-              label="Construct ID"
-              required
-              error={errors.construct_id}
-            >
+            <Field label="Construct ID" required error={errors.construct_id}>
               <input
                 type="text"
                 className={fieldClass(errors.construct_id)}
@@ -242,10 +203,9 @@ export function StartVerificationModal({
               />
             </Field>
 
-            {/* oracle_type */}
             <Field label="Oracle Type">
               <select
-                className="terminal-input w-full"
+                className={fieldClass()}
                 value={form.oracle_type}
                 onChange={(e) => updateField('oracle_type', e.target.value)}
               >
@@ -254,13 +214,8 @@ export function StartVerificationModal({
               </select>
             </Field>
 
-            {/* Conditional oracle fields */}
-            {form.oracle_type === 'http' && (
-              <Field
-                label="Oracle URL"
-                required
-                error={errors.oracle_url}
-              >
+            {form.oracle_type === 'http' ? (
+              <Field label="Oracle URL" required error={errors.oracle_url}>
                 <input
                   type="text"
                   className={fieldClass(errors.oracle_url)}
@@ -269,15 +224,9 @@ export function StartVerificationModal({
                   onChange={(e) => updateField('oracle_url', e.target.value)}
                 />
               </Field>
-            )}
-
-            {form.oracle_type === 'python' && (
+            ) : (
               <>
-                <Field
-                  label="Oracle Module"
-                  required
-                  error={errors.oracle_module}
-                >
+                <Field label="Oracle Module" required error={errors.oracle_module}>
                   <input
                     type="text"
                     className={fieldClass(errors.oracle_module)}
@@ -286,11 +235,7 @@ export function StartVerificationModal({
                     onChange={(e) => updateField('oracle_module', e.target.value)}
                   />
                 </Field>
-                <Field
-                  label="Oracle Callable"
-                  required
-                  error={errors.oracle_callable}
-                >
+                <Field label="Oracle Callable" required error={errors.oracle_callable}>
                   <input
                     type="text"
                     className={fieldClass(errors.oracle_callable)}
@@ -302,33 +247,28 @@ export function StartVerificationModal({
               </>
             )}
 
-            {/* github_token */}
             <Field label="GitHub Token">
               <div className="relative">
                 <input
                   type={showToken ? 'text' : 'password'}
-                  className="terminal-input w-full pr-8"
+                  className="h-11 w-full rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 pr-10 text-[13px] text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-purple-500)]"
                   placeholder="Optional — for private repos"
                   value={form.github_token}
                   onChange={(e) => updateField('github_token', e.target.value)}
                 />
                 <button
                   type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-terminal-text-muted hover:text-terminal-text transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--e-text-muted)] transition hover:text-[var(--e-text-primary)]"
                   onClick={() => setShowToken(!showToken)}
                   aria-label={showToken ? 'Hide token' : 'Show token'}
                 >
-                  {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  {showToken ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </button>
               </div>
             </Field>
 
-            {/* limit + min_replays side by side */}
             <div className="grid grid-cols-2 gap-3">
-              <Field
-                label="Limit"
-                error={errors.limit}
-              >
+              <Field label="Limit" error={errors.limit}>
                 <input
                   type="number"
                   className={fieldClass(errors.limit)}
@@ -338,10 +278,7 @@ export function StartVerificationModal({
                   max={1000}
                 />
               </Field>
-              <Field
-                label="Min Replays"
-                error={errors.min_replays}
-              >
+              <Field label="Min Replays" error={errors.min_replays}>
                 <input
                   type="number"
                   className={fieldClass(errors.min_replays)}
@@ -354,10 +291,9 @@ export function StartVerificationModal({
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="px-4 py-3 border-t border-terminal-border flex-shrink-0">
+          <div className="flex-shrink-0 border-t border-[var(--e-border-secondary)] px-4 py-4">
             <button
-              className="btn-cyan w-full"
+              className="inline-flex h-11 w-full items-center justify-center rounded-md border border-[var(--e-purple-500)] bg-[var(--e-purple-500)] px-4 text-[13px] font-semibold text-white transition hover:bg-[var(--e-purple-400)] disabled:cursor-not-allowed disabled:opacity-60"
               onClick={handleSubmit}
               disabled={isSubmitting}
             >
@@ -370,12 +306,10 @@ export function StartVerificationModal({
   );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────
-
 function fieldClass(error?: string): string {
   return clsx(
-    'terminal-input w-full',
-    error && 'border-status-danger focus:border-status-danger focus:ring-status-danger/20'
+    'h-11 w-full rounded-md border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 text-[13px] text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-purple-500)]',
+    error && 'border-[var(--e-red-600)] focus:border-[var(--e-red-600)]',
   );
 }
 
@@ -392,14 +326,12 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <label className="data-label">
+      <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
         {label}
-        {required && <span className="text-status-danger ml-0.5">*</span>}
+        {required ? <span className="ml-0.5 text-[var(--e-red-600)]">*</span> : null}
       </label>
       {children}
-      {error && (
-        <p className="text-[10px] text-status-danger">{error}</p>
-      )}
+      {error ? <p className="text-[10px] text-[var(--e-red-600)]">{error}</p> : null}
     </div>
   );
 }

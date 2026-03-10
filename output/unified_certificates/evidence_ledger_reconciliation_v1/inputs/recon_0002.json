@@ -1,0 +1,71 @@
+{
+  "bank_statement_slice": {
+    "transactions": [
+      {
+        "amount": 1500.0,
+        "bank_txn_id": "txn_0002",
+        "currency": "GBP",
+        "posted_at": "2026-03-21T09:30:00Z",
+        "reference": "BANKREF-pay_0002"
+      }
+    ]
+  },
+  "event_log": [
+    {
+      "amount": 600.0,
+      "bucket": "operating_costs",
+      "event_id": "evt_0002_1",
+      "ref": "BANKREF-pay_0002",
+      "type": "payment_split_posted"
+    },
+    {
+      "amount": 900.0,
+      "bucket": "noi_pool",
+      "event_id": "evt_0002_2",
+      "ref": "BANKREF-pay_0002",
+      "type": "payment_split_posted"
+    }
+  ],
+  "payment": {
+    "currency": "GBP",
+    "gross_amount": 1500.0,
+    "payment_id": "pay_0002",
+    "settlement_reference": "BANKREF-pay_0002",
+    "splits": [
+      {
+        "amount": 600.0,
+        "bucket": "operating_costs",
+        "destination_ref": "ops_wallet"
+      },
+      {
+        "amount": 900.0,
+        "bucket": "noi_pool",
+        "destination_ref": "noi_wallet"
+      }
+    ]
+  },
+  "reconciliation_rules": {
+    "bucket_rules": {
+      "noi_pool": {
+        "allowed_destinations": [
+          "noi_wallet"
+        ]
+      },
+      "operating_costs": {
+        "allowed_destinations": [
+          "ops_wallet"
+        ]
+      }
+    },
+    "match_on": [
+      "settlement_reference",
+      "amount",
+      "currency"
+    ],
+    "rounding_policy": {
+      "currency": "GBP",
+      "mode": "half_up",
+      "precision": 2
+    }
+  }
+}

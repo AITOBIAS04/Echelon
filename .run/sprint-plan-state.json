@@ -1,27 +1,24 @@
 {
-  "plan_id": "plan-20260307-c018",
-  "branch": "feature/cycle-018-scenario-packs",
+  "plan_id": "plan-20260310-c023db",
+  "branch": "feature/cycle-023-db-unification",
   "state": "RUNNING",
   "timestamps": {
-    "started": "2026-03-07T00:30:00Z",
-    "last_activity": "2026-03-07T00:30:00Z"
+    "started": "2026-03-10T10:05:00Z",
+    "last_activity": "2026-03-10T10:05:00Z"
   },
   "sprints": {
-    "total": 6,
+    "total": 3,
     "completed": 0,
     "current": "sprint-0",
     "list": [
-      {"id": "sprint-0", "status": "pending", "cycles": 0},
-      {"id": "sprint-1", "status": "pending", "cycles": 0},
-      {"id": "sprint-2", "status": "pending", "cycles": 0},
-      {"id": "sprint-3", "status": "pending", "cycles": 0},
-      {"id": "sprint-4", "status": "pending", "cycles": 0},
-      {"id": "sprint-5", "status": "pending", "cycles": 0}
+      {"id": "sprint-0", "global_id": 73, "status": "pending", "cycles": 0},
+      {"id": "sprint-1", "global_id": 74, "status": "pending", "cycles": 0},
+      {"id": "sprint-2", "global_id": 75, "status": "pending", "cycles": 0}
     ]
   },
   "options": {
     "from": 0,
-    "to": 5,
+    "to": 2,
     "max_cycles": 20,
     "timeout_hours": 8
   },

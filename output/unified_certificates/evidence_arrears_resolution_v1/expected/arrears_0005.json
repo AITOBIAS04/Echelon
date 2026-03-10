@@ -1,0 +1,41 @@
+{
+  "accrued_ladder_balance": 2400.0,
+  "criteria_verdicts": {
+    "distribution_adjustment": true,
+    "grace_period_enforcement": true,
+    "ladder_balance_protection": true,
+    "ladder_redirection_arithmetic": true,
+    "reserve_fund_impact": true,
+    "state_transition_validity": true
+  },
+  "distribution_adjustment": "none",
+  "final_state": "ARREARS",
+  "ladder_action": "full_redirection",
+  "ladder_balance_protected": true,
+  "ladder_equity_purchased": 0.0,
+  "ladder_redirection_detail": {
+    "applied_to_arrears": 150.0,
+    "remainder_to_equity": 0.0,
+    "total_contribution": 150.0
+  },
+  "outstanding_balance": 2850.0,
+  "reserve_fund_impact": {
+    "drawdown_amount": 0.0,
+    "minimum_coverage_breached": false,
+    "reserve_after_drawdown": null
+  },
+  "state_transitions": [
+    {
+      "from": "ARREARS",
+      "timestamp": "2026-05-31T00:00:01Z",
+      "to": "LADDER_REDIRECTED",
+      "trigger": "ladder_contribution_due"
+    },
+    {
+      "from": "LADDER_REDIRECTED",
+      "timestamp": "2026-05-31T00:00:02Z",
+      "to": "ARREARS",
+      "trigger": "redirection_applied"
+    }
+  ]
+}

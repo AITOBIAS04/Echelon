@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — RLMF Exports</title>
+<!--
+  ═══════════════════════════════════════════════════════════
+  MOCK DATA ANNOTATIONS — for engineering team, not UI
+  ═══════════════════════════════════════════════════════════
+  Data sources pending endpoint confirmation:
+  - Export packages (GET /api/v1/exports/packages)
+  - Package schema (GET /api/v1/exports/packages/:id/schema)
+  - Package download (GET /api/v1/exports/packages/:id/download)
+  - Generation trigger (POST /api/v1/exports/packages/:id/generate)
+
+  PAGE STATE MACHINE (3 mutually exclusive states):
+  normal    → populated catalog, all fresh
+  stale     → some packages need regeneration, integrity warnings
+  empty     → no exports yet, onboarding state
+
+  PACKAGE TYPES:
+  - replay        (market replay sequences for agent training)
+  - calibration   (probability calibration datasets)
+  - training      (labeled outcome data for model training)
+  - evaluation    (holdout evaluation sets)
+  - outcome       (historical resolution outcomes)
+  - telemetry     (agent behavior and decision logs)
+
+  VERIFICATION STATES:
+  - verified    (all labels linked to certificates)
+  - partial     (some labels verified, some pending)
+  - unverified  (no certificate linkage)
+  - stale       (data older than regeneration threshold)
+  ═══════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══ MAIN ═══ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-5)}
+.page-header-left{display:flex;flex-direction:column;gap:2px}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:2px}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700}
+.page-header-right{display:flex;align-items:center;gap:var(--space-2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-ghost:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.btn-sm{height:28px;padding:0 var(--space-3);font-size:11px;border-radius:var(--radius-sm)}
+.filter-select{height:36px;padding:0 28px 0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 3.75l2.5 2.5 2.5-2.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+
+/* ═══ KPI STRIP ═══ */
+.ex-summary{display:flex;gap:var(--space-3);margin-bottom:var(--space-4)}
+.ex-kpi{flex:1;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;gap:2px}
+.ex-kpi-top{display:flex;align-items:center;justify-content:space-between}
+.ex-kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);line-height:16px}
+.ex-kpi-window{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-disabled);background:var(--bg-sunken);padding:1px 5px;border-radius:3px;border:1px solid var(--border-secondary)}
+.ex-kpi-value{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:32px;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.ex-kpi-value.success{color:var(--green-600)}.ex-kpi-value.warning{color:oklch(0.430 0.130 85)}.ex-kpi-value.zero{color:var(--text-disabled)}
+.ex-kpi-sub{font-size:10px;color:var(--text-muted);font-family:var(--font-mono);font-variant-numeric:tabular-nums;margin-top:1px}
+.ex-kpi.kpi-warn{border-color:oklch(0.540 0.150 85/0.25);background:oklch(0.540 0.150 85/0.04)}
+
+/* ═══ LAYOUT ═══ */
+.ex-layout{display:grid;grid-template-columns:1fr 300px;gap:var(--space-4);align-items:start}
+
+/* ═══ PACKAGE CARDS ═══ */
+.pkg-list{display:flex;flex-direction:column;gap:var(--space-3)}
+
+.pkg-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden;transition:box-shadow var(--duration-normal) ease}
+.pkg-card:hover{box-shadow:var(--shadow-sm)}
+.pkg-card.stale{border-color:oklch(0.540 0.150 85/0.30)}
+.pkg-card.stale .pkg-card-header{background:oklch(0.540 0.150 85/0.03)}
+
+/* Card header */
+.pkg-card-header{display:flex;align-items:flex-start;justify-content:space-between;padding:var(--space-4) var(--space-5) var(--space-3);gap:var(--space-4)}
+.pkg-card-left{display:flex;flex-direction:column;gap:var(--space-1);min-width:0;flex:1}
+.pkg-title-row{display:flex;align-items:center;gap:var(--space-3)}
+.pkg-name{font-size:15px;font-weight:700;color:var(--text-primary)}
+.pkg-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.pkg-desc{font-size:13px;color:var(--text-secondary);line-height:20px;margin-top:2px}
+
+.pkg-card-right{display:flex;flex-direction:column;align-items:flex-end;gap:var(--space-2);flex-shrink:0}
+
+/* Type chip */
+.pkg-type{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:2px 7px;border-radius:3px;line-height:14px}
+.pkg-type.replay{color:var(--purple-700);background:var(--purple-50);border:1px solid oklch(0.530 0.230 295/0.12)}
+.pkg-type.calibration{color:var(--status-info);background:oklch(0.525 0.155 260/0.08);border:1px solid oklch(0.525 0.155 260/0.12)}
+.pkg-type.training{color:var(--green-700);background:var(--green-50);border:1px solid oklch(0.545 0.170 152/0.12)}
+.pkg-type.evaluation{color:var(--orange-700);background:var(--orange-50);border:1px solid oklch(0.610 0.185 62/0.12)}
+.pkg-type.outcome{color:var(--text-secondary);background:var(--bg-sunken);border:1px solid var(--border-secondary)}
+.pkg-type.telemetry{color:var(--text-secondary);background:var(--bg-sunken);border:1px solid var(--border-secondary)}
+
+/* Verification chip */
+.pkg-verify{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:2px 7px;border-radius:3px;line-height:14px}
+.pkg-verify.verified{color:var(--green-700);background:var(--green-50);border:1px solid oklch(0.545 0.170 152/0.15)}
+.pkg-verify.verified::before{content:'';width:5px;height:5px;border-radius:var(--radius-full);background:var(--status-success)}
+.pkg-verify.partial{color:var(--text-secondary);background:var(--bg-sunken);border:1px solid var(--border-secondary)}
+.pkg-verify.unverified{color:oklch(0.430 0.130 85);background:oklch(0.540 0.150 85/0.06);border:1px solid oklch(0.540 0.150 85/0.12)}
+.pkg-verify.stale{color:var(--status-danger);background:oklch(0.545 0.185 25/0.06);border:1px solid oklch(0.545 0.185 25/0.12)}
+
+/* Card metadata grid */
+.pkg-meta{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--space-3);padding:0 var(--space-5) var(--space-3)}
+.pkg-meta-item{display:flex;flex-direction:column;gap:1px}
+.pkg-meta-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.pkg-meta-value{font-family:var(--font-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.pkg-meta-value.stale{color:oklch(0.430 0.130 85)}
+
+/* Tags row */
+.pkg-tags{display:flex;align-items:center;gap:var(--space-2);padding:0 var(--space-5) var(--space-3);flex-wrap:wrap}
+.pkg-tag{font-size:10px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:3px;border:1px solid var(--border-secondary)}
+
+/* Card footer */
+.pkg-card-footer{display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) var(--space-5) var(--space-3);border-top:1px solid var(--border-secondary)}
+.pkg-card-actions{display:flex;align-items:center;gap:var(--space-2)}
+.pkg-action{font-size:11px;font-weight:600;color:var(--purple-700);cursor:pointer;padding:4px 8px;border-radius:var(--radius-sm);text-decoration:none;white-space:nowrap;border:none;background:none;font-family:var(--font-sans)}
+.pkg-action:hover{color:var(--purple-500);background:var(--purple-50)}
+.pkg-action.download{color:var(--text-inverse);background:var(--purple-500);border-radius:var(--radius-sm);padding:4px 12px}
+.pkg-action.download:hover{background:var(--purple-400)}
+.pkg-format{font-family:var(--font-mono);font-size:10px;color:var(--text-disabled);display:flex;align-items:center;gap:var(--space-2)}
+.pkg-size{font-family:var(--font-mono);font-size:10px;color:var(--text-disabled);font-variant-numeric:tabular-nums}
+
+/* Stale banner inside card */
+.pkg-stale-banner{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-5);background:oklch(0.540 0.150 85/0.06);border-bottom:1px solid oklch(0.540 0.150 85/0.12);font-size:11px;color:oklch(0.430 0.130 85);font-weight:500}
+.pkg-stale-banner .regen-btn{font-size:11px;font-weight:600;color:var(--purple-700);cursor:pointer;padding:2px 8px;border-radius:var(--radius-sm);background:var(--bg-card);border:1px solid var(--border-primary);margin-left:auto;font-family:var(--font-sans)}
+.pkg-stale-banner .regen-btn:hover{background:var(--purple-50);border-color:var(--purple-200)}
+
+/* ═══ SCHEMA PANEL (slide-out) ═══ */
+.schema-panel{display:none;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-md);margin-top:var(--space-3)}
+.schema-panel.open{display:block}
+.schema-panel-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-5);border-bottom:1px solid var(--border-secondary)}
+.schema-panel-title{font-size:13px;font-weight:600;color:var(--text-primary)}
+.schema-close{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.schema-close:hover{background:var(--bg-hover);color:var(--text-primary)}
+.schema-body{padding:var(--space-4) var(--space-5)}
+.schema-table{width:100%;border-collapse:collapse;font-size:12px}
+.schema-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);padding:var(--space-2) var(--space-3);text-align:left;border-bottom:1px solid var(--border-primary);background:var(--bg-sunken)}
+.schema-table td{padding:var(--space-2) var(--space-3);border-bottom:1px solid var(--border-secondary);font-size:12px;vertical-align:top}
+.schema-table tr:last-child td{border-bottom:none}
+.schema-field{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--purple-700)}
+.schema-type{font-family:var(--font-mono);font-size:11px;color:var(--text-muted)}
+.schema-desc{color:var(--text-secondary);font-size:11px;line-height:16px}
+.schema-entity{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.03em;padding:1px 4px;border-radius:2px;display:inline-block}
+.schema-entity.theatre{color:var(--purple-700);background:var(--purple-50)}
+.schema-entity.agent{color:var(--text-secondary);background:var(--bg-sunken)}
+.schema-entity.cert{color:var(--green-700);background:var(--green-50)}
+.schema-sample{margin-top:var(--space-3);background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-sm);padding:var(--space-3);overflow-x:auto}
+.schema-sample-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-2)}
+.schema-sample pre{font-family:var(--font-mono);font-size:11px;line-height:18px;color:var(--text-secondary);white-space:pre;margin:0}
+
+/* ═══ RIGHT RAIL ═══ */
+.rail-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);margin-bottom:var(--space-3)}
+.rail-card-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-secondary)}
+.rail-card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.rail-card-body{padding:var(--space-3) var(--space-4)}
+.rail-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-secondary)}
+.rail-row:last-child{border-bottom:none}
+.rail-row-label{font-size:12px;font-weight:500;color:var(--text-secondary)}
+.rail-row-value{font-family:var(--font-mono);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+
+/* ═══ EMPTY STATE ═══ */
+.empty-state{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-lg);box-shadow:var(--shadow-xs);padding:var(--space-12) var(--space-8);text-align:center;display:flex;flex-direction:column;align-items:center;gap:var(--space-4)}
+.empty-icon{width:48px;height:48px;background:var(--bg-sunken);border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;color:var(--text-muted)}
+.empty-title{font-size:17px;font-weight:600;color:var(--text-primary)}
+.empty-desc{font-size:13px;color:var(--text-muted);max-width:420px;line-height:20px}
+
+/* ═══ STATE TOGGLE ═══ */
+.state-toggle{position:fixed;bottom:var(--space-6);right:var(--space-6);z-index:100;display:flex;align-items:center;gap:var(--space-2);background:var(--bg-elevated);border:1px solid var(--border-primary);border-radius:var(--radius-full);padding:4px 6px;box-shadow:var(--shadow-md)}
+.state-toggle-btn{height:28px;padding:0 var(--space-3);border:none;background:transparent;font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);border-radius:var(--radius-full);cursor:pointer;white-space:nowrap}
+.state-toggle-btn:hover{background:var(--bg-hover);color:var(--text-primary)}
+.state-toggle-btn.ab{background:var(--purple-500);color:var(--text-inverse)}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left"><a class="header-logo" href="#"><div class="header-logo-mark">E</div><span class="header-logo-text">Echelon</span><span class="header-logo-version">v4.2</span></a><button class="sidebar-toggle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button></div>
+  <div class="header-center"><div class="header-search"><span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span><input type="text" placeholder="Search exports, schemas..."><span class="header-search-kbd">⌘K</span></div></div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span> Mainnet</div>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span class="header-badge">3</span></button>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
+    <div class="wallet-btn"><div class="wallet-balance"><div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span> 12,847</div><div class="wallet-divider"></div><div class="wallet-balance-item"><span class="wallet-balance-label">ECH</span> 3,291</div></div><div class="wallet-avatar"></div></div>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group"><div class="nav-group-label">Operations</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span class="nav-item-label">Dashboard</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">23</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span class="nav-item-label">Positions</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Intelligence</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></span><span class="nav-item-label">WorldMonitor</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></span><span class="nav-item-label">Signal Map</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge count">7</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">2</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Fleet</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg></span><span class="nav-item-label">Agents</span><span class="nav-badge live">34</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Analytics</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span class="nav-item-label">Analytics</span></a>
+      <a class="nav-item active" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span><span class="nav-item-label">RLMF Exports</span></a></div>
+  </div>
+  <div class="sidebar-footer"><a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span><span class="nav-item-label">Settings</span></a></div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-breadcrumb"><span>Analytics</span><span class="page-breadcrumb-sep">/</span><span class="page-breadcrumb-current">RLMF Exports</span></div>
+      <h1 class="page-title">RLMF Exports</h1>
+    </div>
+    <div class="page-header-right">
+      <select class="filter-select"><option>All Types</option><option>Replay</option><option>Training</option><option>Calibration</option><option>Evaluation</option><option>Outcome</option><option>Telemetry</option></select>
+      <button class="btn btn-primary" id="generateBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Generate Export</button>
+    </div>
+  </div>
+
+  <div class="ex-summary" id="kpiStrip"></div>
+  <div class="ex-layout">
+    <div id="catalogArea"></div>
+    <div id="rightRail"></div>
+  </div>
+</main>
+
+<div class="state-toggle">
+  <button class="state-toggle-btn ab" onclick="setPageState('normal')">Normal</button>
+  <button class="state-toggle-btn" onclick="setPageState('stale')">Stale</button>
+  <button class="state-toggle-btn" onclick="setPageState('empty')">Empty</button>
+</div>
+
+<script>
+let currentState = 'normal';
+let openSchema = null;
+
+const PACKAGES = {
+  normal: [
+    { id:'pkg-001', name:'Market Replay Dataset', desc:'Complete market state sequences for agent training and backtesting. Includes order flow, price movements, evidence snapshots, and outcome labels.', type:'replay', version:'v3.2.1', records:'148,293', coverage:'2025-06 → 2026-03', generated:'2h ago', freshLabel:'Fresh', verify:'verified', certCount:42, domains:['Macro','Tech','Commodities','Policy'], mode:'Snapshot', format:'Parquet', size:'2.4 GB',
+      schema:[
+        {field:'theatre_id',type:'string',desc:'Unique theatre identifier',entity:'theatre'},
+        {field:'timestamp',type:'datetime',desc:'Market state timestamp',entity:null},
+        {field:'probability',type:'float64',desc:'Market probability at timestamp',entity:null},
+        {field:'volume_24h',type:'float64',desc:'24h trailing volume in USDC',entity:null},
+        {field:'evidence_count',type:'int32',desc:'Active evidence items at timestamp',entity:null},
+        {field:'agent_positions',type:'json',desc:'Agent position snapshot',entity:'agent'},
+        {field:'outcome',type:'string',desc:'Resolution outcome (if settled)',entity:'cert'},
+        {field:'certificate_id',type:'string?',desc:'Linked certificate ID',entity:'cert'},
+      ],
+      sample:'{"theatre_id":"TH-0041","timestamp":"2026-03-05T14:30:00Z","probability":0.67,"volume_24h":12847.50,"evidence_count":18,"agent_positions":[{"agent":"SHARK-01","side":"yes","shares":300}],"outcome":"pending","certificate_id":null}'
+    },
+    { id:'pkg-002', name:'Probability Calibration Export', desc:'Paired predictions and outcomes for calibration analysis. Each row maps a market probability at a given time to the eventual verified outcome.', type:'calibration', version:'v2.1.0', records:'8,412', coverage:'2025-06 → 2026-02', generated:'6h ago', freshLabel:'Fresh', verify:'verified', certCount:38, domains:['Macro','Geopolitics','Tech'], mode:'Incremental', format:'CSV + Parquet', size:'124 MB',
+      schema:[
+        {field:'theatre_id',type:'string',desc:'Theatre identifier',entity:'theatre'},
+        {field:'prediction_time',type:'datetime',desc:'When probability was recorded',entity:null},
+        {field:'predicted_prob',type:'float64',desc:'Market probability at prediction_time',entity:null},
+        {field:'outcome',type:'boolean',desc:'Verified resolution (true/false)',entity:'cert'},
+        {field:'settlement_time',type:'datetime',desc:'When theatre settled',entity:null},
+        {field:'certificate_id',type:'string',desc:'Verification certificate',entity:'cert'},
+      ],
+      sample:'{"theatre_id":"TH-0023","prediction_time":"2025-12-01T00:00:00Z","predicted_prob":0.72,"outcome":true,"settlement_time":"2026-01-15T18:00:00Z","certificate_id":"CERT-0023"}'
+    },
+    { id:'pkg-003', name:'Outcome History', desc:'Historical resolution outcomes across all settled theatres. Includes theatre metadata, final price, resolution method, and certificate linkage.', type:'outcome', version:'v4.0.0', records:'312', coverage:'2025-06 → 2026-03', generated:'1d ago', freshLabel:'Fresh', verify:'verified', certCount:42, domains:['All'], mode:'Snapshot', format:'JSON + CSV', size:'18 MB',
+      schema:null, sample:null
+    },
+    { id:'pkg-004', name:'Agent Telemetry Logs', desc:'Decision logs, position changes, and behavioral signals from deployed agents. Useful for agent strategy analysis and RLHF training.', type:'telemetry', version:'v1.8.0', records:'1,247,891', coverage:'2025-09 → 2026-03', generated:'4h ago', freshLabel:'Fresh', verify:'partial', certCount:0, domains:['All archetypes'], mode:'Incremental', format:'Parquet', size:'8.1 GB',
+      schema:null, sample:null
+    },
+    { id:'pkg-005', name:'Training Dataset — Labeled Outcomes', desc:'Curated training set with feature vectors and verified outcome labels. Designed for supervised learning on market prediction models.', type:'training', version:'v2.0.0', records:'24,891', coverage:'2025-06 → 2026-02', generated:'12h ago', freshLabel:'Fresh', verify:'verified', certCount:38, domains:['Macro','Tech','Commodities'], mode:'Snapshot', format:'Parquet + Schema', size:'890 MB',
+      schema:null, sample:null
+    },
+    { id:'pkg-006', name:'Evaluation Holdout Set', desc:'Held-out evaluation dataset with verified labels. Not included in any training export. Use for model validation and benchmark comparisons.', type:'evaluation', version:'v1.4.0', records:'3,120', coverage:'2026-01 → 2026-03', generated:'1d ago', freshLabel:'Fresh', verify:'verified', certCount:12, domains:['Macro','Tech'], mode:'Snapshot', format:'Parquet', size:'210 MB',
+      schema:null, sample:null
+    },
+  ],
+  stale: null, // built dynamically
+  empty: []
+};
+
+// Stale state: clone normal but mark some as stale
+PACKAGES.stale = PACKAGES.normal.map((p,i) => {
+  if (i === 0) return {...p, generated:'14d ago', freshLabel:'Stale', verify:'stale', version:'v3.2.1'};
+  if (i === 3) return {...p, generated:'21d ago', freshLabel:'Stale', verify:'unverified'};
+  if (i === 5) return {...p, generated:'18d ago', freshLabel:'Stale'};
+  return p;
+});
+
+function setPageState(state) {
+  currentState = state;
+  openSchema = null;
+  document.querySelectorAll('.state-toggle-btn').forEach(b => {
+    b.classList.toggle('ab',
+      (state==='normal'&&b.textContent==='Normal') ||
+      (state==='stale'&&b.textContent==='Stale') ||
+      (state==='empty'&&b.textContent==='Empty'));
+  });
+  renderKPIs(); renderCatalog(); renderRail();
+}
+
+function renderKPIs() {
+  const el = document.getElementById('kpiStrip');
+  const d = {
+    normal: {pkgs:6,ver:'v4.0.0',records:'1.43M',certs:42,window:'9 months',last:'2h ago',staleC:''},
+    stale:  {pkgs:6,ver:'v4.0.0',records:'1.43M',certs:42,window:'9 months',last:'14d ago',staleC:'kpi-warn'},
+    empty:  {pkgs:0,ver:'—',records:'0',certs:0,window:'—',last:'—',staleC:''}
+  }[currentState];
+  el.innerHTML = `
+    <div class="ex-kpi"><div class="ex-kpi-top"><span class="ex-kpi-label">Export Packages</span></div><span class="ex-kpi-value${d.pkgs===0?' zero':''}">${d.pkgs}</span></div>
+    <div class="ex-kpi"><div class="ex-kpi-top"><span class="ex-kpi-label">Latest Version</span></div><span class="ex-kpi-value" style="font-size:17px">${d.ver}</span></div>
+    <div class="ex-kpi"><div class="ex-kpi-top"><span class="ex-kpi-label">Records Available</span></div><span class="ex-kpi-value">${d.records}</span></div>
+    <div class="ex-kpi"><div class="ex-kpi-top"><span class="ex-kpi-label">Linked Certificates</span></div><span class="ex-kpi-value">${d.certs}</span></div>
+    <div class="ex-kpi"><div class="ex-kpi-top"><span class="ex-kpi-label">Coverage Window</span></div><span class="ex-kpi-value" style="font-size:17px">${d.window}</span></div>
+    <div class="ex-kpi ${d.staleC}"><div class="ex-kpi-top"><span class="ex-kpi-label">Last Generated</span></div><span class="ex-kpi-value${d.staleC?' warning':''}" style="font-size:17px">${d.last}</span></div>`;
+}
+
+function renderCatalog() {
+  const el = document.getElementById('catalogArea');
+  const pkgs = PACKAGES[currentState];
+
+  if (pkgs.length === 0) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+        <div class="empty-title">No Export Packages Yet</div>
+        <div class="empty-desc">Export packages are generated from settled markets, verified investigations, and agent telemetry. As markets resolve and certificates are issued, structured datasets will appear here.</div>
+        <button class="btn btn-primary" style="margin-top:var(--space-2)">Generate First Export</button>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `<div class="pkg-list">${pkgs.map(p => {
+    const isStale = p.freshLabel === 'Stale';
+    const staleBanner = isStale ? `<div class="pkg-stale-banner"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Last generated ${p.generated} — may not reflect recent settlements<button class="regen-btn">Regenerate</button></div>` : '';
+
+    return `
+      <div class="pkg-card${isStale?' stale':''}" id="${p.id}">
+        ${staleBanner}
+        <div class="pkg-card-header">
+          <div class="pkg-card-left">
+            <div class="pkg-title-row">
+              <span class="pkg-name">${p.name}</span>
+              <span class="pkg-version">${p.version}</span>
+            </div>
+            <div class="pkg-desc">${p.desc}</div>
+          </div>
+          <div class="pkg-card-right">
+            <span class="pkg-type ${p.type}">${p.type.charAt(0).toUpperCase()+p.type.slice(1)}</span>
+            <span class="pkg-verify ${p.verify}">${p.verify==='verified'?'Verified Labels':p.verify==='partial'?'Partial Verification':p.verify==='unverified'?'Unverified':p.verify==='stale'?'Stale Data':'Unknown'}</span>
+          </div>
+        </div>
+        <div class="pkg-meta">
+          <div class="pkg-meta-item"><span class="pkg-meta-label">Records</span><span class="pkg-meta-value">${p.records}</span></div>
+          <div class="pkg-meta-item"><span class="pkg-meta-label">Coverage</span><span class="pkg-meta-value">${p.coverage}</span></div>
+          <div class="pkg-meta-item"><span class="pkg-meta-label">Generated</span><span class="pkg-meta-value${isStale?' stale':''}">${p.generated}</span></div>
+          <div class="pkg-meta-item"><span class="pkg-meta-label">Certificates</span><span class="pkg-meta-value">${p.certCount}</span></div>
+          <div class="pkg-meta-item"><span class="pkg-meta-label">Mode</span><span class="pkg-meta-value">${p.mode}</span></div>
+        </div>
+        <div class="pkg-tags">
+          ${p.domains.map(d=>`<span class="pkg-tag">${d}</span>`).join('')}
+          <span class="pkg-tag">${p.format}</span>
+        </div>
+        <div class="pkg-card-footer">
+          <div class="pkg-card-actions">
+            <button class="pkg-action download">Download</button>
+            <button class="pkg-action" onclick="toggleSchema('${p.id}')">View Schema</button>
+            <button class="pkg-action">Copy API Path</button>
+          </div>
+          <span class="pkg-size">${p.size}</span>
+        </div>
+        <div class="schema-panel" id="schema-${p.id}">${p.schema ? buildSchemaPanel(p) : ''}</div>
+      </div>`;
+  }).join('')}</div>`;
+}
+
+function buildSchemaPanel(p) {
+  return `
+    <div class="schema-panel-header">
+      <span class="schema-panel-title">Schema — ${p.name}</span>
+      <button class="schema-close" onclick="toggleSchema('${p.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="schema-body">
+      <table class="schema-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th><th>Entity</th></tr></thead>
+        <tbody>
+          ${p.schema.map(s=>`
+            <tr>
+              <td><span class="schema-field">${s.field}</span></td>
+              <td><span class="schema-type">${s.type}</span></td>
+              <td><span class="schema-desc">${s.desc}</span></td>
+              <td>${s.entity?`<span class="schema-entity ${s.entity}">${s.entity}</span>`:''}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      ${p.sample ? `
+        <div class="schema-sample">
+          <div class="schema-sample-title">Sample Row</div>
+          <pre>${JSON.stringify(JSON.parse(p.sample),null,2)}</pre>
+        </div>` : ''}
+    </div>`;
+}
+
+function toggleSchema(pkgId) {
+  const panel = document.getElementById('schema-'+pkgId);
+  if (!panel) return;
+  if (openSchema && openSchema !== pkgId) {
+    const prev = document.getElementById('schema-'+openSchema);
+    if (prev) prev.classList.remove('open');
+  }
+  panel.classList.toggle('open');
+  openSchema = panel.classList.contains('open') ? pkgId : null;
+}
+
+function renderRail() {
+  const rail = document.getElementById('rightRail');
+  if (currentState === 'empty') { rail.innerHTML = ''; return; }
+
+  const isStale = currentState === 'stale';
+  let html = '';
+
+  // Type mix
+  html += `<div class="rail-card">
+    <div class="rail-card-header"><span class="rail-card-title">Export Type Mix</span></div>
+    <div class="rail-card-body">
+      <div class="rail-row"><span class="rail-row-label">Replay</span><span class="rail-row-value">1</span></div>
+      <div class="rail-row"><span class="rail-row-label">Training</span><span class="rail-row-value">1</span></div>
+      <div class="rail-row"><span class="rail-row-label">Calibration</span><span class="rail-row-value">1</span></div>
+      <div class="rail-row"><span class="rail-row-label">Evaluation</span><span class="rail-row-value">1</span></div>
+      <div class="rail-row"><span class="rail-row-label">Outcome</span><span class="rail-row-value">1</span></div>
+      <div class="rail-row"><span class="rail-row-label">Telemetry</span><span class="rail-row-value">1</span></div>
+    </div>
+  </div>`;
+
+  // Verification summary
+  html += `<div class="rail-card"${isStale?' style="border-color:oklch(0.540 0.150 85/0.25)"':''}>
+    <div class="rail-card-header"><span class="rail-card-title">Verification Status</span></div>
+    <div class="rail-card-body">
+      <div class="rail-row"><span class="rail-row-label">Verified Labels</span><span class="rail-row-value" style="color:var(--green-600)">${isStale?3:4}</span></div>
+      <div class="rail-row"><span class="rail-row-label">Partial</span><span class="rail-row-value">1</span></div>
+      <div class="rail-row"><span class="rail-row-label">Unverified</span><span class="rail-row-value"${isStale?' style="color:oklch(0.430 0.130 85)"':''}>${isStale?1:0}</span></div>
+      ${isStale?'<div class="rail-row"><span class="rail-row-label">Stale</span><span class="rail-row-value" style="color:var(--status-danger)">2</span></div>':''}
+    </div>
+  </div>`;
+
+  // Coverage by domain
+  html += `<div class="rail-card">
+    <div class="rail-card-header"><span class="rail-card-title">Coverage by Domain</span></div>
+    <div class="rail-card-body">
+      <div class="rail-row"><span class="rail-row-label">Macro</span><span class="rail-row-value">5 packages</span></div>
+      <div class="rail-row"><span class="rail-row-label">Tech</span><span class="rail-row-value">4 packages</span></div>
+      <div class="rail-row"><span class="rail-row-label">Commodities</span><span class="rail-row-value">3 packages</span></div>
+      <div class="rail-row"><span class="rail-row-label">Policy</span><span class="rail-row-value">2 packages</span></div>
+      <div class="rail-row"><span class="rail-row-label">Geopolitics</span><span class="rail-row-value">1 package</span></div>
+    </div>
+  </div>`;
+
+  // Format summary
+  html += `<div class="rail-card">
+    <div class="rail-card-header"><span class="rail-card-title">Format Summary</span></div>
+    <div class="rail-card-body">
+      <div class="rail-row"><span class="rail-row-label">Parquet</span><span class="rail-row-value">5</span></div>
+      <div class="rail-row"><span class="rail-row-label">CSV</span><span class="rail-row-value">2</span></div>
+      <div class="rail-row"><span class="rail-row-label">JSON</span><span class="rail-row-value">1</span></div>
+      <div class="rail-row" style="border:none;padding-top:var(--space-2)"><span style="font-size:11px;color:var(--text-muted)">Total size</span><span class="rail-row-value">11.8 GB</span></div>
+    </div>
+  </div>`;
+
+  rail.innerHTML = html;
+}
+
+/* INIT */
+setPageState('normal');
+</script>
+</body>
+</html>

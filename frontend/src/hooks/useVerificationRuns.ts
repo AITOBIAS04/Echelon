@@ -19,6 +19,9 @@ import type {
   VerificationRunCreateRequest,
 } from '../types/verification';
 
+// Stable empty array reference for useSyncExternalStore (avoids infinite re-render)
+const EMPTY_RUNS: VerificationRun[] = [];
+
 export function useVerificationRuns(filters: RunFilters = {}) {
   const isDemo = isDemoModeEnabled();
   const queryClient = useQueryClient();
@@ -30,7 +33,7 @@ export function useVerificationRuns(filters: RunFilters = {}) {
   }, [isDemo]);
 
   const getSnapshot = useMemo(() => {
-    if (!isDemo) return () => [] as VerificationRun[];
+    if (!isDemo) return () => EMPTY_RUNS;
     return () => demoStore.getVerificationRuns() as VerificationRun[];
   }, [isDemo]);
 

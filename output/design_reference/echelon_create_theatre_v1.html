@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Create Theatre</title>
+<!--
+  ===================================================================
+  FLOW: CREATE THEATRE (Theatre Templates + Alpamayo Suggestions)
+  ===================================================================
+  v3 — Refined for guided experience + clarified product split.
+
+  DESIGN PRINCIPLES (v2 refinement):
+  - Alpamayo path should feel EASIER than manual creation
+  - Configure step is summary-first, not form-first
+  - Technical fields (inquiry class, resolution pattern, evidence
+    intensity, verification mode) are behind "Advanced settings"
+  - User-facing language: "Market type" not "Inquiry class",
+    "How it resolves" not "Resolution pattern"
+  - Post-launch preview: users understand what traders will see
+  - Alpamayo suggestions in grid cards, not stacked list
+
+  PRODUCT DISTINCTION (v3 — clarified):
+  - Theatre Templates = market/certificate contracts. HERE.
+  - Scenario Packs = RLMF/RL constructs. NOT HERE.
+  - EXPLICIT EXCLUSIONS: No checkpoints, branching outcomes,
+    scenario paths, fork schemas, saboteur decks, RL telemetry,
+    or objective vectors anywhere in this flow.
+
+  ENTRY POINTS:
+  - "Create Theatre" on Theatres → default
+  - "Create Theatre from Event" on WorldMonitor → from-event
+    Pre-populates event context, pre-highlights Alpamayo
+
+  FLOW STEPS:
+  1. Choose creation mode (Blank / Template / Alpamayo)
+  2. Template library OR Alpamayo suggestions (grid cards)
+  3. Configure theatre (guided summary + editable fields)
+  4. Review and launch (with post-launch preview)
+
+  ALPAMAYO NOTE:
+  Alpamayo is aspirational — not a live backend yet. This design
+  establishes the design contract; implementation follows.
+  ===================================================================
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ===================================================================
+   TASTE TOKENS v1.0
+   =================================================================== */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --shadow-lg:0 8px 24px oklch(0.20 0.01 265/0.12),0 2px 8px oklch(0.20 0.01 265/0.05);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;--duration-slow:300ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* === HEADER (locked) === */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* === SIDEBAR (locked) === */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ===================================================================
+   MAIN + PAGE CHROME
+   =================================================================== */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:var(--space-2)}
+.page-breadcrumb a{color:var(--text-muted);text-decoration:none}.page-breadcrumb a:hover{color:var(--purple-600)}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700;margin-bottom:var(--space-1)}
+.page-subtitle{font-size:13px;color:var(--text-secondary);margin-bottom:var(--space-6);line-height:20px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-ghost{background:transparent;color:var(--text-muted);border-color:transparent}.btn-ghost:hover{color:var(--text-secondary);background:var(--bg-hover)}
+.btn-lg{height:44px;padding:0 var(--space-6);font-size:15px;border-radius:var(--radius-md)}
+
+/* ===================================================================
+   FLOW PROGRESS BAR
+   =================================================================== */
+.flow-progress{display:flex;align-items:center;gap:0;margin-bottom:var(--space-8);padding:var(--space-4) var(--space-6);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs)}
+.flow-step{display:flex;align-items:center;gap:var(--space-2);flex:1}
+.flow-step-num{width:28px;height:28px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px;font-weight:700;background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary);flex-shrink:0;transition:all var(--duration-normal) ease}
+.flow-step.active .flow-step-num{background:var(--purple-500);color:var(--text-inverse);border-color:transparent}
+.flow-step.done .flow-step-num{background:var(--green-500);color:var(--text-inverse);border-color:transparent}
+.flow-step-label{font-size:13px;font-weight:500;color:var(--text-muted);transition:color var(--duration-instant) ease}
+.flow-step.active .flow-step-label{color:var(--text-primary);font-weight:600}
+.flow-step.done .flow-step-label{color:var(--text-secondary)}
+.flow-step-connector{flex:1;height:2px;background:var(--border-secondary);margin:0 var(--space-3);min-width:20px}
+.flow-step.done .flow-step-connector{background:var(--green-400)}
+.flow-step:last-child .flow-step-connector{display:none}
+
+/* ===================================================================
+   EVENT CONTEXT BANNER
+   =================================================================== */
+.event-context{display:none;padding:var(--space-4) var(--space-5);background:oklch(0.525 0.155 260/0.04);border:1px solid oklch(0.525 0.155 260/0.12);border-radius:var(--radius-md);margin-bottom:var(--space-6)}
+.event-context.visible{display:block}
+.event-context-header{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-3)}
+.event-context-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--status-info);background:oklch(0.525 0.155 260/0.10);padding:2px 8px;border-radius:4px}
+.event-context-dismiss{margin-left:auto;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;font-weight:500}
+.event-context-dismiss:hover{color:var(--text-primary)}
+.event-context-title{font-size:17px;font-weight:600;line-height:24px;margin-bottom:var(--space-2)}
+.event-context-meta{display:flex;flex-wrap:wrap;gap:var(--space-3)}
+.event-context-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary)}
+.event-context-item strong{font-weight:600;color:var(--text-primary)}
+.event-context-signals{display:flex;gap:var(--space-2);margin-top:var(--space-3)}
+.event-signal-chip{font-size:11px;font-weight:500;padding:2px 8px;border-radius:var(--radius-sm);background:var(--bg-sunken);border:1px solid var(--border-secondary);color:var(--text-secondary)}
+
+/* ===================================================================
+   STEP 1: CREATION MODE CHOOSER
+   =================================================================== */
+.mode-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4)}
+.mode-card{background:var(--bg-card);border:2px solid var(--border-primary);border-radius:var(--radius-lg);padding:var(--space-6);cursor:pointer;transition:all var(--duration-normal) var(--ease-out);position:relative}
+.mode-card:hover{border-color:var(--purple-200);box-shadow:var(--shadow-md);transform:translateY(-2px)}
+.mode-card.selected{border-color:var(--purple-500);background:var(--purple-50);box-shadow:0 0 0 3px oklch(0.530 0.230 295/0.12)}
+.mode-card.recommended{border-color:var(--purple-300)}
+.mode-card-recommend{position:absolute;top:-10px;right:var(--space-4);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--purple-700);background:var(--purple-100);padding:2px 10px;border-radius:var(--radius-full);border:1px solid var(--purple-200)}
+.mode-card-icon{width:48px;height:48px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-4)}
+.mode-card-icon.blank{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.mode-card-icon.template{background:var(--purple-50);color:var(--purple-500);border:1px solid var(--purple-200)}
+.mode-card-icon.alpamayo{background:oklch(0.525 0.155 260/0.08);color:var(--status-info);border:1px solid oklch(0.525 0.155 260/0.15)}
+.mode-card-title{font-size:17px;font-weight:600;line-height:24px;margin-bottom:var(--space-2)}
+.mode-card-desc{font-size:13px;color:var(--text-secondary);line-height:20px;margin-bottom:var(--space-4)}
+.mode-card-features{display:flex;flex-direction:column;gap:var(--space-2)}
+.mode-card-feature{display:flex;align-items:flex-start;gap:var(--space-2);font-size:12px;color:var(--text-muted);line-height:18px}
+.mode-card-feature svg{flex-shrink:0;margin-top:2px}
+.mode-card.selected .mode-card-feature{color:var(--text-secondary)}
+.mode-actions{display:flex;justify-content:flex-end;gap:var(--space-3);margin-top:var(--space-6)}
+
+/* ===================================================================
+   STEP 2A: THEATRE TEMPLATE LIBRARY
+   =================================================================== */
+.template-library{display:flex;flex-direction:column;gap:var(--space-4)}
+.template-search{display:flex;gap:var(--space-3);margin-bottom:var(--space-2)}
+.template-search-input{flex:1;height:40px;padding:0 var(--space-4);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.template-search-input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12)}
+.template-search-input::placeholder{color:var(--text-muted)}
+.template-filter-tabs{display:flex;gap:2px;background:var(--bg-sunken);border-radius:var(--radius-md);padding:3px;border:1px solid var(--border-secondary)}
+.template-filter-tab{padding:5px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;border:none;background:none;white-space:nowrap}
+.template-filter-tab:hover{color:var(--text-primary)}
+.template-filter-tab.active{background:var(--bg-card);color:var(--text-primary);font-weight:600;box-shadow:var(--shadow-xs)}
+.tmpl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-4)}
+.tmpl-card{background:var(--bg-card);border:2px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-5);cursor:pointer;transition:all var(--duration-normal) var(--ease-out);display:flex;flex-direction:column}
+.tmpl-card:hover{border-color:var(--purple-200);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+.tmpl-card.selected{border-color:var(--purple-500);background:oklch(0.530 0.230 295/0.02);box-shadow:0 0 0 3px oklch(0.530 0.230 295/0.10)}
+.tmpl-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-3)}
+.tmpl-inquiry{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:2px 8px;border-radius:4px;line-height:16px}
+.tmpl-inquiry.binary{background:var(--purple-50);color:var(--purple-600)}
+.tmpl-inquiry.temporal{background:var(--orange-50);color:var(--orange-600)}
+.tmpl-inquiry.continuous{background:oklch(0.965 0.020 260);color:var(--status-info)}
+.tmpl-inquiry.investigative{background:var(--green-50);color:var(--green-600)}
+.tmpl-inquiry.regulatory{background:oklch(0.540 0.150 85/0.08);color:oklch(0.430 0.130 85)}
+.tmpl-inquiry.composite{background:var(--red-50);color:var(--red-500)}
+.tmpl-check{width:20px;height:20px;border-radius:var(--radius-full);border:2px solid var(--border-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tmpl-card.selected .tmpl-check{border-color:var(--purple-500);background:var(--purple-500);color:var(--text-inverse)}
+.tmpl-card-name{font-size:15px;font-weight:600;line-height:22px;margin-bottom:var(--space-1)}
+.tmpl-card-usecase{font-size:13px;color:var(--text-secondary);line-height:20px;margin-bottom:var(--space-4)}
+.tmpl-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2) var(--space-4);margin-top:auto;padding-top:var(--space-3);border-top:1px solid var(--border-secondary)}
+.tmpl-meta-item{display:flex;flex-direction:column;gap:1px}
+.tmpl-meta-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.tmpl-meta-value{font-size:12px;font-weight:500;color:var(--text-primary);line-height:18px}
+.tmpl-meta-value.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.tmpl-card-example{margin-top:var(--space-3);padding:var(--space-3);background:var(--bg-sunken);border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.tmpl-example-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-1)}
+.tmpl-example-text{font-size:12px;color:var(--text-secondary);line-height:18px;font-style:italic}
+
+/* ===================================================================
+   STEP 2B: ALPAMAYO SUGGESTIONS (grid cards)
+   =================================================================== */
+.alpamayo-header{display:flex;align-items:flex-start;gap:var(--space-4);padding:var(--space-5);background:oklch(0.525 0.155 260/0.03);border:1px solid oklch(0.525 0.155 260/0.10);border-radius:var(--radius-md);margin-bottom:var(--space-5)}
+.alpamayo-logo{width:40px;height:40px;border-radius:var(--radius-md);background:oklch(0.525 0.155 260/0.10);border:1px solid oklch(0.525 0.155 260/0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--status-info);font-family:var(--font-mono);font-size:18px;font-weight:700}
+.alpamayo-desc{font-size:13px;color:var(--text-secondary);line-height:20px}
+.alpamayo-desc strong{font-weight:600;color:var(--text-primary)}
+.alpamayo-note{font-size:11px;color:var(--text-muted);margin-top:var(--space-1);font-style:italic}
+
+.alp-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-4)}
+.alp-card{background:var(--bg-card);border:2px solid var(--border-primary);border-radius:var(--radius-md);padding:var(--space-5);cursor:pointer;transition:all var(--duration-normal) var(--ease-out);display:flex;flex-direction:column}
+.alp-card:hover{border-color:oklch(0.525 0.155 260/0.30);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+.alp-card.selected{border-color:var(--purple-500);background:oklch(0.530 0.230 295/0.02);box-shadow:0 0 0 3px oklch(0.530 0.230 295/0.10)}
+.alp-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3);margin-bottom:var(--space-2)}
+.alp-card-title{font-size:15px;font-weight:600;line-height:22px;flex:1}
+.alp-check{width:20px;height:20px;border-radius:var(--radius-full);border:2px solid var(--border-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.alp-card.selected .alp-check{border-color:var(--purple-500);background:var(--purple-500);color:var(--text-inverse)}
+.alp-confidence{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;margin-bottom:var(--space-3)}
+.alp-confidence-bar{width:48px;height:6px;border-radius:3px;background:var(--bg-sunken);overflow:hidden}
+.alp-confidence-fill{height:100%;border-radius:3px}
+.alp-confidence.high .alp-confidence-fill{background:var(--green-500)}
+.alp-confidence.high{color:var(--green-600)}
+.alp-confidence.medium .alp-confidence-fill{background:var(--orange-500)}
+.alp-confidence.medium{color:var(--orange-600)}
+.alp-card-context{display:flex;flex-wrap:wrap;gap:var(--space-1);margin-bottom:var(--space-3)}
+.alp-context-chip{font-size:10px;font-weight:500;padding:1px 6px;border-radius:4px;background:var(--bg-sunken);border:1px solid var(--border-secondary);color:var(--text-muted)}
+.alp-card-reason{font-size:12px;color:var(--text-secondary);line-height:18px;margin-bottom:var(--space-3);flex:1}
+.alp-card-meta{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2) var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--border-secondary);margin-top:auto}
+.alp-meta-item{display:flex;flex-direction:column;gap:1px}
+.alp-meta-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.alp-meta-value{font-size:11px;font-weight:500;color:var(--text-primary);line-height:16px}
+
+/* ===================================================================
+   STEP 3: CONFIGURE THEATRE (guided, simplified)
+   =================================================================== */
+.config-layout{display:grid;grid-template-columns:1fr 340px;gap:var(--space-6);align-items:start}
+.config-form{display:flex;flex-direction:column;gap:var(--space-5)}
+
+/* Recommendation summary (Alpamayo path) */
+.rec-summary{background:oklch(0.525 0.155 260/0.03);border:1px solid oklch(0.525 0.155 260/0.12);border-radius:var(--radius-md);padding:var(--space-5);margin-bottom:var(--space-2)}
+.rec-summary-header{display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4)}
+.rec-summary-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:oklch(0.420 0.140 260);background:oklch(0.525 0.155 260/0.10);padding:2px 8px;border-radius:4px}
+.rec-summary-confidence{font-size:12px;font-weight:600;color:var(--green-600);margin-left:auto;display:flex;align-items:center;gap:6px}
+.rec-summary-confidence .bar{width:40px;height:5px;border-radius:3px;background:var(--bg-sunken);overflow:hidden}
+.rec-summary-confidence .fill{height:100%;border-radius:3px;background:var(--green-500)}
+.rec-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3) var(--space-5)}
+.rec-summary-item{display:flex;flex-direction:column;gap:1px}
+.rec-summary-label{font-size:11px;font-weight:500;color:var(--text-muted)}
+.rec-summary-value{font-size:13px;font-weight:600;color:var(--text-primary);line-height:20px}
+.rec-summary-reason{grid-column:1/-1;margin-top:var(--space-2);padding-top:var(--space-3);border-top:1px solid oklch(0.525 0.155 260/0.10)}
+.rec-summary-reason-text{font-size:13px;color:var(--text-secondary);line-height:20px}
+
+/* Config sections */
+.config-section{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);padding:var(--space-6)}
+.config-section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-5);padding-bottom:var(--space-2);border-bottom:1px solid var(--border-secondary)}
+.form-group{display:flex;flex-direction:column;gap:var(--space-1);margin-bottom:var(--space-4)}
+.form-group:last-child{margin-bottom:0}
+.form-label{font-size:13px;font-weight:600;color:var(--text-primary)}
+.form-hint{font-size:11px;color:var(--text-muted);line-height:16px}
+.form-input{height:40px;padding:0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:14px;color:var(--text-primary);outline:none;width:100%}
+.form-input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12)}
+.form-input::placeholder{color:var(--text-muted)}
+.form-input.prefilled{background:var(--purple-50);border-color:var(--purple-200)}
+.form-textarea{min-height:80px;padding:var(--space-3);resize:vertical;font-family:var(--font-sans);font-size:14px;color:var(--text-primary);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);outline:none;width:100%;line-height:22px}
+.form-textarea:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12)}
+.form-textarea.prefilled{background:var(--purple-50);border-color:var(--purple-200)}
+.form-select{height:40px;padding:0 32px 0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:14px;color:var(--text-primary);outline:none;width:100%;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 3.75l2.5 2.5 2.5-2.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.form-select:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12)}
+.form-select.prefilled{background-color:var(--purple-50);border-color:var(--purple-200)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4)}
+
+/* Advanced settings toggle */
+.advanced-toggle{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-3) 0;cursor:pointer;border:none;background:none;font-family:var(--font-sans);font-size:13px;font-weight:500;color:var(--text-muted);width:100%}
+.advanced-toggle:hover{color:var(--text-secondary)}
+.advanced-toggle svg{transition:transform var(--duration-fast) ease}
+.advanced-toggle.open svg{transform:rotate(90deg)}
+.advanced-content{display:none;padding-top:var(--space-4);border-top:1px solid var(--border-secondary);margin-top:var(--space-3)}
+.advanced-content.open{display:block}
+
+/* Config right rail */
+.config-rail{display:flex;flex-direction:column;gap:var(--space-4);position:sticky;top:calc(var(--header-height) + var(--space-6))}
+.config-source-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);padding:var(--space-5)}
+.config-source-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-3)}
+.config-source-name{font-size:15px;font-weight:600;margin-bottom:var(--space-1)}
+.config-source-type{font-size:12px;color:var(--text-secondary);margin-bottom:var(--space-4)}
+.config-source-meta{display:flex;flex-direction:column;gap:var(--space-3)}
+.config-meta-row{display:flex;justify-content:space-between;align-items:center}
+.config-meta-label{font-size:12px;color:var(--text-muted)}
+.config-meta-value{font-size:12px;font-weight:600;color:var(--text-primary)}
+
+/* ===================================================================
+   STEP 4: REVIEW & LAUNCH
+   =================================================================== */
+.review-layout{display:grid;grid-template-columns:1fr 360px;gap:var(--space-6);align-items:start}
+.review-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.review-header{display:flex;align-items:center;justify-content:space-between;padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-secondary)}
+.review-header-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.review-body{padding:var(--space-5)}
+.review-field{display:flex;flex-direction:column;gap:2px;margin-bottom:var(--space-4)}
+.review-field:last-child{margin-bottom:0}
+.review-field-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.review-field-value{font-size:14px;font-weight:500;color:var(--text-primary);line-height:22px}
+.review-field-value.large{font-size:17px;font-weight:600;line-height:24px}
+.review-provenance{display:inline-flex;align-items:center;gap:var(--space-2);font-size:12px;font-weight:500;padding:4px 12px;border-radius:var(--radius-sm)}
+.review-provenance.template{background:var(--purple-50);color:var(--purple-700);border:1px solid var(--purple-200)}
+.review-provenance.alpamayo{background:oklch(0.525 0.155 260/0.06);color:oklch(0.420 0.140 260);border:1px solid oklch(0.525 0.155 260/0.15)}
+.review-provenance.custom{background:var(--bg-sunken);color:var(--text-secondary);border:1px solid var(--border-secondary)}
+
+/* Warnings */
+.review-warning{display:flex;align-items:flex-start;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:oklch(0.540 0.150 85/0.06);border:1px solid oklch(0.540 0.150 85/0.15);border-radius:var(--radius-sm);margin-bottom:var(--space-3);font-size:13px;color:oklch(0.430 0.130 85);line-height:20px}
+.review-warning:last-child{margin-bottom:0}
+.review-warning svg{flex-shrink:0;margin-top:2px;color:var(--status-warning)}
+
+/* Post-launch preview */
+.post-launch{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.post-launch-header{padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-secondary)}
+.post-launch-header-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.post-launch-body{padding:var(--space-5)}
+.post-launch-card{background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-sm);padding:var(--space-4);margin-bottom:var(--space-4)}
+.post-launch-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-2)}
+.post-launch-card-type{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;padding:2px 8px;border-radius:4px;background:var(--purple-50);color:var(--purple-600)}
+.post-launch-card-status{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--green-600)}
+.post-launch-card-status::before{content:'';width:5px;height:5px;border-radius:var(--radius-full);background:var(--status-success)}
+.post-launch-card-title{font-size:14px;font-weight:600;line-height:20px;margin-bottom:var(--space-3)}
+.post-launch-card-prob{display:flex;align-items:flex-end;gap:var(--space-2)}
+.post-launch-card-prob-val{font-family:var(--font-mono);font-size:24px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.post-launch-card-prob-unit{font-size:12px;color:var(--text-muted);margin-bottom:2px}
+.post-launch-note{font-size:12px;color:var(--text-muted);line-height:18px}
+.post-launch-note strong{font-weight:600;color:var(--text-secondary)}
+.post-launch-provenance{display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--border-secondary)}
+.post-launch-provenance-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted)}
+.post-launch-provenance-items{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.post-launch-prov-chip{font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;background:var(--bg-sunken);border:1px solid var(--border-secondary);color:var(--text-secondary)}
+
+/* Launch panel */
+.launch-panel{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);padding:var(--space-6);position:sticky;top:calc(var(--header-height) + var(--space-6))}
+.launch-panel-title{font-size:15px;font-weight:600;margin-bottom:var(--space-5)}
+.launch-summary{display:flex;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-5);padding-bottom:var(--space-5);border-bottom:1px solid var(--border-secondary)}
+.launch-summary-row{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.launch-summary-label{color:var(--text-muted)}
+.launch-summary-value{font-weight:600;color:var(--text-primary)}
+.launch-summary-value.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.launch-cta{width:100%;height:48px;font-size:15px}
+.launch-disclaimer{font-size:11px;color:var(--text-disabled);text-align:center;margin-top:var(--space-3);line-height:16px}
+
+/* ===================================================================
+   UTILITY
+   =================================================================== */
+.flow-step-content{display:none}
+.flow-step-content.visible{display:block}
+
+/* ===================================================================
+   RESPONSIVE
+   =================================================================== */
+@media(max-width:1100px){.mode-grid{grid-template-columns:1fr}.tmpl-grid,.alp-grid{grid-template-columns:1fr}.config-layout,.review-layout{grid-template-columns:1fr}.config-rail,.launch-panel{position:static}}
+@media(max-width:1024px){.sidebar{width:64px}.sidebar .nav-item-label,.sidebar .nav-badge{display:none}.sidebar .nav-group-label{font-size:0;padding:var(--space-2) var(--space-4)}.sidebar .nav-group-label::after{content:'';display:block;width:16px;height:1px;background:var(--border-primary);margin:0 auto}.sidebar .nav-item{padding:0;justify-content:center;margin:1px var(--space-1);width:calc(100% - var(--space-2))}.main{margin-left:64px}}
+@media(max-width:768px){.sidebar{display:none}.main{margin-left:0;padding:var(--space-4)}.mode-grid{grid-template-columns:1fr}.alp-card-meta{grid-template-columns:1fr 1fr}.flow-progress{overflow-x:auto}.form-row{grid-template-columns:1fr}.rec-summary-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left"><a href="#" class="header-logo"><div class="header-logo-mark">E</div><span class="header-logo-text">Echelon</span><span class="header-logo-version">v2</span></a><button class="sidebar-toggle"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4.5h12M3 9h12M3 13.5h12"/></svg></button></div>
+  <div class="header-center"><div class="header-search"><span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg></span><input type="text" placeholder="Search theatres, agents, investigations..."><span class="header-search-kbd">/</span></div></div>
+  <div class="header-right"><div class="network-pill"><span class="network-dot"></span>Base</div><button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 12.73A6 6 0 0 0 15 9V7.5a6 6 0 1 0-12 0V9a6 6 0 0 0 1.27 3.73L3 15h12l-1.27-2.27z"/><path d="M7.5 15a1.5 1.5 0 0 0 3 0"/></svg><span class="header-badge">3</span></button><button class="wallet-btn"><div class="wallet-balance"><div class="wallet-balance-item"><span class="wallet-balance-label">ETH</span>2.45</div><span class="wallet-divider"></span><div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span>1,250</div></div><div class="wallet-avatar"></div></button></div>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group"><div class="nav-group-label">Command</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg></span><span class="nav-item-label">Dashboard</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Markets</div><a href="#" class="nav-item active"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14l4-5 3 3 5-7"/><path d="M11 5h3v3"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">7</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Intelligence</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge count">2</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="3"/><circle cx="9" cy="9" r="1"/></svg></span><span class="nav-item-label">WorldMonitor</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Verification</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l2.5 2.5L13 6"/><circle cx="9" cy="9" r="7"/></svg></span><span class="nav-item-label">Verify</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="12" height="14" rx="1"/><path d="M7 6h4M7 9h4M7 12h2"/></svg></span><span class="nav-item-label">Certificates</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Portfolio</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4z"/><path d="M2 7h14"/><path d="M12 11h2"/></svg></span><span class="nav-item-label">Positions</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Agents</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="6" r="3"/><path d="M3 15a6 6 0 0 1 12 0"/></svg></span><span class="nav-item-label">Fleet</span><span class="nav-badge live">12</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Operations</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">3</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 14V4M7 14V8M11 14V6M15 14V2"/></svg></span><span class="nav-item-label">Analytics</span></a></div>
+  </div>
+  <div class="sidebar-footer"><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M14.5 9a5.5 5.5 0 0 0-.4-1.5l1.5-1.2-1-1.7-1.8.6A5.5 5.5 0 0 0 11.5 4l.2-1.9h-2L9.5 4a5.5 5.5 0 0 0-1.3 1.2l-1.8-.6-1 1.7 1.5 1.2A5.5 5.5 0 0 0 6.5 9a5.5 5.5 0 0 0 .4 1.5l-1.5 1.2 1 1.7 1.8-.6a5.5 5.5 0 0 0 1.3 1.2l-.2 1.9h2l.2-1.9a5.5 5.5 0 0 0 1.3-1.2l1.8.6 1-1.7-1.5-1.2A5.5 5.5 0 0 0 14.5 9z"/></svg></span><span class="nav-item-label">Settings</span></a></div>
+</nav>
+
+<!-- ===================================================================
+     CREATE THEATRE FLOW
+     =================================================================== -->
+<main class="main" id="flow-main">
+
+  <div class="page-breadcrumb"><a href="#">Markets</a><span class="page-breadcrumb-sep">/</span><a href="#">Theatres</a><span class="page-breadcrumb-sep">/</span><span class="page-breadcrumb-current">Create Theatre</span></div>
+  <h1 class="page-title">Create Theatre</h1>
+  <p class="page-subtitle" id="page-subtitle">Choose how to structure your new market.</p>
+
+  <!-- Event context banner -->
+  <div class="event-context" id="event-context">
+    <div class="event-context-header">
+      <span class="event-context-badge">From WorldMonitor Event</span>
+      <button class="event-context-dismiss" onclick="dismissEventContext()">Dismiss context</button>
+    </div>
+    <div class="event-context-title">Federal Reserve Emergency Rate Decision</div>
+    <div class="event-context-meta">
+      <span class="event-context-item"><strong>Region</strong> North America</span>
+      <span class="event-context-item"><strong>Domain</strong> Monetary Policy</span>
+      <span class="event-context-item"><strong>Signal density</strong> 47 signals</span>
+      <span class="event-context-item"><strong>Severity</strong> Escalating</span>
+    </div>
+    <div class="event-context-signals">
+      <span class="event-signal-chip">FOMC Minutes</span>
+      <span class="event-signal-chip">Fed Dot Plot Shift</span>
+      <span class="event-signal-chip">Treasury Yield Inversion</span>
+      <span class="event-signal-chip">+12 more</span>
+    </div>
+  </div>
+
+  <!-- Flow progress bar -->
+  <div class="flow-progress" id="flow-progress">
+    <div class="flow-step active" id="fp-1"><span class="flow-step-num">1</span><span class="flow-step-label">Choose Path</span><span class="flow-step-connector"></span></div>
+    <div class="flow-step" id="fp-2"><span class="flow-step-num">2</span><span class="flow-step-label" id="fp-2-label">Select Source</span><span class="flow-step-connector"></span></div>
+    <div class="flow-step" id="fp-3"><span class="flow-step-num">3</span><span class="flow-step-label">Configure</span><span class="flow-step-connector"></span></div>
+    <div class="flow-step" id="fp-4"><span class="flow-step-num">4</span><span class="flow-step-label">Review &amp; Launch</span></div>
+  </div>
+
+  <!-- ============================================================
+       STEP 1: CREATION MODE CHOOSER
+       ============================================================ -->
+  <div class="flow-step-content visible" id="step-1">
+    <div class="mode-grid">
+      <div class="mode-card" id="mode-blank" onclick="selectMode('blank')">
+        <div class="mode-card-icon blank"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></div>
+        <div class="mode-card-title">Blank Theatre</div>
+        <div class="mode-card-desc">Start from scratch with full control over your market design.</div>
+        <div class="mode-card-features">
+          <div class="mode-card-feature"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2 7 5 10 12 4"/></svg>Define every aspect manually</div>
+          <div class="mode-card-feature"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2 7 5 10 12 4"/></svg>Best for novel market structures</div>
+        </div>
+      </div>
+      <div class="mode-card" id="mode-template" onclick="selectMode('template')">
+        <div class="mode-card-icon template"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h4"/></svg></div>
+        <div class="mode-card-title">From Theatre Template</div>
+        <div class="mode-card-desc">Choose a structured market contract with pre-configured rules for how the market resolves, what evidence is expected, and when it ends.</div>
+        <div class="mode-card-features">
+          <div class="mode-card-feature"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2 7 5 10 12 4"/></svg>6 market types available</div>
+          <div class="mode-card-feature"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2 7 5 10 12 4"/></svg>Resolution rules built in</div>
+        </div>
+      </div>
+      <div class="mode-card" id="mode-alpamayo" onclick="selectMode('alpamayo')">
+        <div class="mode-card-icon alpamayo"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <div class="mode-card-title">Suggested by Alpamayo</div>
+        <div class="mode-card-desc">Alpamayo recommends a market structure based on events and signals it has detected. Most fields are pre-filled for you.</div>
+        <div class="mode-card-features">
+          <div class="mode-card-feature"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2 7 5 10 12 4"/></svg>Ready to launch with minimal edits</div>
+          <div class="mode-card-feature"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2 7 5 10 12 4"/></svg>Explains why each choice fits</div>
+        </div>
+      </div>
+    </div>
+    <div class="mode-actions">
+      <button class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
+      <button class="btn btn-primary" id="mode-next-btn" onclick="nextFromMode()" style="opacity:0.5;pointer-events:none">Continue</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       STEP 2A: THEATRE TEMPLATE LIBRARY
+       ============================================================ -->
+  <div class="flow-step-content" id="step-2a">
+    <div class="template-library">
+      <div class="template-search">
+        <input class="template-search-input" placeholder="Search market types..." type="text">
+        <div class="template-filter-tabs">
+          <button class="template-filter-tab active">All</button>
+          <button class="template-filter-tab">Binary</button>
+          <button class="template-filter-tab">Temporal</button>
+          <button class="template-filter-tab">Continuous</button>
+          <button class="template-filter-tab">Investigative</button>
+        </div>
+      </div>
+      <div class="tmpl-grid" id="tmpl-grid"></div>
+      <div class="mode-actions">
+        <button class="btn btn-secondary" onclick="goToStep(1)">Back</button>
+        <button class="btn btn-primary" id="tmpl-next-btn" onclick="nextFromTemplate()" style="opacity:0.5;pointer-events:none">Use This Template</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       STEP 2B: ALPAMAYO SUGGESTIONS (grid cards)
+       ============================================================ -->
+  <div class="flow-step-content" id="step-2b">
+    <div class="alpamayo-header">
+      <div class="alpamayo-logo">A</div>
+      <div>
+        <div class="alpamayo-desc"><strong>Alpamayo</strong> recommends market structures based on detected events, signal clusters, and historical performance. Pick a suggestion to get started — you can adjust anything before launch.</div>
+        <div class="alpamayo-note">Alpamayo is a proposed recommendation engine. These suggestions demonstrate the design contract.</div>
+      </div>
+    </div>
+    <div class="alp-grid" id="alp-grid"></div>
+    <div class="mode-actions">
+      <button class="btn btn-secondary" onclick="goToStep(1)">Back</button>
+      <button class="btn btn-primary" id="alp-next-btn" onclick="nextFromAlpamayo()" style="opacity:0.5;pointer-events:none">Use This Suggestion</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       STEP 3: CONFIGURE THEATRE (guided, simplified)
+       ============================================================ -->
+  <div class="flow-step-content" id="step-3">
+    <div class="config-layout">
+      <div class="config-form">
+
+        <!-- Alpamayo recommendation summary (only visible in alpamayo path) -->
+        <div class="rec-summary" id="rec-summary" style="display:none">
+          <div class="rec-summary-header">
+            <span class="rec-summary-badge">Alpamayo Recommendation</span>
+            <div class="rec-summary-confidence" id="rec-confidence">
+              <span class="bar"><span class="fill" id="rec-conf-fill" style="width:92%"></span></span>
+              <span id="rec-conf-text">92% fit</span>
+            </div>
+          </div>
+          <div class="rec-summary-grid">
+            <div class="rec-summary-item">
+              <span class="rec-summary-label">Recommended structure</span>
+              <span class="rec-summary-value" id="rec-structure">Binary Event Resolution</span>
+            </div>
+            <div class="rec-summary-item">
+              <span class="rec-summary-label">How it resolves</span>
+              <span class="rec-summary-value" id="rec-resolution">Official announcement</span>
+            </div>
+            <div class="rec-summary-item">
+              <span class="rec-summary-label">Primary source</span>
+              <span class="rec-summary-value" id="rec-source">Federal Reserve FOMC Statement</span>
+            </div>
+            <div class="rec-summary-item">
+              <span class="rec-summary-label">Suggested end date</span>
+              <span class="rec-summary-value" id="rec-end">July 1, 2026</span>
+            </div>
+            <div class="rec-summary-reason">
+              <span class="rec-summary-label">Why this fits the event</span>
+              <span class="rec-summary-reason-text" id="rec-reason">Signal density increased 340% in Fed communications cluster over 14 days. Clear official resolution source, high public salience, low ambiguity.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Core fields (always visible) -->
+        <div class="config-section">
+          <div class="config-section-title">Your Market</div>
+          <div class="form-group">
+            <label class="form-label">Market title</label>
+            <span class="form-hint">The question traders will see. Make it clear and specific.</span>
+            <input class="form-input" id="cfg-title" type="text" placeholder="e.g. Will the Fed cut rates before July 2026?">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Additional context</label>
+            <span class="form-hint">Optional. Helps traders understand what this market is asking.</span>
+            <textarea class="form-textarea" id="cfg-question" placeholder="Provide additional context for market participants..." style="min-height:64px"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Primary source</label>
+              <span class="form-hint">Where resolution comes from.</span>
+              <input class="form-input" id="cfg-source" type="text" placeholder="e.g. Federal Reserve FOMC Statement">
+            </div>
+            <div class="form-group">
+              <label class="form-label">When this market ends</label>
+              <span class="form-hint">A date, an event, or both.</span>
+              <input class="form-input" id="cfg-expiry" type="text" placeholder="e.g. July 1, 2026 or official announcement">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">How this resolves</label>
+            <span class="form-hint">In plain language, what needs to happen for the market to settle.</span>
+            <textarea class="form-textarea" id="cfg-criteria" placeholder="e.g. Resolves YES if the Federal Reserve announces a rate cut of 25bps or more at any FOMC meeting before July 1, 2026. Otherwise resolves NO." style="min-height:64px"></textarea>
+          </div>
+        </div>
+
+        <!-- Advanced settings (collapsed by default) -->
+        <div class="config-section">
+          <button class="advanced-toggle" id="adv-toggle" onclick="toggleAdvanced()">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 3l4 4-4 4"/></svg>
+            Advanced settings
+            <span style="flex:1"></span>
+            <span style="font-size:11px;color:var(--text-disabled);font-weight:400" id="adv-hint">Market type, evidence, verification</span>
+          </button>
+          <div class="advanced-content" id="adv-content">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Market type</label>
+                <span class="form-hint">How the market is structured internally.</span>
+                <select class="form-select" id="cfg-inquiry">
+                  <option value="">Select market type...</option>
+                  <option value="binary">Binary &mdash; yes or no outcome</option>
+                  <option value="temporal">Temporal &mdash; when will it happen</option>
+                  <option value="continuous">Continuous &mdash; numeric forecast</option>
+                  <option value="investigative">Investigative &mdash; evidence-driven</option>
+                  <option value="regulatory">Regulatory &mdash; policy or enforcement</option>
+                  <option value="composite">Composite &mdash; multiple conditions</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Resolution method</label>
+                <span class="form-hint">How the outcome is determined.</span>
+                <select class="form-select" id="cfg-resolution-pattern">
+                  <option value="">Select method...</option>
+                  <option value="official">Official announcement</option>
+                  <option value="threshold">Threshold breach</option>
+                  <option value="time-window">Time window expiry</option>
+                  <option value="consensus">Evidence consensus</option>
+                  <option value="composite">Multi-condition gate</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Evidence requirements</label>
+                <span class="form-hint">Expected signal density during the market's lifetime.</span>
+                <select class="form-select" id="cfg-evidence">
+                  <option value="">Select level...</option>
+                  <option value="low">Low &mdash; few signals, clear resolution</option>
+                  <option value="medium">Medium &mdash; moderate signal volume</option>
+                  <option value="high">High &mdash; dense signal environment</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Verification level</label>
+                <span class="form-hint">Certificate issued on resolution.</span>
+                <select class="form-select" id="cfg-verification">
+                  <option value="">Select level...</option>
+                  <option value="standard">Standard certificate</option>
+                  <option value="enhanced">Enhanced verification</option>
+                  <option value="none">No certificate</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Linked event</label>
+                <span class="form-hint">Connect to a WorldMonitor event.</span>
+                <input class="form-input" id="cfg-event" type="text" placeholder="Search events...">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Linked investigation</label>
+                <span class="form-hint">Connect to an active investigation.</span>
+                <input class="form-input" id="cfg-investigation" type="text" placeholder="Search investigations...">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right rail -->
+      <div class="config-rail" id="config-rail">
+        <div class="config-source-card" id="config-source-summary">
+          <div class="config-source-title">Creation Source</div>
+          <div class="config-source-name" id="rail-source-name">Blank Theatre</div>
+          <div class="config-source-type" id="rail-source-type">Custom configuration</div>
+          <div class="config-source-meta" id="rail-source-meta"></div>
+        </div>
+        <div class="config-source-card" style="background:oklch(0.540 0.150 85/0.03);border-color:oklch(0.540 0.150 85/0.12)">
+          <div class="config-source-title" style="color:oklch(0.430 0.130 85)">Tips</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:20px">
+            <p style="margin-bottom:var(--space-3)"><strong>Be specific</strong> about what settles this market. "Fed cuts rates" is vague. "Fed announces >= 25bps cut at any FOMC meeting" is clear.</p>
+            <p><strong>Name a source.</strong> The primary source is what Echelon checks to determine the outcome.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mode-actions" style="margin-top:var(--space-6)">
+      <button class="btn btn-secondary" id="config-back-btn" onclick="goToStep(2)">Back</button>
+      <button class="btn btn-primary" onclick="goToStep(4)">Review Theatre</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       STEP 4: REVIEW & LAUNCH
+       ============================================================ -->
+  <div class="flow-step-content" id="step-4">
+    <div class="review-layout">
+      <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+
+        <!-- Market Summary -->
+        <div class="review-card">
+          <div class="review-header">
+            <span class="review-header-title">Market Summary</span>
+            <button class="btn btn-ghost" onclick="goToStep(3)" style="height:28px;padding:0 var(--space-3);font-size:11px">Edit</button>
+          </div>
+          <div class="review-body">
+            <div class="review-field">
+              <span class="review-field-label">Market Title</span>
+              <span class="review-field-value large" id="rev-title"></span>
+            </div>
+            <div class="review-field">
+              <span class="review-field-label">Created via</span>
+              <span id="rev-provenance"></span>
+            </div>
+            <div class="review-field" id="rev-question-wrap">
+              <span class="review-field-label">Additional Context</span>
+              <span class="review-field-value" id="rev-question"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="review-card">
+          <div class="review-header">
+            <span class="review-header-title">How This Market Works</span>
+            <button class="btn btn-ghost" onclick="goToStep(3)" style="height:28px;padding:0 var(--space-3);font-size:11px">Edit</button>
+          </div>
+          <div class="review-body">
+            <div class="review-field">
+              <span class="review-field-label">How it resolves</span>
+              <span class="review-field-value" id="rev-criteria"></span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-top:var(--space-2)">
+              <div class="review-field">
+                <span class="review-field-label">Primary source</span>
+                <span class="review-field-value" id="rev-source"></span>
+              </div>
+              <div class="review-field">
+                <span class="review-field-label">When it ends</span>
+                <span class="review-field-value" id="rev-expiry"></span>
+              </div>
+              <div class="review-field">
+                <span class="review-field-label">Market type</span>
+                <span class="review-field-value" id="rev-inquiry"></span>
+              </div>
+              <div class="review-field">
+                <span class="review-field-label">Verification</span>
+                <span class="review-field-value" id="rev-verification"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Warnings -->
+        <div id="rev-warnings" style="display:flex;flex-direction:column;gap:var(--space-3)"></div>
+
+        <!-- Post-launch preview -->
+        <div class="post-launch">
+          <div class="post-launch-header"><span class="post-launch-header-title">What traders will see</span></div>
+          <div class="post-launch-body">
+            <div class="post-launch-card">
+              <div class="post-launch-card-top">
+                <span class="post-launch-card-type" id="pl-type">Binary</span>
+                <span class="post-launch-card-status">Live</span>
+              </div>
+              <div class="post-launch-card-title" id="pl-title">Will the Fed cut rates before July 2026?</div>
+              <div class="post-launch-card-prob">
+                <span class="post-launch-card-prob-val">50</span>
+                <span class="post-launch-card-prob-unit">% starting probability</span>
+              </div>
+            </div>
+            <div class="post-launch-note" id="pl-note">
+              After launch, this appears as a <strong>normal live theatre</strong> on the Theatres page. Traders see the market question, current price, and expiry — not internal configuration. <span id="pl-note-prov"></span>
+            </div>
+            <div class="post-launch-provenance" id="pl-provenance">
+              <span class="post-launch-provenance-label">Origin metadata (visible on Theatre Detail)</span>
+              <div class="post-launch-provenance-items">
+                <span class="post-launch-prov-chip" id="pl-prov-1">Custom</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Launch panel -->
+      <div class="launch-panel">
+        <div class="launch-panel-title">Launch Theatre</div>
+        <div class="launch-summary">
+          <div class="launch-summary-row">
+            <span class="launch-summary-label">Market type</span>
+            <span class="launch-summary-value" id="launch-inquiry">Binary</span>
+          </div>
+          <div class="launch-summary-row">
+            <span class="launch-summary-label">Resolves by</span>
+            <span class="launch-summary-value" id="launch-resolution">Official announcement</span>
+          </div>
+          <div class="launch-summary-row">
+            <span class="launch-summary-label">Verification</span>
+            <span class="launch-summary-value" id="launch-verification">Standard certificate</span>
+          </div>
+          <div class="launch-summary-row">
+            <span class="launch-summary-label">Ends</span>
+            <span class="launch-summary-value mono" id="launch-expiry">Jul 1, 2026</span>
+          </div>
+          <div class="launch-summary-row">
+            <span class="launch-summary-label">Warnings</span>
+            <span class="launch-summary-value" id="launch-warnings" style="color:var(--text-muted)">None</span>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-lg launch-cta" onclick="alert('Theatre created!')">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg>
+          Create Theatre
+        </button>
+        <div class="launch-disclaimer">This market goes live immediately. It will appear as a normal theatre — traders interact with it like any other market.</div>
+      </div>
+    </div>
+    <div class="mode-actions" style="margin-top:var(--space-6)">
+      <button class="btn btn-secondary" onclick="goToStep(3)">Back to Configure</button>
+    </div>
+  </div>
+
+</main>
+
+<!-- ===================================================================
+     FLOW STATE MACHINE
+     =================================================================== -->
+<script>
+let flowEntry = 'default';
+let flowStep = 1;
+let creationMode = null;
+let selectedTemplate = null;
+let selectedSuggestion = null;
+
+// ── Mock data ──
+const TEMPLATES = [
+  { id:'binary-event', name:'Binary Event Resolution', inquiry:'binary', useCase:'Markets with a clear yes/no outcome driven by a single verifiable event. The most common market type.', resolution:'Official Announcement', evidence:'Low to Medium', stopCondition:'Event occurrence or date expiry', duration:'1-12 months', verification:'Standard Certificate', sourceOfTruth:'Official source (gov, org, or institutional)', example:'Will the ECB raise rates before Q3 2026?' },
+  { id:'temporal-milestone', name:'Temporal Milestone Window', inquiry:'temporal', useCase:'Markets predicting when an event will occur within defined time buckets. Resolution depends on timing, not just occurrence.', resolution:'Time Window Match', evidence:'Medium', stopCondition:'Final window expiry', duration:'3-18 months', verification:'Enhanced Verification', sourceOfTruth:'Timestamped public record', example:'When will SpaceX Starship complete orbital flight?' },
+  { id:'continuous-forecast', name:'Continuous Forecast Range', inquiry:'continuous', useCase:'Markets forecasting a numeric value within a range. Settlement based on where the final value falls relative to predicted distribution.', resolution:'Threshold Breach', evidence:'High', stopCondition:'Measurement date', duration:'1-6 months', verification:'Standard Certificate', sourceOfTruth:'Published data series (BLS, central bank, exchange)', example:'US CPI YoY at June 2026 release' },
+  { id:'investigative-threshold', name:'Investigative Threshold', inquiry:'investigative', useCase:'Markets requiring active investigation to resolve. Evidence is gathered over time and resolution triggers when a claim threshold is reached.', resolution:'Evidence Consensus', evidence:'High', stopCondition:'Evidence threshold or time limit', duration:'1-3 months', verification:'Enhanced Verification', sourceOfTruth:'Investigation evidence chain', example:'Has Company X manipulated emissions data?' },
+  { id:'regulatory-policy', name:'Regulatory / Policy Enforcement', inquiry:'regulatory', useCase:'Markets tracking regulatory actions, policy changes, or enforcement decisions. Resolution tied to official publication in government records.', resolution:'Official Announcement', evidence:'Medium', stopCondition:'Regulatory calendar or legislative deadline', duration:'2-12 months', verification:'Standard Certificate', sourceOfTruth:'Government gazette, regulatory filing', example:'Will the EU DMA enforcement action against Meta proceed by H2 2026?' },
+  { id:'composite-condition', name:'Composite Condition', inquiry:'composite', useCase:'Markets with multiple sub-conditions that must each be evaluated. Complex governance requiring all or a subset of conditions to be met.', resolution:'Multi-Condition Gate', evidence:'High', stopCondition:'All sub-conditions resolved or time limit', duration:'3-12 months', verification:'Enhanced Verification', sourceOfTruth:'Multiple sources (one per sub-condition)', example:'Will all three conditions for Basel IV implementation be met by 2027?' }
+];
+
+const SUGGESTIONS = [
+  { id:'alp-1', title:'Will the Fed cut rates before July 2026?', template:'binary-event', inquiry:'Binary Event Resolution', inquiryShort:'Binary', confidence:92, confidenceLevel:'high', context:['Monetary Policy','North America','FOMC'], reason:'Signal density increased 340% in Fed communications cluster over 14 days. Clear official resolution source, high public salience, low ambiguity.', stopCondition:'July 1, 2026', sourceOfTruth:'Federal Reserve FOMC Statement', evidence:'Medium', linkedEvent:'Federal Reserve Emergency Rate Decision', resolution:'Official announcement' },
+  { id:'alp-2', title:'EU AI Act enforcement: first penalty by Q4 2026?', template:'regulatory-policy', inquiry:'Regulatory / Policy Enforcement', inquiryShort:'Regulatory', confidence:78, confidenceLevel:'high', context:['Regulation','Europe','AI Policy'], reason:'Regulatory timeline signals align with EU Commission enforcement schedule. Multiple draft penalty frameworks detected in policy signal cluster.', stopCondition:'December 31, 2026', sourceOfTruth:'EU Official Journal', evidence:'Medium', linkedEvent:'EU AI Act Implementation Timeline', resolution:'Official announcement' },
+  { id:'alp-3', title:'When will BTC exceed previous ATH?', template:'temporal-milestone', inquiry:'Temporal Milestone Window', inquiryShort:'Temporal', confidence:61, confidenceLevel:'medium', context:['Cryptocurrency','Global','Market Structure'], reason:'On-chain accumulation signals increasing. However, temporal prediction for crypto carries inherent uncertainty. Multiple macro correlations detected but none deterministic.', stopCondition:'Q4 2026', sourceOfTruth:'CoinGecko / CoinMarketCap aggregate', evidence:'High', linkedEvent:'BTC Market Cycle Monitor', resolution:'Time window match' },
+  { id:'alp-4', title:'US CPI YoY reading at June 2026 release', template:'continuous-forecast', inquiry:'Continuous Forecast Range', inquiryShort:'Continuous', confidence:85, confidenceLevel:'high', context:['Macroeconomics','North America','Inflation'], reason:'BLS data release schedule confirmed. Prior CPI-linked markets show strong volume and clear resolution. Continuous range format appropriate for numeric economic indicator.', stopCondition:'BLS June 2026 release', sourceOfTruth:'Bureau of Labor Statistics CPI Report', evidence:'Low', linkedEvent:'US Inflation Trajectory', resolution:'Threshold breach' }
+];
+
+// ── Render template cards ──
+function renderTemplates() {
+  document.getElementById('tmpl-grid').innerHTML = TEMPLATES.map(t => `
+    <div class="tmpl-card${selectedTemplate===t.id?' selected':''}" onclick="selectTemplate('${t.id}')">
+      <div class="tmpl-card-top">
+        <span class="tmpl-inquiry ${t.inquiry}">${t.inquiry}</span>
+        <div class="tmpl-check">${selectedTemplate===t.id?'<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg>':''}</div>
+      </div>
+      <div class="tmpl-card-name">${t.name}</div>
+      <div class="tmpl-card-usecase">${t.useCase}</div>
+      <div class="tmpl-card-meta">
+        <div class="tmpl-meta-item"><span class="tmpl-meta-label">How it resolves</span><span class="tmpl-meta-value">${t.resolution}</span></div>
+        <div class="tmpl-meta-item"><span class="tmpl-meta-label">Evidence</span><span class="tmpl-meta-value">${t.evidence}</span></div>
+        <div class="tmpl-meta-item"><span class="tmpl-meta-label">When it ends</span><span class="tmpl-meta-value">${t.stopCondition}</span></div>
+        <div class="tmpl-meta-item"><span class="tmpl-meta-label">Typical duration</span><span class="tmpl-meta-value mono">${t.duration}</span></div>
+        <div class="tmpl-meta-item"><span class="tmpl-meta-label">Verification</span><span class="tmpl-meta-value">${t.verification}</span></div>
+        <div class="tmpl-meta-item"><span class="tmpl-meta-label">Source</span><span class="tmpl-meta-value">${t.sourceOfTruth}</span></div>
+      </div>
+      <div class="tmpl-card-example"><div class="tmpl-example-label">Example market</div><div class="tmpl-example-text">${t.example}</div></div>
+    </div>
+  `).join('');
+}
+
+// ── Render Alpamayo grid cards ──
+function renderSuggestions() {
+  document.getElementById('alp-grid').innerHTML = SUGGESTIONS.map(s => `
+    <div class="alp-card${selectedSuggestion===s.id?' selected':''}" onclick="selectSuggestion('${s.id}')">
+      <div class="alp-card-top">
+        <div class="alp-card-title">${s.title}</div>
+        <div class="alp-check">${selectedSuggestion===s.id?'<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 6 5 9 10 3"/></svg>':''}</div>
+      </div>
+      <div class="alp-confidence ${s.confidenceLevel}">
+        <div class="alp-confidence-bar"><div class="alp-confidence-fill" style="width:${s.confidence}%"></div></div>
+        ${s.confidence}% fit
+      </div>
+      <div class="alp-card-context">${s.context.map(c=>`<span class="alp-context-chip">${c}</span>`).join('')}</div>
+      <div class="alp-card-reason">${s.reason}</div>
+      <div class="alp-card-meta">
+        <div class="alp-meta-item"><span class="alp-meta-label">Market type</span><span class="alp-meta-value">${s.inquiryShort}</span></div>
+        <div class="alp-meta-item"><span class="alp-meta-label">Source</span><span class="alp-meta-value">${s.sourceOfTruth}</span></div>
+        <div class="alp-meta-item"><span class="alp-meta-label">Resolves by</span><span class="alp-meta-value">${s.resolution}</span></div>
+        <div class="alp-meta-item"><span class="alp-meta-label">Ends</span><span class="alp-meta-value">${s.stopCondition}</span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Mode selection ──
+function selectMode(mode) {
+  creationMode = mode;
+  document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('mode-'+mode).classList.add('selected');
+  const btn = document.getElementById('mode-next-btn');
+  btn.style.opacity='1'; btn.style.pointerEvents='auto';
+}
+
+function nextFromMode() {
+  if(!creationMode) return;
+  if(creationMode==='blank') goToStep(3);
+  else goToStep(2);
+}
+
+function selectTemplate(id) {
+  selectedTemplate=id; renderTemplates();
+  const btn=document.getElementById('tmpl-next-btn');
+  btn.style.opacity='1'; btn.style.pointerEvents='auto';
+}
+function nextFromTemplate() { if(!selectedTemplate) return; prefillFromTemplate(selectedTemplate); goToStep(3); }
+
+function selectSuggestion(id) {
+  selectedSuggestion=id; renderSuggestions();
+  const btn=document.getElementById('alp-next-btn');
+  btn.style.opacity='1'; btn.style.pointerEvents='auto';
+}
+function nextFromAlpamayo() { if(!selectedSuggestion) return; prefillFromSuggestion(selectedSuggestion); goToStep(3); }
+
+// ── Advanced settings toggle ──
+function toggleAdvanced() {
+  const toggle = document.getElementById('adv-toggle');
+  const content = document.getElementById('adv-content');
+  toggle.classList.toggle('open');
+  content.classList.toggle('open');
+}
+
+// ── Pre-fill from template ──
+function prefillFromTemplate(id) {
+  const t = TEMPLATES.find(x=>x.id===id); if(!t) return;
+  const iMap={binary:'binary',temporal:'temporal',continuous:'continuous',investigative:'investigative',regulatory:'regulatory',composite:'composite'};
+  const rMap={'Official Announcement':'official','Time Window Match':'time-window','Threshold Breach':'threshold','Evidence Consensus':'consensus','Multi-Condition Gate':'composite'};
+  setField('cfg-inquiry', iMap[t.inquiry]||'');
+  setField('cfg-resolution-pattern', rMap[t.resolution]||'');
+  document.getElementById('rec-summary').style.display='none';
+  document.getElementById('rail-source-name').textContent = t.name;
+  document.getElementById('rail-source-type').textContent = 'Theatre Template';
+  document.getElementById('rail-source-meta').innerHTML = `
+    <div class="config-meta-row"><span class="config-meta-label">Market type</span><span class="config-meta-value">${t.inquiry}</span></div>
+    <div class="config-meta-row"><span class="config-meta-label">Resolves by</span><span class="config-meta-value">${t.resolution}</span></div>
+    <div class="config-meta-row"><span class="config-meta-label">Evidence</span><span class="config-meta-value">${t.evidence}</span></div>
+    <div class="config-meta-row"><span class="config-meta-label">Duration</span><span class="config-meta-value">${t.duration}</span></div>
+    <div class="config-meta-row"><span class="config-meta-label">Verification</span><span class="config-meta-value">${t.verification}</span></div>
+  `;
+}
+
+// ── Pre-fill from Alpamayo ──
+function prefillFromSuggestion(id) {
+  const s = SUGGESTIONS.find(x=>x.id===id); if(!s) return;
+  const iMap={'Binary Event Resolution':'binary','Temporal Milestone Window':'temporal','Continuous Forecast Range':'continuous','Regulatory / Policy Enforcement':'regulatory'};
+  const rMap={'Official announcement':'official','Time window match':'time-window','Threshold breach':'threshold'};
+  setField('cfg-title', s.title, true);
+  setField('cfg-inquiry', iMap[s.inquiry]||'');
+  setField('cfg-resolution-pattern', rMap[s.resolution]||'');
+  setField('cfg-source', s.sourceOfTruth, true);
+  setField('cfg-expiry', s.stopCondition, true);
+  if(s.linkedEvent) setField('cfg-event', s.linkedEvent, true);
+  const evMap={'Low':'low','Medium':'medium','High':'high'};
+  setField('cfg-evidence', evMap[s.evidence]||'');
+  // Show recommendation summary
+  const rec = document.getElementById('rec-summary');
+  rec.style.display='block';
+  document.getElementById('rec-structure').textContent = s.inquiry;
+  document.getElementById('rec-resolution').textContent = s.resolution;
+  document.getElementById('rec-source').textContent = s.sourceOfTruth;
+  document.getElementById('rec-end').textContent = s.stopCondition;
+  document.getElementById('rec-reason').textContent = s.reason;
+  document.getElementById('rec-conf-fill').style.width = s.confidence+'%';
+  document.getElementById('rec-conf-text').textContent = s.confidence+'% fit';
+  const confEl = document.getElementById('rec-confidence');
+  confEl.querySelector('.fill').style.background = s.confidenceLevel==='high' ? 'var(--green-500)' : 'var(--orange-500)';
+  confEl.style.color = s.confidenceLevel==='high' ? 'var(--green-600)' : 'var(--orange-600)';
+  // Update rail
+  document.getElementById('rail-source-name').textContent = 'Alpamayo Suggestion';
+  document.getElementById('rail-source-type').textContent = s.inquiry;
+  document.getElementById('rail-source-meta').innerHTML = `
+    <div class="config-meta-row"><span class="config-meta-label">Confidence</span><span class="config-meta-value" style="color:${s.confidenceLevel==='high'?'var(--green-600)':'var(--orange-600)'}">${s.confidence}%</span></div>
+    <div class="config-meta-row"><span class="config-meta-label">Linked event</span><span class="config-meta-value">${s.linkedEvent||'None'}</span></div>
+    <div class="config-meta-row"><span class="config-meta-label">Source</span><span class="config-meta-value">${s.sourceOfTruth}</span></div>
+  `;
+}
+
+function setField(id, value, markPrefilled) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.value = value;
+  if(markPrefilled) el.classList.add('prefilled');
+  else el.classList.remove('prefilled');
+}
+
+// ── Step navigation ──
+function goToStep(step) {
+  flowStep = step;
+  document.querySelectorAll('.flow-step-content').forEach(s=>s.classList.remove('visible'));
+  if(step===1) document.getElementById('step-1').classList.add('visible');
+  else if(step===2) {
+    if(creationMode==='template'){ document.getElementById('step-2a').classList.add('visible'); renderTemplates(); }
+    else if(creationMode==='alpamayo'){ document.getElementById('step-2b').classList.add('visible'); renderSuggestions(); }
+  } else if(step===3) {
+    document.getElementById('step-3').classList.add('visible');
+    if(creationMode==='blank') {
+      document.getElementById('rec-summary').style.display='none';
+      document.getElementById('rail-source-name').textContent='Blank Theatre';
+      document.getElementById('rail-source-type').textContent='Custom configuration';
+      document.getElementById('rail-source-meta').innerHTML='<div style="font-size:12px;color:var(--text-muted)">All fields configured manually.</div>';
+    }
+    // Auto-open advanced for blank/template paths
+    if(creationMode==='blank'||creationMode==='template') {
+      document.getElementById('adv-toggle').classList.add('open');
+      document.getElementById('adv-content').classList.add('open');
+    } else {
+      // Alpamayo: keep collapsed
+      document.getElementById('adv-toggle').classList.remove('open');
+      document.getElementById('adv-content').classList.remove('open');
+    }
+  } else if(step===4) {
+    document.getElementById('step-4').classList.add('visible');
+    populateReview();
+  }
+  updateProgress(step);
+  if(creationMode==='template') document.getElementById('fp-2-label').textContent='Select Template';
+  else if(creationMode==='alpamayo') document.getElementById('fp-2-label').textContent='Alpamayo';
+  else document.getElementById('fp-2-label').textContent='Select Source';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function updateProgress(step) {
+  for(let i=1;i<=4;i++){
+    const el=document.getElementById('fp-'+i);
+    el.classList.remove('active','done');
+    if(i<step) el.classList.add('done');
+    if(i===step) el.classList.add('active');
+  }
+  if(creationMode==='blank'&&step>=3) document.getElementById('fp-2').classList.add('done');
+}
+
+// ── Populate review ──
+function populateReview() {
+  const title = document.getElementById('cfg-title').value || 'Untitled Theatre';
+  const question = document.getElementById('cfg-question').value;
+  const inquiry = document.getElementById('cfg-inquiry');
+  const inquiryText = inquiry.selectedIndex>0 ? inquiry.options[inquiry.selectedIndex].text : 'Not specified';
+  const pattern = document.getElementById('cfg-resolution-pattern');
+  const patternText = pattern.selectedIndex>0 ? pattern.options[pattern.selectedIndex].text : 'Not specified';
+  const source = document.getElementById('cfg-source').value || 'Not specified';
+  const expiry = document.getElementById('cfg-expiry').value || 'Not specified';
+  const criteria = document.getElementById('cfg-criteria').value || 'Not specified';
+  const verification = document.getElementById('cfg-verification');
+  const verificationText = verification.selectedIndex>0 ? verification.options[verification.selectedIndex].text : 'Standard certificate';
+
+  document.getElementById('rev-title').textContent = title;
+  const qWrap = document.getElementById('rev-question-wrap');
+  if(question) { qWrap.style.display='flex'; document.getElementById('rev-question').textContent=question; }
+  else { qWrap.style.display='none'; }
+  document.getElementById('rev-criteria').textContent = criteria;
+  document.getElementById('rev-source').textContent = source;
+  document.getElementById('rev-expiry').textContent = expiry;
+  document.getElementById('rev-inquiry').textContent = inquiryText.split(' — ')[0];
+  document.getElementById('rev-verification').textContent = verificationText;
+
+  // Provenance
+  const prov = document.getElementById('rev-provenance');
+  if(creationMode==='template') {
+    const t=TEMPLATES.find(x=>x.id===selectedTemplate);
+    prov.innerHTML=`<span class="review-provenance template"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1.5" width="10" height="11" rx="1.5"/><path d="M5 4.5h4M5 7h4M5 9.5h2"/></svg>Template: ${t?t.name:'Theatre Template'}</span>`;
+  } else if(creationMode==='alpamayo') {
+    const s=SUGGESTIONS.find(x=>x.id===selectedSuggestion);
+    prov.innerHTML=`<span class="review-provenance alpamayo"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5.5"/><circle cx="7" cy="7" r="2"/></svg>Alpamayo suggestion${s?' ('+s.confidence+'% fit)':''}</span>`;
+  } else {
+    prov.innerHTML='<span class="review-provenance custom">Custom (blank theatre)</span>';
+  }
+
+  // Launch panel
+  document.getElementById('launch-inquiry').textContent = inquiryText.split(' — ')[0];
+  document.getElementById('launch-resolution').textContent = patternText;
+  document.getElementById('launch-verification').textContent = verificationText;
+  document.getElementById('launch-expiry').textContent = expiry;
+
+  // Post-launch preview
+  document.getElementById('pl-title').textContent = title;
+  document.getElementById('pl-type').textContent = inquiryText.split(' — ')[0];
+  const plProv = document.getElementById('pl-provenance');
+  const chips = [];
+  if(creationMode==='template') {
+    const t=TEMPLATES.find(x=>x.id===selectedTemplate);
+    chips.push('Template: '+(t?t.name:'Theatre Template'));
+  } else if(creationMode==='alpamayo') {
+    const s=SUGGESTIONS.find(x=>x.id===selectedSuggestion);
+    chips.push('Created from Alpamayo suggestion');
+    if(s) chips.push('Template: '+s.inquiry);
+  } else { chips.push('Custom theatre'); }
+  plProv.querySelector('.post-launch-provenance-items').innerHTML = chips.map(c=>`<span class="post-launch-prov-chip">${c}</span>`).join('');
+  // Dynamic provenance note
+  const plNoteProv = document.getElementById('pl-note-prov');
+  if(creationMode==='alpamayo') {
+    plNoteProv.textContent='Alpamayo provenance is recorded on the Theatre Detail page for transparency.';
+  } else if(creationMode==='template') {
+    plNoteProv.textContent='The template used is recorded as origin metadata.';
+  } else {
+    plNoteProv.textContent='';
+  }
+
+  // Warnings
+  const warnings=[];
+  if(!criteria||criteria==='Not specified') warnings.push('Resolution criteria not specified. Markets without clear criteria may face disputes.');
+  if(!source||source==='Not specified') warnings.push('No primary source defined. Resolution will require manual adjudication.');
+  if(creationMode==='alpamayo') {
+    const s=SUGGESTIONS.find(x=>x.id===selectedSuggestion);
+    if(s&&s.confidence<70) warnings.push('Lower-confidence Alpamayo suggestion ('+s.confidence+'%). Review the reasoning before launch.');
+  }
+  if(inquiry.value==='composite') warnings.push('Composite markets require sub-condition definition. Ensure all conditions are specified.');
+  const warnEl=document.getElementById('rev-warnings');
+  if(warnings.length>0) {
+    warnEl.innerHTML=warnings.map(w=>`<div class="review-warning"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2L1.5 13h13L8 2z"/><path d="M8 6v3M8 11v.5"/></svg>${w}</div>`).join('');
+    document.getElementById('launch-warnings').textContent=warnings.length+' warning'+(warnings.length>1?'s':'');
+    document.getElementById('launch-warnings').style.color='oklch(0.430 0.130 85)';
+  } else {
+    warnEl.innerHTML='';
+    document.getElementById('launch-warnings').textContent='None';
+    document.getElementById('launch-warnings').style.color='var(--text-muted)';
+  }
+}
+
+// ── Event context ──
+function dismissEventContext() {
+  document.getElementById('event-context').classList.remove('visible');
+  flowEntry='default';
+}
+
+// ── Entry point ──
+function initFlow(entry) {
+  flowEntry = entry;
+  if(entry==='from-event') {
+    document.getElementById('event-context').classList.add('visible');
+    document.getElementById('page-subtitle').textContent='Create a market from the detected event. Alpamayo has a suggestion ready.';
+    selectMode('alpamayo');
+    const alpCard = document.getElementById('mode-alpamayo');
+    alpCard.classList.add('recommended');
+    alpCard.insertAdjacentHTML('afterbegin','<div class="mode-card-recommend">Recommended</div>');
+  }
+  goToStep(1);
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', function() {
+  initFlow('from-event');
+  // State switcher
+  const sw=document.createElement('div');
+  sw.style.cssText='position:fixed;top:calc(var(--header-height) + 12px);right:20px;z-index:100;display:flex;gap:6px;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);padding:8px 12px;box-shadow:var(--shadow-md);font-size:11px;font-weight:600;align-items:center';
+  sw.innerHTML=`<span style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin-right:4px">Entry:</span><button onclick="location.reload()" style="padding:4px 10px;border-radius:4px;border:1px solid var(--border-primary);background:var(--bg-card);cursor:pointer;font-size:11px;font-weight:600;font-family:var(--font-sans)">Default</button><button style="padding:4px 10px;border-radius:4px;border:1px solid oklch(0.525 0.155 260/0.30);background:oklch(0.525 0.155 260/0.06);cursor:pointer;font-size:11px;font-weight:600;font-family:var(--font-sans);color:var(--status-info)">From Event</button>`;
+  sw.children[1].onclick=function(){localStorage.setItem('entry','default');location.reload()};
+  sw.children[2].onclick=function(){localStorage.setItem('entry','from-event');location.reload()};
+  document.body.appendChild(sw);
+  // Check stored entry
+  const stored=localStorage.getItem('entry');
+  if(stored==='default'){localStorage.removeItem('entry');location.href=location.href;}
+});
+</script>
+</body>
+</html>

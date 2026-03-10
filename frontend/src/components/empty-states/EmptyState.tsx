@@ -108,12 +108,12 @@ function ActionButton({ label, onClick, variant = 'primary' }: EmptyStateAction)
         'font-sans text-[13px] font-semibold whitespace-nowrap',
         'transition-all duration-150 ease-out active:scale-[0.97]',
         variant === 'primary' && [
-          'bg-status-paradox text-white',
-          'hover:bg-purple-400',
+          'border border-[var(--e-purple-500)] bg-[var(--e-purple-500)] text-[var(--e-text-inverse)]',
+          'hover:bg-[var(--e-purple-400)]',
         ],
         variant === 'secondary' && [
-          'bg-terminal-surface text-terminal-text-secondary border border-terminal-border',
-          'hover:bg-terminal-hover hover:text-terminal-text',
+          'border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-secondary)]',
+          'hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]',
         ],
       )}
     >
@@ -129,7 +129,7 @@ function ZeroState({ icon, title, description, actions, className }: EmptyStateP
     <div
       className={clsx(
         'flex flex-col items-center justify-center text-center',
-        'bg-terminal-surface min-h-[280px] px-6 py-12',
+        'min-h-[280px] rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-12 shadow-[var(--e-shadow-xs)]',
         className,
       )}
     >
@@ -137,18 +137,17 @@ function ZeroState({ icon, title, description, actions, className }: EmptyStateP
         <div
           className={clsx(
             'w-14 h-14 flex items-center justify-center',
-            'bg-terminal-panel border border-terminal-border rounded-xl',
-            'text-terminal-text-muted mb-5',
+            'rounded-xl border border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)] mb-5',
           )}
         >
           {icon}
         </div>
       )}
       {title && (
-        <h3 className="text-[17px] font-bold text-terminal-text mb-2">{title}</h3>
+        <h3 className="mb-2 text-[17px] font-bold text-[var(--e-text-primary)]">{title}</h3>
       )}
       {description && (
-        <p className="text-sm text-terminal-text-secondary leading-relaxed max-w-[400px] mb-6">
+        <p className="mb-6 max-w-[400px] text-sm leading-relaxed text-[var(--e-text-secondary)]">
           {description}
         </p>
       )}
@@ -174,7 +173,7 @@ function AllClear({
   return (
     <div
       className={clsx(
-        'bg-terminal-surface min-h-[160px] p-5',
+        'min-h-[160px] rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] p-5 shadow-[var(--e-shadow-xs)]',
         className,
       )}
     >
@@ -193,7 +192,7 @@ function AllClear({
         />
         <span className="text-sm font-semibold text-status-success">All Clear</span>
         {timestamp && (
-          <span className="ml-auto font-mono text-[11px] font-medium text-terminal-text-muted">
+          <span className="ml-auto font-mono text-[11px] font-medium text-[var(--e-text-muted)]">
             {timestamp}
           </span>
         )}
@@ -201,7 +200,7 @@ function AllClear({
 
       {/* Message */}
       {description && (
-        <p className="text-[13px] text-terminal-text-secondary leading-5 mb-4">
+        <p className="mb-4 text-[13px] leading-5 text-[var(--e-text-secondary)]">
           {description}
         </p>
       )}
@@ -209,15 +208,15 @@ function AllClear({
       {/* Recently resolved */}
       {recentItems && recentItems.length > 0 && (
         <div className="mt-4">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted mb-2">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--e-text-muted)]">
             Recently Resolved
           </div>
           {recentItems.map((item) => (
             <div
               key={item.label}
-              className="flex items-center gap-2 text-xs text-terminal-text-muted py-1"
+              className="flex items-center gap-2 py-1 text-xs text-[var(--e-text-muted)]"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-terminal-border flex-shrink-0" />
+              <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[var(--e-border-secondary)]" />
               <span>{item.label}</span>
               {item.time && (
                 <span className="ml-auto font-mono text-[10px]">{item.time}</span>
@@ -236,7 +235,7 @@ function QuietMonitoring({ description, context, className }: EmptyStateProps) {
   return (
     <div
       className={clsx(
-        'bg-terminal-surface min-h-[280px] relative overflow-hidden',
+        'relative min-h-[280px] overflow-hidden rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)]',
         className,
       )}
     >
@@ -258,7 +257,7 @@ function QuietMonitoring({ description, context, className }: EmptyStateProps) {
           Monitoring
         </div>
         {description && (
-          <p className="text-[13px] text-terminal-text-secondary text-center max-w-[320px] leading-5">
+          <p className="max-w-[320px] text-center text-[13px] leading-5 text-[var(--e-text-secondary)]">
             {description}
           </p>
         )}
@@ -273,7 +272,7 @@ function SparseData({ description, context, className }: EmptyStateProps) {
   return (
     <div
       className={clsx(
-        'bg-terminal-surface p-5 min-h-[200px]',
+        'min-h-[200px] rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] p-5 shadow-[var(--e-shadow-xs)]',
         className,
       )}
     >
@@ -289,11 +288,11 @@ function SparseData({ description, context, className }: EmptyStateProps) {
         <div
           className={clsx(
             'flex items-start gap-3 p-3 rounded',
-            'bg-terminal-panel border border-terminal-border',
+            'border border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)]',
           )}
         >
           <svg
-            className="w-4 h-4 text-terminal-text-muted flex-shrink-0 mt-0.5"
+            className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--e-text-muted)]"
             viewBox="0 0 16 16"
             fill="none"
             stroke="currentColor"
@@ -302,7 +301,7 @@ function SparseData({ description, context, className }: EmptyStateProps) {
             <circle cx="8" cy="8" r="6" />
             <path d="M8 5.5v3M8 10.5v.01" />
           </svg>
-          <span className="text-xs text-terminal-text-muted leading-[18px]">
+          <span className="text-xs leading-[18px] text-[var(--e-text-muted)]">
             {description}
           </span>
         </div>
@@ -319,18 +318,18 @@ function SparseDataDefaultCharts() {
         <div
           key={label}
           className={clsx(
-            'bg-terminal-panel border border-terminal-border rounded p-4 min-h-[100px]',
+            'min-h-[100px] rounded border border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] p-4',
             'flex flex-col',
           )}
         >
-          <div className="text-[10px] font-bold uppercase tracking-wider text-terminal-text-muted mb-3">
+          <div className="mb-3 text-[10px] font-bold uppercase tracking-wider text-[var(--e-text-muted)]">
             {label}
           </div>
           <div className="flex-1 flex items-end gap-1 pt-2">
             {[0.2, 0.35, 0.15, 0.5, 0.25, 0.1, 0.4].map((h, i) => (
               <div
                 key={i}
-                className="w-full rounded-t bg-terminal-border min-h-[4px]"
+                className="min-h-[4px] w-full rounded-t bg-[var(--e-border-secondary)]"
                 style={{ height: `${h * 60}px` }}
               />
             ))}
@@ -353,15 +352,15 @@ function NoResults({
     <div
       className={clsx(
         'flex items-center justify-center gap-4 px-4 py-6',
-        'bg-terminal-surface border border-terminal-border rounded min-h-[80px]',
+        'min-h-[80px] rounded border border-[var(--e-border-primary)] bg-[var(--e-bg-card)]',
         className,
       )}
     >
-      <p className="text-[13px] text-terminal-text-muted">
+      <p className="text-[13px] text-[var(--e-text-muted)]">
         {filterDescription ? (
           <>
             No results for{' '}
-            <strong className="text-terminal-text-secondary font-semibold">
+            <strong className="font-semibold text-[var(--e-text-secondary)]">
               {filterDescription}
             </strong>
           </>
@@ -375,8 +374,8 @@ function NoResults({
           className={clsx(
             'inline-flex items-center gap-1 px-3 py-1',
             'text-xs font-semibold rounded',
-            'border border-terminal-border bg-terminal-surface text-terminal-text-secondary',
-            'hover:border-purple-400/30 hover:text-status-paradox hover:bg-purple-400/5',
+            'border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-secondary)]',
+            'hover:border-[var(--e-purple-200)] hover:bg-[var(--e-purple-50)] hover:text-[var(--e-purple-700)]',
             'transition-colors duration-150',
           )}
         >
@@ -401,7 +400,7 @@ function NotYetGenerated({
     <div
       className={clsx(
         'flex flex-col items-center justify-center text-center',
-        'bg-terminal-surface min-h-[240px] px-6 py-10',
+        'min-h-[240px] rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-10 shadow-[var(--e-shadow-xs)]',
         className,
       )}
     >
@@ -409,23 +408,22 @@ function NotYetGenerated({
         <div
           className={clsx(
             'w-12 h-12 flex items-center justify-center',
-            'bg-purple-400/10 border border-purple-400/20 rounded-xl',
-            'text-status-paradox mb-4',
+            'rounded-xl border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)] mb-4',
           )}
         >
           {icon}
         </div>
       )}
       {title && (
-        <h3 className="text-base font-bold text-terminal-text mb-2">{title}</h3>
+        <h3 className="mb-2 text-base font-bold text-[var(--e-text-primary)]">{title}</h3>
       )}
       {description && (
-        <p className="text-[13px] text-terminal-text-secondary leading-5 max-w-[380px] mb-2">
+        <p className="mb-2 max-w-[380px] text-[13px] leading-5 text-[var(--e-text-secondary)]">
           {description}
         </p>
       )}
       {triggerText && (
-        <p className="text-xs text-terminal-text-muted italic mb-5">{triggerText}</p>
+        <p className="mb-5 text-xs italic text-[var(--e-text-muted)]">{triggerText}</p>
       )}
       {actions && actions.length > 0 && (
         <div className="flex gap-3">

@@ -14,7 +14,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from theatre.engine.canonical_json import canonical_json
+from backend.utils.canonical_json import canonical_json
 
 from backend.market.resolution import SettlementReport
 from backend.osint.engine.counter_signal import COUNTER_SIGNAL_CLASSES

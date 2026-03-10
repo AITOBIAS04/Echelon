@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Theatres</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   TASTE TOKENS v1.0
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;
+  --sidebar-width:240px;--sidebar-collapsed:64px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;--duration-slow:300ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* ═══ HEADER (locked) ═══ */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* ═══ SIDEBAR (locked) ═══ */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.alert{background:oklch(0.545 0.185 25/0.10);color:var(--status-danger);border:1px solid oklch(0.545 0.185 25/0.20)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN + PAGE CHROME
+   ═══════════════════════════════════════════════════════════ */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-5)}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:2px}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+
+/* ── Stats bar with time scopes ── */
+.stats-bar{display:flex;gap:var(--space-4);margin-bottom:var(--space-5);padding:var(--space-3) var(--space-5);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs)}
+.stats-bar-item{display:flex;align-items:center;gap:var(--space-2);padding-right:var(--space-4);border-right:1px solid var(--border-secondary)}
+.stats-bar-item:last-child{border-right:none;padding-right:0}
+.stats-bar-value{font-family:var(--font-mono);font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.stats-bar-label{font-size:11px;font-weight:500;color:var(--text-muted);line-height:14px}
+.stats-bar-scope{font-family:var(--font-mono);font-size:9px;font-weight:500;color:var(--text-disabled);background:var(--bg-sunken);padding:0 4px;border-radius:2px;border:1px solid var(--border-secondary);margin-left:2px}
+.stats-bar-change{font-family:var(--font-mono);font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+.stats-bar-change.up{color:var(--green-600)}
+
+/* ── View tabs: Live / All / Settled ── */
+.view-tabs{display:flex;gap:0;margin-bottom:var(--space-4)}
+.view-tab{padding:var(--space-2) var(--space-4);font-size:13px;font-weight:600;color:var(--text-muted);border:1px solid var(--border-primary);background:var(--bg-card);cursor:pointer;transition:all var(--duration-instant) ease;display:flex;align-items:center;gap:6px}
+.view-tab:first-child{border-radius:var(--radius-md) 0 0 var(--radius-md)}
+.view-tab:last-child{border-radius:0 var(--radius-md) var(--radius-md) 0}
+.view-tab:not(:first-child){border-left:none}
+.view-tab:hover{color:var(--text-primary);background:var(--bg-hover)}
+.view-tab.active{color:var(--purple-700);background:var(--purple-50);border-color:var(--purple-200)}
+.view-tab .tab-count{font-family:var(--font-mono);font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.view-tab.active .tab-count{color:var(--purple-600)}
+.view-tab .tab-dot{width:6px;height:6px;border-radius:var(--radius-full);background:var(--status-success)}
+
+/* ── Filter bar ── */
+.filter-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);gap:var(--space-3)}
+.filter-tabs{display:flex;gap:2px;background:var(--bg-sunken);border-radius:var(--radius-md);padding:3px;border:1px solid var(--border-secondary)}
+.filter-tab{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;border:none;background:none;white-space:nowrap}
+.filter-tab:hover{color:var(--text-primary)}
+.filter-tab.active{background:var(--bg-card);color:var(--text-primary);font-weight:600;box-shadow:var(--shadow-xs)}
+.filter-tab-count{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--text-muted)}
+.filter-tab.active .filter-tab-count{color:var(--purple-600)}
+.filter-right{display:flex;align-items:center;gap:var(--space-2)}
+.sort-select{height:30px;padding:0 26px 0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 3.75l2.5 2.5 2.5-2.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+
+/* ═══════════════════════════════════════════════════════════
+   THEATRE GRID + CARDS
+   ═══════════════════════════════════════════════════════════ */
+.theatre-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-3)}
+
+.tc{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;cursor:pointer;transition:all var(--duration-normal) var(--ease-out);overflow:hidden}
+.tc:hover{border-color:var(--purple-200);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+.tc.settled{opacity:0.72}.tc.settled:hover{opacity:1}
+
+.tc-top{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-3) 0}
+.tc-cat{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;padding:1px 6px;border-radius:4px}
+.tc-cat.binary{background:var(--purple-50);color:var(--purple-600)}
+.tc-cat.continuous{background:oklch(0.965 0.020 260);color:var(--status-info)}
+.tc-cat.temporal{background:var(--orange-50);color:var(--orange-600)}
+.tc-cat.ranking{background:var(--green-50);color:var(--green-600)}
+.tc-cat.composite{background:var(--red-50);color:var(--red-500)}
+.tc-status{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em}
+.tc-status.live{color:var(--green-600)}.tc-status.live::before{content:'';width:5px;height:5px;border-radius:var(--radius-full);background:var(--status-success);animation:pulse-dot 2s ease-in-out infinite}
+.tc-status.settled-s{color:var(--text-muted)}.tc-status.draft{color:var(--orange-600)}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.tc-title{padding:var(--space-2) var(--space-3) 0;font-size:13px;font-weight:600;line-height:18px;color:var(--text-primary);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:36px}
+
+/* ── Probability ── */
+.tc-prob{display:flex;align-items:flex-end;justify-content:space-between;padding:var(--space-2) var(--space-3) 0}
+.tc-prob-value{font-family:var(--font-mono);font-size:28px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+.tc-prob-value .unit{font-size:14px;font-weight:500;color:var(--text-muted);margin-left:1px}
+.tc-prob-change{font-family:var(--font-mono);font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;margin-left:var(--space-2);padding-bottom:4px}
+.tc-prob-change.up{color:var(--green-600)}.tc-prob-change.down{color:var(--red-500)}
+.tc-sparkline{width:64px;height:28px;flex-shrink:0;margin-bottom:2px}
+.tc-sparkline polyline{fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* ── Prob bar ── */
+.tc-bar{height:3px;background:oklch(0.545 0.185 25/0.10);margin:var(--space-2) var(--space-3) 0;border-radius:2px;overflow:hidden}
+.tc-bar-fill{height:100%;border-radius:2px;background:var(--green-400)}
+
+/* ── Yes/No directional shortcuts (binary) — navigate to Theatre Detail with intent preselected ── */
+/* Cards are stateless browse surfaces. No inline order ticket. Trade flow lives on Theatre Detail page. */
+.tc-actions{display:flex;gap:6px;padding:var(--space-3) var(--space-3) 0}
+.tc-shortcut{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;height:32px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;border:1px solid var(--border-primary);cursor:pointer;transition:all var(--duration-instant) ease;font-family:var(--font-sans);text-decoration:none;background:var(--bg-card);color:var(--text-secondary)}
+.tc-shortcut:hover{border-color:var(--purple-200);color:var(--text-primary);background:var(--bg-hover)}
+.tc-shortcut.yes{color:var(--green-700)}
+.tc-shortcut.yes:hover{color:var(--green-600);border-color:oklch(0.545 0.170 152/0.30);background:oklch(0.545 0.170 152/0.06)}
+.tc-shortcut.no{color:var(--red-600)}
+.tc-shortcut.no:hover{color:var(--red-500);border-color:oklch(0.545 0.185 25/0.30);background:oklch(0.545 0.185 25/0.06)}
+.tc-shortcut-price{font-family:var(--font-mono);font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ── View Market link (non-binary) ── */
+.tc-view-link{display:flex;align-items:center;justify-content:center;gap:4px;padding:var(--space-2) var(--space-3);font-size:12px;font-weight:600;color:var(--purple-600);text-decoration:none;cursor:pointer;transition:color var(--duration-instant) ease}
+.tc-view-link:hover{color:var(--purple-500)}
+
+/* ── Continuous: range bar ── */
+.tc-continuous{padding:0 var(--space-3)}
+.tc-continuous-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted)}
+.tc-range-bar{position:relative;height:6px;background:var(--bg-sunken);border-radius:3px;margin:var(--space-2) 0 var(--space-1);overflow:visible}
+.tc-range-fill{position:absolute;height:100%;border-radius:3px;background:oklch(0.525 0.155 260/0.25)}
+.tc-range-median{position:absolute;top:-3px;width:3px;height:12px;border-radius:2px;background:var(--status-info);transform:translateX(-50%)}
+.tc-range-labels{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:9px;font-weight:500;color:var(--text-disabled);font-variant-numeric:tabular-nums}
+.tc-range-labels .median{color:var(--status-info);font-weight:700}
+
+/* ── Temporal ── */
+.tc-temporal-row{display:flex;gap:4px;padding:var(--space-2) var(--space-3) 0}
+.tc-time-slot{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:4px;background:var(--bg-sunken);border:1px solid var(--border-secondary)}
+.tc-time-slot.peak{background:var(--purple-50);border-color:var(--purple-200)}
+.tc-time-label{font-size:9px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.03em}
+.tc-time-slot.peak .tc-time-label{color:var(--purple-600)}
+.tc-time-price{font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.tc-time-slot.peak .tc-time-price{color:var(--purple-700)}
+
+/* ── Ranking ── */
+.tc-rank-row{display:flex;flex-direction:column;gap:3px;padding:var(--space-2) var(--space-3) 0}
+.tc-rank-line{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary)}
+.tc-rank-line.lead{font-weight:600;color:var(--purple-700)}
+.tc-rank-num{font-family:var(--font-mono);font-size:10px;font-weight:700;width:16px;height:16px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;background:var(--bg-sunken);color:var(--text-muted);flex-shrink:0;border:1px solid var(--border-secondary)}
+.tc-rank-line.lead .tc-rank-num{background:var(--purple-500);color:var(--text-inverse);border-color:transparent}
+.tc-rank-name{flex:1}.tc-rank-val{font-family:var(--font-mono);font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary)}
+
+/* ── Composite: sub-questions ── */
+.tc-composite{padding:var(--space-2) var(--space-3) 0}
+.tc-composite-stats{display:flex;gap:var(--space-3);margin-bottom:var(--space-2)}
+.tc-composite-stat{font-size:11px;color:var(--text-muted)}
+.tc-composite-stat strong{font-family:var(--font-mono);font-weight:700;color:var(--text-secondary)}
+.tc-composite-bar{height:4px;background:var(--bg-sunken);border-radius:2px;overflow:hidden}
+.tc-composite-bar-fill{height:100%;border-radius:2px;background:var(--purple-400)}
+
+/* ── Settled ── */
+.tc-resolved{display:flex;align-items:center;gap:6px;padding:var(--space-2) var(--space-3) 0;font-size:12px;font-weight:700}
+.tc-resolved.yes-result{color:var(--green-600)}.tc-resolved.no-result{color:var(--red-500)}
+.tc-resolved-detail{padding:2px var(--space-3) 0;font-size:11px;color:var(--text-muted);line-height:16px}
+
+/* ── Card footer with risk chips ── */
+.tc-foot{display:flex;align-items:center;justify-content:space-between;padding:var(--space-2) var(--space-3);margin-top:auto;border-top:1px solid var(--border-secondary);background:oklch(0.975 0.003 265);gap:var(--space-2)}
+.tc-foot-left{display:flex;align-items:center;gap:var(--space-2);font-size:11px;color:var(--text-muted);flex-wrap:wrap;flex:1;min-width:0}
+.tc-foot-val{font-family:var(--font-mono);font-weight:600;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.tc-foot-sep{color:var(--border-primary)}
+.tc-foot-right{display:flex;align-items:center;gap:var(--space-1);flex-shrink:0}
+
+/* Risk/status chips — vocabulary locked per taste.md s11 */
+.chip{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.03em;padding:1px 5px;border-radius:3px;white-space:nowrap;line-height:14px}
+.chip.chip-time-default{color:var(--text-muted)}
+.chip.chip-ending-soon{color:var(--orange-600);background:var(--orange-50)}
+.chip.chip-urgent{color:var(--status-danger);background:var(--red-50)}
+.chip.chip-paradox{color:var(--status-danger);background:oklch(0.545 0.185 25/0.08);border:1px solid oklch(0.545 0.185 25/0.15)}
+.chip.chip-stale{color:oklch(0.430 0.130 85);background:oklch(0.540 0.150 85/0.08);border:1px solid oklch(0.540 0.150 85/0.15)}
+.chip.chip-low-liq{color:var(--text-muted);background:var(--bg-sunken);border:1px solid var(--border-secondary)}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+@media(max-width:1440px){.theatre-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:1100px){.theatre-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1024px){.sidebar{width:var(--sidebar-collapsed)}.sidebar .nav-item-label,.sidebar .nav-badge{display:none}.sidebar .nav-group-label{font-size:0;padding:var(--space-2) var(--space-4)}.sidebar .nav-group-label::after{content:'';display:block;width:16px;height:1px;background:var(--border-primary);margin:0 auto}.sidebar .nav-item{padding:0;justify-content:center;margin:1px var(--space-1);width:calc(100% - var(--space-2))}.main{margin-left:var(--sidebar-collapsed)}.header-search{display:none}.filter-tabs{overflow-x:auto}}
+@media(max-width:768px){.sidebar{display:none}.main{margin-left:0;padding:var(--space-4)}.theatre-grid{grid-template-columns:1fr 1fr}.stats-bar{flex-wrap:wrap;gap:var(--space-2)}.stats-bar-item{border-right:none;padding-right:0}.filter-bar{flex-direction:column;align-items:stretch}}
+@media(max-width:560px){.theatre-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left"><a href="#" class="header-logo"><div class="header-logo-mark">E</div><span class="header-logo-text">Echelon</span><span class="header-logo-version">v2</span></a><button class="sidebar-toggle"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4.5h12M3 9h12M3 13.5h12"/></svg></button></div>
+  <div class="header-center"><div class="header-search"><span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg></span><input type="text" placeholder="Search theatres, agents, investigations..."><span class="header-search-kbd">/</span></div></div>
+  <div class="header-right"><div class="network-pill"><span class="network-dot"></span>Base</div><button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.73 12.73A6 6 0 0 0 15 9V7.5a6 6 0 1 0-12 0V9a6 6 0 0 0 1.27 3.73L3 15h12l-1.27-2.27z"/><path d="M7.5 15a1.5 1.5 0 0 0 3 0"/></svg><span class="header-badge">3</span></button><button class="wallet-btn"><div class="wallet-balance"><div class="wallet-balance-item"><span class="wallet-balance-label">ETH</span>2.45</div><span class="wallet-divider"></span><div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span>1,250</div></div><div class="wallet-avatar"></div></button></div>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group"><div class="nav-group-label">Command</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="6" height="6" rx="1"/><rect x="10" y="2" width="6" height="6" rx="1"/><rect x="2" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg></span><span class="nav-item-label">Dashboard</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Markets</div><a href="#" class="nav-item active"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 14l4-5 3 3 5-7"/><path d="M11 5h3v3"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">7</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Intelligence</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l3 2"/></svg></span><span class="nav-item-label">Investigations</span><span class="nav-badge count">2</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="14" height="14" rx="1"/><path d="M2 6h14M6 2v14M10 2v14M2 10h14"/></svg></span><span class="nav-item-label">Signal Map</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="3"/><circle cx="9" cy="9" r="1"/></svg></span><span class="nav-item-label">WorldMonitor</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Verification</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 9l2.5 2.5L13 6"/><circle cx="9" cy="9" r="7"/></svg></span><span class="nav-item-label">Verify</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="12" height="14" rx="1"/><path d="M7 6h4M7 9h4M7 12h2"/></svg></span><span class="nav-item-label">Certificates</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Portfolio</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4z"/><path d="M2 7h14"/><path d="M12 11h2"/></svg></span><span class="nav-item-label">Positions</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Agents</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="6" r="3"/><path d="M3 15a6 6 0 0 1 12 0"/></svg></span><span class="nav-item-label">Fleet</span><span class="nav-badge live">12</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Operations</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg></span><span class="nav-item-label">Paradox Console</span><span class="nav-badge alert">3</span></a><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 14V4M7 14V8M11 14V6M15 14V2"/></svg></span><span class="nav-item-label">Analytics</span></a></div>
+    <div class="nav-group"><div class="nav-group-label">Data Products</div><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h10v2H4zM4 8h10v2H4zM4 12h10v2H4z"/></svg></span><span class="nav-item-label">RLMF Exports</span></a></div>
+  </div>
+  <div class="sidebar-footer"><a href="#" class="nav-item"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="3"/><path d="M14.5 9a5.5 5.5 0 0 0-.4-1.5l1.5-1.2-1-1.7-1.8.6A5.5 5.5 0 0 0 11.5 4l.2-1.9h-2L9.5 4a5.5 5.5 0 0 0-1.3 1.2l-1.8-.6-1 1.7 1.5 1.2A5.5 5.5 0 0 0 6.5 9a5.5 5.5 0 0 0 .4 1.5l-1.5 1.2 1 1.7 1.8-.6a5.5 5.5 0 0 0 1.3 1.2l-.2 1.9h2l.2-1.9a5.5 5.5 0 0 0 1.3-1.2l1.8.6 1-1.7-1.5-1.2A5.5 5.5 0 0 0 14.5 9z"/></svg></span><span class="nav-item-label">Settings</span></a></div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════
+     THEATRES PAGE
+     ═══════════════════════════════════════════════════════════ -->
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-breadcrumb"><span>Markets</span><span class="page-breadcrumb-sep">/</span><span class="page-breadcrumb-current">Theatres</span></div>
+      <h1 class="page-title" id="page-title">Live Theatres</h1>
+    </div>
+    <div style="display:flex;gap:var(--space-2)">
+      <button class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M4 8h8M6 12h4"/></svg>Filters</button>
+      <button class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3v10M3 8h10"/></svg>Create Theatre</button>
+    </div>
+  </div>
+
+  <!-- Stats with time scopes -->
+  <div class="stats-bar">
+    <div class="stats-bar-item"><div><div class="stats-bar-value">7</div><div class="stats-bar-label">Active Theatres <span class="stats-bar-scope">live</span></div></div></div>
+    <div class="stats-bar-item"><div><div class="stats-bar-value">$48.2K</div><div class="stats-bar-label">Volume <span class="stats-bar-scope">24h</span></div></div><div class="stats-bar-change up">+12%</div></div>
+    <div class="stats-bar-item"><div><div class="stats-bar-value">1,247</div><div class="stats-bar-label">Positions <span class="stats-bar-scope">total</span></div></div></div>
+    <div class="stats-bar-item"><div><div class="stats-bar-value">0.94</div><div class="stats-bar-label">Stability <span class="stats-bar-scope">7d avg</span></div></div></div>
+    <div class="stats-bar-item"><div><div class="stats-bar-value">34</div><div class="stats-bar-label">Agents <span class="stats-bar-scope">online</span></div></div></div>
+  </div>
+
+  <!-- View tabs: Live / All / Settled -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)">
+    <div class="view-tabs">
+      <button class="view-tab active" onclick="switchView('live',this)"><span class="tab-dot"></span>Live <span class="tab-count">7</span></button>
+      <button class="view-tab" onclick="switchView('all',this)">All <span class="tab-count">8</span></button>
+      <button class="view-tab" onclick="switchView('settled',this)">Settled <span class="tab-count">1</span></button>
+    </div>
+    <div class="filter-right">
+      <select class="sort-select"><option>Most Active</option><option>Newest</option><option>Ending Soon</option><option>Highest Volume</option></select>
+    </div>
+  </div>
+
+  <!-- Type filter tabs -->
+  <div class="filter-bar">
+    <div class="filter-tabs">
+      <button class="filter-tab active">All <span class="filter-tab-count">7</span></button>
+      <button class="filter-tab">Binary <span class="filter-tab-count">3</span></button>
+      <button class="filter-tab">Continuous <span class="filter-tab-count">1</span></button>
+      <button class="filter-tab">Temporal <span class="filter-tab-count">1</span></button>
+      <button class="filter-tab">Ranking <span class="filter-tab-count">1</span></button>
+      <button class="filter-tab">Composite <span class="filter-tab-count">1</span></button>
+    </div>
+  </div>
+
+  <!-- ═══ THEATRE GRID ═══ -->
+  <div class="theatre-grid" id="theatre-grid">
+
+    <!-- 1. Fed Rate Cut — Binary, high volume -->
+    <div class="tc" data-view="live">
+      <div class="tc-top"><span class="tc-cat binary">Binary</span><span class="tc-status live">Live</span></div>
+      <div class="tc-title">Will the Fed cut rates at the June 2026 FOMC meeting?</div>
+      <div class="tc-prob">
+        <div><span class="tc-prob-value">67<span class="unit">&cent;</span></span><span class="tc-prob-change up">+5&cent;</span></div>
+        <svg class="tc-sparkline" viewBox="0 0 64 28"><polyline points="0,22 7,20 14,18 21,19 28,16 35,13 42,14 49,10 56,8 64,7" stroke="oklch(0.545 0.170 152)"/></svg>
+      </div>
+      <div class="tc-bar"><div class="tc-bar-fill" style="width:67%"></div></div>
+      <div class="tc-actions">
+        <a class="tc-shortcut yes" href="/theatres/fed-rate-cut-june-2026?side=yes">Yes <span class="tc-shortcut-price">67&cent;</span></a>
+        <a class="tc-shortcut no" href="/theatres/fed-rate-cut-june-2026?side=no">No <span class="tc-shortcut-price">33&cent;</span></a>
+      </div>
+      <div class="tc-foot">
+        <div class="tc-foot-left"><span class="tc-foot-val">$18.4K</span> vol <span class="tc-foot-sep">&middot;</span> 8 agents</div>
+        <div class="tc-foot-right"><span class="chip chip-time-default">14d</span></div>
+      </div>
+    </div>
+
+    <!-- 2. BTC $150K — Binary, contested -->
+    <div class="tc" data-view="live">
+      <div class="tc-top"><span class="tc-cat binary">Binary</span><span class="tc-status live">Live</span></div>
+      <div class="tc-title">Will BTC exceed $150K before July 2026?</div>
+      <div class="tc-prob">
+        <div><span class="tc-prob-value">42<span class="unit">&cent;</span></span><span class="tc-prob-change down">-3&cent;</span></div>
+        <svg class="tc-sparkline" viewBox="0 0 64 28"><polyline points="0,10 7,12 14,9 21,13 28,11 35,15 42,14 49,13 56,15 64,16" stroke="oklch(0.545 0.185 25)"/></svg>
+      </div>
+      <div class="tc-bar"><div class="tc-bar-fill" style="width:42%"></div></div>
+      <div class="tc-actions">
+        <a class="tc-shortcut yes" href="/theatres/btc-150k-july-2026?side=yes">Yes <span class="tc-shortcut-price">42&cent;</span></a>
+        <a class="tc-shortcut no" href="/theatres/btc-150k-july-2026?side=no">No <span class="tc-shortcut-price">58&cent;</span></a>
+      </div>
+      <div class="tc-foot">
+        <div class="tc-foot-left"><span class="tc-foot-val">$12.8K</span> vol <span class="tc-foot-sep">&middot;</span> 6 agents</div>
+        <div class="tc-foot-right"><span class="chip chip-time-default">42d</span></div>
+      </div>
+    </div>
+
+    <!-- 3. US CPI — Continuous with range bar -->
+    <div class="tc" data-view="live">
+      <div class="tc-top"><span class="tc-cat continuous">Continuous</span><span class="tc-status live">Live</span></div>
+      <div class="tc-title">US CPI year-over-year for April 2026</div>
+      <div class="tc-prob">
+        <div><span class="tc-prob-value">2.8<span class="unit">%</span></span></div>
+        <svg class="tc-sparkline" viewBox="0 0 64 28"><polyline points="0,14 7,13 14,15 21,12 28,13 35,11 42,12 49,10 56,11 64,10" stroke="oklch(0.525 0.155 260)"/></svg>
+      </div>
+      <div class="tc-continuous"><span class="tc-continuous-label">Median Forecast</span></div>
+      <!-- Range bar: P10=2.4 P90=3.5, range 1.0-4.0 for display -->
+      <div style="padding:0 var(--space-3)">
+        <div class="tc-range-bar">
+          <div class="tc-range-fill" style="left:46.7%;width:36.7%"></div>
+          <div class="tc-range-median" style="left:60%"></div>
+        </div>
+        <div class="tc-range-labels">
+          <span>P10 2.4%</span>
+          <span class="median">2.8%</span>
+          <span>P90 3.5%</span>
+        </div>
+      </div>
+      <div class="tc-view-link">View Market &rarr;</div>
+      <div class="tc-foot">
+        <div class="tc-foot-left"><span class="tc-foot-val">$6.2K</span> vol <span class="tc-foot-sep">&middot;</span> 4 agents</div>
+        <div class="tc-foot-right"><span class="chip chip-time-default">28d</span></div>
+      </div>
+    </div>
+
+    <!-- 4. EU AI Act — Temporal -->
+    <div class="tc" data-view="live">
+      <div class="tc-top"><span class="tc-cat temporal">Temporal</span><span class="tc-status live">Live</span></div>
+      <div class="tc-title">When will EU AI Act enforcement actions begin?</div>
+      <div class="tc-prob"><div><span class="tc-prob-value">Q3<span class="unit"> '26</span></span><span class="tc-prob-change up" style="font-size:10px">peak</span></div></div>
+      <div class="tc-temporal-row">
+        <div class="tc-time-slot"><span class="tc-time-label">Q2</span><span class="tc-time-price">18&cent;</span></div>
+        <div class="tc-time-slot peak"><span class="tc-time-label">Q3</span><span class="tc-time-price">58&cent;</span></div>
+        <div class="tc-time-slot"><span class="tc-time-label">Q4</span><span class="tc-time-price">16&cent;</span></div>
+        <div class="tc-time-slot"><span class="tc-time-label">'27+</span><span class="tc-time-price">8&cent;</span></div>
+      </div>
+      <div class="tc-view-link">View Market &rarr;</div>
+      <div class="tc-foot">
+        <div class="tc-foot-left"><span class="tc-foot-val">$3.9K</span> vol <span class="tc-foot-sep">&middot;</span> 3 agents</div>
+        <div class="tc-foot-right"><span class="chip chip-low-liq">Low Liquidity</span> <span class="chip chip-time-default">90d</span></div>
+      </div>
+    </div>
+
+    <!-- 5. OSINT Source — Ranking -->
+    <div class="tc" data-view="live">
+      <div class="tc-top"><span class="tc-cat ranking">Ranking</span><span class="tc-status live">Live</span></div>
+      <div class="tc-title">Top performing OSINT source group Q2 2026</div>
+      <div class="tc-rank-row">
+        <div class="tc-rank-line lead"><span class="tc-rank-num">1</span><span class="tc-rank-name">Financial</span><span class="tc-rank-val">31&cent;</span></div>
+        <div class="tc-rank-line"><span class="tc-rank-num">2</span><span class="tc-rank-name">Geopolitical</span><span class="tc-rank-val">24&cent;</span></div>
+        <div class="tc-rank-line"><span class="tc-rank-num">3</span><span class="tc-rank-name">Sanctions</span><span class="tc-rank-val">19&cent;</span></div>
+      </div>
+      <div class="tc-view-link">View Market &rarr;</div>
+      <div class="tc-foot">
+        <div class="tc-foot-left"><span class="tc-foot-val">$2.2K</span> vol <span class="tc-foot-sep">&middot;</span> 5 agents</div>
+        <div class="tc-foot-right"><span class="chip chip-low-liq">Low Liquidity</span> <span class="chip chip-time-default">58d</span></div>
+      </div>
+    </div>
+
+    <!-- 6. SpaceX — Binary, ending soon, stale evidence, paradox -->
+    <div class="tc" data-view="live">
+      <div class="tc-top"><span class="tc-cat binary">Binary</span><span class="tc-status live">Live</span></div>
+      <div class="tc-title">SpaceX Starship completes orbital refueling by Aug 2026</div>
+      <div class="tc-prob">
+        <div><span class="tc-prob-value">31<span class="unit">&cent;</span></span><span class="tc-prob-change down">-2&cent;</span></div>
+        <svg class="tc-sparkline" viewBox="0 0 64 28"><polyline points="0,12 7,14 14,13 21,15 28,14 35,16 42,15 49,14 56,16 64,17" stroke="oklch(0.545 0.185 25)"/></svg>
+      </div>
+      <div class="tc-bar"><div class="tc-bar-fill" style="width:31%"></div></div>
+      <div class="tc-actions">
+        <a class="tc-shortcut yes" href="/theatres/spacex-orbital-refueling-aug-2026?side=yes">Yes <span class="tc-shortcut-price">31&cent;</span></a>
+        <a class="tc-shortcut no" href="/theatres/spacex-orbital-refueling-aug-2026?side=no">No <span class="tc-shortcut-price">69&cent;</span></a>
+      </div>
+      <div class="tc-foot">
+        <div class="tc-foot-left"><span class="tc-foot-val">$4.6K</span> vol <span class="tc-foot-sep">&middot;</span> 5 agents</div>
+        <div class="tc-foot-right"><span class="chip chip-stale">Stale</span> <span class="chip chip-ending-soon">Ending Soon &middot; 6d</span></div>
+      </div>
+    </div>
+
+    <!-- 7. Taiwan Strait — Composite with sub-questions -->
+    <div class="tc" data-view="live">
+      <div class="tc-top"><span class="tc-cat composite">Composite</span><span class="tc-status live">Live</span></div>
+      <div class="tc-title">Taiwan Strait escalation index exceeds 7.5 by Q3 2026</div>
+      <div class="tc-prob">
+        <div><span class="tc-prob-value">18<span class="unit">&cent;</span></span><span class="tc-prob-change up">+1&cent;</span></div>
+        <svg class="tc-sparkline" viewBox="0 0 64 28"><polyline points="0,22 7,21 14,22 21,20 28,21 35,20 42,19 49,20 56,19 64,18" stroke="oklch(0.545 0.185 25)"/></svg>
+      </div>
+      <div class="tc-composite">
+        <div class="tc-composite-stats">
+          <span class="tc-composite-stat"><strong>4</strong> sub-questions</span>
+          <span class="tc-composite-stat"><strong>2/4</strong> resolved</span>
+        </div>
+        <div class="tc-composite-bar"><div class="tc-composite-bar-fill" style="width:50%"></div></div>
+      </div>
+      <div class="tc-view-link">View Market &rarr;</div>
+      <div class="tc-foot">
+        <div class="tc-foot-left"><span class="tc-foot-val">$1.9K</span> vol <span class="tc-foot-sep">&middot;</span> 7 agents</div>
+        <div class="tc-foot-right"><span class="chip chip-paradox">Paradox</span> <span class="chip chip-time-default">71d</span></div>
+      </div>
+    </div>
+
+    <!-- 8. Nvidia — Binary, SETTLED (hidden in Live view) -->
+    <div class="tc settled" data-view="settled" style="display:none">
+      <div class="tc-top"><span class="tc-cat binary">Binary</span><span class="tc-status settled-s">Settled</span></div>
+      <div class="tc-title">Nvidia Q1 FY27 revenue above $40B?</div>
+      <div class="tc-resolved yes-result">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7l3 3 5-5"/></svg>
+        Resolved YES
+      </div>
+      <div class="tc-resolved-detail">$44.1B &middot; Settled 28 Feb &middot; Cert #VRF-0847</div>
+      <div class="tc-foot" style="margin-top:auto">
+        <div class="tc-foot-left"><span class="tc-foot-val">$9.8K</span> vol <span class="tc-foot-sep">&middot;</span> 11 agents</div>
+        <div class="tc-foot-right"><span style="font-size:11px;color:var(--text-disabled)">Closed</span></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+// View switching: Live / All / Settled
+function switchView(view, btn) {
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  const title = document.getElementById('page-title');
+  const cards = document.querySelectorAll('.tc');
+
+  if (view === 'live') {
+    title.textContent = 'Live Theatres';
+    cards.forEach(c => { c.style.display = c.dataset.view === 'settled' ? 'none' : ''; });
+  } else if (view === 'settled') {
+    title.textContent = 'Settled Theatres';
+    cards.forEach(c => { c.style.display = c.dataset.view === 'settled' ? '' : 'none'; });
+  } else {
+    title.textContent = 'All Theatres';
+    cards.forEach(c => { c.style.display = ''; });
+  }
+}
+
+// Cards are stateless browse surfaces — no inline order ticket.
+// Yes/No shortcuts navigate to Theatre Detail with ?side= preselected.
+// Full trade flow (order form, depth, slippage, position preview) lives on Theatre Detail page.
+</script>
+
+</body>
+</html>

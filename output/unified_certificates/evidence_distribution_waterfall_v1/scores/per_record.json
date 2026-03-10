@@ -1,0 +1,152 @@
+[
+  {
+    "record_id": "waterfall_0001",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0002",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0003",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0004",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0005",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0006",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0007",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0008",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0009",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0010",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0011",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 0.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0012",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 0.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 0.0
+    }
+  },
+  {
+    "record_id": "waterfall_0013",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 0.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0014",
+    "scores": {
+      "cap_table_consistency": 0.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  },
+  {
+    "record_id": "waterfall_0015",
+    "scores": {
+      "cap_table_consistency": 1.0,
+      "ledger_reconciliation": 1.0,
+      "noi_pool_conservation": 1.0,
+      "rounding_policy_compliance": 1.0,
+      "waterfall_arithmetic": 1.0
+    }
+  }
+]

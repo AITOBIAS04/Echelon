@@ -210,6 +210,9 @@ class TheatreResponse(BaseModel):
     certificate_id: Optional[str]
     stop_condition: Optional[str] = None
     stop_config: Optional[dict] = None
+    paradox_risk_level: Optional[str] = None
+    paradox_risk_factors_json: Optional[dict] = None
+    investigation_context: Optional["TheatreInvestigationContextResponse"] = None
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
@@ -219,6 +222,34 @@ class TheatreResponse(BaseModel):
         if self.inquiry_class is None:
             self.inquiry_class = "COUNTERFACTUAL"
         return self
+
+
+class TheatreInvestigationContextCertificateSummary(BaseModel):
+    certificate_id: str
+    routing_hint: Optional[str] = None
+    composite_score: Optional[float] = None
+    verification_tier: Optional[str] = None
+    coherence_gate_status: Optional[str] = None
+    issued_at: Optional[datetime] = None
+
+
+class TheatreInvestigationContextDeploymentSummary(BaseModel):
+    active_count: int
+    archetype_breakdown: dict[str, int]
+
+
+class TheatreInvestigationContextConvergenceSummary(BaseModel):
+    cell_count: int
+    nearby_signal_count: int
+    source_families: list[str]
+
+
+class TheatreInvestigationContextResponse(BaseModel):
+    certificate_summary: Optional[TheatreInvestigationContextCertificateSummary] = None
+    deployment_summary: TheatreInvestigationContextDeploymentSummary
+    paradox_risk_level: Optional[str] = None
+    paradox_risk_factors_json: Optional[dict] = None
+    convergence_summary: TheatreInvestigationContextConvergenceSummary
 
 
 class TheatreListResponse(BaseModel):

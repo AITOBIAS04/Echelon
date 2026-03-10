@@ -1,0 +1,35 @@
+{
+  "accrual_schedule": {
+    "billing_cycles_in_scope": 6,
+    "billing_frequency": "monthly",
+    "first_due_date": "2026-01-01",
+    "rent_amount": 1500.0,
+    "total_rent_due": 9000.0
+  },
+  "arrears_policy": {
+    "arrears_threshold": 1500.0,
+    "grace_period_days": 5
+  },
+  "current_date": "2026-06-15",
+  "eviction": {
+    "court_hearing_date": "2026-05-20",
+    "legal_costs": 2500.0,
+    "legal_notice_served_at": "2026-04-01T00:00:00Z",
+    "possession_executed_at": "2026-06-15T10:00:00Z",
+    "possession_order_granted": true
+  },
+  "lease_state": {
+    "accrued_ladder_balance": 4500.0,
+    "currency": "GBP",
+    "deposit_amount": 2500.0,
+    "ladder_contribution": 150.0,
+    "ladder_plan_active": true,
+    "lease_id": "lease_010",
+    "payment_due_date": "2026-01-01",
+    "rent_amount": 1500.0,
+    "tenant_id": "tenant_010"
+  },
+  "payment_events": [],
+  "prior_outstanding": 7500.0,
+  "prior_state": "EVICTION_PROCESS"
+}

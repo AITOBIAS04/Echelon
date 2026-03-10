@@ -1,0 +1,22 @@
+{
+  "criteria_verdicts": {
+    "bank_ref_match": false,
+    "bucket_destination_valid": true,
+    "bucket_sum_matches_gross": true,
+    "event_log_complete": true,
+    "exceptions_correct": true
+  },
+  "reconciliation_result": {
+    "exceptions": [
+      {
+        "actual": "BANKREF-pay_DIFFERENT",
+        "expected": "BANKREF-pay_0011",
+        "type": "bank_ref_not_found"
+      }
+    ],
+    "ledger_events_expected": 2,
+    "ledger_events_observed": 2,
+    "match_reason": "reference_mismatch",
+    "matched": false
+  }
+}

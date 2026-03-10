@@ -1,0 +1,65 @@
+{
+  "all_criteria_passed": true,
+  "certificate_id": "d0cad43b-fe5a-4c1d-b1c0-e05352c666dd",
+  "certificate_version": "1.0.0",
+  "commitment_hash": "fc5dc9ef7e368ce6efd71a985907aaf59d5785f308cf3a2ceb816b398763ed9e",
+  "composite_score": 0.8590909090909091,
+  "corroboration_met": false,
+  "counter_signals_checked": 0,
+  "counter_signals_found": 0,
+  "criterion_scores": [
+    {
+      "criterion_id": "required_evidence_present",
+      "detail": "required_evidence_present: 0.9091 across 11 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9090909090909091
+    },
+    {
+      "criterion_id": "signature_policy_satisfied",
+      "detail": "signature_policy_satisfied: 0.9091 across 11 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.9090909090909091
+    },
+    {
+      "criterion_id": "validity_window_respected",
+      "detail": "validity_window_respected: 1.0000 across 11 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 1.0
+    },
+    {
+      "criterion_id": "release_amount_correct",
+      "detail": "release_amount_correct: 0.5455 across 11 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 0.5454545454545454
+    },
+    {
+      "criterion_id": "idempotency",
+      "detail": "idempotency: 1.0000 across 11 records",
+      "evidence_bundle_ids": [],
+      "passed": true,
+      "score": 1.0
+    }
+  ],
+  "distinct_upstream_count": 0,
+  "evidence_bundle_hash": "f5cae598778848f389df3b3ab8271740920a13174edcea3103a89e64702278a4",
+  "execution_path": "replay",
+  "inquiry_class": "INSPECTION",
+  "issued_at": "2026-03-01T20:33:48.823564Z",
+  "oracle_id": "replay_escrow_milestone_release_v1",
+  "pipeline_version": "0.7.0",
+  "sources_failed": 0,
+  "sources_queried": 11,
+  "sources_succeeded": 11,
+  "target_entity": {
+    "construct_id": "two_rail_marketplace_core",
+    "dataset_id": "escrow_v0_2_11",
+    "record_count": 11,
+    "template_id": "escrow_milestone_release_v1"
+  },
+  "theatre_id": "escrow_milestone_release_v1",
+  "verification_tier": "UNVERIFIED"
+}

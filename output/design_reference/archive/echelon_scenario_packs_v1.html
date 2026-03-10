@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Scenario Packs</title>
+<!--
+  ===================================================================
+  PAGE: SCENARIO PACKS (Alpamayo Studio)
+  ===================================================================
+  v1 — Branching scenario environments for RLMF and agent learning.
+
+  NOTE: This file is a combined studio reference covering multiple
+  surfaces. For page-level review and lock-in, split into:
+    - echelon_scenario_packs_catalog_v2.html  (catalog grid)
+    - echelon_scenario_pack_detail_v2.html    (detail + launch rail)
+    - echelon_scenario_run_detail_v1.html     (replay + branch probs)
+
+  INCLUDES:
+  - Catalog view (grid of scenario pack cards)
+  - Detail view (open pack with branch map, telemetry, launch panel)
+  - Branch Probabilities (Cycle 020): Horizontal bar charts per
+    checkpoint showing transition probabilities between branches.
+  - Fork Replay (Cycle 021): Interactive replay of fork decisions
+    at checkpoints with settlement status and disclosure event
+    timelines.
+
+  PRODUCT DISTINCTION:
+  - Theatre Templates = live market contracts (Create Theatre flow)
+  - Scenario Packs = branching RL / telemetry environments (THIS PAGE)
+  - Alpamayo = recommendation / scenario-construction intelligence
+  - RLMF Exports = downstream data products
+
+  THIS PAGE ANSWERS:
+  "What branching environments can I run or inspect for RLMF
+   and agent learning?"
+
+  NOT:
+  "How do I create a normal live market?"
+
+  BACKEND TRUTH:
+  - GET  /api/v1/scenario-pack-templates           — list templates
+  - GET  /api/v1/scenario-pack-templates/:id       — template detail
+  - POST /api/v1/scenario-packs                    — create pack
+  - POST /api/v1/scenario-packs/:id/commit         — commit pack
+  - POST /api/v1/scenario-packs/:id/run            — launch run
+  - template_status: RUNNABLE | CATALOG_ONLY
+  - run_mode: TRAINING | EVALUATION | CALIBRATION | REPLAY
+    (from scenario_seed_manager.py)
+  - Derived theatres are runtime outputs — spawned when
+    checkpoints with can_spawn_theatre=true resolve during a run.
+    They are NOT created manually via Create Theatre.
+
+  VOCABULARY:
+  - Scenario Pack, Checkpoint, Branch, Outcome Path, Replay
+  - Telemetry, Derived Theatre, Run Mode, Fork, Settlement
+  NEVER: Theatre Template, Inquiry Class, Resolution Pattern
+
+  VIEWS:
+  - Catalog (grid of scenario pack cards)
+  - Detail (open pack with branch map, branch probabilities,
+    telemetry, fork replay, derived theatres, launch panel)
+  ===================================================================
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ===================================================================
+   TASTE TOKENS v1.0
+   =================================================================== */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --shadow-lg:0 8px 24px oklch(0.20 0.01 265/0.12),0 2px 8px oklch(0.20 0.01 265/0.05);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --sidebar-width:240px;--header-height:56px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+  --duration-instant:100ms;--duration-fast:150ms;--duration-normal:200ms;--duration-slow:300ms;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --z-sidebar:20;--z-header:30;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-primary);border-radius:var(--radius-full)}
+
+/* === HEADER (locked) === */
+.header{position:fixed;top:0;left:0;right:0;height:var(--header-height);background:var(--bg-card);border-bottom:1px solid var(--border-primary);display:flex;align-items:center;padding:0 var(--space-6);z-index:var(--z-header);box-shadow:var(--shadow-xs)}
+.header-left{display:flex;align-items:center;gap:var(--space-4);min-width:calc(var(--sidebar-width) - var(--space-6))}
+.header-logo{display:flex;align-items:center;gap:var(--space-2);text-decoration:none;color:var(--text-primary)}
+.header-logo-mark{width:28px;height:28px;background:var(--purple-500);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text-inverse);font-family:var(--font-mono);font-weight:600;font-size:14px}
+.header-logo-text{font-weight:700;font-size:17px;letter-spacing:-0.02em}
+.header-logo-version{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);background:var(--bg-sunken);padding:1px 6px;border-radius:var(--radius-sm);border:1px solid var(--border-secondary)}
+.sidebar-toggle{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer}
+.header-center{flex:1;display:flex;align-items:center;justify-content:center;padding:0 var(--space-8)}
+.header-search{width:100%;max-width:480px;position:relative}
+.header-search input{width:100%;height:36px;padding:0 var(--space-3) 0 36px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);outline:none}
+.header-search input::placeholder{color:var(--text-muted)}
+.header-search input:focus{border-color:var(--purple-500);box-shadow:0 0 0 2px oklch(0.530 0.230 295/0.12);background:var(--bg-card)}
+.header-search-icon{position:absolute;left:var(--space-3);top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none}
+.header-search-kbd{position:absolute;right:var(--space-2);top:50%;transform:translateY(-50%);font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);background:var(--bg-card);border:1px solid var(--border-secondary);padding:1px 5px;border-radius:4px;line-height:16px}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+.network-pill{display:flex;align-items:center;gap:6px;height:28px;padding:0 var(--space-2) 0 6px;background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-full);font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-secondary)}
+.network-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--status-success);box-shadow:0 0 0 2px oklch(0.545 0.170 152/0.20)}
+.header-icon-btn{position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-secondary);background:var(--bg-card);border-radius:var(--radius-md);color:var(--text-secondary);cursor:pointer}
+.header-icon-btn:hover{border-color:var(--border-primary);color:var(--text-primary);background:var(--bg-hover)}
+.header-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:var(--status-danger);color:var(--text-inverse);font-family:var(--font-mono);font-size:10px;font-weight:600;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg-card)}
+.wallet-btn{display:flex;align-items:center;gap:var(--space-2);height:36px;padding:0 var(--space-3);background:var(--bg-card);color:var(--text-primary);border:1px solid var(--border-primary);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer}
+.wallet-btn:hover{border-color:var(--purple-200);background:var(--bg-hover)}
+.wallet-balance{display:flex;align-items:center;gap:var(--space-3)}
+.wallet-balance-item{display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.wallet-balance-label{font-family:var(--font-sans);font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.04em}
+.wallet-divider{width:1px;height:20px;background:var(--border-primary)}
+.wallet-avatar{width:28px;height:28px;border-radius:var(--radius-full);background:linear-gradient(135deg,var(--purple-300),var(--green-400));flex-shrink:0}
+
+/* === SIDEBAR (locked) === */
+.sidebar{position:fixed;top:var(--header-height);left:0;bottom:0;width:var(--sidebar-width);background:var(--bg-card);border-right:1px solid var(--border-primary);z-index:var(--z-sidebar);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+.sidebar-content{flex:1;padding:var(--space-3) 0}
+.nav-group{margin-bottom:var(--space-1)}.nav-group-label{padding:var(--space-3) var(--space-5) var(--space-1);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);white-space:nowrap}
+.nav-item{display:flex;align-items:center;gap:var(--space-3);height:36px;padding:0 var(--space-5);margin:1px var(--space-2);border-radius:var(--radius-sm);color:var(--text-secondary);text-decoration:none;font-size:13px;font-weight:500;cursor:pointer;position:relative;border:none;background:none;width:calc(100% - var(--space-4));text-align:left;white-space:nowrap}
+.nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
+.nav-item.active{background:var(--purple-50);color:var(--purple-700);font-weight:600}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;border-radius:0 2px 2px 0;background:var(--purple-500)}
+.nav-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-item-icon,.nav-item:hover .nav-item-icon{opacity:1}
+.nav-item-label{flex:1;overflow:hidden;text-overflow:ellipsis}
+.nav-badge{font-family:var(--font-mono);font-size:11px;font-weight:600;min-width:20px;height:20px;padding:0 6px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center}
+.nav-badge.count{background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.nav-badge.live{background:oklch(0.545 0.170 152/0.10);color:var(--status-success);border:1px solid oklch(0.545 0.170 152/0.20)}
+.sidebar-footer{border-top:1px solid var(--border-secondary);padding:var(--space-3) var(--space-2)}.sidebar-footer .nav-item{color:var(--text-muted)}
+
+/* ===================================================================
+   MAIN + PAGE CHROME
+   =================================================================== */
+.main{margin-left:var(--sidebar-width);margin-top:var(--header-height);min-height:calc(100vh - var(--header-height));padding:var(--space-6)}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-5)}
+.page-header-left{display:flex;flex-direction:column;gap:2px}
+.page-breadcrumb{display:flex;align-items:center;gap:var(--space-2);font-size:13px;color:var(--text-muted);margin-bottom:2px}
+.page-breadcrumb-sep{color:var(--border-primary)}
+.page-breadcrumb-current{color:var(--text-primary);font-weight:600}
+.page-title{font-size:24px;line-height:32px;font-weight:700}
+.page-subtitle{font-size:13px;color:var(--text-secondary);margin-top:2px}
+.page-header-actions{display:flex;align-items:center;gap:var(--space-3)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:all var(--duration-fast) ease}
+.btn:active{transform:scale(0.97)}
+.btn-primary{background:var(--purple-500);color:var(--text-inverse)}.btn-primary:hover{background:var(--purple-400)}
+.btn-secondary{background:var(--bg-card);color:var(--text-secondary);border-color:var(--border-primary)}.btn-secondary:hover{background:var(--bg-hover);color:var(--text-primary)}
+.btn-sm{height:30px;padding:0 var(--space-3);font-size:12px}
+
+/* === Stats bar === */
+.stats-bar{display:flex;gap:var(--space-4);margin-bottom:var(--space-5);padding:var(--space-3) var(--space-5);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);flex-wrap:wrap}
+.stats-bar-item{display:flex;align-items:center;gap:var(--space-2);padding-right:var(--space-4);border-right:1px solid var(--border-secondary)}
+.stats-bar-item:last-child{border-right:none;padding-right:0}
+.stats-bar-value{font-family:var(--font-mono);font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+.stats-bar-label{font-size:11px;font-weight:500;color:var(--text-muted);line-height:14px}
+.stats-bar-scope{font-family:var(--font-mono);font-size:9px;font-weight:500;color:var(--text-disabled);background:var(--bg-sunken);padding:0 4px;border-radius:2px;border:1px solid var(--border-secondary);margin-left:2px}
+
+/* === Filter bar === */
+.filter-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4);gap:var(--space-3)}
+.filter-tabs{display:flex;gap:2px;background:var(--bg-sunken);border-radius:var(--radius-md);padding:3px;border:1px solid var(--border-secondary)}
+.filter-tab{display:flex;align-items:center;gap:5px;padding:5px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;border:none;background:none;white-space:nowrap}
+.filter-tab:hover{color:var(--text-primary)}
+.filter-tab.active{background:var(--bg-card);color:var(--text-primary);font-weight:600;box-shadow:var(--shadow-xs)}
+.filter-tab-count{font-family:var(--font-mono);font-size:10px;font-weight:600;color:var(--text-muted)}
+.filter-tab.active .filter-tab-count{color:var(--purple-600)}
+.filter-right{display:flex;align-items:center;gap:var(--space-2)}
+.sort-select{height:30px;padding:0 26px 0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:12px;font-weight:500;color:var(--text-secondary);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 3.75l2.5 2.5 2.5-2.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+
+/* ===================================================================
+   SCENARIO PACK GRID
+   =================================================================== */
+.pack-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4)}
+
+.pack-card{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);display:flex;flex-direction:column;cursor:pointer;transition:all var(--duration-normal) var(--ease-out);overflow:hidden}
+.pack-card:hover{border-color:var(--purple-200);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+
+.pack-card-header{padding:var(--space-4) var(--space-4) 0;display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3)}
+.pack-card-badges{display:flex;gap:var(--space-2);flex-wrap:wrap}
+.pack-badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;padding:2px 8px;border-radius:4px}
+.pack-badge.domain{background:var(--purple-50);color:var(--purple-600)}
+.pack-badge.type{background:oklch(0.965 0.020 260);color:var(--status-info)}
+.pack-badge.complexity-low{background:var(--green-50);color:var(--green-600)}
+.pack-badge.complexity-mid{background:var(--orange-50);color:var(--orange-600)}
+.pack-badge.complexity-high{background:var(--red-50);color:var(--red-500)}
+.pack-status{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;flex-shrink:0}
+.pack-status.RUNNABLE{color:var(--green-600)}.pack-status.RUNNABLE::before{content:'';width:5px;height:5px;border-radius:var(--radius-full);background:var(--status-success)}
+.pack-status.CATALOG_ONLY{color:var(--text-muted)}.pack-status.CATALOG_ONLY::before{content:'';width:5px;height:5px;border-radius:var(--radius-full);background:var(--text-disabled)}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.pack-card-body{padding:var(--space-3) var(--space-4) 0;flex:1}
+.pack-card-name{font-size:15px;font-weight:600;line-height:22px;margin-bottom:var(--space-1)}
+.pack-card-premise{font-size:13px;color:var(--text-secondary);line-height:20px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* Mini branch preview */
+.pack-branch-preview{padding:var(--space-3) var(--space-4);margin-top:var(--space-3)}
+.pack-branch-bar{display:flex;align-items:center;gap:var(--space-2);height:28px}
+.pack-branch-node{width:8px;height:8px;border-radius:var(--radius-full);flex-shrink:0}
+.pack-branch-node.start{background:var(--purple-500)}
+.pack-branch-node.checkpoint{background:var(--orange-500);border:2px solid var(--orange-200)}
+.pack-branch-node.end-success{background:var(--green-500)}
+.pack-branch-node.end-fail{background:var(--red-500)}
+.pack-branch-node.end-partial{background:var(--orange-500)}
+.pack-branch-line{flex:1;height:2px;background:var(--border-primary);position:relative}
+.pack-branch-line.active{background:var(--purple-200)}
+.pack-branch-fork{display:flex;flex-direction:column;gap:2px;margin:0 -4px}
+.pack-branch-fork-line{width:12px;height:2px;border-radius:1px}
+.pack-branch-fork-line:nth-child(1){background:var(--green-400);transform:rotate(-15deg)}
+.pack-branch-fork-line:nth-child(2){background:var(--red-400);transform:rotate(15deg)}
+
+/* Pack metrics strip */
+.pack-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border-secondary);border-top:1px solid var(--border-secondary);margin-top:auto}
+.pack-metric{background:var(--bg-card);padding:var(--space-2) var(--space-3);text-align:center}
+.pack-metric-value{font-family:var(--font-mono);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;display:block}
+.pack-metric-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted)}
+
+/* Pack card actions */
+.pack-card-actions{display:flex;gap:1px;background:var(--border-secondary);border-top:1px solid var(--border-secondary)}
+.pack-action{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:var(--space-2) 0;font-size:12px;font-weight:600;color:var(--text-secondary);background:var(--bg-card);border:none;cursor:pointer;transition:all var(--duration-instant) ease}
+.pack-action:hover{color:var(--purple-600);background:var(--purple-50)}
+.pack-action:first-child{border-radius:0 0 0 var(--radius-md)}.pack-action:last-child{border-radius:0 0 var(--radius-md) 0}
+
+/* Output tag chips */
+.pack-outputs{display:flex;flex-wrap:wrap;gap:4px;padding:0 var(--space-4);margin-top:var(--space-3)}
+.output-chip{font-size:10px;font-weight:500;padding:2px 6px;border-radius:4px;background:var(--bg-sunken);border:1px solid var(--border-secondary);color:var(--text-secondary)}
+.output-chip.telemetry{background:oklch(0.525 0.155 260/0.06);color:oklch(0.420 0.140 260);border-color:oklch(0.525 0.155 260/0.15)}
+.output-chip.replay{background:var(--purple-50);color:var(--purple-600);border-color:var(--purple-200)}
+.output-chip.labels{background:var(--green-50);color:var(--green-600);border-color:var(--green-200)}
+.output-chip.theatre{background:var(--orange-50);color:var(--orange-600);border-color:var(--orange-200)}
+
+/* ===================================================================
+   PACK DETAIL VIEW
+   =================================================================== */
+.detail-view{display:none}
+.detail-view.visible{display:block}
+.catalog-view.hidden{display:none}
+
+.detail-back{display:inline-flex;align-items:center;gap:var(--space-2);font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;padding:var(--space-2) 0;margin-bottom:var(--space-4);background:none;border:none}
+.detail-back:hover{color:var(--text-primary)}
+
+.detail-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--space-6);gap:var(--space-6)}
+.detail-header-left{flex:1}
+.detail-title{font-size:24px;font-weight:700;line-height:32px;margin-bottom:var(--space-2)}
+.detail-premise{font-size:15px;color:var(--text-secondary);line-height:24px;margin-bottom:var(--space-3);max-width:640px}
+.detail-badges{display:flex;gap:var(--space-2);flex-wrap:wrap}
+.detail-header-right{display:flex;gap:var(--space-3);flex-shrink:0}
+
+/* Detail sections */
+.detail-grid{display:grid;grid-template-columns:1fr 340px;gap:var(--space-6);align-items:start}
+.detail-section{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.detail-section-header{padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-secondary);display:flex;align-items:center;justify-content:space-between}
+.detail-section-title{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted)}
+.detail-section-body{padding:var(--space-5)}
+
+/* ===================================================================
+   BRANCH MAP — THE HERO
+   =================================================================== */
+.branch-map{padding:var(--space-6);min-height:320px;position:relative}
+.branch-map-svg{width:100%;height:300px}
+
+/* SVG branch map styles */
+.bm-node{cursor:pointer}
+.bm-node circle{transition:all var(--duration-fast) ease}
+.bm-node:hover circle{stroke-width:3}
+.bm-node-label{font-family:var(--font-sans);font-size:11px;font-weight:600;fill:var(--text-primary)}
+.bm-node-sub{font-family:var(--font-sans);font-size:10px;fill:var(--text-muted)}
+.bm-edge{fill:none;stroke-width:2;stroke-linecap:round}
+.bm-edge.main{stroke:var(--purple-300)}
+.bm-edge.success{stroke:var(--green-400)}
+.bm-edge.fail{stroke:var(--red-400)}
+.bm-edge.partial{stroke:var(--orange-400)}
+.bm-legend{display:flex;gap:var(--space-4);padding:var(--space-3) var(--space-5);border-top:1px solid var(--border-secondary)}
+.bm-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--text-secondary)}
+.bm-legend-dot{width:8px;height:8px;border-radius:var(--radius-full)}
+.bm-legend-line{width:16px;height:2px;border-radius:1px}
+
+/* ===================================================================
+   BRANCH PROBABILITIES (Cycle 020)
+   =================================================================== */
+.prob-checkpoint{margin-bottom:var(--space-5)}
+.prob-checkpoint:last-child{margin-bottom:0}
+.prob-checkpoint-label{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:var(--space-3);display:flex;align-items:center;gap:var(--space-2)}
+.prob-checkpoint-dot{width:8px;height:8px;border-radius:var(--radius-full);background:var(--orange-500);border:2px solid var(--orange-200);flex-shrink:0}
+.prob-bar-row{display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-2)}
+.prob-bar-row:last-child{margin-bottom:0}
+.prob-bar-label{font-size:12px;font-weight:500;color:var(--text-secondary);min-width:140px;text-align:right;flex-shrink:0}
+.prob-bar-track{flex:1;height:20px;background:var(--bg-sunken);border-radius:4px;overflow:hidden;position:relative;border:1px solid var(--border-secondary)}
+.prob-bar-fill{height:100%;background:var(--purple-400);border-radius:3px;transition:width var(--duration-slow) var(--ease-out);min-width:2px}
+.prob-bar-value{font-family:var(--font-mono);font-size:12px;font-weight:600;color:var(--text-primary);min-width:48px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
+
+/* ===================================================================
+   FORK REPLAY (Cycle 021)
+   =================================================================== */
+.fork-selector{display:flex;gap:var(--space-2);margin-bottom:var(--space-5);flex-wrap:wrap}
+.fork-selector-btn{font-size:12px;font-weight:600;padding:6px 14px;border-radius:var(--radius-sm);border:1px solid var(--border-primary);color:var(--text-secondary);background:var(--bg-card);cursor:pointer;transition:all var(--duration-fast) ease}
+.fork-selector-btn:hover{border-color:var(--purple-200);color:var(--text-primary)}
+.fork-selector-btn.active{border-color:var(--purple-400);background:var(--purple-50);color:var(--purple-700)}
+
+.fork-question{font-size:16px;font-weight:600;line-height:24px;color:var(--text-primary);margin-bottom:var(--space-4);padding:var(--space-4);background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-sm)}
+
+.fork-options{display:flex;gap:var(--space-2);margin-bottom:var(--space-4);flex-wrap:wrap}
+.fork-option{font-size:12px;font-weight:600;padding:6px 16px;border-radius:var(--radius-full);border:1px solid var(--border-primary);color:var(--text-secondary);background:var(--bg-card);cursor:pointer;transition:all var(--duration-fast) ease}
+.fork-option:hover{border-color:var(--purple-200);color:var(--text-primary)}
+.fork-option.selected{border-color:var(--purple-400);background:var(--purple-500);color:var(--text-inverse)}
+
+.fork-settlement{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-5);font-size:13px;font-weight:600}
+.fork-settlement-label{color:var(--text-muted)}
+.fork-settlement-value.settled{color:var(--green-600)}
+.fork-settlement-value.open{color:var(--status-info)}
+
+.fork-events{border:1px solid var(--border-secondary);border-radius:var(--radius-sm);overflow:hidden}
+.fork-events-header{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);padding:var(--space-2) var(--space-4);background:var(--bg-sunken);border-bottom:1px solid var(--border-secondary)}
+.fork-event-row{display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--border-secondary)}
+.fork-event-row:last-child{border-bottom:none}
+.fork-event-time{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--text-muted);min-width:120px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.fork-event-type{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;padding:2px 8px;border-radius:4px;flex-shrink:0}
+.fork-event-type.signal{background:oklch(0.525 0.155 260/0.08);color:var(--status-info)}
+.fork-event-type.disclosure{background:var(--green-50);color:var(--green-600)}
+.fork-event-type.market{background:var(--purple-50);color:var(--purple-600)}
+.fork-event-type.settlement{background:var(--orange-50);color:var(--orange-600)}
+.fork-event-label{font-size:13px;font-weight:500;color:var(--text-primary);flex:1}
+
+/* ===================================================================
+   TELEMETRY / OUTPUT EXPECTATIONS
+   =================================================================== */
+.telemetry-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-3)}
+.telemetry-item{background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-sm);padding:var(--space-3) var(--space-4)}
+.telemetry-item-header{display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2)}
+.telemetry-item-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:4px}
+.telemetry-item-icon.events{background:oklch(0.525 0.155 260/0.10);color:var(--status-info)}
+.telemetry-item-icon.checkpoints{background:var(--orange-50);color:var(--orange-600)}
+.telemetry-item-icon.traces{background:var(--purple-50);color:var(--purple-600)}
+.telemetry-item-icon.branches{background:var(--green-50);color:var(--green-600)}
+.telemetry-item-icon.replay{background:oklch(0.525 0.155 260/0.06);color:oklch(0.420 0.140 260)}
+.telemetry-item-icon.labels{background:var(--green-50);color:var(--green-700)}
+.telemetry-item-title{font-size:12px;font-weight:600;color:var(--text-primary)}
+.telemetry-item-desc{font-size:12px;color:var(--text-muted);line-height:18px}
+.telemetry-item-value{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--text-primary);margin-top:var(--space-1)}
+
+/* ===================================================================
+   DERIVED THEATRES
+   =================================================================== */
+.derived-theatres{padding:var(--space-4) var(--space-5)}
+.derived-theatre-item{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);background:var(--bg-sunken);border:1px solid var(--border-secondary);border-radius:var(--radius-sm);margin-bottom:var(--space-2)}
+.derived-theatre-item:last-child{margin-bottom:0}
+.derived-theatre-left{flex:1}
+.derived-theatre-question{font-size:13px;font-weight:600;line-height:20px;margin-bottom:2px}
+.derived-theatre-meta{display:flex;gap:var(--space-3);font-size:11px;color:var(--text-muted)}
+.derived-theatre-meta strong{color:var(--text-secondary);font-weight:600}
+.derived-theatre-action{font-size:12px;font-weight:600;color:var(--purple-600);background:none;border:none;cursor:pointer;white-space:nowrap;padding:var(--space-1) var(--space-3)}
+.derived-theatre-action:hover{color:var(--purple-500);text-decoration:underline}
+.derived-theatre-note{font-size:11px;color:var(--text-muted);line-height:16px;padding:var(--space-3) var(--space-5) var(--space-4);border-top:1px solid var(--border-secondary)}
+
+/* ===================================================================
+   PACK METADATA
+   =================================================================== */
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3)}
+.meta-item{padding:var(--space-2) 0}
+.meta-item-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin-bottom:2px}
+.meta-item-value{font-size:14px;font-weight:500;color:var(--text-primary)}
+.meta-item-value.mono{font-family:var(--font-mono);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ===================================================================
+   LAUNCH PANEL (sticky sidebar)
+   =================================================================== */
+.launch-panel{position:sticky;top:calc(var(--header-height) + var(--space-6))}
+.launch-panel-inner{background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden}
+.launch-panel-header{padding:var(--space-4) var(--space-5);border-bottom:1px solid var(--border-secondary)}
+.launch-panel-title{font-size:15px;font-weight:600}
+.launch-panel-body{padding:var(--space-5)}
+.launch-field{margin-bottom:var(--space-4)}
+.launch-field:last-of-type{margin-bottom:var(--space-5)}
+.launch-field-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin-bottom:var(--space-1)}
+.launch-field-select{width:100%;height:36px;padding:0 var(--space-3);background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-sm);font-family:var(--font-sans);font-size:13px;color:var(--text-primary);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 3.75l2.5 2.5 2.5-2.5' stroke='%239CA3AF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+.launch-field-value{font-size:14px;font-weight:500}
+.launch-cta{width:100%;height:44px;font-size:14px}
+.launch-disclaimer{font-size:11px;color:var(--text-muted);margin-top:var(--space-3);line-height:16px;text-align:center}
+
+/* Purpose / use tags */
+.use-tags{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-4)}
+.use-tag{font-size:11px;font-weight:600;padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-primary);color:var(--text-secondary);background:var(--bg-card)}
+.use-tag.active{border-color:var(--purple-200);background:var(--purple-50);color:var(--purple-700)}
+
+/* ===================================================================
+   RESPONSIVE
+   =================================================================== */
+@media(max-width:1200px){.pack-grid{grid-template-columns:repeat(2,1fr)}.detail-grid{grid-template-columns:1fr}.launch-panel{position:static}}
+@media(max-width:800px){.pack-grid{grid-template-columns:1fr}.stats-bar{flex-direction:column;gap:var(--space-2)}.stats-bar-item{border-right:none;padding-right:0;border-bottom:1px solid var(--border-secondary);padding-bottom:var(--space-2)}}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER (locked) ═══ -->
+<header class="header">
+  <div class="header-left">
+    <a class="header-logo" href="#">
+      <div class="header-logo-mark">E</div>
+      <span class="header-logo-text">Echelon</span>
+      <span class="header-logo-version">v0.9.2</span>
+    </a>
+    <button class="sidebar-toggle">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 5h12M3 9h12M3 13h12"/></svg>
+    </button>
+  </div>
+  <div class="header-center">
+    <div class="header-search">
+      <span class="header-search-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg></span>
+      <input type="text" placeholder="Search packs, checkpoints, domains...">
+      <span class="header-search-kbd">/</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="network-pill"><span class="network-dot"></span>Mainnet</div>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.25 9.75v3a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-7.5a1.5 1.5 0 011.5-1.5h3"/><path d="M10.5 3.75h3.75v3.75"/><path d="M7.5 10.5L14.25 3.75"/></svg></button>
+    <button class="header-icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.73 12.02A6.75 6.75 0 004.27 5.98"/><path d="M3 3.75v3h3M15 14.25v-3h-3"/></svg><span class="header-badge">2</span></button>
+    <div class="wallet-btn">
+      <div class="wallet-balance">
+        <div class="wallet-balance-item"><span class="wallet-balance-label">USDC</span>12,840</div>
+        <div class="wallet-divider"></div>
+        <div class="wallet-balance-item"><span class="wallet-balance-label">ECH</span>3,200</div>
+      </div>
+      <div class="wallet-avatar"></div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ SIDEBAR (locked) ═══ -->
+<nav class="sidebar">
+  <div class="sidebar-content">
+    <div class="nav-group">
+      <div class="nav-group-label">Command</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="14" height="14" rx="2"/><path d="M2 7h14"/><path d="M7 7v9"/></svg></span><span class="nav-item-label">Mission Control</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 5v4l2.5 2.5"/></svg></span><span class="nav-item-label">Theatres</span><span class="nav-badge live">12</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2L2 6.5v5L9 16l7-4.5v-5L9 2z"/><path d="M2 6.5L9 11l7-4.5"/><path d="M9 16V11"/></svg></span><span class="nav-item-label">Positions</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Intelligence</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="3"/><circle cx="9" cy="9" r="1"/></svg></span><span class="nav-item-label">WorldMonitor</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 14l4-8 3 4 2-3 3 7"/></svg></span><span class="nav-item-label">Signal Map</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3v12M12 3v12M3 6h12M3 12h12"/></svg></span><span class="nav-item-label">Investigations</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Operations</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h12M3 9h8M3 13h5"/><circle cx="14" cy="11" r="3"/></svg></span><span class="nav-item-label">Fleet</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2v14M5 6l4-4 4 4"/><path d="M3 10h12"/></svg></span><span class="nav-item-label">Paradox Console</span></a>
+      <a class="nav-item active" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 3h10a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M7 7l2 2 2-2"/><path d="M7 11l2 2 2-2"/></svg></span><span class="nav-item-label">Scenario Packs</span><span class="nav-badge count">8</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Verification</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2l6 3v5c0 3.5-2.5 5.5-6 7-3.5-1.5-6-3.5-6-7V5l6-3z"/><path d="M6.5 9l2 2 3.5-4"/></svg></span><span class="nav-item-label">Verify</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="12" height="10" rx="1.5"/><path d="M3 8h12"/><path d="M7 11h4"/></svg></span><span class="nav-item-label">Certificates</span></a>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5h12M3 9h12M3 13h12"/><circle cx="14.5" cy="5" r="1.5"/></svg></span><span class="nav-item-label">RLMF Exports</span></a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Analytics</div>
+      <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="8" width="3" height="7" rx="0.5"/><rect x="7.5" y="5" width="3" height="10" rx="0.5"/><rect x="12" y="3" width="3" height="12" rx="0.5"/></rect></svg></span><span class="nav-item-label">Analytics</span></a>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <a class="nav-item" href="#"><span class="nav-item-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="9" r="7"/><path d="M9 6v3l2 1"/></svg></span><span class="nav-item-label">Settings</span></a>
+  </div>
+</nav>
+
+<!-- ===================================================================
+     MAIN CONTENT
+     =================================================================== -->
+<main class="main">
+
+  <!-- ============================================================
+       CATALOG VIEW
+       ============================================================ -->
+  <div class="catalog-view" id="catalog-view">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-breadcrumb">
+          <span>Operations</span>
+          <span class="page-breadcrumb-sep">/</span>
+          <span class="page-breadcrumb-current">Scenario Packs</span>
+        </div>
+        <h1 class="page-title">Scenario Packs</h1>
+        <div class="page-subtitle">Branching simulation environments for RLMF, agent training, and replay analysis</div>
+      </div>
+      <div class="page-header-actions">
+        <select class="sort-select">
+          <option>Domain: All</option>
+          <option>Logistics</option>
+          <option>Finance</option>
+          <option>Governance</option>
+          <option>Intelligence</option>
+        </select>
+        <select class="sort-select">
+          <option>Complexity: Any</option>
+          <option>Low</option>
+          <option>Medium</option>
+          <option>High</option>
+        </select>
+        <select class="sort-select">
+          <option>Sort: Recently updated</option>
+          <option>Sort: Branch depth</option>
+          <option>Sort: Telemetry volume</option>
+          <option>Sort: Name A-Z</option>
+        </select>
+        <button class="btn btn-primary" onclick="alert('Create Pack flow coming soon')">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+          Create Pack
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="stats-bar" id="stats-bar">
+      <div class="stats-bar-item">
+        <span class="stats-bar-value">8</span>
+        <span class="stats-bar-label">Scenario<br>Packs</span>
+      </div>
+      <div class="stats-bar-item">
+        <span class="stats-bar-value" style="color:var(--green-600)">3</span>
+        <span class="stats-bar-label">Runnable</span>
+      </div>
+      <div class="stats-bar-item">
+        <span class="stats-bar-value">5</span>
+        <span class="stats-bar-label">Catalog<br>Only</span>
+      </div>
+      <div class="stats-bar-item">
+        <span class="stats-bar-value">7</span>
+        <span class="stats-bar-label">Max Branch<br>Depth</span>
+      </div>
+      <div class="stats-bar-item">
+        <span class="stats-bar-value">14.2k</span>
+        <span class="stats-bar-label">Telemetry<br>Events<span class="stats-bar-scope">30d</span></span>
+      </div>
+      <div class="stats-bar-item">
+        <span class="stats-bar-value">5</span>
+        <span class="stats-bar-label">Derived<br>Theatres</span>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <div class="filter-tabs">
+        <button class="filter-tab active">All <span class="filter-tab-count">8</span></button>
+        <button class="filter-tab">Runnable <span class="filter-tab-count">3</span></button>
+        <button class="filter-tab">Catalog Only <span class="filter-tab-count">5</span></button>
+      </div>
+      <div class="filter-right">
+        <select class="sort-select">
+          <option>Type: All</option>
+          <option>Sequential</option>
+          <option>Branching</option>
+          <option>Composite</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Pack grid -->
+    <div class="pack-grid" id="pack-grid"></div>
+
+  </div>
+
+  <!-- ============================================================
+       DETAIL VIEW
+       ============================================================ -->
+  <div class="detail-view" id="detail-view">
+
+    <button class="detail-back" onclick="showCatalog()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3L5 8l5 5"/></svg>
+      Back to Scenario Packs
+    </button>
+
+    <div class="detail-header">
+      <div class="detail-header-left">
+        <h1 class="detail-title" id="detail-title"></h1>
+        <div class="detail-premise" id="detail-premise"></div>
+        <div class="detail-badges" id="detail-badges"></div>
+      </div>
+      <div class="detail-header-right">
+        <button class="btn btn-secondary" onclick="alert('Export pack definition')">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 10v2a1 1 0 001 1h6a1 1 0 001-1v-2"/><path d="M8 3v7M5.5 7.5L8 10l2.5-2.5"/></svg>
+          Export
+        </button>
+        <button class="btn btn-primary" id="detail-launch-btn" onclick="alert('Launching scenario run...')">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polygon points="5,3 13,8 5,13"/></svg>
+          Launch Run
+        </button>
+      </div>
+    </div>
+
+    <!-- Purpose / suggested use -->
+    <div class="use-tags" id="detail-use-tags"></div>
+
+    <div class="detail-grid">
+      <!-- Left column -->
+      <div style="display:flex;flex-direction:column;gap:var(--space-5)">
+
+        <!-- Branch Map (THE HERO) -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <span class="detail-section-title">Branch Map</span>
+            <button class="btn btn-sm btn-secondary">Expand</button>
+          </div>
+          <div class="branch-map" id="branch-map">
+            <!-- SVG rendered by JS -->
+          </div>
+          <div class="bm-legend">
+            <div class="bm-legend-item"><div class="bm-legend-dot" style="background:var(--purple-500)"></div>Start</div>
+            <div class="bm-legend-item"><div class="bm-legend-dot" style="background:var(--orange-500);border:2px solid var(--orange-200)"></div>Checkpoint</div>
+            <div class="bm-legend-item"><div class="bm-legend-dot" style="background:var(--green-500)"></div>Success</div>
+            <div class="bm-legend-item"><div class="bm-legend-dot" style="background:var(--red-500)"></div>Failure</div>
+            <div class="bm-legend-item"><div class="bm-legend-dot" style="background:var(--orange-500)"></div>Partial</div>
+            <div class="bm-legend-item"><div class="bm-legend-line" style="background:var(--purple-300)"></div>Main Path</div>
+            <div class="bm-legend-item"><div class="bm-legend-line" style="background:var(--green-400)"></div>Success Branch</div>
+            <div class="bm-legend-item"><div class="bm-legend-line" style="background:var(--red-400)"></div>Failure Branch</div>
+          </div>
+        </div>
+
+        <!-- Branch Probabilities (Cycle 020) -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <span class="detail-section-title">Branch Probabilities</span>
+            <span id="branch-prob-subtitle" style="font-size:11px;color:var(--text-muted);font-weight:500"></span>
+          </div>
+          <div class="detail-section-body" id="branch-probabilities"></div>
+        </div>
+
+        <!-- Telemetry / Output Expectations -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <span class="detail-section-title">Expected Outputs</span>
+          </div>
+          <div class="detail-section-body">
+            <div class="telemetry-grid" id="telemetry-grid"></div>
+          </div>
+        </div>
+
+        <!-- Fork Replay (Cycle 021) -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <span class="detail-section-title">Fork Replay</span>
+            <span style="font-size:11px;color:var(--text-muted);font-weight:500">Inspect fork decisions and settlement outcomes</span>
+          </div>
+          <div class="detail-section-body" id="fork-replay"></div>
+        </div>
+
+        <!-- Derived Theatre Candidates -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <span class="detail-section-title">Derived Theatres</span>
+            <span style="font-size:11px;color:var(--text-muted);font-weight:500">Theatres spawned at runtime from checkpoint resolutions</span>
+          </div>
+          <div class="derived-theatres" id="derived-theatres"></div>
+          <div class="derived-theatre-note">
+            Derived theatres are spawned at runtime when checkpoints with can_spawn_theatre=true resolve during a run. They are runtime outputs of the pack lifecycle, not manually created via the Create Theatre flow.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right column: Launch panel + metadata -->
+      <div class="launch-panel">
+        <div class="launch-panel-inner">
+          <div class="launch-panel-header">
+            <div class="launch-panel-title">Launch Configuration</div>
+          </div>
+          <div class="launch-panel-body">
+            <div class="launch-field">
+              <div class="launch-field-label">Run Mode</div>
+              <select class="launch-field-select">
+                <option>TRAINING — random seed per run</option>
+                <option>EVALUATION — controlled stochasticity</option>
+                <option>CALIBRATION — canonical seed set</option>
+                <option>REPLAY — exact recorded-path replay</option>
+              </select>
+            </div>
+            <div class="launch-field">
+              <div class="launch-field-label">Agent Assignment</div>
+              <select class="launch-field-select">
+                <option>Auto-assign from fleet</option>
+                <option>Courier-class agents</option>
+                <option>Analyst-class agents</option>
+                <option>Manual selection</option>
+              </select>
+            </div>
+            <div class="launch-field">
+              <div class="launch-field-label">Simulation Scale</div>
+              <select class="launch-field-select">
+                <option>Single run (1x)</option>
+                <option>Small batch (10x)</option>
+                <option>Full sweep (100x)</option>
+              </select>
+            </div>
+            <div class="launch-field">
+              <div class="launch-field-label">Objective Profile</div>
+              <select class="launch-field-select">
+                <option>Default (pack-defined)</option>
+                <option>Maximise delivery rate</option>
+                <option>Minimise detection</option>
+                <option>Balanced risk/reward</option>
+              </select>
+            </div>
+            <button class="btn btn-primary launch-cta" id="launch-panel-cta" onclick="alert('Launching scenario run...')">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polygon points="6,3 15,9 6,15"/></svg>
+              Launch Run
+            </button>
+            <div class="launch-disclaimer" id="launch-disclaimer">Runs execute in the simulation environment. No live market impact.</div>
+          </div>
+        </div>
+
+        <!-- Pack Metadata -->
+        <div class="launch-panel-inner" style="margin-top:var(--space-4)">
+          <div class="launch-panel-header">
+            <div class="launch-panel-title">Pack Metadata</div>
+          </div>
+          <div class="launch-panel-body">
+            <div class="meta-grid" id="meta-grid"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ===================================================================
+     DATA + LOGIC
+     =================================================================== -->
+<script>
+// ── Mock Scenario Packs ──
+const PACKS = [
+  {
+    id:'neon-courier',
+    name:'Neon Courier Echelon',
+    premise:'Cyberpunk delivery-run scenario with staged checkpoints. Courier navigates urban hazards, interception attempts, and package integrity challenges across a branching decision tree.',
+    domain:'Logistics',
+    type:'Sequential',
+    complexity:'high',
+    template_status:'RUNNABLE',
+    checkpoints:4,
+    branchDepth:5,
+    outcomes:['Delivered','Failed','Partial','Intercepted'],
+    outputs:['telemetry','replay','labels','theatre'],
+    suggestedUse:['Training','Evaluation','Replay'],
+    agentType:'Courier-class',
+    duration:'15-45 min',
+    rewardFraming:'Delivery success rate + package integrity',
+    telemetryEvents:4820,
+    replaySequences:142,
+    labeledOutcomes:389,
+    branchProbabilities:12,
+    checkpointList:[
+      {id:'start',label:'Mission Start',type:'start',x:60,y:150},
+      {id:'cp1',label:'Courier Intercepted?',type:'checkpoint',x:220,y:150},
+      {id:'cp2',label:'Package Damaged?',type:'checkpoint',x:380,y:100},
+      {id:'cp3',label:'Route Compromised?',type:'checkpoint',x:380,y:200},
+      {id:'cp4',label:'Courier Arrested?',type:'checkpoint',x:540,y:100},
+      {id:'end-d',label:'Delivered',type:'end-success',x:700,y:70},
+      {id:'end-f',label:'Failed',type:'end-fail',x:700,y:150},
+      {id:'end-p',label:'Partial',type:'end-partial',x:700,y:220},
+      {id:'end-i',label:'Intercepted',type:'end-fail',x:540,y:250}
+    ],
+    edges:[
+      {from:'start',to:'cp1',cls:'main'},
+      {from:'cp1',to:'cp2',cls:'main'},
+      {from:'cp1',to:'cp3',cls:'main'},
+      {from:'cp2',to:'cp4',cls:'main'},
+      {from:'cp2',to:'end-f',cls:'fail'},
+      {from:'cp3',to:'end-i',cls:'fail'},
+      {from:'cp3',to:'cp4',cls:'main'},
+      {from:'cp4',to:'end-d',cls:'success'},
+      {from:'cp4',to:'end-f',cls:'fail'},
+      {from:'cp4',to:'end-p',cls:'partial'}
+    ],
+    derivedTheatres:[
+      {question:'Will courier reach checkpoint 3 without interception?',type:'Binary',source:'Checkpoint 1-3 transition'},
+      {question:'Will package survive transit intact?',type:'Binary',source:'Package integrity checkpoint'},
+      {question:'Will delivery be intercepted before extraction?',type:'Binary',source:'Route compromised branch'}
+    ]
+  },
+  {
+    id:'market-cascade',
+    name:'Market Cascade Protocol',
+    premise:'Multi-asset contagion simulation. A trigger event propagates through correlated markets, testing agent responses to cascading failures and liquidity crises.',
+    domain:'Finance',
+    type:'Branching',
+    complexity:'high',
+    template_status:'CATALOG_ONLY',
+    checkpoints:6,
+    branchDepth:7,
+    outcomes:['Contained','Cascaded','Partial Recovery'],
+    outputs:['telemetry','replay','labels','theatre'],
+    suggestedUse:['Training','Calibration'],
+    agentType:'Analyst-class',
+    duration:'30-90 min',
+    rewardFraming:'Loss minimisation + early detection',
+    telemetryEvents:3210,
+    replaySequences:87,
+    labeledOutcomes:256,
+    branchProbabilities:18,
+    checkpointList:[
+      {id:'start',label:'Trigger Event',type:'start',x:60,y:150},
+      {id:'cp1',label:'First Market Hit',type:'checkpoint',x:200,y:150},
+      {id:'cp2',label:'Contagion Spread?',type:'checkpoint',x:340,y:100},
+      {id:'cp3',label:'Liquidity Crisis?',type:'checkpoint',x:340,y:200},
+      {id:'cp4',label:'Circuit Breaker?',type:'checkpoint',x:480,y:100},
+      {id:'cp5',label:'Recovery Signal?',type:'checkpoint',x:480,y:200},
+      {id:'end-c',label:'Contained',type:'end-success',x:640,y:70},
+      {id:'end-cs',label:'Cascaded',type:'end-fail',x:640,y:150},
+      {id:'end-pr',label:'Partial Recovery',type:'end-partial',x:640,y:230}
+    ],
+    edges:[
+      {from:'start',to:'cp1',cls:'main'},
+      {from:'cp1',to:'cp2',cls:'main'},
+      {from:'cp1',to:'cp3',cls:'main'},
+      {from:'cp2',to:'cp4',cls:'main'},
+      {from:'cp2',to:'end-cs',cls:'fail'},
+      {from:'cp3',to:'cp5',cls:'main'},
+      {from:'cp3',to:'end-cs',cls:'fail'},
+      {from:'cp4',to:'end-c',cls:'success'},
+      {from:'cp4',to:'end-cs',cls:'fail'},
+      {from:'cp5',to:'end-pr',cls:'partial'},
+      {from:'cp5',to:'end-c',cls:'success'}
+    ],
+    derivedTheatres:[
+      {question:'Will contagion spread beyond the initial asset class?',type:'Binary',source:'Contagion spread checkpoint'},
+      {question:'Time to circuit breaker activation',type:'Temporal',source:'Circuit breaker checkpoint'}
+    ]
+  },
+  {
+    id:'governance-fork',
+    name:'Governance Fork Dilemma',
+    premise:'DAO governance scenario where a contentious proposal splits the community. Agents navigate voting, coalition building, and fork execution under time pressure.',
+    domain:'Governance',
+    type:'Branching',
+    complexity:'mid',
+    template_status:'CATALOG_ONLY',
+    checkpoints:3,
+    branchDepth:4,
+    outcomes:['Proposal Passes','Proposal Fails','Fork Executed'],
+    outputs:['telemetry','replay','labels'],
+    suggestedUse:['Training','Evaluation'],
+    agentType:'Analyst-class',
+    duration:'20-40 min',
+    rewardFraming:'Coalition stability + outcome alignment',
+    telemetryEvents:1890,
+    replaySequences:64,
+    labeledOutcomes:178,
+    branchProbabilities:8,
+    checkpointList:[
+      {id:'start',label:'Proposal Submitted',type:'start',x:80,y:150},
+      {id:'cp1',label:'Quorum Reached?',type:'checkpoint',x:260,y:150},
+      {id:'cp2',label:'Supermajority?',type:'checkpoint',x:440,y:100},
+      {id:'cp3',label:'Fork Threshold?',type:'checkpoint',x:440,y:200},
+      {id:'end-p',label:'Passes',type:'end-success',x:620,y:70},
+      {id:'end-f',label:'Fails',type:'end-fail',x:620,y:140},
+      {id:'end-fk',label:'Fork Executed',type:'end-partial',x:620,y:220}
+    ],
+    edges:[
+      {from:'start',to:'cp1',cls:'main'},
+      {from:'cp1',to:'cp2',cls:'main'},
+      {from:'cp1',to:'end-f',cls:'fail'},
+      {from:'cp2',to:'end-p',cls:'success'},
+      {from:'cp2',to:'cp3',cls:'main'},
+      {from:'cp3',to:'end-fk',cls:'partial'},
+      {from:'cp3',to:'end-f',cls:'fail'}
+    ],
+    derivedTheatres:[
+      {question:'Will the governance proposal reach quorum?',type:'Binary',source:'Quorum checkpoint'}
+    ]
+  },
+  {
+    id:'supply-chain-stress',
+    name:'Supply Chain Stress Test',
+    premise:'Global supply disruption scenario. A port closure triggers cascading delays across shipping routes, testing inventory management and rerouting decisions.',
+    domain:'Logistics',
+    type:'Sequential',
+    complexity:'mid',
+    template_status:'RUNNABLE',
+    checkpoints:5,
+    branchDepth:4,
+    outcomes:['Rerouted','Delayed','Stockout'],
+    outputs:['telemetry','replay','labels','theatre'],
+    suggestedUse:['Training','Calibration','Replay'],
+    agentType:'Courier-class',
+    duration:'25-60 min',
+    rewardFraming:'Delivery time minimisation + cost control',
+    telemetryEvents:2340,
+    replaySequences:91,
+    labeledOutcomes:201,
+    branchProbabilities:10,
+    checkpointList:[
+      {id:'start',label:'Port Closure',type:'start',x:60,y:150},
+      {id:'cp1',label:'Alt Route Available?',type:'checkpoint',x:200,y:150},
+      {id:'cp2',label:'Inventory Buffer?',type:'checkpoint',x:350,y:100},
+      {id:'cp3',label:'Cost Threshold?',type:'checkpoint',x:350,y:200},
+      {id:'end-r',label:'Rerouted',type:'end-success',x:520,y:70},
+      {id:'end-d',label:'Delayed',type:'end-partial',x:520,y:150},
+      {id:'end-s',label:'Stockout',type:'end-fail',x:520,y:230}
+    ],
+    edges:[
+      {from:'start',to:'cp1',cls:'main'},
+      {from:'cp1',to:'cp2',cls:'main'},
+      {from:'cp1',to:'cp3',cls:'main'},
+      {from:'cp2',to:'end-r',cls:'success'},
+      {from:'cp2',to:'end-d',cls:'partial'},
+      {from:'cp3',to:'end-d',cls:'partial'},
+      {from:'cp3',to:'end-s',cls:'fail'}
+    ],
+    derivedTheatres:[
+      {question:'Will rerouting restore delivery within 72h?',type:'Binary',source:'Alt route checkpoint'}
+    ]
+  },
+  {
+    id:'intel-exfil',
+    name:'Intelligence Exfiltration Run',
+    premise:'Covert data extraction scenario. An agent must retrieve sensitive information from a secured environment while avoiding detection across multiple security layers.',
+    domain:'Intelligence',
+    type:'Sequential',
+    complexity:'high',
+    template_status:'CATALOG_ONLY',
+    checkpoints:5,
+    branchDepth:6,
+    outcomes:['Clean Extract','Detected','Partial Data','Compromised'],
+    outputs:['telemetry','replay','labels'],
+    suggestedUse:['Training','Evaluation'],
+    agentType:'Infiltrator-class',
+    duration:'20-50 min',
+    rewardFraming:'Data completeness + stealth rating',
+    telemetryEvents:1560,
+    replaySequences:53,
+    labeledOutcomes:144,
+    branchProbabilities:14,
+    checkpointList:[
+      {id:'start',label:'Insertion Point',type:'start',x:60,y:150},
+      {id:'cp1',label:'Perimeter Breach?',type:'checkpoint',x:180,y:150},
+      {id:'cp2',label:'Access Secured?',type:'checkpoint',x:310,y:120},
+      {id:'cp3',label:'Data Located?',type:'checkpoint',x:440,y:120},
+      {id:'cp4',label:'Extraction Route?',type:'checkpoint',x:560,y:120},
+      {id:'end-ce',label:'Clean Extract',type:'end-success',x:680,y:70},
+      {id:'end-pd',label:'Partial Data',type:'end-partial',x:680,y:150},
+      {id:'end-det',label:'Detected',type:'end-fail',x:440,y:250},
+      {id:'end-comp',label:'Compromised',type:'end-fail',x:680,y:230}
+    ],
+    edges:[
+      {from:'start',to:'cp1',cls:'main'},
+      {from:'cp1',to:'cp2',cls:'main'},
+      {from:'cp1',to:'end-det',cls:'fail'},
+      {from:'cp2',to:'cp3',cls:'main'},
+      {from:'cp2',to:'end-det',cls:'fail'},
+      {from:'cp3',to:'cp4',cls:'main'},
+      {from:'cp3',to:'end-pd',cls:'partial'},
+      {from:'cp4',to:'end-ce',cls:'success'},
+      {from:'cp4',to:'end-comp',cls:'fail'}
+    ],
+    derivedTheatres:[
+      {question:'Will agent pass perimeter undetected?',type:'Binary',source:'Perimeter checkpoint'},
+      {question:'Percentage of target data extracted',type:'Continuous',source:'Data location checkpoint'}
+    ]
+  },
+  {
+    id:'regulatory-stress',
+    name:'Regulatory Compliance Gauntlet',
+    premise:'A fintech product faces concurrent regulatory reviews across three jurisdictions. Each jurisdiction has different thresholds and escalation paths.',
+    domain:'Finance',
+    type:'Composite',
+    complexity:'mid',
+    template_status:'CATALOG_ONLY',
+    checkpoints:4,
+    branchDepth:3,
+    outcomes:['Full Compliance','Partial Compliance','Enforcement Action'],
+    outputs:['telemetry','labels'],
+    suggestedUse:['Calibration','Evaluation'],
+    agentType:'Analyst-class',
+    duration:'30-60 min',
+    rewardFraming:'Compliance score + time to resolution',
+    telemetryEvents:980,
+    replaySequences:28,
+    labeledOutcomes:94,
+    branchProbabilities:6,
+    checkpointList:[
+      {id:'start',label:'Review Initiated',type:'start',x:80,y:150},
+      {id:'cp1',label:'Jurisdiction A',type:'checkpoint',x:240,y:80},
+      {id:'cp2',label:'Jurisdiction B',type:'checkpoint',x:240,y:150},
+      {id:'cp3',label:'Jurisdiction C',type:'checkpoint',x:240,y:220},
+      {id:'end-fc',label:'Full Compliance',type:'end-success',x:440,y:80},
+      {id:'end-pc',label:'Partial',type:'end-partial',x:440,y:150},
+      {id:'end-ea',label:'Enforcement',type:'end-fail',x:440,y:220}
+    ],
+    edges:[
+      {from:'start',to:'cp1',cls:'main'},
+      {from:'start',to:'cp2',cls:'main'},
+      {from:'start',to:'cp3',cls:'main'},
+      {from:'cp1',to:'end-fc',cls:'success'},
+      {from:'cp2',to:'end-pc',cls:'partial'},
+      {from:'cp3',to:'end-ea',cls:'fail'}
+    ],
+    derivedTheatres:[]
+  },
+  {
+    id:'election-monitor',
+    name:'Election Integrity Monitor',
+    premise:'Multi-stage election monitoring scenario. Agents observe polling, vote counting, and result certification, detecting anomalies and disinformation at each stage.',
+    domain:'Governance',
+    type:'Sequential',
+    complexity:'low',
+    template_status:'RUNNABLE',
+    checkpoints:3,
+    branchDepth:3,
+    outcomes:['Clean Election','Anomalies Detected','Contested'],
+    outputs:['telemetry','replay','labels','theatre'],
+    suggestedUse:['Training','Replay'],
+    agentType:'Analyst-class',
+    duration:'15-30 min',
+    rewardFraming:'Detection accuracy + false positive rate',
+    telemetryEvents:1120,
+    replaySequences:45,
+    labeledOutcomes:112,
+    branchProbabilities:6,
+    checkpointList:[
+      {id:'start',label:'Polls Open',type:'start',x:80,y:150},
+      {id:'cp1',label:'Polling Anomaly?',type:'checkpoint',x:250,y:150},
+      {id:'cp2',label:'Count Discrepancy?',type:'checkpoint',x:420,y:120},
+      {id:'end-clean',label:'Clean',type:'end-success',x:590,y:70},
+      {id:'end-anom',label:'Anomalies',type:'end-partial',x:590,y:150},
+      {id:'end-cont',label:'Contested',type:'end-fail',x:590,y:230}
+    ],
+    edges:[
+      {from:'start',to:'cp1',cls:'main'},
+      {from:'cp1',to:'cp2',cls:'main'},
+      {from:'cp1',to:'end-clean',cls:'success'},
+      {from:'cp2',to:'end-clean',cls:'success'},
+      {from:'cp2',to:'end-anom',cls:'partial'},
+      {from:'cp2',to:'end-cont',cls:'fail'}
+    ],
+    derivedTheatres:[
+      {question:'Will election results be officially contested?',type:'Binary',source:'Count discrepancy checkpoint'}
+    ]
+  },
+  {
+    id:'pandemic-response',
+    name:'Pandemic Response Protocol',
+    premise:'Outbreak containment simulation. Track infection spread, resource allocation, and policy intervention across regions with varying compliance levels.',
+    domain:'Intelligence',
+    type:'Branching',
+    complexity:'high',
+    template_status:'CATALOG_ONLY',
+    checkpoints:5,
+    branchDepth:6,
+    outcomes:['Contained','Endemic','Overwhelmed'],
+    outputs:['telemetry','replay','labels','theatre'],
+    suggestedUse:['Training','Calibration','Evaluation','Replay'],
+    agentType:'Analyst-class',
+    duration:'40-90 min',
+    rewardFraming:'Containment speed + resource efficiency',
+    telemetryEvents:2890,
+    replaySequences:76,
+    labeledOutcomes:234,
+    branchProbabilities:16,
+    checkpointList:[
+      {id:'start',label:'Outbreak Detected',type:'start',x:60,y:150},
+      {id:'cp1',label:'Containment?',type:'checkpoint',x:190,y:150},
+      {id:'cp2',label:'Resource Surge?',type:'checkpoint',x:320,y:100},
+      {id:'cp3',label:'Policy Response?',type:'checkpoint',x:320,y:200},
+      {id:'cp4',label:'Compliance?',type:'checkpoint',x:460,y:150},
+      {id:'end-cont',label:'Contained',type:'end-success',x:600,y:70},
+      {id:'end-end',label:'Endemic',type:'end-partial',x:600,y:150},
+      {id:'end-ov',label:'Overwhelmed',type:'end-fail',x:600,y:230}
+    ],
+    edges:[
+      {from:'start',to:'cp1',cls:'main'},
+      {from:'cp1',to:'cp2',cls:'main'},
+      {from:'cp1',to:'cp3',cls:'main'},
+      {from:'cp2',to:'cp4',cls:'main'},
+      {from:'cp2',to:'end-ov',cls:'fail'},
+      {from:'cp3',to:'cp4',cls:'main'},
+      {from:'cp4',to:'end-cont',cls:'success'},
+      {from:'cp4',to:'end-end',cls:'partial'},
+      {from:'cp4',to:'end-ov',cls:'fail'}
+    ],
+    derivedTheatres:[
+      {question:'Will outbreak be contained within 30 days?',type:'Binary',source:'Containment checkpoint'},
+      {question:'Peak resource utilisation rate',type:'Continuous',source:'Resource surge checkpoint'}
+    ]
+  }
+];
+
+// ── Branch Probabilities mock data (Cycle 020) ──
+// Rendered for the first pack (Neon Courier Echelon) when in detail view.
+const BRANCH_PROBABILITIES = [
+  {
+    checkpoint: 'CP-1: Courier Intercepted?',
+    branches: [
+      { name: 'Not intercepted (to Package Damaged?)', probability: 0.62 },
+      { name: 'Intercepted (to Route Compromised?)', probability: 0.38 }
+    ]
+  },
+  {
+    checkpoint: 'CP-2: Package Damaged?',
+    branches: [
+      { name: 'Package intact (to Courier Arrested?)', probability: 0.71 },
+      { name: 'Package damaged (to Failed)', probability: 0.29 }
+    ]
+  },
+  {
+    checkpoint: 'CP-3: Route Compromised?',
+    branches: [
+      { name: 'Route secure (to Courier Arrested?)', probability: 0.45 },
+      { name: 'Route compromised (to Intercepted)', probability: 0.55 }
+    ]
+  },
+  {
+    checkpoint: 'CP-4: Courier Arrested?',
+    branches: [
+      { name: 'Evaded arrest (Delivered)', probability: 0.48 },
+      { name: 'Arrested (Failed)', probability: 0.31 },
+      { name: 'Partial escape (Partial)', probability: 0.21 }
+    ]
+  }
+];
+
+// ── Fork Replay mock data (Cycle 021) ──
+// Rendered for the first pack (Neon Courier Echelon) when in detail view.
+const FORK_REPLAYS = [
+  {
+    checkpointId: 'cp1',
+    checkpointLabel: 'CP-1: Courier Intercepted?',
+    question: 'Will the courier evade interception at the Sector 7 checkpoint?',
+    options: ['Evades successfully', 'Intercepted by patrol', 'Partial evasion'],
+    selectedOption: 0,
+    settlement: { status: 'settled', outcome: 'Evades successfully' },
+    events: [
+      { time: '2026-03-05 14:02:11', type: 'signal', label: 'Patrol frequency spike detected in Sector 7' },
+      { time: '2026-03-05 14:08:34', type: 'disclosure', label: 'Informant reports patrol route change' },
+      { time: '2026-03-05 14:12:07', type: 'market', label: 'Branch probability shifted: evasion 0.52 -> 0.62' },
+      { time: '2026-03-05 14:15:42', type: 'settlement', label: 'Courier cleared Sector 7 undetected' }
+    ]
+  },
+  {
+    checkpointId: 'cp4',
+    checkpointLabel: 'CP-4: Courier Arrested?',
+    question: 'Will the courier reach the extraction point without arrest at the final perimeter?',
+    options: ['Clean delivery', 'Arrested at perimeter', 'Partial delivery under duress'],
+    selectedOption: null,
+    settlement: { status: 'open', outcome: null },
+    events: [
+      { time: '2026-03-05 14:22:18', type: 'signal', label: 'Perimeter security level elevated to Amber' },
+      { time: '2026-03-05 14:28:05', type: 'disclosure', label: 'Guard rotation window identified: 14:35-14:38' },
+      { time: '2026-03-05 14:31:44', type: 'market', label: 'Branch probability updated: delivery 0.41 -> 0.48' }
+    ]
+  }
+];
+
+// ── Render pack cards ──
+function renderCatalog() {
+  const grid = document.getElementById('pack-grid');
+  grid.innerHTML = PACKS.map(p => `
+    <div class="pack-card" onclick="showDetail('${p.id}')">
+      <div class="pack-card-header">
+        <div class="pack-card-badges">
+          <span class="pack-badge domain">${p.domain}</span>
+          <span class="pack-badge type">${p.type}</span>
+          <span class="pack-badge complexity-${p.complexity}">${p.complexity} complexity</span>
+        </div>
+        <span class="pack-status ${p.template_status}">${p.template_status === 'RUNNABLE' ? 'Runnable' : 'Catalog Only'}</span>
+      </div>
+      <div class="pack-card-body">
+        <div class="pack-card-name">${p.name}</div>
+        <div class="pack-card-premise">${p.premise}</div>
+      </div>
+      <div class="pack-outputs">
+        ${p.outputs.map(o => `<span class="output-chip ${o}">${o}</span>`).join('')}
+      </div>
+      <div class="pack-branch-preview">
+        <div class="pack-branch-bar">
+          <div class="pack-branch-node start"></div>
+          <div class="pack-branch-line active"></div>
+          ${Array(p.checkpoints).fill(0).map((_,i) => `<div class="pack-branch-node checkpoint"></div><div class="pack-branch-line${i===p.checkpoints-1?' ':''}"></div>`).join('')}
+          <div class="pack-branch-fork">
+            <div class="pack-branch-fork-line"></div>
+            <div class="pack-branch-fork-line"></div>
+          </div>
+          <div class="pack-branch-line"></div>
+          <div class="pack-branch-node end-success"></div>
+        </div>
+      </div>
+      <div class="pack-metrics">
+        <div class="pack-metric"><span class="pack-metric-value">${p.checkpoints}</span><span class="pack-metric-label">Checkpoints</span></div>
+        <div class="pack-metric"><span class="pack-metric-value">${p.branchDepth}</span><span class="pack-metric-label">Branch Depth</span></div>
+        <div class="pack-metric"><span class="pack-metric-value">${p.outcomes.length}</span><span class="pack-metric-label">Outcomes</span></div>
+        <div class="pack-metric"><span class="pack-metric-value">${(p.telemetryEvents/1000).toFixed(1)}k</span><span class="pack-metric-label">Events</span></div>
+      </div>
+      <div class="pack-card-actions">
+        <button class="pack-action" onclick="event.stopPropagation();showDetail('${p.id}')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7h10M8 3l4 4-4 4"/></svg>
+          Open Pack
+        </button>
+        ${p.template_status === 'RUNNABLE' ? `<button class="pack-action" onclick="event.stopPropagation();alert('Launching ${p.name}...')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="4,2 12,7 4,12"/></svg>
+          Launch
+        </button>` : `<button class="pack-action" disabled style="opacity:0.4;cursor:not-allowed" onclick="event.stopPropagation()">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="4,2 12,7 4,12"/></svg>
+          Catalog Only
+        </button>`}
+        <button class="pack-action" onclick="event.stopPropagation();showDetail('${p.id}')">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M4 7l2 2 4-4"/></svg>
+          Branch Map
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Show detail view ──
+function showDetail(id) {
+  const p = PACKS.find(x => x.id === id);
+  if (!p) return;
+
+  document.getElementById('catalog-view').classList.add('hidden');
+  document.getElementById('detail-view').classList.add('visible');
+
+  // Header
+  document.getElementById('detail-title').textContent = p.name;
+  document.getElementById('detail-premise').textContent = p.premise;
+  document.getElementById('detail-badges').innerHTML = `
+    <span class="pack-badge domain">${p.domain}</span>
+    <span class="pack-badge type">${p.type}</span>
+    <span class="pack-badge complexity-${p.complexity}">${p.complexity} complexity</span>
+    <span class="pack-status ${p.template_status}">${p.template_status === 'RUNNABLE' ? 'Runnable' : 'Catalog Only'}</span>
+  `;
+
+  // Launch buttons — only enabled for RUNNABLE templates
+  const launchBtn = document.getElementById('detail-launch-btn');
+  const launchPanelCta = document.getElementById('launch-panel-cta');
+  const launchDisclaimer = document.getElementById('launch-disclaimer');
+  if (p.template_status === 'RUNNABLE') {
+    launchPanelCta.disabled = false;
+    launchPanelCta.style.opacity = '1';
+    launchPanelCta.style.cursor = 'pointer';
+    launchDisclaimer.textContent = 'Runs execute in the simulation environment. No live market impact.';
+  } else {
+    launchPanelCta.disabled = true;
+    launchPanelCta.style.opacity = '0.4';
+    launchPanelCta.style.cursor = 'not-allowed';
+    launchDisclaimer.textContent = 'This template is CATALOG_ONLY — it cannot be launched. Inspect branch structure and telemetry expectations only.';
+  }
+  if (p.template_status === 'RUNNABLE') {
+    launchBtn.disabled = false;
+    launchBtn.style.opacity = '1';
+    launchBtn.style.cursor = 'pointer';
+    launchBtn.textContent = '';
+    launchBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polygon points="5,3 13,8 5,13"/></svg> Launch Run';
+  } else {
+    launchBtn.disabled = true;
+    launchBtn.style.opacity = '0.4';
+    launchBtn.style.cursor = 'not-allowed';
+    launchBtn.textContent = '';
+    launchBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polygon points="5,3 13,8 5,13"/></svg> Catalog Only';
+  }
+
+  // Use tags
+  document.getElementById('detail-use-tags').innerHTML = ['Training','Evaluation','Calibration','Replay'].map(u =>
+    `<span class="use-tag${p.suggestedUse.includes(u)?' active':''}">${u}</span>`
+  ).join('');
+
+  // Branch map
+  renderBranchMap(p);
+
+  // Branch probabilities (only for packs with data — currently Neon Courier)
+  renderBranchProbabilities(p);
+
+  // Telemetry
+  renderTelemetry(p);
+
+  // Fork replay (only for packs with data — currently Neon Courier)
+  renderForkReplay(p);
+
+  // Derived theatres
+  renderDerivedTheatres(p);
+
+  // Metadata
+  document.getElementById('meta-grid').innerHTML = `
+    <div class="meta-item"><div class="meta-item-label">Domain</div><div class="meta-item-value">${p.domain}</div></div>
+    <div class="meta-item"><div class="meta-item-label">Pack Type</div><div class="meta-item-value">${p.type}</div></div>
+    <div class="meta-item"><div class="meta-item-label">Complexity</div><div class="meta-item-value" style="text-transform:capitalize">${p.complexity}</div></div>
+    <div class="meta-item"><div class="meta-item-label">Checkpoints</div><div class="meta-item-value mono">${p.checkpoints}</div></div>
+    <div class="meta-item"><div class="meta-item-label">Branch Depth</div><div class="meta-item-value mono">${p.branchDepth}</div></div>
+    <div class="meta-item"><div class="meta-item-label">Est. Duration</div><div class="meta-item-value mono">${p.duration}</div></div>
+    <div class="meta-item"><div class="meta-item-label">Agent Type</div><div class="meta-item-value">${p.agentType}</div></div>
+    <div class="meta-item"><div class="meta-item-label">Objective</div><div class="meta-item-value">${p.rewardFraming}</div></div>
+  `;
+
+  window.scrollTo(0, 0);
+}
+
+// ── Show catalog ──
+function showCatalog() {
+  document.getElementById('catalog-view').classList.remove('hidden');
+  document.getElementById('detail-view').classList.remove('visible');
+}
+
+// ── Render branch map SVG ──
+function renderBranchMap(pack) {
+  const container = document.getElementById('branch-map');
+  const nodes = pack.checkpointList;
+  const edges = pack.edges;
+
+  // Find bounds
+  const maxX = Math.max(...nodes.map(n => n.x)) + 80;
+  const maxY = Math.max(...nodes.map(n => n.y)) + 40;
+
+  let svg = `<svg class="branch-map-svg" viewBox="0 0 ${maxX} ${maxY + 20}" preserveAspectRatio="xMidYMid meet">`;
+
+  // Draw edges first
+  edges.forEach(e => {
+    const from = nodes.find(n => n.id === e.from);
+    const to = nodes.find(n => n.id === e.to);
+    if (!from || !to) return;
+
+    const dx = to.x - from.x;
+    const cp1x = from.x + dx * 0.4;
+    const cp2x = from.x + dx * 0.6;
+
+    svg += `<path class="bm-edge ${e.cls}" d="M${from.x} ${from.y} C${cp1x} ${from.y} ${cp2x} ${to.y} ${to.x} ${to.y}"/>`;
+  });
+
+  // Draw nodes
+  nodes.forEach(n => {
+    let fill, stroke, r;
+    switch(n.type) {
+      case 'start':
+        fill = 'oklch(0.530 0.230 295)'; stroke = 'oklch(0.870 0.085 295)'; r = 10; break;
+      case 'checkpoint':
+        fill = 'oklch(0.610 0.185 62)'; stroke = 'oklch(0.870 0.095 62)'; r = 9; break;
+      case 'end-success':
+        fill = 'oklch(0.545 0.170 152)'; stroke = 'oklch(0.860 0.095 152)'; r = 9; break;
+      case 'end-fail':
+        fill = 'oklch(0.545 0.185 25)'; stroke = 'oklch(0.930 0.045 25)'; r = 9; break;
+      case 'end-partial':
+        fill = 'oklch(0.610 0.185 62)'; stroke = 'oklch(0.935 0.050 62)'; r = 9; break;
+      default:
+        fill = 'oklch(0.590 0.008 265)'; stroke = 'oklch(0.875 0.006 265)'; r = 8;
+    }
+
+    svg += `<g class="bm-node">`;
+    svg += `<circle cx="${n.x}" cy="${n.y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>`;
+
+    // Label
+    const labelY = n.y < 120 ? n.y - r - 8 : n.y + r + 16;
+    svg += `<text class="bm-node-label" x="${n.x}" y="${labelY}" text-anchor="middle">${n.label}</text>`;
+
+    svg += `</g>`;
+  });
+
+  svg += `</svg>`;
+  container.innerHTML = svg;
+}
+
+// ── Render branch probabilities (Cycle 020) ──
+function renderBranchProbabilities(pack) {
+  const container = document.getElementById('branch-probabilities');
+  const subtitle = document.getElementById('branch-prob-subtitle');
+
+  // Branch probabilities data is currently available for Neon Courier only
+  if (pack.id !== 'neon-courier') {
+    subtitle.textContent = '';
+    container.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:var(--space-4)">Branch probability data not yet computed for this pack.</div>`;
+    return;
+  }
+
+  subtitle.textContent = `Computed from ${pack.replaySequences} replay sequences`;
+
+  container.innerHTML = BRANCH_PROBABILITIES.map(cp => `
+    <div class="prob-checkpoint">
+      <div class="prob-checkpoint-label">
+        <span class="prob-checkpoint-dot"></span>
+        ${cp.checkpoint}
+      </div>
+      ${cp.branches.map(b => {
+        const pct = Math.round(b.probability * 100);
+        return `
+        <div class="prob-bar-row">
+          <span class="prob-bar-label">${b.name}</span>
+          <div class="prob-bar-track">
+            <div class="prob-bar-fill" style="width:${pct}%"></div>
+          </div>
+          <span class="prob-bar-value">${b.probability.toFixed(2)}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  `).join('');
+}
+
+// ── Render telemetry grid ──
+function renderTelemetry(pack) {
+  document.getElementById('telemetry-grid').innerHTML = `
+    <div class="telemetry-item">
+      <div class="telemetry-item-header">
+        <div class="telemetry-item-icon events"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 11l3-6 2.5 3 2.5-5"/></svg></div>
+        <div class="telemetry-item-title">Event Logs</div>
+      </div>
+      <div class="telemetry-item-value">${pack.telemetryEvents.toLocaleString()}</div>
+      <div class="telemetry-item-desc">Total telemetry events across all runs</div>
+    </div>
+    <div class="telemetry-item">
+      <div class="telemetry-item-header">
+        <div class="telemetry-item-icon checkpoints"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M7 4v3l2 1"/></svg></div>
+        <div class="telemetry-item-title">Checkpoint Transitions</div>
+      </div>
+      <div class="telemetry-item-value">${pack.checkpoints * 47}</div>
+      <div class="telemetry-item-desc">State transitions recorded at checkpoints</div>
+    </div>
+    <div class="telemetry-item">
+      <div class="telemetry-item-header">
+        <div class="telemetry-item-icon traces"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12V5l3 4 3-7 3 5 1-3"/></svg></div>
+        <div class="telemetry-item-title">Agent Action Traces</div>
+      </div>
+      <div class="telemetry-item-value">${pack.replaySequences * 12}</div>
+      <div class="telemetry-item-desc">Individual agent decisions logged per trace</div>
+    </div>
+    <div class="telemetry-item">
+      <div class="telemetry-item-header">
+        <div class="telemetry-item-icon branches"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2v5M4 10l3-3 3 3"/></svg></div>
+        <div class="telemetry-item-title">Branch Probabilities</div>
+      </div>
+      <div class="telemetry-item-value">${pack.branchProbabilities}</div>
+      <div class="telemetry-item-desc">Computed transition probabilities between states</div>
+    </div>
+    <div class="telemetry-item">
+      <div class="telemetry-item-header">
+        <div class="telemetry-item-icon replay"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7a5 5 0 019.33-2.5M12 2v3h-3"/><path d="M12 7a5 5 0 01-9.33 2.5M2 12V9h3"/></svg></div>
+        <div class="telemetry-item-title">Replay Sequences</div>
+      </div>
+      <div class="telemetry-item-value">${pack.replaySequences}</div>
+      <div class="telemetry-item-desc">Complete run recordings available for replay</div>
+    </div>
+    <div class="telemetry-item">
+      <div class="telemetry-item-header">
+        <div class="telemetry-item-icon labels"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7l5-5h4a1 1 0 011 1v4l-5 5-5-5z"/><circle cx="9.5" cy="4.5" r="1"/></svg></div>
+        <div class="telemetry-item-title">Labeled Outcomes</div>
+      </div>
+      <div class="telemetry-item-value">${pack.labeledOutcomes}</div>
+      <div class="telemetry-item-desc">Outcomes with RLMF-ready classification labels</div>
+    </div>
+  `;
+}
+
+// ── Render fork replay (Cycle 021) ──
+let activeForkIndex = 0;
+
+function renderForkReplay(pack) {
+  const container = document.getElementById('fork-replay');
+
+  // Fork replay data is currently available for Neon Courier only
+  if (pack.id !== 'neon-courier') {
+    container.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:13px;padding:var(--space-4)">Fork replay data not yet available for this pack.</div>`;
+    return;
+  }
+
+  // Reset active fork index when switching packs
+  if (activeForkIndex >= FORK_REPLAYS.length) activeForkIndex = 0;
+
+  // Fork selector buttons
+  const selectorHtml = `
+    <div class="fork-selector">
+      ${FORK_REPLAYS.map((fr, i) => `
+        <button class="fork-selector-btn${i === activeForkIndex ? ' active' : ''}" onclick="selectFork(${i})">
+          ${fr.checkpointLabel}
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  const fr = FORK_REPLAYS[activeForkIndex];
+
+  // Fork question
+  const questionHtml = `<div class="fork-question">${fr.question}</div>`;
+
+  // Option pills
+  const optionsHtml = `
+    <div class="fork-options">
+      ${fr.options.map((opt, i) => `
+        <button class="fork-option${fr.selectedOption === i ? ' selected' : ''}" onclick="selectForkOption(${activeForkIndex}, ${i})">
+          ${opt}
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  // Settlement status
+  const isSettled = fr.settlement.status === 'settled';
+  const settlementHtml = `
+    <div class="fork-settlement">
+      <span class="fork-settlement-label">Settlement:</span>
+      <span class="fork-settlement-value ${isSettled ? 'settled' : 'open'}">
+        ${isSettled ? fr.settlement.outcome : 'Open'}
+      </span>
+    </div>
+  `;
+
+  // Disclosure events
+  const eventsHtml = `
+    <div class="fork-events">
+      <div class="fork-events-header">Disclosure Events</div>
+      ${fr.events.map(ev => `
+        <div class="fork-event-row">
+          <span class="fork-event-time">${ev.time}</span>
+          <span class="fork-event-type ${ev.type}">${ev.type}</span>
+          <span class="fork-event-label">${ev.label}</span>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  container.innerHTML = selectorHtml + questionHtml + optionsHtml + settlementHtml + eventsHtml;
+}
+
+function selectFork(index) {
+  activeForkIndex = index;
+  // Re-render with current pack (Neon Courier since that's the only one with fork data)
+  const p = PACKS.find(x => x.id === 'neon-courier');
+  if (p) renderForkReplay(p);
+}
+
+function selectForkOption(forkIdx, optIdx) {
+  FORK_REPLAYS[forkIdx].selectedOption = optIdx;
+  const p = PACKS.find(x => x.id === 'neon-courier');
+  if (p) renderForkReplay(p);
+}
+
+// ── Render derived theatres ──
+function renderDerivedTheatres(pack) {
+  const container = document.getElementById('derived-theatres');
+  if (pack.derivedTheatres.length === 0) {
+    container.innerHTML = `<div style="padding:var(--space-4);text-align:center;color:var(--text-muted);font-size:13px">No derived theatre candidates identified for this pack yet.</div>`;
+    return;
+  }
+  container.innerHTML = pack.derivedTheatres.map(dt => `
+    <div class="derived-theatre-item">
+      <div class="derived-theatre-left">
+        <div class="derived-theatre-question">${dt.question}</div>
+        <div class="derived-theatre-meta">
+          <span><strong>Type</strong> ${dt.type}</span>
+          <span><strong>Source</strong> ${dt.source}</span>
+        </div>
+      </div>
+      <button class="derived-theatre-action">View Theatre</button>
+    </div>
+  `).join('');
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', function() {
+  renderCatalog();
+});
+</script>
+</body>
+</html>

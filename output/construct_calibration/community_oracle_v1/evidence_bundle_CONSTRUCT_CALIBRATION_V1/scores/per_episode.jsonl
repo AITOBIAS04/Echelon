@@ -1,0 +1,12 @@
+{"composite_score": 0.7800000000000001, "episode_id": "oracle_0001", "scores": {"precision": 0.8, "recall": 0.75, "reply_accuracy": 0.8}, "status": "SUCCESS"}
+{"composite_score": 0.64, "episode_id": "oracle_0002", "scores": {"precision": 0.8, "recall": 0.5, "reply_accuracy": 0.6}, "status": "SUCCESS"}
+{"composite_score": 0.8600000000000001, "episode_id": "oracle_0003", "scores": {"precision": 1.0, "recall": 0.75, "reply_accuracy": 0.8}, "status": "SUCCESS"}
+{"composite_score": 0.64, "episode_id": "oracle_0004", "scores": {"precision": 0.6, "recall": 0.5, "reply_accuracy": 1.0}, "status": "SUCCESS"}
+{"composite_score": 0.7800000000000001, "episode_id": "oracle_0005", "scores": {"precision": 0.8, "recall": 0.75, "reply_accuracy": 0.8}, "status": "SUCCESS"}
+{"composite_score": 0.68, "episode_id": "oracle_0006", "scores": {"precision": 0.8, "recall": 0.5, "reply_accuracy": 0.8}, "status": "SUCCESS"}
+{"composite_score": 0.7, "episode_id": "oracle_0007", "scores": {"precision": 1.0, "recall": 0.25, "reply_accuracy": 1.0}, "status": "SUCCESS"}
+{"composite_score": 0.68, "episode_id": "oracle_0008", "scores": {"precision": 0.8, "recall": 0.5, "reply_accuracy": 0.8}, "status": "SUCCESS"}
+{"composite_score": 0.7400000000000001, "episode_id": "oracle_0009", "scores": {"precision": 0.8, "recall": 0.75, "reply_accuracy": 0.6}, "status": "SUCCESS"}
+{"composite_score": 0.64, "episode_id": "oracle_0010", "scores": {"precision": 0.6, "recall": 0.5, "reply_accuracy": 1.0}, "status": "SUCCESS"}
+{"composite_score": 0.68, "episode_id": "oracle_0011", "scores": {"precision": 0.8, "recall": 0.5, "reply_accuracy": 0.8}, "status": "SUCCESS"}
+{"composite_score": 0.54, "episode_id": "oracle_0012", "scores": {"precision": 0.8, "recall": 0.25, "reply_accuracy": 0.6}, "status": "SUCCESS"}

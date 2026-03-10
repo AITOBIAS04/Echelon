@@ -6,7 +6,7 @@ nixPkgs = ["python312", "gcc"]
 cmds = ["pip install -r requirements.txt"]
 
 [start]
-cmd = "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"
+cmd = "cd backend && python -m alembic upgrade head && cd .. && uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"
 
 [variables]
 PYTHON_VERSION = "3.12"

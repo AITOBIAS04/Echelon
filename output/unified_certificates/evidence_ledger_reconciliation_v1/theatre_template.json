@@ -1,0 +1,85 @@
+{
+  "criteria": {
+    "criteria_human": "Deterministic verification that bank statement transactions reconcile to payment splits and ledger events, with correct exception handling.",
+    "criteria_ids": [
+      "bank_ref_match",
+      "bucket_sum_matches_gross",
+      "bucket_destination_valid",
+      "event_log_complete",
+      "exceptions_correct"
+    ],
+    "weights": {
+      "bank_ref_match": 0.25,
+      "bucket_destination_valid": 0.15,
+      "bucket_sum_matches_gross": 0.15,
+      "event_log_complete": 0.3,
+      "exceptions_correct": 0.15
+    }
+  },
+  "dataset_hashes": {
+    "reconciliation_fixtures_10.json": "18365f37fd62dfd313431acb8ffa1abf699266eec39b9fc22e4e28f99586c62e"
+  },
+  "description": "v0.1 deterministic replay theatre. Uses \u00a31,500 split example and synthetic bank statement slices to validate reconciliation and event logging.",
+  "display_name": "LEDGER_RECONCILIATION_V1 \u2014 Bank Rail \u2194 Event Log Integrity",
+  "evidence_bundle": {
+    "canonical_json": "RFC8785",
+    "hash_algorithm": "sha256",
+    "manifest_required": true,
+    "required_paths": [
+      "inputs/",
+      "policy/",
+      "expected/",
+      "manifest.json"
+    ]
+  },
+  "execution_path": "replay",
+  "fork_definitions": [],
+  "product_theatre_config": {
+    "adapter_endpoint": "python:two_rail_oracles.deterministic",
+    "adapter_type": "local",
+    "construct_under_test": {
+      "construct_id": "two_rail_marketplace_core",
+      "construct_version": "v0.1-fixtures"
+    },
+    "ground_truth_source": "v0.1 fixtures (deterministic ledger/policy replay)",
+    "mock_only": false,
+    "replay_data_path": "/mnt/data/two_rail_theatres_v0_1/reconciliation_fixtures_10.json"
+  },
+  "resolution_programme": [
+    {
+      "action": "load_dataset",
+      "input": "replay_data_path",
+      "step": "ingest"
+    },
+    {
+      "action": "deterministic_compute",
+      "oracle": "reconciliation",
+      "step": "invoke_oracle"
+    },
+    {
+      "action": "binary_checks",
+      "criteria_ids": [
+        "bank_ref_match",
+        "bucket_sum_matches_gross",
+        "bucket_destination_valid",
+        "event_log_complete",
+        "exceptions_correct"
+      ],
+      "step": "score"
+    },
+    {
+      "action": "issue_certificate",
+      "step": "certify"
+    }
+  ],
+  "schema_version": "2.0.1",
+  "template_family": "PRODUCT",
+  "template_id": "ledger_reconciliation_v1",
+  "theatre_id": "product_replay_engine_v1",
+  "version_pins": {
+    "constructs": {
+      "two_rail_marketplace_core": "v0.1-fixtures"
+    },
+    "scorer_version": "deterministic-v0.1"
+  }
+}

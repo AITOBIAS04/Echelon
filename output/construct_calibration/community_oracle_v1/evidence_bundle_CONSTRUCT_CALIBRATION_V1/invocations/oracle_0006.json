@@ -1,0 +1,41 @@
+{
+  "request": {
+    "episode_id": "oracle_0006",
+    "status": "SUCCESS"
+  },
+  "response": {
+    "oracle_output": {
+      "pr_diff": "diff --git a/src/models/user.py\n  class User(Base):\n      __tablename__ = 'users'\n-     name = Column(String(100))\n+     name = Column(String(100), nullable=False)\n+     display_name = Column(String(200), nullable=True)\n      email = Column(String(255), unique=True)",
+      "construct_summary": "Makes user name column non-nullable and adds optional display_name column. Existing null names will need a migration backfill.",
+      "followup_qa": [
+        {
+          "question": "Is there a migration file?",
+          "answer": "Yes, alembic migration 003_add_display_name.py handles the schema change."
+        },
+        {
+          "question": "What about existing null names?",
+          "answer": "The migration backfills null names with the email prefix."
+        },
+        {
+          "question": "Why separate name and display_name?",
+          "answer": "name is the system identifier, display_name is user-facing and can contain unicode."
+        },
+        {
+          "question": "Max length difference?",
+          "answer": "name is 100 chars, display_name is 200 chars to allow longer formatted names."
+        },
+        {
+          "question": "Index on display_name?",
+          "answer": "No index added since display_name queries are rare and usually filtered by user_id."
+        }
+      ],
+      "episode_id": "oracle_0006"
+    },
+    "scores": {
+      "precision": 0.8,
+      "recall": 0.5,
+      "reply_accuracy": 0.8
+    },
+    "composite": 0.68
+  }
+}

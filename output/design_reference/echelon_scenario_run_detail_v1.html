@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Echelon — Scenario Run Detail</title>
+<!--
+  ===================================================================
+  PAGE: SCENARIO RUN DETAIL
+  ===================================================================
+  v1 — Run detail surface for scenario pack runs.
+
+  SIBLING FILES:
+    - echelon_scenario_packs_catalog_v2.html  (catalog grid)
+    - echelon_scenario_pack_detail_v2.html    (pack detail + launch)
+
+  ROUTE: Embedded within /scenario-packs/:templateId
+  COMPONENT: frontend/src/components/scenario/ScenarioRunDetail.tsx
+
+  BACKEND ENDPOINTS:
+  - GET /api/v1/scenario-packs/{packId}/runs/{runId}/tree   — episode tree
+  - GET /api/v1/scenario-packs/{packId}/runs/{runId}/replay — fork replay
+  - GET /api/v1/scenario-packs/{packId}/derived-theatres    — spawned theatres (PACK-scoped, not run-scoped)
+
+  WEBSOCKET EVENTS:
+  - SCENARIO_RUN_STATUS    — run progress updates
+  - CHECKPOINT_RESOLVED    — new checkpoint result
+
+  RUN MODES (scenario_seed_manager.py):
+    TRAINING | EVALUATION | CALIBRATION | REPLAY
+
+  REPLAY runs are labeled as replays, not fresh runs.
+  Derived theatres are PACK-scoped (all theatres spawned by any run
+  in this pack). Provenance via spawned_from_checkpoint_id.
+
+  DEFERRED:
+  - Branch probabilities surface (hook exists: useBranchProbabilities,
+    endpoint: GET /api/v1/scenario-pack-templates/{id}/branch-probabilities).
+    Not yet surfaced in UI or this reference.
+
+  STATES SHOWN:
+  1. Fresh TRAINING run (COMPLETED, 5 checkpoints, branch map, replay)
+  2. REPLAY run (exact recorded-path replay, replay trace)
+  3. Run with derived theatres (3 spawned, checkpoint provenance)
+  4. Sparse / no-results-yet (RUNNING, no data yet)
+
+  TASTE TOKENS: oklch light theme — same as catalog_v2 + detail_v2
+  ===================================================================
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ===================================================================
+   TASTE TOKENS v1.0
+   =================================================================== */
+:root {
+  --bg-app:oklch(0.965 0.004 265);--bg-card:oklch(0.993 0.001 265);
+  --bg-elevated:oklch(1.000 0 0);--bg-sunken:oklch(0.945 0.006 265);
+  --bg-hover:oklch(0.935 0.008 265);--bg-active:oklch(0.910 0.010 265);
+  --border-primary:oklch(0.875 0.006 265);--border-secondary:oklch(0.920 0.004 265);
+  --text-primary:oklch(0.205 0.015 265);--text-secondary:oklch(0.440 0.010 265);
+  --text-muted:oklch(0.590 0.008 265);--text-disabled:oklch(0.700 0.005 265);
+  --text-inverse:oklch(0.985 0.002 265);
+  --purple-50:oklch(0.970 0.018 295);--purple-100:oklch(0.935 0.042 295);
+  --purple-200:oklch(0.870 0.085 295);--purple-300:oklch(0.760 0.140 295);
+  --purple-400:oklch(0.640 0.195 295);--purple-500:oklch(0.530 0.230 295);
+  --purple-600:oklch(0.455 0.215 295);--purple-700:oklch(0.385 0.190 295);
+  --green-50:oklch(0.965 0.022 152);--green-100:oklch(0.930 0.050 152);
+  --green-200:oklch(0.860 0.095 152);--green-400:oklch(0.640 0.165 152);
+  --green-500:oklch(0.545 0.170 152);--green-600:oklch(0.470 0.155 152);
+  --green-700:oklch(0.400 0.135 152);
+  --orange-50:oklch(0.970 0.022 62);--orange-100:oklch(0.935 0.050 62);
+  --orange-200:oklch(0.870 0.095 62);
+  --orange-400:oklch(0.690 0.165 62);--orange-500:oklch(0.610 0.185 62);
+  --orange-600:oklch(0.540 0.175 62);--orange-700:oklch(0.465 0.155 62);
+  --red-50:oklch(0.965 0.020 25);--red-100:oklch(0.930 0.045 25);
+  --red-400:oklch(0.640 0.175 25);--red-500:oklch(0.545 0.185 25);
+  --red-600:oklch(0.470 0.170 25);
+  --status-success:oklch(0.545 0.170 152);--status-warning:oklch(0.540 0.150 85);
+  --status-danger:oklch(0.545 0.185 25);--status-info:oklch(0.525 0.155 260);
+  --status-paradox:oklch(0.500 0.200 295);
+  --cyan-500:oklch(0.540 0.140 200);
+  --shadow-xs:0 1px 2px oklch(0.20 0.01 265/0.04);
+  --shadow-sm:0 1px 3px oklch(0.20 0.01 265/0.06),0 1px 2px oklch(0.20 0.01 265/0.03);
+  --shadow-md:0 2px 8px oklch(0.20 0.01 265/0.08),0 1px 3px oklch(0.20 0.01 265/0.04);
+  --font-sans:'Inter',system-ui,sans-serif;--font-mono:'JetBrains Mono','Fira Code',monospace;
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;
+  --radius-sm:6px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);font-size:15px;line-height:24px;color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased;padding:var(--space-8)}
+
+/* === SECTION CARD (sunken header stripe pattern) === */
+.section-card{background:var(--bg-card);border-radius:var(--radius-lg);border:1px solid var(--border-primary);overflow:hidden;box-shadow:var(--shadow-xs)}
+.section-header{padding:10px var(--space-5);border-bottom:1px solid var(--border-secondary);background:var(--bg-sunken);display:flex;align-items:center;gap:var(--space-2)}
+.section-header h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin:0}
+.section-header .right{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);margin-left:auto}
+.section-body{padding:var(--space-4)}
+
+/* === STATUS BADGES === */
+.badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:10px;font-weight:600;padding:2px 8px;border-radius:var(--radius-sm)}
+.badge-completed{background:oklch(0.545 0.170 152/0.12);color:var(--status-success)}
+.badge-running{background:oklch(0.540 0.150 85/0.12);color:var(--status-warning)}
+.badge-failed{background:oklch(0.545 0.185 25/0.12);color:var(--status-danger)}
+.badge-pending{background:var(--bg-sunken);color:var(--text-muted)}
+.badge-replay{background:oklch(0.540 0.140 200/0.10);color:var(--cyan-500);border:1px solid oklch(0.540 0.140 200/0.20)}
+.badge-settled{background:oklch(0.545 0.170 152/0.12);color:var(--status-success)}
+
+/* === RUN MODE LABEL === */
+.run-mode{font-family:var(--font-mono);font-size:10px;color:var(--text-muted)}
+
+/* === STATS ROW === */
+.stats-row{display:flex;align-items:center;gap:var(--space-4);margin-top:var(--space-2);font-size:11px;color:var(--text-muted)}
+.stats-row .val{font-family:var(--font-mono);color:var(--text-primary);font-variant-numeric:tabular-nums}
+
+/* === EPISODE TREE (simplified representation) === */
+.tree-node{display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);font-size:12px;border:1px solid var(--border-secondary);margin-bottom:var(--space-1)}
+.tree-node .seq{font-family:var(--font-mono);font-size:11px;color:var(--text-muted);min-width:24px}
+.tree-node .label{color:var(--text-primary);font-weight:500}
+.tree-node .outcome{font-family:var(--font-mono);font-size:10px;margin-left:auto}
+.tree-node .outcome.resolved{color:var(--status-success)}
+.tree-node .outcome.pending{color:var(--text-disabled)}
+.tree-connector{width:1px;height:8px;background:var(--border-primary);margin-left:16px}
+
+/* === FORK REPLAY === */
+.fork-question{font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:var(--space-3)}
+.option-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:var(--space-3)}
+.option-pill{padding:6px 10px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:10px;font-weight:600;border:1px solid var(--border-primary);background:var(--bg-sunken);color:var(--text-muted);cursor:pointer;transition:all 150ms}
+.option-pill:hover{color:var(--text-primary)}
+.option-pill.selected{background:oklch(0.540 0.140 200/0.10);border-color:oklch(0.540 0.140 200/0.30);color:var(--cyan-500)}
+.settlement{display:flex;align-items:center;gap:var(--space-2);font-size:11px;margin-bottom:var(--space-3)}
+.settlement .label{color:var(--text-muted);font-weight:600}
+.settlement .value{font-family:var(--font-mono);color:var(--status-success)}
+.settlement .outcome-label{color:var(--text-muted)}
+.replay-notes{font-family:var(--font-mono);font-size:10px;color:var(--text-disabled);margin-bottom:var(--space-3)}
+.disclosure-header{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin-bottom:var(--space-2);padding-top:var(--space-3);border-top:1px solid var(--border-secondary)}
+.disclosure-event{display:flex;align-items:center;gap:var(--space-3);font-size:11px;margin-bottom:4px}
+.disclosure-event .time{font-family:var(--font-mono);color:var(--text-muted);font-variant-numeric:tabular-nums;min-width:56px}
+.disclosure-event .type{display:inline-flex;padding:2px 6px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:9px;text-transform:uppercase;background:var(--bg-sunken);color:var(--text-muted);border:1px solid var(--border-secondary)}
+.disclosure-event .desc{color:var(--text-primary)}
+
+/* === DERIVED THEATRES === */
+.theatre-row{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3);border-radius:var(--radius-sm);background:var(--bg-sunken);border:1px solid var(--border-secondary);margin-bottom:var(--space-2)}
+.theatre-row .meta{display:flex;align-items:center;gap:var(--space-2);min-width:0}
+.theatre-row .construct-id{font-family:var(--font-mono);font-size:11px;color:var(--text-primary)}
+.theatre-row .provenance{font-size:10px;color:var(--text-muted)}
+.theatre-row .provenance .mono{font-family:var(--font-mono)}
+.theatre-link{font-size:11px;font-weight:600;color:var(--cyan-500);text-decoration:none;flex-shrink:0;margin-left:var(--space-3)}
+.theatre-link:hover{text-decoration:underline}
+
+/* === EMPTY STATE === */
+.empty-state{padding:var(--space-6) 0;text-align:center}
+.empty-state .msg{font-size:13px;color:var(--text-muted);margin-bottom:var(--space-1)}
+.empty-state .endpoint{font-family:var(--font-mono);font-size:10px;color:var(--text-disabled)}
+.empty-state .hint{font-size:10px;color:var(--text-disabled);margin-top:var(--space-1)}
+
+/* === ICON PLACEHOLDERS === */
+.icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;color:var(--text-muted)}
+.icon svg{width:14px;height:14px}
+
+/* === STATE SELECTOR === */
+.state-selector{display:flex;gap:var(--space-2);margin-bottom:var(--space-6);flex-wrap:wrap}
+.state-btn{padding:var(--space-2) var(--space-4);border-radius:var(--radius-md);font-family:var(--font-sans);font-size:12px;font-weight:600;border:1px solid var(--border-primary);background:var(--bg-card);color:var(--text-secondary);cursor:pointer;transition:all 150ms}
+.state-btn:hover{border-color:var(--purple-300);color:var(--text-primary)}
+.state-btn.active{background:var(--purple-500);color:var(--text-inverse);border-color:var(--purple-500)}
+
+/* === LAYOUT === */
+.page{max-width:720px;margin:0 auto}
+.page h1{font-size:20px;font-weight:700;margin-bottom:var(--space-2);color:var(--text-primary)}
+.page .subtitle{font-size:13px;color:var(--text-muted);margin-bottom:var(--space-6)}
+.stack{display:flex;flex-direction:column;gap:var(--space-4)}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <h1>Scenario Run Detail</h1>
+  <p class="subtitle">Four representative states — toggle to compare.</p>
+
+  <!-- State selector -->
+  <div class="state-selector">
+    <button class="state-btn active" onclick="showState('fresh')">Fresh Run (Completed)</button>
+    <button class="state-btn" onclick="showState('replay')">Replay Run</button>
+    <button class="state-btn" onclick="showState('theatres')">With Derived Theatres</button>
+    <button class="state-btn" onclick="showState('sparse')">Sparse / Running</button>
+  </div>
+
+  <!-- ================================================================
+       STATE 1: FRESH TRAINING RUN (COMPLETED)
+       ================================================================ -->
+  <div id="state-fresh" class="state-panel">
+    <div class="stack">
+
+      <!-- Run Status Header -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          <h3>Run Status</h3>
+          <span class="right">a1b2c3d4e5f6</span>
+        </div>
+        <div class="section-body">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="badge badge-completed">COMPLETED</span>
+            <span class="run-mode">TRAINING</span>
+          </div>
+          <div class="stats-row">
+            <span>Checkpoints: <span class="val">5 / 5</span></span>
+            <span>Reward: <span class="val">847.2</span></span>
+            <span>Duration: <span class="val">12.4s</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Episode Tree -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></span>
+          <h3>Episode Tree</h3>
+          <span class="right">5 resolved</span>
+        </div>
+        <div class="section-body">
+          <div class="tree-node"><span class="seq">#1</span><span class="label">Initial market formation</span><span class="outcome resolved">+120.5</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#2</span><span class="label">Liquidity shock event</span><span class="outcome resolved">+85.0</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#3</span><span class="label">Partisan disclosure</span><span class="outcome resolved">+210.3</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#4</span><span class="label">Late correction window</span><span class="outcome resolved">+180.1</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#5</span><span class="label">Final settlement</span><span class="outcome resolved">+251.3</span></div>
+        </div>
+      </div>
+
+      <!-- Fork Replay -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></span>
+          <h3>Fork Replay</h3>
+          <span class="right">replay output</span>
+        </div>
+        <div class="section-body">
+          <div class="fork-question">Will the candidate concede before the recount deadline?</div>
+          <div class="option-pills">
+            <button class="option-pill selected">Concede Early</button>
+            <button class="option-pill">Wait for Recount</button>
+            <button class="option-pill">Legal Challenge</button>
+          </div>
+          <div class="settlement">
+            <span class="label">Settled:</span>
+            <span class="value">Concede Early</span>
+            <span class="outcome-label">— voluntary withdrawal</span>
+          </div>
+          <div class="replay-notes">Seed: 7291034, Mode: TRAINING</div>
+          <div class="disclosure-header">Disclosure Events</div>
+          <div class="disclosure-event">
+            <span class="time">120ms</span>
+            <span class="type">news</span>
+            <span class="desc">AP calls race for opponent</span>
+          </div>
+          <div class="disclosure-event">
+            <span class="time">340ms</span>
+            <span class="type">data</span>
+            <span class="desc">Mail-in ballot count published</span>
+          </div>
+          <div class="disclosure-event">
+            <span class="time">890ms</span>
+            <span class="type">action</span>
+            <span class="desc">Campaign statement released</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Derived Theatres (empty for fresh run) -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+          <h3>Derived Theatres</h3>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">0 spawned</span>
+          <span class="right">pack-scoped</span>
+        </div>
+        <div class="section-body">
+          <div class="empty-state">
+            <div class="msg">No derived theatres spawned</div>
+            <div class="hint">Theatres are spawned at runtime when checkpoints with can_spawn_theatre=true resolve.</div>
+            <div class="endpoint">GET /api/v1/scenario-packs/{packId}/derived-theatres</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================
+       STATE 2: REPLAY RUN
+       ================================================================ -->
+  <div id="state-replay" class="state-panel" style="display:none">
+    <div class="stack">
+
+      <!-- Run Status Header with REPLAY badge -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          <h3>Run Status</h3>
+          <span class="badge badge-replay" style="font-size:10px;padding:2px 6px">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            REPLAY
+          </span>
+          <span class="right">f9e8d7c6b5a4</span>
+        </div>
+        <div class="section-body">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="badge badge-completed">COMPLETED</span>
+            <span class="run-mode">REPLAY</span>
+          </div>
+          <div class="stats-row">
+            <span>Checkpoints: <span class="val">5 / 5</span></span>
+            <span>Reward: <span class="val">847.2</span></span>
+            <span>Duration: <span class="val">3.1s</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Episode Tree (same data, replay) -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></span>
+          <h3>Episode Tree</h3>
+          <span class="right">5 resolved</span>
+        </div>
+        <div class="section-body">
+          <div class="tree-node"><span class="seq">#1</span><span class="label">Initial market formation</span><span class="outcome resolved">+120.5</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#2</span><span class="label">Liquidity shock event</span><span class="outcome resolved">+85.0</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#3</span><span class="label">Partisan disclosure</span><span class="outcome resolved">+210.3</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#4</span><span class="label">Late correction window</span><span class="outcome resolved">+180.1</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#5</span><span class="label">Final settlement</span><span class="outcome resolved">+251.3</span></div>
+        </div>
+      </div>
+
+      <!-- Replay Trace (title changes for replay) -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></span>
+          <h3>Replay Trace</h3>
+          <span style="font-size:10px;color:var(--text-disabled);margin-left:var(--space-2)">exact recorded-path replay</span>
+          <span class="right">replay output</span>
+        </div>
+        <div class="section-body">
+          <div class="fork-question">Will the candidate concede before the recount deadline?</div>
+          <div class="option-pills">
+            <button class="option-pill selected">Concede Early</button>
+            <button class="option-pill">Wait for Recount</button>
+            <button class="option-pill">Legal Challenge</button>
+          </div>
+          <div class="settlement">
+            <span class="label">Settled:</span>
+            <span class="value">Concede Early</span>
+            <span class="outcome-label">— voluntary withdrawal</span>
+          </div>
+          <div class="replay-notes">Seed: 7291034, Mode: REPLAY</div>
+          <div class="disclosure-header">Disclosure Events</div>
+          <div class="disclosure-event">
+            <span class="time">120ms</span>
+            <span class="type">news</span>
+            <span class="desc">AP calls race for opponent</span>
+          </div>
+          <div class="disclosure-event">
+            <span class="time">340ms</span>
+            <span class="type">data</span>
+            <span class="desc">Mail-in ballot count published</span>
+          </div>
+          <div class="disclosure-event">
+            <span class="time">890ms</span>
+            <span class="type">action</span>
+            <span class="desc">Campaign statement released</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Derived Theatres (empty) -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+          <h3>Derived Theatres</h3>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">0 spawned</span>
+          <span class="right">pack-scoped</span>
+        </div>
+        <div class="section-body">
+          <div class="empty-state">
+            <div class="msg">No derived theatres spawned</div>
+            <div class="hint">Theatres are spawned at runtime when checkpoints with can_spawn_theatre=true resolve.</div>
+            <div class="endpoint">GET /api/v1/scenario-packs/{packId}/derived-theatres</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================
+       STATE 3: RUN WITH DERIVED THEATRES
+       ================================================================ -->
+  <div id="state-theatres" class="state-panel" style="display:none">
+    <div class="stack">
+
+      <!-- Run Status -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          <h3>Run Status</h3>
+          <span class="right">c4d5e6f7a8b9</span>
+        </div>
+        <div class="section-body">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="badge badge-completed">COMPLETED</span>
+            <span class="run-mode">EVALUATION</span>
+          </div>
+          <div class="stats-row">
+            <span>Checkpoints: <span class="val">8 / 8</span></span>
+            <span>Reward: <span class="val">1204.7</span></span>
+            <span>Duration: <span class="val">28.6s</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Episode Tree (8 nodes) -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></span>
+          <h3>Episode Tree</h3>
+          <span class="right">8 resolved</span>
+        </div>
+        <div class="section-body">
+          <div class="tree-node"><span class="seq">#1</span><span class="label">Market open — initial pricing</span><span class="outcome resolved">+90.2</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#2</span><span class="label">Early participant entry</span><span class="outcome resolved">+105.0</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#3</span><span class="label">Information asymmetry event</span><span class="outcome resolved">+250.1</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#4</span><span class="label">Cascade trigger (theatre spawn)</span><span class="outcome resolved">+180.3</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#5</span><span class="label">Market correction</span><span class="outcome resolved">+60.0</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#6</span><span class="label">Second cascade (theatre spawn)</span><span class="outcome resolved">+195.4</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#7</span><span class="label">Late-stage arbitrage</span><span class="outcome resolved">+120.7</span></div>
+          <div class="tree-connector"></div>
+          <div class="tree-node"><span class="seq">#8</span><span class="label">Terminal settlement</span><span class="outcome resolved">+203.0</span></div>
+        </div>
+      </div>
+
+      <!-- Fork Replay -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></span>
+          <h3>Fork Replay</h3>
+          <span class="right">replay output</span>
+        </div>
+        <div class="section-body">
+          <div class="fork-question">Does the cascade event reach 3+ markets?</div>
+          <div class="option-pills">
+            <button class="option-pill selected">Yes (3+ markets)</button>
+            <button class="option-pill">No (contained)</button>
+          </div>
+          <div class="settlement">
+            <span class="label">Settled:</span>
+            <span class="value">Yes (3+ markets)</span>
+            <span class="outcome-label">— cascaded to 4 correlated markets</span>
+          </div>
+          <div class="replay-notes">Seed: 4482019, Mode: EVALUATION</div>
+        </div>
+      </div>
+
+      <!-- Derived Theatres (3 spawned with provenance) -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+          <h3>Derived Theatres</h3>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">3 spawned</span>
+          <span class="right">pack-scoped</span>
+        </div>
+        <div class="section-body">
+          <div class="theatre-row">
+            <div class="meta">
+              <span class="construct-id">cascade-alpha-4x</span>
+              <span class="badge badge-settled">SETTLED</span>
+              <span class="provenance">from <span class="mono">e7f2a1b3</span></span>
+              <span class="provenance">cert <span class="mono">9c0d4e5f</span></span>
+            </div>
+            <a href="#" class="theatre-link">View Theatre</a>
+          </div>
+          <div class="theatre-row">
+            <div class="meta">
+              <span class="construct-id">cascade-beta-corr</span>
+              <span class="badge badge-running">RUNNING</span>
+              <span class="provenance">from <span class="mono">a3b4c5d6</span></span>
+            </div>
+            <a href="#" class="theatre-link">View Theatre</a>
+          </div>
+          <div class="theatre-row">
+            <div class="meta">
+              <span class="construct-id">arb-window-late</span>
+              <span class="badge badge-pending">PENDING</span>
+              <span class="provenance">from <span class="mono">f1e2d3c4</span></span>
+            </div>
+            <a href="#" class="theatre-link">View Theatre</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================
+       STATE 4: SPARSE / RUNNING (no data yet)
+       ================================================================ -->
+  <div id="state-sparse" class="state-panel" style="display:none">
+    <div class="stack">
+
+      <!-- Run Status (RUNNING) -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          <h3>Run Status</h3>
+          <span class="right">d4e5f6a7b8c9</span>
+        </div>
+        <div class="section-body">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span class="badge badge-running">RUNNING</span>
+            <span class="run-mode">CALIBRATION</span>
+          </div>
+          <div class="stats-row">
+            <span>Checkpoints: <span class="val">0 / 6</span></span>
+            <span>Reward: <span class="val">---</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Episode Tree (empty — awaiting checkpoints) -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg></span>
+          <h3>Episode Tree</h3>
+          <span class="right">0 resolved</span>
+        </div>
+        <div class="section-body">
+          <div class="empty-state">
+            <div class="msg">Awaiting checkpoint resolutions...</div>
+            <div class="endpoint">GET /api/v1/scenario-packs/{packId}/runs/{runId}/tree</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fork Replay (not yet available) -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></span>
+          <h3>Fork Replay</h3>
+          <span class="right">replay output</span>
+        </div>
+        <div class="section-body">
+          <div class="empty-state">
+            <div class="msg">Replay available after run completes</div>
+            <div class="endpoint">GET /api/v1/scenario-packs/{packId}/runs/{runId}/replay</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Derived Theatres (none yet) -->
+      <div class="section-card">
+        <div class="section-header">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+          <h3>Derived Theatres</h3>
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">0 spawned</span>
+          <span class="right">pack-scoped</span>
+        </div>
+        <div class="section-body">
+          <div class="empty-state">
+            <div class="msg">No derived theatres spawned</div>
+            <div class="hint">Theatres are spawned at runtime when checkpoints with can_spawn_theatre=true resolve.</div>
+            <div class="endpoint">GET /api/v1/scenario-packs/{packId}/derived-theatres</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showState(id) {
+  document.querySelectorAll('.state-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.state-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('state-' + id).style.display = 'block';
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

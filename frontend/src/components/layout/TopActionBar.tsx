@@ -1,31 +1,21 @@
-import React from 'react';
+import type { ComponentType, MutableRefObject } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { clsx } from 'clsx';
+import {
+  Award,
+  List,
+  Menu,
+  Plus,
+} from 'lucide-react';
 import { useTopActionBarActions, type TopActionBarActions } from '../../contexts/TopActionBarActionsContext';
 import { useAgentsUi, type AgentsTab } from '../../contexts/AgentsUiContext';
 import { useRlmfUi } from '../../contexts/RlmfUiContext';
 import { useVerifyUi, type VerifyTab } from '../../contexts/VerifyUiContext';
-import {
-  Radio,
-  Bell,
-  GitCompare,
-  Plus,
-  BarChart3,
-  Cpu,
-  RefreshCw,
-  Users,
-  Globe,
-  Search,
-  Settings,
-  Menu,
-  List,
-  Award,
-} from 'lucide-react';
-import { clsx } from 'clsx';
 
 interface ActionButton {
   label: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  kind?: 'primary' | 'warn' | 'pill';
+  icon?: ComponentType<{ className?: string }>;
+  kind?: 'primary' | 'pill';
   action?: string;
   isTab?: boolean;
   tabValue?: AgentsTab;
@@ -37,120 +27,139 @@ interface ActionButton {
 
 interface PageConfig {
   name: string;
+  eyebrow?: string;
   buttons: ActionButton[];
 }
 
 interface TopActionBarProps {
-  /** Callback to open the mobile sidebar drawer */
   onHamburgerClick?: () => void;
 }
 
-const TOP_ACTIONS: Record<string, PageConfig> = {
-  '/marketplace': {
-    name: 'Marketplace',
-    buttons: [
-      { label: 'Live', icon: Radio, kind: 'primary', action: 'onLive' },
-      { label: 'Alert', icon: Bell, action: 'onAlert' },
-      { label: 'Compare', icon: GitCompare, action: 'onCompare' },
-      { label: 'New Timeline', icon: Plus, kind: 'primary', action: 'onNewTimeline' },
-    ],
+const PAGE_CONFIGS: Array<{ match: (pathname: string) => boolean; config: PageConfig }> = [
+  {
+    match: (pathname) => pathname === '/home',
+    config: { name: 'Dashboard', eyebrow: 'Overview', buttons: [] },
   },
-  '/launchpad': {
-    name: 'Launchpad',
-    buttons: [
-      // No buttons - CTAs are inside the page
-    ],
+  {
+    match: (pathname) => pathname === '/theatres',
+    config: {
+      name: 'Theatres',
+      eyebrow: 'Market / Templates',
+      buttons: [{ label: 'Create Theatre', icon: Plus, kind: 'primary', action: 'createTheatre' }],
+    },
   },
-  '/analytics': {
-    name: 'Analytics',
-    buttons: [
-      { label: 'Alert', icon: Bell, action: 'onAlert' },
-      { label: 'Compare', icon: GitCompare, action: 'onCompare' },
-      { label: 'Settings', icon: Settings, action: 'openShellSettings' },
-    ],
+  {
+    match: (pathname) => pathname === '/theatres/create',
+    config: { name: 'Create Theatre', eyebrow: 'Theatres', buttons: [] },
   },
-  '/portfolio': {
-    name: 'Portfolio',
-    buttons: [
-      { label: 'New Position', icon: Plus, kind: 'primary', action: 'newPosition' },
-    ],
+  {
+    match: (pathname) => pathname.startsWith('/theatre/'),
+    config: {
+      name: 'Theatre Detail',
+      eyebrow: 'Theatres',
+      buttons: [{ label: 'Deploy Agent', icon: Plus, kind: 'primary', action: 'deployAgent' }],
+    },
   },
-  '/rlmf': {
-    name: 'RLMF',
-    buttons: [
-      { label: 'Market View', icon: BarChart3, isRlmfViewTab: true, rlmfViewValue: 'market' },
-      { label: 'Robotics View', icon: Cpu, isRlmfViewTab: true, rlmfViewValue: 'robotics' },
-      { label: 'Mode 0: Deterministic | Conf: 0.98', kind: 'pill' },
-    ],
+  {
+    match: (pathname) => pathname === '/fleet' || pathname.startsWith('/fleet/'),
+    config: {
+      name: 'Fleet',
+      eyebrow: 'Operations',
+      buttons: [{ label: 'Deploy Agent', icon: Plus, kind: 'primary', action: 'deployAgent' }],
+    },
   },
-  '/vrf': {
-    name: 'VRF',
-    buttons: [
-      { label: 'Live', icon: Radio, kind: 'primary', action: 'onLive' },
-      { label: 'Refresh', icon: RefreshCw, kind: 'primary', action: 'onRefresh' },
-    ],
+  {
+    match: (pathname) => pathname === '/investigation' || pathname.startsWith('/investigation'),
+    config: { name: 'Investigations', eyebrow: 'Intelligence', buttons: [] },
   },
-  '/verify': {
-    name: 'Verify',
-    buttons: [
-      { label: 'My Runs', icon: List, isVerifyTab: true, verifyTabValue: 'runs' },
-      { label: 'Certificates', icon: Award, isVerifyTab: true, verifyTabValue: 'certificates' },
-      { label: 'Start Verification', icon: Plus, kind: 'primary', action: 'startVerification' },
-    ],
+  {
+    match: (pathname) => pathname === '/paradox-console',
+    config: { name: 'Paradox Console', eyebrow: 'Risk / Status', buttons: [] },
   },
-  '/agents': {
-    name: 'Agents',
-    buttons: [
-      { label: 'Agent Roster', icon: Users, isTab: true, tabValue: 'roster' },
-      { label: 'Global Intelligence', icon: Globe, isTab: true, tabValue: 'intel' },
-      { label: 'Search', icon: Search, action: 'agentSearch' },
-      { label: 'Deploy Agent', icon: Plus, kind: 'primary', action: 'deployAgent' },
-    ],
+  {
+    match: (pathname) => pathname === '/world-monitor',
+    config: { name: 'World Monitor', eyebrow: 'Intelligence', buttons: [] },
   },
-  '/agents/breach': {
-    name: 'Breach Console',
-    buttons: [],
+  {
+    match: (pathname) => pathname === '/world-monitor/live',
+    config: { name: 'Global Map', eyebrow: 'Intelligence', buttons: [] },
   },
-  '/agents/export': {
-    name: 'Export Console',
-    buttons: [],
+  {
+    match: (pathname) => pathname === '/signal-map',
+    config: { name: 'Signal Map', eyebrow: 'Intelligence', buttons: [] },
   },
-};
-
-/** Routes where Live/Alert/Compare buttons should be hidden */
-const HIDE_LIVE_ALERT_COMPARE_ROUTES = [
-  '/agents/breach',
-  '/agents/export',
-  '/analytics',
+  {
+    match: (pathname) => pathname === '/portfolio',
+    config: { name: 'Portfolio', eyebrow: 'Systems', buttons: [] },
+  },
+  {
+    match: (pathname) => pathname === '/analytics',
+    config: { name: 'Analytics', eyebrow: 'Systems', buttons: [] },
+  },
+  {
+    match: (pathname) => pathname === '/certificates',
+    config: { name: 'Certificates', eyebrow: 'Operations', buttons: [] },
+  },
+  {
+    match: (pathname) => pathname === '/scenario-packs',
+    config: { name: 'Scenario Packs', eyebrow: 'Alpamayo Studio', buttons: [] },
+  },
+  {
+    match: (pathname) => pathname.startsWith('/scenario-packs/'),
+    config: { name: 'Scenario Pack Detail', eyebrow: 'Alpamayo Studio', buttons: [] },
+  },
+  {
+    match: (pathname) => pathname === '/rlmf',
+    config: {
+      name: 'RLMF Exports',
+      eyebrow: 'Data Product',
+      buttons: [],
+    },
+  },
+  {
+    match: (pathname) => pathname === '/verify',
+    config: {
+      name: 'Verify',
+      eyebrow: 'Verification',
+      buttons: [
+        { label: 'My Runs', icon: List, isVerifyTab: true, verifyTabValue: 'runs' },
+        { label: 'Certificates', icon: Award, isVerifyTab: true, verifyTabValue: 'certificates' },
+        { label: 'Start Verification', icon: Plus, kind: 'primary', action: 'startVerification' },
+      ],
+    },
+  },
 ];
 
-/** Check if current route should hide Live/Alert/Compare buttons */
-function shouldHideLiveAlertCompare(pathname: string): boolean {
-  if (HIDE_LIVE_ALERT_COMPARE_ROUTES.includes(pathname)) return true;
-  if (pathname.startsWith('/launchpad')) return true;
-  return false;
-}
-
-/** Resolve a pathname to the best matching config key */
 function resolveConfig(pathname: string): PageConfig {
-  // Exact match
-  if (TOP_ACTIONS[pathname]) return TOP_ACTIONS[pathname];
-
-  // Prefix match for detail routes
-  if (pathname.startsWith('/launchpad')) return TOP_ACTIONS['/launchpad'];
-  if (pathname.startsWith('/agents')) return TOP_ACTIONS['/agents'];
-  if (pathname.startsWith('/agent/')) return TOP_ACTIONS['/agents'];
-  if (pathname.startsWith('/timeline/')) return { name: 'Timeline', buttons: [] };
-
-  // Fallback
-  return TOP_ACTIONS['/marketplace'];
+  return PAGE_CONFIGS.find((entry) => entry.match(pathname))?.config ?? {
+    name: 'Echelon',
+    eyebrow: 'Workspace',
+    buttons: [],
+  };
 }
 
-/**
- * Get action handler from registered actions
- */
-function getActionHandler(action: string, actionsRef: React.MutableRefObject<TopActionBarActions>): (() => void) | undefined {
+function getActionHandler(action: string, actionsRef: MutableRefObject<TopActionBarActions>): (() => void) | undefined {
   return actionsRef.current[action];
+}
+
+function buttonClass(active = false, kind: 'default' | 'primary' | 'pill' = 'default') {
+  if (kind === 'pill') {
+    return 'rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-2.5 py-1 font-mono text-[11px] font-medium text-[var(--e-text-secondary)]';
+  }
+
+  if (kind === 'primary') {
+    return clsx(
+      'inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-semibold transition',
+      'border-[var(--e-purple-200)] bg-[var(--e-purple-500)] text-[var(--e-text-inverse)] hover:bg-[var(--e-purple-400)]',
+    );
+  }
+
+  return clsx(
+    'inline-flex items-center gap-2 rounded-md border px-3 py-2 text-[13px] font-medium transition',
+    active
+      ? 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+      : 'border-[var(--e-border-primary)] bg-[var(--e-bg-card)] text-[var(--e-text-secondary)] hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]',
+  );
 }
 
 export function TopActionBar({ onHamburgerClick }: TopActionBarProps) {
@@ -162,156 +171,103 @@ export function TopActionBar({ onHamburgerClick }: TopActionBarProps) {
   const { viewMode, setViewMode } = useRlmfUi();
   const { activeTab: verifyTab, setActiveTab: setVerifyTab } = useVerifyUi();
 
-  // Check if this is the agents page
-  const isAgentsPage = location.pathname === '/agents' || location.pathname.startsWith('/agents/');
-
-  // Check if this is the RLMF page
-  const isRlmfPage = location.pathname === '/rlmf';
-
-  // Check if this is the Verify page
-  const isVerifyPage = location.pathname === '/verify';
-
-  // Filter out Live/Alert/Compare on specific routes
-  const hideLiveAlertCompare = shouldHideLiveAlertCompare(location.pathname);
-  const filteredButtons = hideLiveAlertCompare
-    ? config.buttons.filter(btn => btn.label !== 'Live' && btn.label !== 'Alert' && btn.label !== 'Compare')
-    : config.buttons;
-
   return (
-    <div className="h-14 flex-shrink-0 flex items-center justify-between px-4 border-b border-terminal-border bg-terminal-panel" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.03)' }}>
-      {/* Left: Hamburger (mobile) + Page name */}
-      <div className="flex items-center gap-2.5 min-w-0">
-        {/* Hamburger — mobile only */}
-        <button
-          onClick={onHamburgerClick}
-          className="md:hidden p-1.5 rounded-lg text-terminal-text-secondary hover:text-terminal-text hover:bg-terminal-card transition-colors"
-          aria-label="Open menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+    <div className="sticky top-14 z-10 border-b border-[var(--e-border-primary)] bg-[var(--e-bg-card)]/90 px-6 py-4 backdrop-blur-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={onHamburgerClick}
+            className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-md text-[var(--e-text-muted)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-secondary)] md:hidden"
+            aria-label="Open menu"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        </div>
 
-        <span className="text-sm font-bold tracking-[0.1em] uppercase text-terminal-text whitespace-nowrap pl-3 border-l-2 border-echelon-blue/40">
-          {config.name}
-        </span>
-      </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {config.buttons.map((btn) => {
+            if (btn.isTab) {
+              const active = activeTab === btn.tabValue;
+              const Icon = btn.icon;
+              return (
+                <button
+                  key={btn.label}
+                  type="button"
+                  onClick={() => btn.tabValue && setActiveTab(btn.tabValue)}
+                  className={buttonClass(active)}
+                >
+                  {Icon ? <Icon className="h-4 w-4" /> : null}
+                  <span>{btn.label}</span>
+                </button>
+              );
+            }
 
-      {/* Action buttons — hidden on mobile */}
-      <div className="hidden md:flex items-center gap-2 flex-wrap">
-        {/* Build stamp — remove once deployment confirmed */}
-        <span
-          className="font-mono text-[9px] text-terminal-text-muted/60 px-2 py-1 rounded border border-terminal-border/40 bg-terminal-bg/50 select-all whitespace-nowrap"
-          title={`Build: ${__BUILD_HASH__}`}
-        >
-          {__BUILD_ID__} · {__BUILD_HASH__}
-        </span>
-        {filteredButtons.map((btn) => {
-          // Tab buttons for agents page
-          if (btn.isTab && isAgentsPage) {
-            const isActive = activeTab === btn.tabValue;
+            if (btn.isRlmfViewTab) {
+              const active = viewMode === btn.rlmfViewValue;
+              const Icon = btn.icon;
+              return (
+                <button
+                  key={btn.label}
+                  type="button"
+                  onClick={() => btn.rlmfViewValue && setViewMode(btn.rlmfViewValue)}
+                  className={buttonClass(active)}
+                >
+                  {Icon ? <Icon className="h-4 w-4" /> : null}
+                  <span>{btn.label}</span>
+                </button>
+              );
+            }
+
+            if (btn.isVerifyTab) {
+              const active = verifyTab === btn.verifyTabValue;
+              const Icon = btn.icon;
+              return (
+                <button
+                  key={btn.label}
+                  type="button"
+                  onClick={() => btn.verifyTabValue && setVerifyTab(btn.verifyTabValue)}
+                  className={buttonClass(active)}
+                >
+                  {Icon ? <Icon className="h-4 w-4" /> : null}
+                  <span>{btn.label}</span>
+                </button>
+              );
+            }
+
+            if (btn.kind === 'pill') {
+              return (
+                <span key={btn.label} className={buttonClass(false, 'pill')}>
+                  {btn.label}
+                </span>
+              );
+            }
+
+            const Icon = btn.icon;
             return (
               <button
                 key={btn.label}
-                onClick={() => btn.tabValue && setActiveTab(btn.tabValue)}
-                className={clsx(
-                  'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap',
-                  isActive
-                    ? 'border-echelon-cyan/30 bg-echelon-cyan/10 text-echelon-cyan'
-                    : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-terminal-card'
-                )}
+                type="button"
+                onClick={() => {
+                  if (btn.action === 'createTheatre') {
+                    navigate('/theatres/create');
+                    return;
+                  }
+
+                  const handler = btn.action ? getActionHandler(btn.action, actionsRef) : undefined;
+                  if (handler) handler();
+                }}
+                className={buttonClass(false, btn.kind === 'primary' ? 'primary' : 'default')}
               >
-                {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
+                {Icon ? <Icon className="h-4 w-4" /> : null}
                 <span>{btn.label}</span>
               </button>
             );
-          }
-
-          // View tabs for RLMF page
-          if (btn.isRlmfViewTab && isRlmfPage) {
-            const isActive = viewMode === btn.rlmfViewValue;
-            return (
-              <button
-                key={btn.label}
-                onClick={() => btn.rlmfViewValue && setViewMode(btn.rlmfViewValue)}
-                className={clsx(
-                  'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap',
-                  isActive
-                    ? 'border-echelon-cyan/35 bg-echelon-cyan/10 text-echelon-cyan'
-                    : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-terminal-card'
-                )}
-              >
-                {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
-                <span>{btn.label}</span>
-              </button>
-            );
-          }
-
-          // Tab buttons for verify page
-          if (btn.isVerifyTab && isVerifyPage) {
-            const isActive = verifyTab === btn.verifyTabValue;
-            return (
-              <button
-                key={btn.label}
-                onClick={() => btn.verifyTabValue && setVerifyTab(btn.verifyTabValue)}
-                className={clsx(
-                  'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 whitespace-nowrap',
-                  isActive
-                    ? 'border-echelon-cyan/30 bg-echelon-cyan/10 text-echelon-cyan'
-                    : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-terminal-card'
-                )}
-              >
-                {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
-                <span>{btn.label}</span>
-              </button>
-            );
-          }
-
-          // Pill-style buttons
-          if (btn.kind === 'pill') {
-            return (
-              <span
-                key={btn.label}
-                className="font-mono text-[11px] px-2.5 py-1.5 rounded-full border border-terminal-border bg-terminal-card text-terminal-text-secondary whitespace-nowrap"
-              >
-                {btn.label}
-              </span>
-            );
-          }
-
-          // Regular action buttons
-          return (
-            <button
-              key={btn.label}
-              onClick={() => {
-                // Navigate to Launchpad for New Timeline
-                if (btn.action === 'onNewTimeline') {
-                  navigate('/launchpad');
-                  return;
-                }
-                const handler = btn.action ? getActionHandler(btn.action, actionsRef) : undefined;
-                if (handler) {
-                  handler();
-                } else if (btn.action === 'noop') {
-                  // No-op action, do nothing
-                } else {
-                  // Fallback for actions without handlers
-                  console.warn(`TopActionBar: No handler registered for action "${btn.action}" on page "${config.name}"`);
-                }
-              }}
-              className={clsx(
-                'flex items-center gap-2 px-2.5 py-[7px] rounded-lg border text-[11px] font-semibold transition-all duration-150 whitespace-nowrap',
-                btn.kind === 'primary'
-                  ? 'border-echelon-blue/30 bg-echelon-blue/10 text-echelon-blue hover:bg-echelon-blue/[0.18] hover:-translate-y-px'
-                  : btn.kind === 'warn'
-                  ? 'border-echelon-amber/30 bg-echelon-amber/10 text-echelon-amber hover:bg-echelon-amber/[0.18] hover:-translate-y-px'
-                  : 'border-terminal-border bg-terminal-panel text-terminal-text-secondary hover:text-terminal-text hover:border-terminal-border-light hover:bg-terminal-card hover:-translate-y-px'
-              )}
-            >
-              {btn.icon && React.createElement(btn.icon, { className: "w-3.5 h-3.5" })}
-              <span>{btn.label}</span>
-            </button>
-          );
-        })}
+          })}
+        </div>
       </div>
     </div>
   );
 }
+
+export default TopActionBar;

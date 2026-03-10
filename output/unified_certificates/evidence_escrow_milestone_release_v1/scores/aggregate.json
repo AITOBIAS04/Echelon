@@ -1,0 +1,10 @@
+{
+  "composite": 0.8590909090909091,
+  "per_criterion": {
+    "idempotency": 1.0,
+    "release_amount_correct": 0.5454545454545454,
+    "required_evidence_present": 0.9090909090909091,
+    "signature_policy_satisfied": 0.9090909090909091,
+    "validity_window_respected": 1.0
+  }
+}

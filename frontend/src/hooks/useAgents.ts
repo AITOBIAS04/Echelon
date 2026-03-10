@@ -130,10 +130,15 @@ function enrichAgent(agent: Agent): EnrichedAgent {
 // HOOKS — Real API
 // ============================================
 
-export function useAgentRoster() {
+export function useAgentRoster(params?: {
+  archetype?: string;
+  is_alive?: boolean;
+  limit?: number;
+  offset?: number;
+}) {
   const { data: resp, isLoading, error } = useQuery({
-    queryKey: ['agents', 'roster'],
-    queryFn: () => fetchAgents({ is_alive: true }),
+    queryKey: ['agents', 'roster', params],
+    queryFn: () => fetchAgents(params),
     refetchInterval: 30_000,
   });
 

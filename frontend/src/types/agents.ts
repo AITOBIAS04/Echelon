@@ -20,6 +20,9 @@ export interface Agent {
   is_alive: boolean;
   death_cause: string | null;
 
+  // Deployments
+  active_deployments_count: number;
+
   // Owner
   owner_id: string;
 

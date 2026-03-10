@@ -13,13 +13,16 @@ import type {
   TheatreCertificateResponse,
 } from '../types/theatre';
 
-export function useTheatreDetail(theatreId: string | null) {
+export function useTheatreDetail(
+  theatreId: string | null,
+  options?: { includeInvestigationContext?: boolean },
+) {
   const queryClient = useQueryClient();
 
   // ── Theatre detail ──────────────────────────────────────────────────
   const theatreQuery = useQuery<TheatreResponse>({
-    queryKey: ['theatre', theatreId],
-    queryFn: () => theatreApi.getTheatre(theatreId!),
+    queryKey: ['theatre', theatreId, options?.includeInvestigationContext ? 'investigation_context' : 'base'],
+    queryFn: () => theatreApi.getTheatre(theatreId!, options),
     enabled: !!theatreId,
     staleTime: 10_000,
   });

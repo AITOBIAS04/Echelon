@@ -1,116 +1,81 @@
-/**
- * Claim Graph Panel
- *
- * Displays claims with status badges, evidence refs,
- * confidence scores, and a status summary.
- */
-
+import { clsx } from 'clsx';
 import type { ClaimGraphSummary, ClaimNode } from '../../types/investigation';
 
-const STATUS_COLORS: Record<string, string> = {
-  supported: 'bg-emerald-500/20 text-emerald-400',
-  partially_supported: 'bg-amber-500/20 text-amber-400',
-  unconfirmed: 'bg-zinc-500/20 text-zinc-400',
-  contradicted: 'bg-red-500/20 text-red-400',
+const STATUS_STYLES: Record<string, string> = {
+  supported: 'border-[color:oklch(0.545_0.170_152_/_0.18)] bg-[var(--e-green-50)] text-[var(--e-green-600)]',
+  partially_supported: 'border-[color:oklch(0.708_0.136_62_/_0.20)] bg-[color:oklch(0.708_0.136_62_/_0.10)] text-[var(--e-orange-600)]',
+  unconfirmed: 'border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] text-[var(--e-text-muted)]',
+  contradicted: 'border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] text-[var(--e-red-600)]',
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  fact: 'bg-blue-500/20 text-blue-400',
-  causal: 'bg-purple-500/20 text-purple-400',
-  attribution: 'bg-amber-500/20 text-amber-400',
+const TYPE_STYLES: Record<string, string> = {
+  fact: 'border-[color:oklch(0.623_0.188_259_/_0.18)] bg-[color:oklch(0.623_0.188_259_/_0.10)] text-[color:oklch(0.623_0.188_259)]',
+  causal: 'border-[var(--e-purple-200)] bg-[var(--e-purple-50)] text-[var(--e-purple-700)]',
+  attribution: 'border-[color:oklch(0.708_0.136_62_/_0.20)] bg-[color:oklch(0.708_0.136_62_/_0.10)] text-[var(--e-orange-600)]',
 };
 
-function ClaimStatusBadge({ status }: { status: string }) {
-  const color = STATUS_COLORS[status] ?? 'bg-zinc-500/20 text-zinc-400';
+function ClaimPill({ value, kind }: { value: string; kind: 'status' | 'type' }) {
+  const classes = kind === 'status' ? STATUS_STYLES[value] : TYPE_STYLES[value];
   return (
-    <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase ${color}`}>
-      {status}
-    </span>
-  );
-}
-
-function ClaimTypeBadge({ type }: { type: string }) {
-  const color = TYPE_COLORS[type] ?? 'bg-zinc-500/20 text-zinc-400';
-  return (
-    <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase ${color}`}>
-      {type}
+    <span className={clsx('rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.04em]', classes)}>
+      {value.replace(/_/g, ' ')}
     </span>
   );
 }
 
 function ConfidenceBar({ confidence }: { confidence: number }) {
-  const pct = Math.round(confidence * 100);
-  const color = pct >= 70 ? 'bg-emerald-500' : pct >= 40 ? 'bg-amber-500' : 'bg-red-500';
+  const percent = Math.round(confidence * 100);
+  const color =
+    percent >= 70 ? 'bg-[var(--e-green-600)]' : percent >= 40 ? 'bg-[var(--e-orange-600)]' : 'bg-[var(--e-red-600)]';
+
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-terminal-border rounded overflow-hidden">
-        <div className={`h-full ${color} rounded`} style={{ width: `${pct}%` }} />
+      <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--e-bg-sunken)]">
+        <div className={clsx('h-full rounded-full', color)} style={{ width: `${percent}%` }} />
       </div>
-      <span className="text-[10px] font-mono text-terminal-text-muted w-8 text-right">
-        {pct}%
-      </span>
+      <span className="w-10 text-right font-mono text-[11px] text-[var(--e-text-muted)]">{percent}%</span>
     </div>
   );
 }
 
-function ClaimNodeCard({ claim }: { claim: ClaimNode }) {
+function ClaimCard({ claim }: { claim: ClaimNode }) {
   return (
-    <div className="bg-terminal-surface rounded-lg p-3 border border-terminal-border">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-terminal-text">{claim.claim_id}</span>
-          <ClaimTypeBadge type={claim.claim_type} />
-          <ClaimStatusBadge status={claim.status} />
-        </div>
+    <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[11px] text-[var(--e-text-muted)]">{claim.claim_id}</span>
+        <ClaimPill value={claim.claim_type} kind="type" />
+        <ClaimPill value={claim.status} kind="status" />
       </div>
 
-      <p className="mt-2 text-xs text-terminal-text">{claim.claim_text}</p>
+      <div className="mb-3 text-[14px] leading-6 text-[var(--e-text-primary)]">{claim.claim_text}</div>
 
-      <div className="mt-2">
-        <ConfidenceBar confidence={claim.confidence} />
-      </div>
+      <ConfidenceBar confidence={claim.confidence} />
 
-      {claim.evidence_refs.length > 0 && (
-        <div className="mt-2 flex gap-1 flex-wrap">
-          {claim.evidence_refs.map((ref) => (
+      {claim.evidence_refs.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {claim.evidence_refs.map((reference) => (
             <span
-              key={ref}
-              className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-echelon-cyan/10 text-echelon-cyan"
+              key={reference}
+              className="rounded-full border border-[var(--e-purple-200)] bg-[var(--e-purple-50)] px-2 py-0.5 font-mono text-[10px] text-[var(--e-purple-700)]"
             >
-              {ref}
+              {reference}
             </span>
           ))}
         </div>
-      )}
+      ) : null}
 
-      {claim.counter_signals.length > 0 && (
-        <div className="mt-2 flex gap-1 flex-wrap">
-          {claim.counter_signals.map((cs) => (
+      {claim.counter_signals.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {claim.counter_signals.map((signal) => (
             <span
-              key={cs}
-              className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-red-500/10 text-red-400"
+              key={signal}
+              className="rounded-full border border-[color:oklch(0.545_0.185_25_/_0.18)] bg-[var(--e-red-50)] px-2 py-0.5 font-mono text-[10px] text-[var(--e-red-600)]"
             >
-              {cs}
+              {signal}
             </span>
           ))}
         </div>
-      )}
-    </div>
-  );
-}
-
-function StatusSummary({ summary }: { summary: Record<string, number> }) {
-  const total = Object.values(summary).reduce((a, b) => a + b, 0);
-  if (total === 0) return null;
-
-  return (
-    <div className="flex gap-3 flex-wrap">
-      {Object.entries(summary).map(([status, count]) => (
-        <div key={status} className="flex items-center gap-1">
-          <ClaimStatusBadge status={status} />
-          <span className="text-[10px] text-terminal-text-muted">{count}</span>
-        </div>
-      ))}
+      ) : null}
     </div>
   );
 }
@@ -118,7 +83,7 @@ function StatusSummary({ summary }: { summary: Record<string, number> }) {
 export function ClaimGraphPanel({ claims }: { claims: ClaimGraphSummary }) {
   if (claims.claims.length === 0) {
     return (
-      <div className="text-terminal-text-muted text-xs p-4">
+      <div className="rounded-lg border border-dashed border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-8 text-center text-[13px] text-[var(--e-text-muted)]">
         No claims registered yet.
       </div>
     );
@@ -126,23 +91,30 @@ export function ClaimGraphPanel({ claims }: { claims: ClaimGraphSummary }) {
 
   return (
     <div className="space-y-4">
-      {/* Root hash + summary */}
-      <div className="bg-terminal-surface rounded-lg p-3 border border-terminal-border">
-        <div className="flex items-center justify-between text-xs mb-2">
-          <span className="text-terminal-text-muted">Root Hash</span>
-          <span className="font-mono text-terminal-text">
-            {claims.root_hash.substring(0, 16)}...
+      <div className="rounded-lg border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-4 py-4 shadow-[var(--e-shadow-xs)]">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--e-text-muted)]">
+            Root Hash
           </span>
+          <span className="font-mono text-[12px] text-[var(--e-text-primary)]">{claims.root_hash}</span>
         </div>
-        <StatusSummary summary={claims.status_summary} />
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(claims.status_summary).map(([status, count]) => (
+            <div key={status} className="inline-flex items-center gap-2">
+              <ClaimPill value={status} kind="status" />
+              <span className="text-[11px] text-[var(--e-text-muted)]">{count}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Claim nodes */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {claims.claims.map((claim) => (
-          <ClaimNodeCard key={claim.claim_id} claim={claim} />
+          <ClaimCard key={claim.claim_id} claim={claim} />
         ))}
       </div>
     </div>
   );
 }
+
+export default ClaimGraphPanel;
