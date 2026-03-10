@@ -184,7 +184,7 @@ def _create_checkpoints_from_fixture(
             decision_window_sec=fp.get("decisionWindowSec", 30),
             can_spawn_theatre=False,
             evaluator_type="BINARY_RISK_GATE",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.utcnow(),
         )
         session.add(checkpoint)
 
@@ -217,7 +217,7 @@ def _create_checkpoints_from_prose(
             decision_window_sec=30,
             can_spawn_theatre=False,
             evaluator_type="BINARY_RISK_GATE",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.utcnow(),
         )
         session.add(checkpoint)
 
@@ -259,7 +259,7 @@ def seed_templates(session: Session) -> int:
                 family=family,
                 template_status="RUNNABLE" if has_fixture else "CATALOG_ONLY",
                 is_seeded=True,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.utcnow(),
             )
 
             # Populate from fixture if available

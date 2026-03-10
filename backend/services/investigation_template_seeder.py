@@ -158,7 +158,7 @@ def seed_investigation_templates(session: Session) -> int:
             min_corroboration_groups=tpl_def["min_corroboration_groups"],
             template_status="ACTIVE",
             is_seeded=True,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.utcnow(),
         )
 
         session.add(template)

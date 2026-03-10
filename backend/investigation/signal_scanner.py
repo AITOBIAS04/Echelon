@@ -167,7 +167,7 @@ class SignalScanner:
             canonical_json(brief_data).encode()
         ).hexdigest()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
         return DeltaBrief(
             brief_id=brief_id,

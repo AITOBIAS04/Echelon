@@ -69,7 +69,7 @@ class EntityResolver:
             "registration_number": query.registration_number,
         })
         entity_id = f"ENT-{hashlib.sha256(id_payload.encode()).hexdigest()[:12]}"
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
         source_queries = [
             SourceQueryRecord(

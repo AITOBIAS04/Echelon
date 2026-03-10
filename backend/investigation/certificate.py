@@ -127,7 +127,7 @@ class InvestigationCertificateBuilder:
         committed_sources: list | None = None,
     ) -> InvestigationCertificate:
         """Build a frozen InvestigationCertificate from all toolset state."""
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         started = investigation_started_at or now
         certificate_id = f"INV-{theatre_id[:8]}"
 

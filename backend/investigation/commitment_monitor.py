@@ -66,7 +66,7 @@ class CommitmentMonitor:
         event = DriftEvent(
             drift_id=drift_id,
             drift_type=drift_type,
-            detected_at=datetime.now(timezone.utc),
+            detected_at=datetime.utcnow(),
             original_value=original_value,
             new_value=new_value,
             evidence_ref=evidence_ref,

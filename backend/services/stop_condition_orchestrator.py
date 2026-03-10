@@ -144,7 +144,7 @@ async def evaluate_after_mutation(
     old_status = investigation.stop_condition_status
     investigation.stop_condition_status = "READY" if ready else "NOT_READY"
     investigation.stop_condition_reason = reason
-    investigation.stop_condition_evaluated_at = datetime.now(timezone.utc)
+    investigation.stop_condition_evaluated_at = datetime.utcnow()
 
     # READY certificates remain mutable until batch issuance: refresh the
     # pre-issued artifact so new drift/counter-signals can force review.
@@ -191,9 +191,9 @@ def _compute_time_remaining(stop_config: dict) -> float:
     if milestone_str:
         try:
             milestone = datetime.fromisoformat(milestone_str)
-            if milestone.tzinfo is None:
-                milestone = milestone.replace(tzinfo=timezone.utc)
-            return (milestone - datetime.now(timezone.utc)).total_seconds()
+            if milestone.tzinfo is not None:
+                milestone = milestone.replace(tzinfo=None)
+            return (milestone - datetime.utcnow()).total_seconds()
         except (ValueError, TypeError):
             pass
     return 999_999.0

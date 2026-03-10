@@ -139,7 +139,7 @@ class AnalyticsComparison(BaseModel):
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.utcnow()
 
 
 def _as_utc(value: datetime | None) -> datetime | None:

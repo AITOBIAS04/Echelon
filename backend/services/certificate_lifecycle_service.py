@@ -45,7 +45,7 @@ async def transition_to_ready(
         )
 
     certificate.certificate_status = CERT_STATUS_READY
-    certificate.ready_at = datetime.now(timezone.utc)
+    certificate.ready_at = datetime.utcnow()
 
     investigation.status = "CERTIFICATE_READY"
     await session.flush()
@@ -79,7 +79,7 @@ async def run_batch_anchor(
     Idempotent: if no READY certificates exist, returns empty list.
     """
     if batch_timestamp is None:
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         batch_timestamp = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
     # 1. Query READY certificates

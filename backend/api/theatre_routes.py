@@ -317,8 +317,7 @@ async def get_theatre(
     # On-read paradox risk: recompute via orchestrator if absent or stale (>1h)
     should_compute = theatre.paradox_risk_level is None
     if not should_compute and theatre.paradox_risk_updated_at:
-        from datetime import timezone
-        age_seconds = (datetime.now(timezone.utc) - theatre.paradox_risk_updated_at).total_seconds()
+        age_seconds = (datetime.utcnow() - theatre.paradox_risk_updated_at).total_seconds()
         should_compute = age_seconds > 3600  # stale after 1 hour
 
     if should_compute:

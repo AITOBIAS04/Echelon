@@ -67,7 +67,7 @@ class InvestigationToolset:
         self._theatre_id = theatre_id
         self._construct_id = construct_id
         self._inquiry_class = inquiry_class
-        self._started_at = datetime.now(timezone.utc)
+        self._started_at = datetime.utcnow()
 
         # Parse domain filters
         domain_filters = [DomainFilter(f) for f in config.domain_filters] if config.domain_filters else []

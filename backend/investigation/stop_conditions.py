@@ -118,7 +118,7 @@ class InvestigationStopConditionEvaluator:
         if milestone.tzinfo is None:
             milestone = milestone.replace(tzinfo=timezone.utc)
 
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         if now >= milestone:
             return True, "milestone_reached"
         return False, f"milestone_not_reached:{milestone_str}"

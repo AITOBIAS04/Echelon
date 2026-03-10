@@ -680,7 +680,7 @@ def evaluate_checkpoints(
 
     run.environment_seed = seed
     run.status = "RUNNING"
-    run.started_at = datetime.now(timezone.utc)
+    run.started_at = datetime.utcnow()
 
     pack = run.pack
     template = session.get(ScenarioPackTemplate, pack.template_id)
@@ -694,7 +694,7 @@ def evaluate_checkpoints(
 
     if not checkpoints:
         run.status = "COMPLETED"
-        run.completed_at = datetime.now(timezone.utc)
+        run.completed_at = datetime.utcnow()
         session.flush()
         return []
 
@@ -747,7 +747,7 @@ def evaluate_checkpoints(
                     "; ".join(branch_errors),
                 )
                 run.status = "FAILED"
-                run.completed_at = datetime.now(timezone.utc)
+                run.completed_at = datetime.utcnow()
                 session.flush()
                 return results
 
@@ -763,7 +763,7 @@ def evaluate_checkpoints(
             except ValueError as e:
                 logger.error("Checkpoint evaluation failed: %s", e)
                 run.status = "FAILED"
-                run.completed_at = datetime.now(timezone.utc)
+                run.completed_at = datetime.utcnow()
                 session.flush()
                 return results
         else:
@@ -800,7 +800,7 @@ def evaluate_checkpoints(
             agent_decision_json={"action": agent_action},
             reward=reward,
             state_vector_json=result_state_vector,
-            resolved_at=datetime.now(timezone.utc),
+            resolved_at=datetime.utcnow(),
         )
         session.add(result)
         results.append(result)
@@ -852,7 +852,7 @@ def evaluate_checkpoints(
             current_checkpoint = None
 
     run.status = "COMPLETED"
-    run.completed_at = datetime.now(timezone.utc)
+    run.completed_at = datetime.utcnow()
     session.flush()
 
     return results
@@ -918,7 +918,7 @@ def replay_recorded_path(
         raise ValueError(f"Source run '{source_run_id}' has no checkpoint results to replay")
 
     run.status = "RUNNING"
-    run.started_at = datetime.now(timezone.utc)
+    run.started_at = datetime.utcnow()
     run.environment_seed = source_run.environment_seed
 
     results = []
@@ -942,7 +942,7 @@ def replay_recorded_path(
             agent_decision_json=src.agent_decision_json,
             reward=src.reward,
             state_vector_json=sv,
-            resolved_at=datetime.now(timezone.utc),
+            resolved_at=datetime.utcnow(),
         )
         session.add(result)
         results.append(result)
@@ -954,7 +954,7 @@ def replay_recorded_path(
         run.total_reward += src.reward
 
     run.status = "COMPLETED"
-    run.completed_at = datetime.now(timezone.utc)
+    run.completed_at = datetime.utcnow()
     run.total_reward = round(run.total_reward, 4)
     session.flush()
 

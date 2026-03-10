@@ -72,7 +72,7 @@ async def create_pack(
             "Only RUNNABLE templates can be used to create packs."
         )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     pack = ScenarioPack(
         id=str(uuid.uuid4()),
         user_id=user_id,
@@ -107,7 +107,7 @@ async def commit_pack(session: AsyncSession, pack: ScenarioPack) -> ScenarioPack
     if pack.state != "DRAFT":
         raise ValueError(f"Cannot commit pack in state '{pack.state}'. Must be DRAFT.")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     pack.state = "COMMITTED"
     pack.commitment_hash = _generate_commitment_hash(pack)
     pack.committed_at = now
@@ -163,7 +163,7 @@ async def launch_run(session: AsyncSession, pack: ScenarioPack) -> ScenarioRun:
                 "identifying the completed run to replay."
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         pack.state = "ACTIVE"
         pack.updated_at = now
 
@@ -223,7 +223,7 @@ async def launch_run(session: AsyncSession, pack: ScenarioPack) -> ScenarioRun:
     )
     run_index = int(prior_run_count or 0)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     seed = allocate_seed(pack.run_mode, run_index=run_index)
 
     pack.state = "ACTIVE"

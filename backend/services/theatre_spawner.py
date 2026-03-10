@@ -45,8 +45,8 @@ def _ensure_spawned_template(session: Session) -> TheatreTemplate:
             schema_version="1.0.0",
             inquiry_class="COUNTERFACTUAL",
             template_json={"source": "scenario_pack_checkpoint"},
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
         session.add(template)
         session.flush()
@@ -121,7 +121,7 @@ def spawn_theatre(
     # Ensure template exists
     template = _ensure_spawned_template(session)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     construct_id = f"scenario_{pack.id}_run_{run.id}_cp_{checkpoint.id}"
 
     theatre = Theatre(

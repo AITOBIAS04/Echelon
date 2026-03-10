@@ -118,7 +118,7 @@ class CertificatePipeline:
         )
 
         # 5. Scored at
-        scored_at = datetime.now(timezone.utc).isoformat()
+        scored_at = datetime.utcnow().isoformat()
 
         return CalibrationCertificate(
             oracle_output_id=resolution_result.oracle_output_id,

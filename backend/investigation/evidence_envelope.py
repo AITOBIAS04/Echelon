@@ -55,7 +55,7 @@ class EvidenceEnvelope:
             evidence_id=evidence_id,
             content_hash=content_hash,
             provenance_class=provenance_class,
-            submitted_at=datetime.now(timezone.utc),
+            submitted_at=datetime.utcnow(),
             content_type=content_type,
             source_description=source_description,
             references=references or [],
@@ -78,7 +78,7 @@ class EvidenceEnvelope:
             redaction_id=redaction_id,
             evidence_id=evidence_id,
             reason_class=reason_class,
-            redacted_at=datetime.now(timezone.utc),
+            redacted_at=datetime.utcnow(),
         )
         self._redactions.append(event)
         return event

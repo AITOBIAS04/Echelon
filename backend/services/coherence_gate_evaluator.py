@@ -112,7 +112,7 @@ class CoherenceGateEvaluator:
                 f"Cannot resolve gate in status '{cert.coherence_gate_status}'. Must be PENDING."
             )
 
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         from_status = cert.coherence_gate_status
         cert.coherence_gate_status = status
         cert.coherence_reviewed_at = now

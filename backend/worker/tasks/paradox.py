@@ -127,7 +127,7 @@ class ParadoxTask:
         severity: SeverityClass
     ):
         """Spawn a new paradox on a timeline."""
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         # Convert to naive datetime for database (columns are TIMESTAMP WITHOUT TIME ZONE)
         now_naive = now.replace(tzinfo=None)
         
@@ -224,7 +224,7 @@ class ParadoxTask:
 
     async def _check_detonations(self, session: AsyncSession) -> int:
         """Check for paradoxes that have detonated."""
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         # Convert to naive datetime for database comparison (column is TIMESTAMP WITHOUT TIME ZONE)
         now_naive = now.replace(tzinfo=None)
         
@@ -281,7 +281,7 @@ class ParadoxTask:
             # Create detonation wing flap
             import uuid
             flap_id = f"DETONATE_{paradox.timeline_id}_{uuid.uuid4().hex[:8]}"
-            flap_timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
+            flap_timestamp = datetime.utcnow().replace(tzinfo=None)
             flap = WingFlap(
                 id=flap_id,
                 timeline_id=paradox.timeline_id,

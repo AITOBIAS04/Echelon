@@ -163,4 +163,4 @@ def persist_risk_to_theatre(theatre, assessment: ParadoxRiskAssessment):
     """Update theatre model with computed risk (for ORM flush)."""
     theatre.paradox_risk_level = assessment.level
     theatre.paradox_risk_factors_json = assessment.factors
-    theatre.paradox_risk_updated_at = datetime.now(timezone.utc)
+    theatre.paradox_risk_updated_at = datetime.utcnow()

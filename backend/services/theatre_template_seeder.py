@@ -183,8 +183,8 @@ def seed_theatre_templates(session: Session) -> int:
             schema_version=tpl_data["schema_version"],
             inquiry_class=tpl_data["inquiry_class"],
             template_json=tpl_data["template_json"],
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
         session.add(template)
         created += 1

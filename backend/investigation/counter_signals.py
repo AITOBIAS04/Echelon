@@ -82,7 +82,7 @@ class InvestigationCounterSignalFeed:
         signal = InvestigationCounterSignal(
             counter_signal_id=cs_id,
             signal_class=signal_class,
-            detected_at=datetime.now(timezone.utc),
+            detected_at=datetime.utcnow(),
             evidence_ref=evidence_ref,
             material=material,
             resolution_impact=resolution_impact,

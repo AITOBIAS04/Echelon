@@ -155,14 +155,14 @@ async def phoenix_protocol(session: AsyncSession) -> Dict[str, Any]:
             
             # Add suffix if timeline ID already exists
             if timeline_id in existing_ids:
-                suffix = datetime.now(timezone.utc).strftime("%H%M")
+                suffix = datetime.utcnow().strftime("%H%M")
                 timeline_id = f"{scenario['id']}_{suffix}"
             
             # Add randomness to stability (±0.10 on 0-1 scale)
             stability_variance = random.uniform(-0.10, 0.10)
             stability = max(0.20, min(0.95, scenario["base_stability"] + stability_variance))
 
-            now = datetime.now(timezone.utc)
+            now = datetime.utcnow()
             now_naive = now.replace(tzinfo=None)
 
             # Create the timeline (all values on 0-1 scale)

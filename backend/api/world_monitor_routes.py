@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime
 from math import sqrt
 from typing import Any
 
@@ -339,7 +339,7 @@ async def get_world_monitor_live(
 
     missions = [_dump_model(mission) for mission in situation_room_state.missions[:8]]
 
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     intel = [
         _dump_model(item)
         for item in situation_room_state.intel_items
