@@ -56,56 +56,60 @@ async def list_templates(
     session: AsyncSession = Depends(get_db),
 ):
     """List scenario pack templates with optional family and status filters."""
-    query = select(ScenarioPackTemplate)
-    count_query = select(func.count()).select_from(ScenarioPackTemplate)
+    try:
+        query = select(ScenarioPackTemplate)
+        count_query = select(func.count()).select_from(ScenarioPackTemplate)
 
-    if family:
-        family_upper = family.upper()
-        query = query.where(ScenarioPackTemplate.family == family_upper)
-        count_query = count_query.where(ScenarioPackTemplate.family == family_upper)
+        if family:
+            family_upper = family.upper()
+            query = query.where(ScenarioPackTemplate.family == family_upper)
+            count_query = count_query.where(ScenarioPackTemplate.family == family_upper)
 
-    if status:
-        status_upper = status.upper()
-        query = query.where(ScenarioPackTemplate.template_status == status_upper)
-        count_query = count_query.where(ScenarioPackTemplate.template_status == status_upper)
+        if status:
+            status_upper = status.upper()
+            query = query.where(ScenarioPackTemplate.template_status == status_upper)
+            count_query = count_query.where(ScenarioPackTemplate.template_status == status_upper)
 
-    # Get total count
-    total_result = await session.execute(count_query)
-    total = total_result.scalar() or 0
+        # Get total count
+        total_result = await session.execute(count_query)
+        total = total_result.scalar() or 0
 
-    # Get paginated results with checkpoint count
-    query = query.order_by(ScenarioPackTemplate.family, ScenarioPackTemplate.name)
-    query = query.offset(offset).limit(limit)
-    result = await session.execute(query)
-    templates = result.scalars().all()
+        # Get paginated results with checkpoint count
+        query = query.order_by(ScenarioPackTemplate.family, ScenarioPackTemplate.name)
+        query = query.offset(offset).limit(limit)
+        result = await session.execute(query)
+        templates = result.scalars().all()
 
-    # Build summaries with checkpoint counts
-    summaries = []
-    for t in templates:
-        cp_count_result = await session.execute(
-            select(func.count()).select_from(ScenarioCheckpoint)
-            .where(ScenarioCheckpoint.template_id == t.id)
+        # Build summaries with checkpoint counts
+        summaries = []
+        for t in templates:
+            cp_count_result = await session.execute(
+                select(func.count()).select_from(ScenarioCheckpoint)
+                .where(ScenarioCheckpoint.template_id == t.id)
+            )
+            cp_count = cp_count_result.scalar() or 0
+
+            summaries.append(ScenarioPackTemplateSummaryResponse(
+                id=t.id,
+                name=t.name,
+                family=t.family,
+                description=t.description,
+                template_status=t.template_status,
+                checkpoint_count=cp_count,
+                fork_points_min=t.fork_points_min,
+                fork_points_max=t.fork_points_max,
+                is_seeded=t.is_seeded,
+            ))
+
+        return TemplateListResponse(
+            templates=summaries,
+            total=total,
+            limit=limit,
+            offset=offset,
         )
-        cp_count = cp_count_result.scalar() or 0
-
-        summaries.append(ScenarioPackTemplateSummaryResponse(
-            id=t.id,
-            name=t.name,
-            family=t.family,
-            description=t.description,
-            template_status=t.template_status,
-            checkpoint_count=cp_count,
-            fork_points_min=t.fork_points_min,
-            fork_points_max=t.fork_points_max,
-            is_seeded=t.is_seeded,
-        ))
-
-    return TemplateListResponse(
-        templates=summaries,
-        total=total,
-        limit=limit,
-        offset=offset,
-    )
+    except Exception as e:
+        logger.error(f"❌ list_templates failed: {type(e).__name__}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Scenario pack query failed: {type(e).__name__}: {e}")
 
 
 @templates_router.get("/{template_id}", response_model=ScenarioPackTemplateResponse)

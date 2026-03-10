@@ -139,15 +139,17 @@ async def get_current_user(
     When TESTNET_AUTO_AUTH=true and no token is provided, returns a
     default seed user so every endpoint works without login.
     """
+    testnet_auto = os.getenv("TESTNET_AUTO_AUTH", "false").lower() == "true"
+    testnet_user = TokenData(
+        user_id="USR_001",
+        username="DeepStateTrader",
+        email="deep@echelon.io",
+        tier="PRIME",
+    )
+
     if not credentials:
-        # Testnet bypass: return default seed user when no token present
-        if os.getenv("TESTNET_AUTO_AUTH", "false").lower() == "true":
-            return TokenData(
-                user_id="USR_001",
-                username="DeepStateTrader",
-                email="deep@echelon.io",
-                tier="PRIME",
-            )
+        if testnet_auto:
+            return testnet_user
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated"
@@ -155,6 +157,9 @@ async def get_current_user(
 
     token_data = decode_token(credentials.credentials)
     if not token_data:
+        # Token present but invalid/expired — on testnet, fall back to default user
+        if testnet_auto:
+            return testnet_user
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
