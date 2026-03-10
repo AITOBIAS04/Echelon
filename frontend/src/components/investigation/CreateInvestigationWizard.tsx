@@ -2,8 +2,8 @@
  * CreateInvestigationWizard — bounded inquiry creation flow.
  *
  * Steps:
- * 1. Inquiry Question
- * 2. Template
+ * 1. Template
+ * 2. Inquiry Question
  * 3. Domain Filters
  * 4. Stop Condition
  * 5. Review & Commit
@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ChevronDown,
   FileSearch,
   Filter,
   LockKeyhole,
@@ -34,16 +35,16 @@ import type { StopCondition } from '../../types/investigation';
 import type { InvestigationTemplateListItem } from '../../api/investigationTemplates';
 
 const STEPS = [
-  'Inquiry Question',
   'Template',
+  'Inquiry Question',
   'Domain Filters',
   'Stop Condition',
   'Review & Commit',
 ] as const;
 
 const STEP_ICONS = [
-  SearchCheck,
   FileSearch,
+  SearchCheck,
   Filter,
   Radar,
   ShieldCheck,
@@ -381,15 +382,16 @@ export function CreateInvestigationWizard({
   };
 
   const stepSummaryLabel = (wizardState: WizardState, stepIndex: number): string => {
+    const selectedTemplateName =
+      templates.find((t) => t.template_id === wizardState.template)?.name ?? 'Choose a template';
+
     switch (stepIndex) {
       case 0:
+        return selectedTemplateName;
+      case 1:
         return wizardState.inquiryQuestion.trim()
           ? wizardState.inquiryQuestion.trim()
           : 'Define the inquiry and choose its operating mode.';
-      case 1: {
-        const tmpl = templates.find((t) => t.template_id === wizardState.template);
-        return tmpl?.name ?? 'Choose a template';
-      }
       case 2:
         return wizardState.domainFilters.length > 0
           ? `${wizardState.domainFilters.length} committed domain filter${wizardState.domainFilters.length === 1 ? '' : 's'}`
@@ -406,9 +408,9 @@ export function CreateInvestigationWizard({
   const canAdvance = (): boolean => {
     switch (step) {
       case 0:
-        return state.inquiryQuestion.trim().length > 0 && state.inquiryClass.length > 0;
-      case 1:
         return state.template.length > 0;
+      case 1:
+        return state.inquiryQuestion.trim().length > 0 && state.inquiryClass.length > 0;
       case 2:
         return state.domainFilters.length > 0;
       case 3:
@@ -533,9 +535,9 @@ export function CreateInvestigationWizard({
               </h3>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--e-text-secondary)]">
                 {step === 0 &&
-                  'Frame the question and decide whether this inquiry should behave like a full investigation, a monitoring loop, or a verification task.'}
-                {step === 1 &&
                   'Choose the bounded starting posture and optionally bind the investigation to a known theatre or construct.'}
+                {step === 1 &&
+                  'Write the question within the frame the template established. The inquiry class starts from the template default but remains overridable.'}
                 {step === 2 &&
                   'Commit the domain filters that will govern ingestion. These filters are part of the investigation receipt, not a cosmetic preference.'}
                 {step === 3 &&
@@ -755,6 +757,137 @@ export function CreateInvestigationWizard({
         <div className="rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-card)] px-6 py-6 shadow-[var(--e-shadow-xs)]">
           {step === 0 && (
             <div className="space-y-6">
+              {templatesLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-sm text-[var(--e-text-secondary)]">Loading templates...</div>
+                </div>
+              ) : (
+                <label className="block">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                    Template
+                  </span>
+                  <div className="relative mt-2">
+                    <select
+                      value={state.template}
+                      onChange={(e) => handleTemplateSelect(e.target.value)}
+                      className="w-full appearance-none rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-4 py-3 pr-11 text-sm font-medium text-[var(--e-text-primary)] outline-none transition focus:border-[var(--e-border-focus)] focus:ring-2 focus:ring-[color:oklch(0.53_0.23_295_/_0.12)]"
+                    >
+                      {templates.map((template) => (
+                        <option key={template.template_id} value={template.template_id}>
+                          {template.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--e-text-muted)]" />
+                  </div>
+                </label>
+              )}
+
+              {selectedTemplateSummary ? (
+                <div className="rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] px-4 py-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-[var(--e-text-primary)]">
+                        {selectedTemplateSummary.name}
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
+                        {selectedTemplateSummary.description}
+                      </p>
+                    </div>
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                      selectedTemplateSummary.template_status === 'ACTIVE'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-[var(--e-bg-card)] text-[var(--e-text-muted)]'
+                    }`}>
+                      {selectedTemplateSummary.template_status}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[var(--e-text-secondary)]">
+                    <span className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2 py-0.5 font-mono">
+                      {selectedTemplateSummary.inquiry_class}
+                    </span>
+                    <span className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2 py-0.5">
+                      {selectedTemplateSummary.domain_filter_count} filters
+                    </span>
+                    {selectedTemplateSummary.requires_legal_review ? (
+                      <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-700">
+                        Legal review
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {state.template !== 'blank' && selectedTemplateDetail ? (
+                <div className="rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] px-4 py-4">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                    Template provenance
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <MiniStat label="Template" value={selectedTemplateDetail.name} />
+                    <MiniStat label="Inquiry Class" value={selectedTemplateDetail.inquiry_class} />
+                    <MiniStat label="Stop Condition" value={selectedTemplateDetail.default_stop_condition} />
+                    <MiniStat label="Corroboration" value={`${selectedTemplateDetail.min_corroboration_groups} groups`} />
+                  </div>
+                  <div className="mt-3 text-sm leading-6 text-[var(--e-text-secondary)]">
+                    {selectedTemplateDetail.default_sources.length > 0 ? (
+                      <>
+                        Default source manifest resolves to{' '}
+                        <span className="font-medium text-[var(--e-text-primary)]">
+                          {selectedTemplateDetail.default_sources.length}
+                        </span>{' '}
+                        source ID{selectedTemplateDetail.default_sources.length === 1 ? '' : 's'}.
+                      </>
+                    ) : (
+                      'Blank or manual templates do not pre-commit a source manifest.'
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-4">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                  Optional scope binding
+                </div>
+                <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
+                  Bind this investigation to a known theatre if the inquiry already belongs to a live operational context.
+                </p>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <label className="block">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                      Theatre ID (optional)
+                    </span>
+                    <input
+                      type="text"
+                      value={state.theatreId}
+                      onChange={(e) =>
+                        setState((current) => ({ ...current, theatreId: e.target.value }))
+                      }
+                      placeholder="TH_..."
+                      className="mt-2 w-full rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-2 text-sm font-mono text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)] focus:ring-2 focus:ring-[color:oklch(0.53_0.23_295_/_0.12)]"
+                    />
+                  </label>
+                </div>
+                {state.constructId ? (
+                  <div className="mt-4 rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                      Inherited construct context
+                    </div>
+                    <div className="mt-2 font-mono text-sm text-[var(--e-text-primary)]">
+                      {state.constructId}
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
+                      Construct binding is carried forward only from trusted launch context today. Manual construct selection is deferred until a backend-owned construct registry is available.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="space-y-6">
               <label className="block">
                 <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
                   Inquiry Question
@@ -815,131 +948,6 @@ export function CreateInvestigationWizard({
                       </button>
                     );
                   })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 1 && (
-            <div className="space-y-6">
-              {templatesLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-sm text-[var(--e-text-secondary)]">Loading templates...</div>
-                </div>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {templates.map((template) => {
-                    const selected = state.template === template.template_id;
-                    return (
-                      <button
-                        key={template.template_id}
-                        type="button"
-                        onClick={() => handleTemplateSelect(template.template_id)}
-                        className={`rounded-2xl border px-4 py-4 text-left transition ${
-                          selected
-                            ? 'border-purple-200 bg-purple-100/70'
-                            : 'border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] hover:bg-[var(--e-bg-hover)]'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="text-sm font-semibold text-[var(--e-text-primary)]">
-                            {template.name}
-                          </div>
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                            template.template_status === 'ACTIVE'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-[var(--e-bg-card)] text-[var(--e-text-muted)]'
-                          }`}>
-                            {template.template_status}
-                          </span>
-                        </div>
-                        <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
-                          {template.description}
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[var(--e-text-secondary)]">
-                          <span className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2 py-0.5 font-mono">
-                            {template.inquiry_class}
-                          </span>
-                          <span className="rounded-full border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-2 py-0.5">
-                            {template.domain_filter_count} filters
-                          </span>
-                          {template.requires_legal_review ? (
-                            <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-orange-700">
-                              Legal review
-                            </span>
-                          ) : null}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {state.template !== 'blank' && selectedTemplateDetail ? (
-                <div className="rounded-2xl border border-[var(--e-border-primary)] bg-[var(--e-bg-sunken)] px-4 py-4">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
-                    Template provenance
-                  </div>
-                  <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <MiniStat label="Template" value={selectedTemplateDetail.name} />
-                    <MiniStat label="Inquiry Class" value={selectedTemplateDetail.inquiry_class} />
-                    <MiniStat label="Stop Condition" value={selectedTemplateDetail.default_stop_condition} />
-                    <MiniStat label="Corroboration" value={`${selectedTemplateDetail.min_corroboration_groups} groups`} />
-                  </div>
-                  <div className="mt-3 text-sm leading-6 text-[var(--e-text-secondary)]">
-                    {selectedTemplateDetail.default_sources.length > 0 ? (
-                      <>
-                        Default source manifest resolves to{' '}
-                        <span className="font-medium text-[var(--e-text-primary)]">
-                          {selectedTemplateDetail.default_sources.length}
-                        </span>{' '}
-                        source ID{selectedTemplateDetail.default_sources.length === 1 ? '' : 's'}.
-                      </>
-                    ) : (
-                      'Blank or manual templates do not pre-commit a source manifest.'
-                    )}
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-4">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
-                  Optional scope binding
-                </div>
-                <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
-                  Bind this investigation to a known theatre or construct if the inquiry already belongs to a live operational context.
-                </p>
-
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
-                      Theatre ID (optional)
-                    </span>
-                    <input
-                      type="text"
-                      value={state.theatreId}
-                      onChange={(e) =>
-                        setState((current) => ({ ...current, theatreId: e.target.value }))
-                      }
-                      placeholder="TH_..."
-                      className="mt-2 w-full rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-2 text-sm font-mono text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)] focus:ring-2 focus:ring-[color:oklch(0.53_0.23_295_/_0.12)]"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
-                      Construct ID (optional)
-                    </span>
-                    <input
-                      type="text"
-                      value={state.constructId}
-                      onChange={(e) =>
-                        setState((current) => ({ ...current, constructId: e.target.value }))
-                      }
-                      placeholder="CON_..."
-                      className="mt-2 w-full rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-2 text-sm font-mono text-[var(--e-text-primary)] outline-none transition placeholder:text-[var(--e-text-muted)] focus:border-[var(--e-border-focus)] focus:ring-2 focus:ring-[color:oklch(0.53_0.23_295_/_0.12)]"
-                    />
-                  </label>
                 </div>
               </div>
             </div>

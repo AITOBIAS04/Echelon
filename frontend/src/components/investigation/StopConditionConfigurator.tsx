@@ -3,6 +3,8 @@
  */
 
 import type { StopCondition } from '../../types/investigation';
+import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 const STOP_CONDITIONS: Array<{
   id: StopCondition;
@@ -42,6 +44,21 @@ export function StopConditionConfigurator({
   onConditionChange,
   onConfigChange,
 }: StopConditionConfiguratorProps) {
+  const hasCustomThresholds =
+    (config.min_supported_claims as number | undefined) != null ||
+    (config.min_corroboration_score as number | undefined) != null;
+  const [thresholdsExpanded, setThresholdsExpanded] = useState(hasCustomThresholds);
+
+  useEffect(() => {
+    if (condition !== 'EVIDENCE_THRESHOLD') {
+      setThresholdsExpanded(false);
+      return;
+    }
+    if (hasCustomThresholds) {
+      setThresholdsExpanded(true);
+    }
+  }, [condition, hasCustomThresholds]);
+
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-4">
@@ -96,48 +113,66 @@ export function StopConditionConfigurator({
 
       {condition === 'EVIDENCE_THRESHOLD' && (
         <div className="rounded-2xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-sunken)] px-4 py-4">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
-            Threshold Configuration
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                Threshold Configuration
+              </div>
+              <p className="mt-2 text-sm leading-6 text-[var(--e-text-secondary)]">
+                Template defaults are applied automatically. Adjust thresholds only if you need to tighten or relax the evidence bar for this inquiry.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setThresholdsExpanded((current) => !current)}
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-2 text-sm font-medium text-[var(--e-text-secondary)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {thresholdsExpanded ? 'Hide threshold adjustments' : 'Adjust thresholds'}
+              <ChevronDown className={`h-4 w-4 transition ${thresholdsExpanded ? 'rotate-180' : ''}`} />
+            </button>
           </div>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
-                Min Supported Claims
-              </span>
-              <input
-                type="number"
-                min={1}
-                value={(config.min_supported_claims as number) ?? 3}
-                onChange={(e) =>
-                  onConfigChange({
-                    ...config,
-                    min_supported_claims: parseInt(e.target.value, 10) || 1,
-                  })
-                }
-                className="mt-2 w-full rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-2 text-sm font-mono text-[var(--e-text-primary)] outline-none transition focus:border-[var(--e-border-focus)] focus:ring-2 focus:ring-[color:oklch(0.53_0.23_295_/_0.12)]"
-              />
-            </label>
+          {thresholdsExpanded ? (
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                  Min Supported Claims
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  value={(config.min_supported_claims as number) ?? 3}
+                  onChange={(e) =>
+                    onConfigChange({
+                      ...config,
+                      min_supported_claims: parseInt(e.target.value, 10) || 1,
+                    })
+                  }
+                  className="mt-2 w-full rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-2 text-sm font-mono text-[var(--e-text-primary)] outline-none transition focus:border-[var(--e-border-focus)] focus:ring-2 focus:ring-[color:oklch(0.53_0.23_295_/_0.12)]"
+                />
+              </label>
 
-            <label className="block">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
-                Min Corroboration Score
-              </span>
-              <input
-                type="number"
-                min={0}
-                max={1}
-                step={0.1}
-                value={(config.min_corroboration_score as number) ?? 0.7}
-                onChange={(e) =>
-                  onConfigChange({
-                    ...config,
-                    min_corroboration_score: parseFloat(e.target.value) || 0,
-                  })
-                }
-                className="mt-2 w-full rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-2 text-sm font-mono text-[var(--e-text-primary)] outline-none transition focus:border-[var(--e-border-focus)] focus:ring-2 focus:ring-[color:oklch(0.53_0.23_295_/_0.12)]"
-              />
-            </label>
-          </div>
+              <label className="block">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--e-text-muted)]">
+                  Min Corroboration Score
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.1}
+                  value={(config.min_corroboration_score as number) ?? 0.7}
+                  onChange={(e) =>
+                    onConfigChange({
+                      ...config,
+                      min_corroboration_score: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                  className="mt-2 w-full rounded-xl border border-[var(--e-border-secondary)] bg-[var(--e-bg-elevated)] px-3 py-2 text-sm font-mono text-[var(--e-text-primary)] outline-none transition focus:border-[var(--e-border-focus)] focus:ring-2 focus:ring-[color:oklch(0.53_0.23_295_/_0.12)]"
+                />
+              </label>
+            </div>
+          ) : null}
         </div>
       )}
 

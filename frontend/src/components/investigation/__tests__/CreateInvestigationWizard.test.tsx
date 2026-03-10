@@ -134,47 +134,37 @@ describe('CreateInvestigationWizard', () => {
   });
 
   // Test 1: Wizard renders template list from API (mock)
-  it('renders template list from API on step 2', async () => {
+  it('renders template list from API on step 1', async () => {
     renderWithProviders(<CreateInvestigationWizard />);
 
-    // Fill step 1 and advance
-    const textarea = screen.getByPlaceholderText(/What are you investigating/);
-    fireEvent.change(textarea, { target: { value: 'Test inquiry' } });
-    fireEvent.click(screen.getByText('Next'));
-
-    // Step 2 should show API-loaded templates (use getAllByText since
-    // template names can appear in both the sidebar summary and template list)
+    // Step 1 should show API-loaded templates in the select
     await waitFor(() => {
-      expect(screen.getAllByText('Blank Investigation').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('Corporate Due Diligence').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('Market Event Analysis').length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText('Regulatory Action Tracking').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByDisplayValue('Blank Investigation')).toBeInTheDocument();
     });
+    expect(screen.getByRole('option', { name: 'Corporate Due Diligence' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Market Event Analysis' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Regulatory Action Tracking' })).toBeInTheDocument();
   });
 
   // Test 2: Template selection populates wizard state with correct defaults
   it('populates wizard state with template defaults on selection', async () => {
     renderWithProviders(<CreateInvestigationWizard />);
 
-    // Fill step 1 and advance
-    const textarea = screen.getByPlaceholderText(/What are you investigating/);
-    fireEvent.change(textarea, { target: { value: 'Test inquiry' } });
-    fireEvent.click(screen.getByText('Next'));
-
-    // Wait for templates and select corporate_due_diligence
+    // Select corporate_due_diligence on step 1
     await waitFor(() => {
-      expect(screen.getAllByText('Corporate Due Diligence').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByDisplayValue('Blank Investigation')).toBeInTheDocument();
     });
-
-    // Find and click the template button (in the main content area)
-    const buttons = screen.getAllByText('Corporate Due Diligence');
-    const templateButton = buttons.find((el) => el.closest('button'));
-    fireEvent.click(templateButton!.closest('button')!);
-
-    // Wait for template detail to load and defaults to populate, then advance
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'corporate_due_diligence' },
+    });
     await waitFor(() => {
       fireEvent.click(screen.getByText('Next'));
     });
+
+    // Step 2 is inquiry question; provide the required question and advance
+    const textarea = screen.getByPlaceholderText(/What are you investigating/);
+    fireEvent.change(textarea, { target: { value: 'Test inquiry' } });
+    fireEvent.click(screen.getByText('Next'));
 
     // The domain filter step should show 3 pre-selected filters from the template
     await waitFor(() => {
@@ -189,21 +179,9 @@ describe('CreateInvestigationWizard', () => {
       '/investigation/create?signal_category=regulatory&signal_class=regulatory_clearance&theatre_id=TH_123',
     );
 
-    // Fill inquiry and advance
-    const textarea = screen.getByPlaceholderText(/What are you investigating/);
-    fireEvent.change(textarea, { target: { value: 'Regulatory test' } });
-    fireEvent.click(screen.getByText('Next'));
-
-    // Should have pre-selected regulatory_action template — the button should
-    // have the selected (purple border) style
+    // Should have pre-selected regulatory_action template in the dropdown
     await waitFor(() => {
-      const regButtons = screen.getAllByText('Regulatory Action Tracking');
-      // Find the one inside a button element in the template grid
-      const templateBtn = regButtons.find(
-        (el) => el.closest('button') && el.classList.contains('text-sm'),
-      );
-      const btn = templateBtn?.closest('button');
-      expect(btn?.className).toContain('border-purple-200');
+      expect(screen.getByDisplayValue('Regulatory Action Tracking')).toBeInTheDocument();
     });
   });
 
@@ -211,15 +189,15 @@ describe('CreateInvestigationWizard', () => {
   it('sends backend-aligned domain filter IDs and template_id in create payload', async () => {
     renderWithProviders(<CreateInvestigationWizard />);
 
-    // Step 1
-    const textarea = screen.getByPlaceholderText(/What are you investigating/);
-    fireEvent.change(textarea, { target: { value: 'Domain filter test' } });
+    // Step 1 — wait for templates, stay on blank (default), advance
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Blank Investigation')).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByText('Next'));
 
-    // Step 2 — wait for templates, stay on blank (default), advance
-    await waitFor(() => {
-      expect(screen.getAllByText('Blank Investigation').length).toBeGreaterThanOrEqual(1);
-    });
+    // Step 2 — inquiry question
+    const textarea = screen.getByPlaceholderText(/What are you investigating/);
+    fireEvent.change(textarea, { target: { value: 'Domain filter test' } });
     fireEvent.click(screen.getByText('Next'));
 
     // Step 3 — select domain filters using backend enum labels
@@ -244,6 +222,8 @@ describe('CreateInvestigationWizard', () => {
   // Test 5: Inquiry class options match backend enum (5 values)
   it('shows all 5 backend inquiry class options', () => {
     renderWithProviders(<CreateInvestigationWizard />);
+
+    fireEvent.click(screen.getByText('Next'));
 
     expect(screen.getByText('Investigative')).toBeInTheDocument();
     expect(screen.getByText('Inspection')).toBeInTheDocument();

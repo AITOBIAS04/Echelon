@@ -276,7 +276,7 @@ Replace static frontend templates with API-backed data and align domain filter I
 - [ ] Hook returns template list from API
 - [ ] Loading/error states handled
 
-### Task 3.2 — Wizard Step 2 Refactor
+### Task 3.2 — Wizard Template-First Refactor
 
 **Files:**
 - `frontend/src/components/investigation/CreateInvestigationWizard.tsx`
@@ -284,6 +284,8 @@ Replace static frontend templates with API-backed data and align domain filter I
 **Work:**
 - Remove static `TEMPLATES` array (lines 67–88)
 - Replace with `useInvestigationTemplates()` hook
+- Make template selection the first step in the wizard
+- Render template selection as a dropdown backed by the API list
 - On template selection, populate wizard state from template detail:
   - `inquiry_class` from template (if not already set)
   - `domainFilters` from template's `domain_filters` (using backend enum IDs)
@@ -297,12 +299,14 @@ Replace static frontend templates with API-backed data and align domain filter I
     - domain filters containing `corporate_and_entity` or `court_and_legal` → `corporate_due_diligence` template
     - fallback → `blank` template
   - If a template ID is not found in the API response (e.g., set to DRAFT), fallback is `blank`
-  - Non-template fields (theatre_id, construct_id, signal-specific domain filters) continue to be populated directly from URL params
+  - Non-template fields (`theatre_id`, signal-specific domain filters) continue to be populated directly from URL params
+- `construct_id` is not a free-text wizard field. If present from trusted launch context, it is surfaced read-only as inherited context; otherwise it is omitted until a backend construct registry exists.
 - User can still override any populated default
 
 **Acceptance criteria:**
 - [ ] Static TEMPLATES array removed
 - [ ] Wizard fetches templates from API
+- [ ] Template selection is the first step and is rendered as a dropdown
 - [ ] Template selection populates correct defaults
 - [ ] Signal-origin launch context (from Signal Map / World Monitor / theatre) prefills correct template
 - [ ] User overrides still work
