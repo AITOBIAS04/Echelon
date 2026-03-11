@@ -300,6 +300,45 @@ async def run_theatre(
     return response
 
 
+@router.get("/", response_model=TheatreListResponse)
+async def list_theatres(
+    state: Optional[str] = Query(None, description="Filter by state (DRAFT, COMMITTED, RUNNING, SETTLED)"),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user: TokenData = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List theatres visible to the current user.
+
+    On testnet (TESTNET_AUTO_AUTH=true) returns all theatres regardless of owner.
+    """
+    import os
+    testnet_auto = os.getenv("TESTNET_AUTO_AUTH", "false").lower() == "true"
+
+    query = select(Theatre)
+    if not testnet_auto:
+        query = query.where(Theatre.user_id == user.user_id)
+    if state:
+        query = query.where(Theatre.state == state.upper())
+    query = query.order_by(Theatre.created_at.desc())
+
+    # Count total
+    count_query = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_query)).scalar_one()
+
+    # Paginate
+    query = query.offset(offset).limit(limit)
+    result = await db.execute(query)
+    theatres = result.scalars().all()
+
+    return TheatreListResponse(
+        theatres=[TheatreResponse.model_validate(t) for t in theatres],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
+
+
 @router.get("/{theatre_id}", response_model=TheatreResponse)
 async def get_theatre(
     theatre_id: str,
