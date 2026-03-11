@@ -51,6 +51,7 @@ import { CertificatesPage } from './pages/CertificatesPage';
 import { CreateTheatrePage } from './pages/CreateTheatrePage';
 import { ScenarioPacksPage } from './pages/ScenarioPacksPage';
 import { ScenarioPackDetailPage } from './pages/ScenarioPackDetailPage';
+import { AgentMatrixPage } from './pages/AgentMatrixPage';
 
 /**
  * Retry dynamic import once with a full page reload on failure.
@@ -151,6 +152,16 @@ export const router = createBrowserRouter([
       {
         path: 'agent/:agentId',
         element: <AgentRedirect />,
+      },
+
+      // ── Agent Matrix ────────────────────────────────────────────────
+      {
+        path: 'matrix',
+        element: (
+          <ErrorBoundary>
+            <AgentMatrixPage />
+          </ErrorBoundary>
+        ),
       },
 
       // ── Paradox Console (renamed from agents/breach) ────────────────
