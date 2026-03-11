@@ -317,7 +317,7 @@ def generate_mock_news() -> list[dict]:
 # ENDPOINTS
 # =============================================================================
 
-@router.get("", response_model=list[Market])
+@router.get("/", response_model=list[Market])
 async def get_markets(
     category: Optional[MarketCategory] = None,
     status: Optional[MarketStatus] = None,

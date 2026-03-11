@@ -83,7 +83,7 @@ certificates_router = APIRouter(prefix="/api/v1/certificates", tags=["theatre-ce
 # ============================================
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_theatre(
     body: TheatreCreate,
     user: TokenData = Depends(get_current_user),
@@ -591,7 +591,7 @@ async def get_theatre_replay(
 # ============================================
 
 
-@templates_router.get("", response_model=TemplateListResponse)
+@templates_router.get("/", response_model=TemplateListResponse)
 async def list_templates(
     db: AsyncSession = Depends(get_db),
     family: Optional[str] = Query(None),
@@ -655,7 +655,7 @@ async def get_certificate(
     return TheatreCertificateResponse.model_validate(cert)
 
 
-@certificates_router.get("", response_model=CertificateListResponse)
+@certificates_router.get("/", response_model=CertificateListResponse)
 async def list_certificates(
     db: AsyncSession = Depends(get_db),
     construct_id: Optional[str] = Query(None),
