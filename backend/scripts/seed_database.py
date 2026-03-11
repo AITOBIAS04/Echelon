@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from backend.database.connection import async_session_maker, init_db
 from backend.database.models import (
     User, Agent, Timeline, WingFlap, Paradox, UserPosition, Theatre,
+    AgentDeployment,
     AgentArchetype, WingFlapType, FlapDirection, ParadoxStatus, SeverityClass
 )
 
@@ -904,6 +905,72 @@ async def seed_theatres(session, timelines: list, users: list) -> list:
     return theatres
 
 
+async def seed_deployments(session, agents: list, theatres: list, users: list) -> list:
+    """Deploy agents to ACTIVE/COMMITTED theatres for testnet demo.
+
+    Creates a realistic spread: 8 ACTIVE deployments across different
+    agent archetypes and theatres, plus 1 PAUSED deployment, so the
+    Agent Matrix page has data on first load.
+    """
+    # Only deploy to theatres that are ACTIVE or COMMITTED (not DRAFT)
+    deployable = [t for t in theatres if t.state in ("ACTIVE", "COMMITTED", "SETTLING")]
+    agent_map = {a.id: a for a in agents}
+
+    # Agent→theatre assignments with strategy profiles
+    # Spread across archetypes so the matrix looks realistic
+    assignments = [
+        # Sharks → high-volume theatres, AGGRESSIVE
+        ("AGT_MEGALODON", 0, "AGGRESSIVE"),
+        ("AGT_THRESHER", 1, "AGGRESSIVE"),
+        ("AGT_HAMMERHEAD", 3, "BALANCED"),
+        # Spies → intel-gathering across theatres
+        ("AGT_CARDINAL", 2, "BALANCED"),
+        ("AGT_ORACLE", 4, "DEFENSIVE"),
+        # Diplomats → stability maintenance
+        ("AGT_ENVOY", 0, "DEFENSIVE"),
+        ("AGT_ARBITER", 5, "BALANCED"),
+        # Whale → big position in one theatre
+        ("AGT_LEVIATHAN", 6, "BALANCED"),
+        # Saboteur → deployed but paused (caught misbehaving)
+        ("AGT_VIPER", 1, "AGGRESSIVE"),
+    ]
+
+    deployments = []
+    base_time = datetime.utcnow()
+
+    for agent_id, theatre_idx, strategy in assignments:
+        if theatre_idx >= len(deployable):
+            continue
+        theatre = deployable[theatre_idx]
+        agent = agent_map.get(agent_id)
+        if not agent:
+            continue
+
+        is_paused = agent_id == "AGT_VIPER"
+        deployed_offset = timedelta(hours=random.randint(2, 48))
+
+        deployment = AgentDeployment(
+            id=f"DEP_{agent_id.replace('AGT_', '')}_{theatre.id[:8]}",
+            agent_id=agent_id,
+            theatre_id=theatre.id,
+            status="PAUSED" if is_paused else "ACTIVE",
+            strategy_profile=strategy,
+            deployed_by=users[0].id,
+            deployed_at=base_time - deployed_offset,
+            paused_at=(base_time - timedelta(hours=1)) if is_paused else None,
+            routing_hint_snapshot="ALLOWED",
+            coherence_gate_status_snapshot="PASSED",
+        )
+        session.add(deployment)
+        deployments.append(deployment)
+
+    await session.flush()
+    active = sum(1 for d in deployments if d.status == "ACTIVE")
+    paused = sum(1 for d in deployments if d.status == "PAUSED")
+    print(f"✅ Created {len(deployments)} agent deployments ({active} active, {paused} paused)")
+    return deployments
+
+
 async def main():
     """Run the enhanced seeder."""
     print("=" * 60)
@@ -952,9 +1019,11 @@ async def main():
                 
                 # Clear existing data (order matters for FK constraints)
                 print("🗑️  Clearing existing data...")
+                await session.execute(AgentDeployment.__table__.delete())
                 await session.execute(WingFlap.__table__.delete())
                 await session.execute(Paradox.__table__.delete())
                 await session.execute(UserPosition.__table__.delete())
+                await session.execute(Theatre.__table__.delete())
                 await session.execute(Agent.__table__.delete())
                 await session.execute(Timeline.__table__.delete())
                 await session.execute(User.__table__.delete())
@@ -971,7 +1040,9 @@ async def main():
             paradoxes = await seed_paradoxes(session, timelines)
             wing_flaps = await seed_wing_flaps(session, timelines, agents)
             positions = await seed_user_positions(session, users, timelines)
-            
+            theatres = await seed_theatres(session, timelines, users)
+            deployments = await seed_deployments(session, agents, theatres, users)
+
             await session.commit()
             
             print()
@@ -980,12 +1051,14 @@ async def main():
             print("=" * 60)
             print()
             print("Summary:")
-            print(f"  • Users:      {len(users)}")
-            print(f"  • Agents:     {len(agents)} (12 genesis)")
-            print(f"  • Timelines:  {len(timelines)}")
-            print(f"  • Paradoxes:  {len(paradoxes)} (1 CRITICAL!)")
-            print(f"  • Wing Flaps: {len(wing_flaps)}")
-            print(f"  • Positions:  {len(positions)}")
+            print(f"  • Users:       {len(users)}")
+            print(f"  • Agents:      {len(agents)} (12 genesis)")
+            print(f"  • Timelines:   {len(timelines)}")
+            print(f"  • Paradoxes:   {len(paradoxes)} (1 CRITICAL!)")
+            print(f"  • Wing Flaps:  {len(wing_flaps)}")
+            print(f"  • Positions:   {len(positions)}")
+            print(f"  • Theatres:    {len(theatres)}")
+            print(f"  • Deployments: {len(deployments)}")
             print()
             print("🎯 Demo highlights:")
             print("   • MEGALODON (Tier 3 Shark) with $45K P&L")
