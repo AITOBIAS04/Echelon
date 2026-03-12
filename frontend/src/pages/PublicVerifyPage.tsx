@@ -378,7 +378,7 @@ export default function PublicVerifyPage() {
           )}
 
           {/* ═══ Pipeline explanation ═══ */}
-          <div style={{ maxWidth: 640, margin: 'var(--space-12) auto 0' }}>
+          <div style={{ maxWidth: 800, margin: 'var(--space-12) auto 0' }}>
             <div
               style={{
                 fontSize: '0.82rem',
@@ -393,37 +393,39 @@ export default function PublicVerifyPage() {
               Four independent checks
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-4)' }}>
               {CHECKS_EXPLAIN.map((check) => (
                 <div
                   key={check.label}
                   style={{
                     display: 'flex',
-                    alignItems: 'flex-start',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
                     gap: 'var(--space-3)',
-                    padding: 'var(--space-3) var(--space-4)',
+                    padding: 'var(--space-5) var(--space-4)',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-primary)',
+                    borderRadius: 'var(--radius-lg)',
                   }}
                 >
                   <div
                     style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 'var(--radius-sm)',
+                      width: 40,
+                      height: 40,
+                      borderRadius: 'var(--radius)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      background: 'var(--bg-elevated)',
                       color: 'var(--text-secondary)',
                       flexShrink: 0,
                     }}
                   >
                     {check.icon}
                   </div>
-                  <div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>{check.label}</div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4, marginTop: 2 }}>
-                      {check.description}
-                    </div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{check.label}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                    {check.description}
                   </div>
                 </div>
               ))}

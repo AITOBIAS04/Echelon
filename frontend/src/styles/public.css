@@ -200,6 +200,7 @@
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   padding: var(--space-6);
+  height: 100%;
   transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
 }
 
@@ -406,11 +407,18 @@
 .public-shell .p-score-bar-fill.amber { background: var(--amber-500); }
 .public-shell .p-score-bar-fill.teal { background: var(--teal-500); }
 
+/* ── Results-preview tab fade-in ── */
+@keyframes rpFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ── Scroll-in animation ── */
 .public-shell .p-scroll-in {
   opacity: 0;
   transform: translateY(16px);
   transition: opacity 0.55s var(--ease-out), transform 0.55s var(--ease-out);
+  height: 100%;
 }
 .public-shell .p-scroll-in.visible {
   opacity: 1;

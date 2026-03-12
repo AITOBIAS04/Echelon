@@ -6,13 +6,13 @@ function ResultHero() {
   return (
     <section
       className="relative overflow-hidden"
-      style={{ background: 'oklch(0.110 0.010 265)', borderBottom: '1px solid var(--border-secondary)' }}
+      style={{ background: 'var(--bg-sunken)', borderBottom: '1px solid var(--border-secondary)' }}
     >
       <div
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: 'linear-gradient(oklch(0.300 0.010 265 / 0.25) 1px, transparent 1px), linear-gradient(90deg, oklch(0.300 0.010 265 / 0.25) 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(var(--border-secondary) 1px, transparent 1px), linear-gradient(90deg, var(--border-secondary) 1px, transparent 1px)',
           backgroundSize: '48px 48px',
           maskImage: 'radial-gradient(ellipse 70% 50% at 50% 50%, black 10%, transparent 65%)',
           WebkitMaskImage: 'radial-gradient(ellipse 70% 50% at 50% 50%, black 10%, transparent 65%)',
@@ -187,9 +187,9 @@ function EvidenceCertSplit() {
 /* ═══════════════════════ ROW 4: SUPPORTING SURFACES ═══════════════════════ */
 function SupportingPreviews() {
   const cards = [
-    { icon: <Share2 size={16} />, title: 'Signal Map', body: '12 signal nodes linked to this inquiry. 3 clusters identified. No active contradictions in the graph.', link: 'View full signal map →' },
-    { icon: <Globe size={16} />, title: 'World Monitor', body: 'APAC region showing moderate activity. 3 events monitoring, 1 event escalating (Taiwan Strait corridor).', link: 'View world monitor →' },
-    { icon: <FileText size={16} />, title: 'Investigation', body: '6 claims — 6 SUPPORTED, 0 CONTRADICTED. Source classes: PUBLIC_PRIMARY (18), ANALYST_DERIVED (3). Stop condition: Evidence Threshold — MET.', link: 'View investigation detail →' },
+    { icon: <Share2 size={16} />, title: 'Signal Map', body: '12 signal nodes linked to this inquiry. 3 clusters identified. No active contradictions in the graph.', link: 'View full signal map →', to: '/signal-map' },
+    { icon: <Globe size={16} />, title: 'World Monitor', body: 'APAC region showing moderate activity. 3 events monitoring, 1 event escalating (Taiwan Strait corridor).', link: 'View world monitor →', to: '/world-monitor' },
+    { icon: <FileText size={16} />, title: 'Investigation', body: '6 claims — 6 SUPPORTED, 0 CONTRADICTED. Source classes: PUBLIC_PRIMARY (18), ANALYST_DERIVED (3). Stop condition: Evidence Threshold — MET.', link: 'View investigation detail →', to: '/investigation' },
   ];
 
   return (
@@ -205,7 +205,7 @@ function SupportingPreviews() {
               </div>
               <div style={{ fontSize: '0.83rem', color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1 }}>{c.body}</div>
               <div style={{ marginTop: 'var(--space-4)', fontSize: '0.78rem' }}>
-                <a href="#" className="p-btn p-btn-ghost p-btn-sm" style={{ paddingLeft: 0 }}>{c.link}</a>
+                <Link to={c.to} className="p-btn p-btn-ghost p-btn-sm" style={{ paddingLeft: 0 }}>{c.link}</Link>
               </div>
             </div>
           ))}

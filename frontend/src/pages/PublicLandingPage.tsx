@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Globe, Zap, ShieldCheck, Activity } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { Globe, Zap, ShieldCheck, Activity, Search } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 /* ── Scroll-in observer ── */
 function useScrollIn() {
@@ -31,14 +31,14 @@ function HeroSection() {
   return (
     <section
       className="relative overflow-hidden"
-      style={{ background: 'oklch(0.100 0.010 265)', borderBottom: '1px solid var(--border-secondary)' }}
+      style={{ background: 'var(--bg-sunken)', borderBottom: '1px solid var(--border-secondary)' }}
     >
       {/* Grid background */}
       <div
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: 'linear-gradient(oklch(0.300 0.010 265 / 0.25) 1px, transparent 1px), linear-gradient(90deg, oklch(0.300 0.010 265 / 0.25) 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(var(--border-secondary) 1px, transparent 1px), linear-gradient(90deg, var(--border-secondary) 1px, transparent 1px)',
           backgroundSize: '48px 48px',
           maskImage: 'radial-gradient(ellipse 60% 60% at 50% 40%, black 20%, transparent 70%)',
           WebkitMaskImage: 'radial-gradient(ellipse 60% 60% at 50% 40%, black 20%, transparent 70%)',
@@ -246,6 +246,8 @@ function FeaturedProofSection() {
 
 /* ═══════════════════════ RESULTS PREVIEW ═══════════════════════ */
 function ResultsPreviewSection() {
+  const [activeTab, setActiveTab] = useState<'results' | 'evidence' | 'certificates' | 'exports'>('results');
+
   const results = [
     { title: 'APAC Supply Chain Disruption', id: 'INQ-2026-0847', type: 'INVESTIGATION', status: 'verified', agent: 'LogiSense v3.1', score: 87.4, tier: 'TIER 2 — BACKTESTED', cert: 'CERT-00291', date: '8 Mar 2026' },
     { title: 'EU Carbon Credit Pricing', id: 'INQ-2026-0831', type: 'INSPECTION', status: 'verified', agent: 'CarbonEdge v2.0', score: 91.2, tier: 'TIER 3 — PROVEN', cert: 'CERT-00288', date: '5 Mar 2026' },
@@ -263,53 +265,393 @@ function ResultsPreviewSection() {
           Every result answers four questions: what was tested, what evidence was used, what certificate was issued, and what changed.
         </p>
 
-        <div className="flex flex-col gap-3">
-          {results.map((r) => (
-            <div
-              key={r.id}
-              className="grid items-start gap-3"
+        {/* Tab bar */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-1)',
+          marginBottom: 'var(--space-6)',
+          borderBottom: '1px solid var(--border-secondary)',
+        }}>
+          {(['results', 'evidence', 'certificates', 'exports'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
               style={{
-                gridTemplateColumns: '1fr auto',
-                background: 'var(--bg-card)', border: '1px solid var(--border-primary)',
-                borderRadius: 'var(--radius-lg)', padding: 'var(--space-5) var(--space-6)',
-                transition: 'border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out)',
+                padding: 'var(--space-3) var(--space-5)',
+                fontSize: '0.88rem',
+                fontWeight: activeTab === tab ? 600 : 400,
+                color: activeTab === tab ? 'var(--text-primary)' : 'var(--text-muted)',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: activeTab === tab ? '2px solid var(--purple-400)' : '2px solid transparent',
+                cursor: 'pointer',
+                transition: 'all var(--duration-fast) var(--ease-out)',
+                marginBottom: -1,
+                textTransform: 'capitalize',
               }}
             >
-              <div style={{ minWidth: 0 }}>
-                <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 'var(--space-1)' }}>
-                  {r.title}
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>{r.id}</span>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap mb-2">
-                  <span className={`p-chip ${r.type === 'SURVEY' ? 'p-chip-grey' : 'p-chip-purple'}`} style={{ fontSize: undefined }}>{r.type}</span>
-                  {r.status === 'verified' && <span className="p-badge p-badge-verified" style={{ fontSize: '0.68rem' }}><span className="p-pulse-dot" style={{ width: 5, height: 5 }} /> Verified</span>}
-                  {r.status === 'monitoring' && <span className="p-badge p-badge-monitoring" style={{ fontSize: '0.68rem' }}>Monitoring</span>}
-                  {r.status === 'escalated' && <span className="p-badge p-badge-warning" style={{ fontSize: '0.68rem' }}>Escalated</span>}
-                </div>
-                <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>
-                  <span>{r.agent}</span>
-                  <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-muted)', flexShrink: 0 }} />
-                  <span>Score <span className="mono" style={{ fontWeight: 700, color: r.score >= 80 ? 'var(--green-400)' : 'var(--amber-400)' }}>{r.score}</span></span>
-                  <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-muted)', flexShrink: 0 }} />
-                  <span className="p-badge p-badge-tier" style={{ fontSize: '0.65rem' }}>{r.tier}</span>
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-2" style={{ whiteSpace: 'nowrap' }}>
-                {r.cert ? (
-                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    <Link to="/results" style={{ color: 'var(--purple-400)' }}>{r.cert}</Link>
-                  </span>
-                ) : (
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-disabled)' }}>No certificate</span>
-                )}
-                {r.date && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{r.date}</span>}
-              </div>
-            </div>
+              {tab}
+            </button>
           ))}
         </div>
-        <div className="text-center" style={{ marginTop: 'var(--space-6)' }}>
-          <Link to="/results" className="p-btn p-btn-ghost">View all results →</Link>
-        </div>
+
+        {/* ── Results tab (default) ── */}
+        {activeTab === 'results' && (
+          <>
+            <div className="flex flex-col gap-3">
+              {results.map((r) => (
+                <div
+                  key={r.id}
+                  className="grid items-start gap-3"
+                  style={{
+                    gridTemplateColumns: '1fr auto',
+                    background: 'var(--bg-card)', border: '1px solid var(--border-primary)',
+                    borderRadius: 'var(--radius-lg)', padding: 'var(--space-5) var(--space-6)',
+                    transition: 'border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out)',
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: 'var(--space-1)' }}>
+                      {r.title}
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>{r.id}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <span className={`p-chip ${r.type === 'SURVEY' ? 'p-chip-grey' : 'p-chip-purple'}`} style={{ fontSize: undefined }}>{r.type}</span>
+                      {r.status === 'verified' && <span className="p-badge p-badge-verified" style={{ fontSize: '0.68rem' }}><span className="p-pulse-dot" style={{ width: 5, height: 5 }} /> Verified</span>}
+                      {r.status === 'monitoring' && <span className="p-badge p-badge-monitoring" style={{ fontSize: '0.68rem' }}>Monitoring</span>}
+                      {r.status === 'escalated' && <span className="p-badge p-badge-warning" style={{ fontSize: '0.68rem' }}>Escalated</span>}
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 'var(--space-2)' }}>
+                      <span>{r.agent}</span>
+                      <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-muted)', flexShrink: 0 }} />
+                      <span>Score <span className="mono" style={{ fontWeight: 700, color: r.score >= 80 ? 'var(--green-400)' : 'var(--amber-400)' }}>{r.score}</span></span>
+                      <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--text-muted)', flexShrink: 0 }} />
+                      <span className="p-badge p-badge-tier" style={{ fontSize: '0.65rem' }}>{r.tier}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2" style={{ whiteSpace: 'nowrap' }}>
+                    {r.cert ? (
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        <Link to="/results" style={{ color: 'var(--purple-400)' }}>{r.cert}</Link>
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-disabled)' }}>No certificate</span>
+                    )}
+                    {r.date && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{r.date}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="text-center" style={{ marginTop: 'var(--space-6)' }}>
+              <Link to="/results" className="p-btn p-btn-ghost">View all results →</Link>
+            </div>
+          </>
+        )}
+
+        {/* ── Evidence tab ── */}
+        {activeTab === 'evidence' && (
+          <div style={{ animation: 'rpFadeIn 0.25s var(--ease-out) both' }}>
+            {/* Evidence mini-timeline */}
+            <div style={{
+              background: 'var(--bg-card)', border: '1px solid var(--border-primary)',
+              borderRadius: 'var(--radius-lg)', overflow: 'hidden', marginBottom: 'var(--space-6)',
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: 'var(--space-4) var(--space-5)', borderBottom: '1px solid var(--border-secondary)',
+                background: 'var(--bg-sunken)',
+              }}>
+                <h4 style={{ fontSize: '0.88rem' }}>Evidence Envelope — INQ-2026-0847</h4>
+                <span className="p-badge p-badge-verified" style={{ fontSize: '0.65rem' }}>
+                  <span className="p-pulse-dot" style={{ width: 5, height: 5 }} /> Sealed
+                </span>
+              </div>
+              <div style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', flexDirection: 'column' }}>
+                {[
+                  { dot: 'var(--teal-400)', label: 'Signal detected — APAC shipping anomaly', sub: 'Anomalous rerouting patterns across 3 APAC port clusters', time: '06 Mar 09:14' },
+                  { dot: 'var(--purple-400)', label: '18 primary sources corroborated', sub: 'Shipping data, port authority filings, satellite imagery, news wires', time: '07 Mar 14:32' },
+                  { dot: 'var(--amber-400)', label: '3 counter-signal contradiction checks passed', sub: 'No disconfirming evidence found across adversarial probes', time: '07 Mar 18:05' },
+                  { dot: 'var(--green-400)', label: 'Certificate issued — CERT-00291', sub: 'Evidence envelope sealed · Hash-pinned to batch anchor', time: '08 Mar 02:41' },
+                ].map((step, i, arr) => (
+                  <div key={i} style={{
+                    display: 'grid', gridTemplateColumns: '24px 1fr auto', gap: 'var(--space-3)',
+                    alignItems: 'start', padding: 'var(--space-3) 0',
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--border-secondary)' : undefined,
+                  }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: step.dot, marginTop: 4, justifySelf: 'center' }} />
+                    <div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 500 }}>{step.label}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{step.sub}</div>
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{step.time}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Metric cards — 2x2 grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                {
+                  icon: <Search size={18} />, iconColor: 'teal', title: 'Source Health', count: '142', countColor: 'var(--teal-400)',
+                  body: 'Active feeds across public shipping data, regulatory filings, satellite imagery, news wires, and market data. Uptime 99.4% over 30 days.',
+                  barWidth: '94%', barColor: 'teal', footer: '94% freshness · Last checked 4m ago',
+                },
+                {
+                  icon: <Activity size={18} />, iconColor: 'amber', title: 'Counter-Signals', count: '23', countColor: 'var(--amber-400)',
+                  body: 'Active contradiction monitoring across all open inquiries. 3 checks failed corroboration on INQ-0794, triggering escalation review.',
+                  barWidth: '87%', barColor: 'amber', footer: '87% pass rate · 3 flagged',
+                },
+                {
+                  icon: <Zap size={18} />, iconColor: 'purple', title: 'Corroboration', count: '6', countColor: 'var(--purple-400)',
+                  body: 'Independent claims supported across the active investigation set. Corroboration count tracks claims with 2+ confirming sources.',
+                  footer: '6 of 6 claims supported',
+                },
+                {
+                  icon: <Globe size={18} />, iconColor: 'green', title: 'Jurisdictions', count: '6', countColor: 'var(--green-400)',
+                  body: 'Evidence spans multiple regulatory jurisdictions with jurisdiction-specific source compliance.',
+                  chips: ['APAC', 'EU', 'US', 'LATAM', 'MENA', 'UK'],
+                },
+              ].map((card) => (
+                <div key={card.title} style={{
+                  background: 'var(--bg-card)', border: '1px solid var(--border-primary)',
+                  borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+                  display: 'flex', flexDirection: 'column', gap: 'var(--space-3)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                    <div className={`p-proof-icon p-proof-icon-${card.iconColor}`}>{card.icon}</div>
+                    <h4 style={{ fontSize: '0.9rem' }}>{card.title}</h4>
+                    <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '1.1rem', fontWeight: 700, color: card.countColor }}>{card.count}</span>
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>{card.body}</div>
+                  {card.barWidth && (
+                    <>
+                      <div className="p-score-bar-track"><div className={`p-score-bar-fill ${card.barColor}`} style={{ width: card.barWidth }} /></div>
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{card.footer}</div>
+                    </>
+                  )}
+                  {card.footer && !card.barWidth && !card.chips && (
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 'var(--space-2)' }}>{card.footer}</div>
+                  )}
+                  {card.chips && (
+                    <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginTop: 'var(--space-2)' }}>
+                      {card.chips.map((c) => (
+                        <span key={c} style={{
+                          display: 'inline-flex', alignItems: 'center', padding: '3px 8px',
+                          borderRadius: 'var(--radius-sm)', fontSize: '0.72rem', fontWeight: 600,
+                          fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.03em',
+                          background: 'var(--bg-elevated)', border: '1px solid var(--border-secondary)', color: 'var(--text-secondary)',
+                        }}>{c}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Certificates tab ── */}
+        {activeTab === 'certificates' && (
+          <div style={{ animation: 'rpFadeIn 0.25s var(--ease-out) both', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            {[
+              {
+                variant: 'issued' as const, hero: true,
+                status: 'ISSUED', badge: 'verified', badgeText: 'Verified',
+                id: 'CERT-00291', idColor: 'var(--green-400)', chip: 'INVESTIGATION',
+                title: 'APAC Supply Chain Disruption',
+                metrics: [
+                  { label: 'Composite', value: '87.4', color: 'var(--green-400)' },
+                  { label: 'Accuracy', value: '91%' },
+                  { label: 'Brier', value: '0.92' },
+                  { label: 'CI Overlap', value: '88%' },
+                ],
+                barWidth: '87%', barColor: 'green',
+                meta: ['sha256:7a3f9b2c…e4d1', 'Stop: outcome_resolved', 'Issued 2026-03-08'],
+              },
+              {
+                variant: 'issued' as const, hero: false,
+                status: 'ISSUED', badge: 'verified', badgeText: 'Verified',
+                id: 'CERT-00288', idColor: 'var(--green-400)', chip: 'INSPECTION',
+                title: 'EU Carbon Credit Pricing',
+                metrics: [
+                  { label: 'Composite', value: '91.2', color: 'var(--green-400)' },
+                  { label: 'Accuracy', value: '93%' },
+                  { label: 'Brier', value: '0.89' },
+                ],
+                barWidth: '91%', barColor: 'green',
+                meta: ['sha256:b2e4a71d…c3f8', 'Stop: outcome_resolved', 'Issued 2026-03-05'],
+              },
+              {
+                variant: 'pending' as const, hero: false,
+                status: 'PENDING', badge: 'investigating', badgeText: 'Under review',
+                id: 'INV-0794', idColor: 'var(--purple-300)', chip: 'INVESTIGATION',
+                title: 'Middle East Shipping Lane Risk',
+                metrics: [
+                  { label: 'Composite', value: '81.3', color: 'var(--purple-300)' },
+                  { label: 'Accuracy', value: '—' },
+                  { label: 'Stop Condition', value: 'awaiting_resolution' },
+                ],
+                barWidth: '65%', barColor: 'purple',
+                meta: ['Escalated — counter-signal review in progress'],
+              },
+              {
+                variant: 'unissued' as const, hero: false,
+                status: 'NOT ISSUED', badge: 'monitoring', badgeText: 'Monitoring',
+                id: 'INQ-2026-0819', idColor: 'var(--text-muted)', chip: 'SURVEY', chipGrey: true,
+                title: 'Brazil Soy Export Forecast',
+                metrics: [
+                  { label: 'Composite', value: '78.6', color: 'var(--text-muted)' },
+                  { label: 'Status', value: 'Observation only' },
+                ],
+                meta: ['Certificate not yet eligible — stop condition unmet'],
+              },
+            ].map((cert) => {
+              const borderColor = cert.variant === 'issued'
+                ? 'oklch(0.300 0.050 152)'
+                : cert.variant === 'pending'
+                  ? 'oklch(0.300 0.040 295)'
+                  : 'var(--border-primary)';
+              const stripBg = cert.variant === 'issued'
+                ? 'oklch(0.170 0.040 152)'
+                : cert.variant === 'pending'
+                  ? 'oklch(0.170 0.035 295)'
+                  : 'var(--bg-sunken)';
+              const stripColor = cert.variant === 'issued'
+                ? 'var(--green-400)'
+                : cert.variant === 'pending'
+                  ? 'var(--purple-300)'
+                  : 'var(--text-muted)';
+
+              return (
+                <div key={cert.id} style={{
+                  background: 'var(--bg-card)', border: `1px solid ${borderColor}`,
+                  borderRadius: 'var(--radius-lg)', overflow: 'hidden',
+                  opacity: cert.variant === 'unissued' ? 0.75 : 1,
+                  boxShadow: cert.hero ? '0 0 40px -10px oklch(0.545 0.170 152 / 0.12)' : undefined,
+                }}>
+                  {/* Status strip */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: 'var(--space-2) var(--space-5)', fontFamily: 'var(--font-mono)',
+                    fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase',
+                    letterSpacing: '0.04em', background: stripBg, color: stripColor,
+                  }}>
+                    <span>{cert.status}</span>
+                    {cert.badge === 'verified' && (
+                      <span className="p-badge p-badge-verified" style={{ fontSize: '0.65rem' }}>
+                        <span className="p-pulse-dot" style={{ width: 5, height: 5 }} /> {cert.badgeText}
+                      </span>
+                    )}
+                    {cert.badge === 'investigating' && (
+                      <span className="p-badge p-badge-tier" style={{ fontSize: '0.65rem' }}>{cert.badgeText}</span>
+                    )}
+                    {cert.badge === 'monitoring' && (
+                      <span className="p-badge p-badge-monitoring" style={{ fontSize: '0.65rem' }}>{cert.badgeText}</span>
+                    )}
+                  </div>
+                  {/* Body */}
+                  <div style={{ padding: 'var(--space-5)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.82rem', fontWeight: 700, color: cert.idColor }}>{cert.id}</span>
+                      <span className={`p-chip ${cert.chipGrey ? '' : 'p-chip-purple'}`} style={{ fontSize: '0.65rem' }}>{cert.chip}</span>
+                    </div>
+                    <h4 style={{ fontSize: '0.95rem', marginBottom: 'var(--space-2)', color: cert.variant === 'unissued' ? 'var(--text-secondary)' : undefined }}>{cert.title}</h4>
+                    <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', marginBottom: 'var(--space-3)' }}>
+                      {cert.metrics.map((m) => (
+                        <div key={m.label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{m.label}</span>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.87rem', fontWeight: 600, color: m.color }}>{m.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {cert.barWidth && (
+                      <div className="p-score-bar-track"><div className={`p-score-bar-fill ${cert.barColor}`} style={{ width: cert.barWidth }} /></div>
+                    )}
+                    <div style={{
+                      fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)',
+                      marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)',
+                      borderTop: '1px solid var(--border-secondary)',
+                      display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap',
+                    }}>
+                      {cert.meta.map((m, i) => <span key={i}>{m}</span>)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Exports tab ── */}
+        {activeTab === 'exports' && (
+          <div style={{ animation: 'rpFadeIn 0.25s var(--ease-out) both' }}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                {
+                  chip: 'Replay', chipClass: 'p-chip-purple', verified: true,
+                  title: 'Market Replay Sequences',
+                  desc: 'Full agent decision traces with timestamped market state. Linked to CERT-00291, CERT-00288, CERT-00285 outcome labels for RLMF fine-tuning.',
+                  packages: 84, updated: '2h ago', certs: 3, pending: 0,
+                },
+                {
+                  chip: 'Calibration', chipClass: 'p-chip-teal', verified: true,
+                  title: 'Probability Calibration Datasets',
+                  desc: 'Agent probability distributions mapped against resolved outcomes. Certificate-linked Brier scores and reliability diagram inputs.',
+                  packages: 42, updated: '6h ago', certs: 3, pending: 0,
+                },
+                {
+                  chip: 'Training', chipClass: 'p-chip-green', verified: false,
+                  title: 'Labelled Training Exports',
+                  desc: 'Ground-truth labelled datasets from resolved inquiries. Includes outcome labels, evidence references, and quality scores. Pending items excluded.',
+                  packages: 31, updated: '12h ago', certs: 2, pending: 1,
+                },
+              ].map((card) => (
+                <div key={card.title} style={{
+                  background: 'var(--bg-card)', border: '1px solid var(--border-primary)',
+                  borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)',
+                  display: 'flex', flexDirection: 'column', gap: 'var(--space-3)',
+                  transition: 'border-color var(--duration-fast) var(--ease-out)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                    <span className={`p-chip ${card.chipClass}`}>{card.chip}</span>
+                    {card.verified ? (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px',
+                        borderRadius: 'var(--radius-sm)', fontSize: '0.7rem', fontWeight: 600,
+                        fontFamily: 'var(--font-mono)', background: 'oklch(0.200 0.040 152)',
+                        color: 'var(--green-400)', border: '1px solid oklch(0.300 0.050 152)',
+                      }}>✓ Verified</span>
+                    ) : (
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px',
+                        borderRadius: 'var(--radius-sm)', fontSize: '0.7rem', fontWeight: 600,
+                        fontFamily: 'var(--font-mono)', background: 'oklch(0.200 0.008 265)',
+                        color: 'var(--text-muted)', border: '1px solid oklch(0.300 0.010 265)',
+                      }}>Partial</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 600 }}>{card.title}</div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>{card.desc}</div>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap',
+                    marginTop: 'auto', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--border-secondary)',
+                    fontFamily: 'var(--font-mono)', fontSize: '0.72rem', color: 'var(--text-muted)',
+                  }}>
+                    <span>{card.packages} packages</span>
+                    <span>·</span>
+                    <span>Updated {card.updated}</span>
+                    <span>·</span>
+                    {card.pending > 0 ? (
+                      <span style={{ color: 'var(--text-muted)' }}>{card.certs} certs linked · {card.pending} pending</span>
+                    ) : (
+                      <span style={{ color: 'var(--green-400)' }}>{card.certs} certs linked</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

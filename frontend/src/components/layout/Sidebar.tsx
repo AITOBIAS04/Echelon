@@ -13,7 +13,6 @@ import {
   LayoutGrid,
   Mountain,
   Radar,
-  Search,
   Shield,
   ShieldCheck,
   SlidersHorizontal,
@@ -39,15 +38,10 @@ interface NavGroup {
   items: NavItem[];
 }
 
+/* Standalone top link — no group header */
+const HOME_LINK: NavItem = { path: '/', label: 'Home', icon: Home };
+
 const NAV_GROUPS: NavGroup[] = [
-  {
-    label: 'Echelon',
-    items: [
-      { path: '/', label: 'Home', icon: Home },
-      { path: '/results', label: 'Results', icon: BarChart3 },
-      { path: '/verify-public', label: 'Verify', icon: Search },
-    ],
-  },
   {
     label: 'Command',
     items: [
@@ -103,8 +97,41 @@ function NavGroups({
     return item.matchPrefixes?.some((prefix) => location.pathname.startsWith(prefix)) ?? false;
   };
 
+  const renderLink = (item: NavItem) => {
+    const active = isActive(item);
+    const Icon = item.icon;
+    return (
+      <NavLink
+        key={item.path}
+        to={item.path}
+        onClick={onLinkClick}
+        className={clsx(
+          'relative mx-2 my-px flex h-9 items-center rounded-md text-[13px] font-medium transition-all duration-100',
+          collapsed ? 'justify-center px-0' : 'gap-3 px-5',
+          active
+            ? 'bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
+            : 'text-[var(--e-text-secondary)] hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]',
+        )}
+        title={collapsed ? item.label : undefined}
+      >
+        {active ? (
+          <span className="absolute inset-y-[6px] left-0 w-[3px] rounded-r-[2px] bg-[var(--e-purple-500)]" />
+        ) : null}
+        <span className={clsx('flex h-5 w-5 items-center justify-center', active ? 'opacity-100' : 'opacity-70')}>
+          <Icon className="h-4 w-4" />
+        </span>
+        {!collapsed ? <span className="truncate">{item.label}</span> : null}
+      </NavLink>
+    );
+  };
+
   return (
     <div className="flex-1 overflow-y-auto py-3">
+      {/* Standalone Home link */}
+      <div className="mb-1 pb-1">
+        {renderLink(HOME_LINK)}
+      </div>
+
       {NAV_GROUPS.map((group) => (
         <div key={group.label} className="mb-1">
           <div
@@ -115,33 +142,7 @@ function NavGroups({
           >
             {!collapsed ? group.label : null}
           </div>
-          {group.items.map((item) => {
-            const active = isActive(item);
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={onLinkClick}
-                className={clsx(
-                  'relative mx-2 my-px flex h-9 items-center rounded-md text-[13px] font-medium transition-all duration-100',
-                  collapsed ? 'justify-center px-0' : 'gap-3 px-5',
-                  active
-                    ? 'bg-[var(--e-purple-50)] text-[var(--e-purple-700)]'
-                    : 'text-[var(--e-text-secondary)] hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]',
-                )}
-                title={collapsed ? item.label : undefined}
-              >
-                {active ? (
-                  <span className="absolute inset-y-[6px] left-0 w-[3px] rounded-r-[2px] bg-[var(--e-purple-500)]" />
-                ) : null}
-                <span className={clsx('flex h-5 w-5 items-center justify-center', active ? 'opacity-100' : 'opacity-70')}>
-                  <Icon className="h-4 w-4" />
-                </span>
-                {!collapsed ? <span className="truncate">{item.label}</span> : null}
-              </NavLink>
-            );
-          })}
+          {group.items.map(renderLink)}
         </div>
       ))}
     </div>
@@ -158,7 +159,7 @@ export function Sidebar({
   return (
     <>
       <aside
-        className="fixed inset-y-14 left-0 z-20 hidden border-r border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)] transition-[width] duration-300 ease-out md:flex md:flex-col"
+        className="fixed top-14 bottom-0 left-0 z-20 hidden border-r border-[var(--e-border-primary)] bg-[var(--e-bg-card)] shadow-[var(--e-shadow-xs)] transition-[width] duration-300 ease-out md:flex md:flex-col"
         style={{ width: desktopWidth }}
       >
         <NavGroups collapsed={collapsed} />
