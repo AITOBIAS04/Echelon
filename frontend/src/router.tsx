@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
+import { PublicLayout } from './components/public/PublicLayout';
 
 /** Redirect that preserves :agentId param from old /agent/:agentId to /fleet/:agentId */
 function AgentRedirect() {
@@ -76,7 +77,54 @@ const VerifyPage = lazyWithRetry(() =>
   import('./pages/VerifyPage').then((m) => ({ default: m.VerifyPage }))
 );
 
+// ── Public pages (unauthenticated) ──────────────────────────────────────
+const PublicLandingPage = lazyWithRetry(() => import('./pages/PublicLandingPage'));
+const PublicResultsPage = lazyWithRetry(() => import('./pages/PublicResultsPage'));
+const PublicVerifyPage = lazyWithRetry(() => import('./pages/PublicVerifyPage'));
+
+const PublicSuspense = ({ children }: { children: React.ReactNode }) => (
+  <Suspense
+    fallback={
+      <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+        Loading...
+      </div>
+    }
+  >
+    {children}
+  </Suspense>
+);
+
 export const router = createBrowserRouter([
+  // ── Public pages (unauthenticated, PublicLayout) ──────────────────────
+  {
+    path: '/public',
+    element: <PublicLayout />,
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      {
+        index: true,
+        element: <PublicSuspense><PublicLandingPage /></PublicSuspense>,
+      },
+      {
+        path: 'results',
+        element: <PublicSuspense><PublicResultsPage /></PublicSuspense>,
+      },
+      {
+        path: 'results/:resultId',
+        element: <PublicSuspense><PublicResultsPage /></PublicSuspense>,
+      },
+      {
+        path: 'verify',
+        element: <PublicSuspense><PublicVerifyPage /></PublicSuspense>,
+      },
+      {
+        path: 'certificates',
+        element: <PublicSuspense><PublicResultsPage /></PublicSuspense>,
+      },
+    ],
+  },
+
+  // ── Operator pages (authenticated, AppLayout) ─────────────────────────
   {
     path: '/',
     element: <AppLayout />,

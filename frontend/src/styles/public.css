@@ -1,0 +1,457 @@
+/* ═══════════════════════════════════════════════════════════
+   ECHELON PUBLIC DESIGN SYSTEM
+   oklch-native tokens. Purple accent family.
+   Dark mode default, light mode via .light class on <html>.
+   Scoped to .public-shell to avoid operator UI collision.
+   ═══════════════════════════════════════════════════════════ */
+
+.public-shell {
+  /* Neutrals — dark mode (default) */
+  --bg-app:          oklch(0.145 0.008 265);
+  --bg-card:         oklch(0.175 0.010 265);
+  --bg-elevated:     oklch(0.200 0.012 265);
+  --bg-sunken:       oklch(0.120 0.006 265);
+  --bg-hover:        oklch(0.220 0.014 265);
+  --bg-active:       oklch(0.250 0.016 265);
+
+  --border-primary:  oklch(0.300 0.010 265);
+  --border-secondary:oklch(0.240 0.008 265);
+  --border-focus:    oklch(0.530 0.230 295);
+
+  /* Text */
+  --text-primary:    oklch(0.930 0.005 265);
+  --text-secondary:  oklch(0.720 0.008 265);
+  --text-muted:      oklch(0.540 0.006 265);
+  --text-disabled:   oklch(0.400 0.004 265);
+  --text-inverse:    oklch(0.145 0.008 265);
+
+  /* Purple (primary accent) */
+  --purple-50:  oklch(0.970 0.018 295);
+  --purple-100: oklch(0.935 0.042 295);
+  --purple-200: oklch(0.870 0.085 295);
+  --purple-300: oklch(0.760 0.140 295);
+  --purple-400: oklch(0.640 0.195 295);
+  --purple-500: oklch(0.530 0.230 295);
+  --purple-600: oklch(0.455 0.215 295);
+  --purple-700: oklch(0.385 0.190 295);
+
+  /* Green (proof / verified) */
+  --green-50:  oklch(0.965 0.022 152);
+  --green-100: oklch(0.930 0.050 152);
+  --green-200: oklch(0.860 0.095 152);
+  --green-400: oklch(0.640 0.165 152);
+  --green-500: oklch(0.545 0.170 152);
+  --green-600: oklch(0.470 0.155 152);
+  --green-700: oklch(0.400 0.135 152);
+
+  /* Amber (warning) */
+  --amber-50:  oklch(0.970 0.030 85);
+  --amber-100: oklch(0.935 0.055 85);
+  --amber-400: oklch(0.750 0.150 85);
+  --amber-500: oklch(0.680 0.160 85);
+  --amber-600: oklch(0.580 0.145 85);
+  --amber-700: oklch(0.490 0.120 85);
+
+  /* Teal (signal / evidence) */
+  --teal-50:  oklch(0.960 0.020 185);
+  --teal-100: oklch(0.920 0.045 185);
+  --teal-400: oklch(0.640 0.130 185);
+  --teal-500: oklch(0.555 0.140 185);
+  --teal-600: oklch(0.470 0.125 185);
+
+  /* Red (error) */
+  --red-50:  oklch(0.960 0.025 25);
+  --red-400: oklch(0.640 0.200 25);
+  --red-500: oklch(0.560 0.200 25);
+
+  /* Provenance — three-tier trust language */
+  --provenance-inferred: var(--text-muted);
+  --provenance-evidence: var(--purple-400);
+  --provenance-certified: var(--green-400);
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius:    8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Fonts */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.25);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.3);
+
+  /* Transitions */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+
+  /* Base styles */
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* ── Light mode ── */
+:root.light .public-shell {
+  --bg-app:          oklch(0.965 0.004 265);
+  --bg-card:         oklch(0.993 0.001 265);
+  --bg-elevated:     oklch(1.000 0 0);
+  --bg-sunken:       oklch(0.945 0.006 265);
+  --bg-hover:        oklch(0.935 0.008 265);
+  --bg-active:       oklch(0.910 0.010 265);
+
+  --border-primary:  oklch(0.875 0.006 265);
+  --border-secondary:oklch(0.920 0.004 265);
+
+  --text-primary:    oklch(0.205 0.015 265);
+  --text-secondary:  oklch(0.440 0.010 265);
+  --text-muted:      oklch(0.590 0.008 265);
+  --text-disabled:   oklch(0.700 0.005 265);
+  --text-inverse:    oklch(0.985 0.002 265);
+
+  --provenance-inferred: var(--text-muted);
+  --provenance-evidence: var(--purple-600);
+  --provenance-certified: var(--green-600);
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.10);
+}
+
+/* ── Typography ── */
+.public-shell h1, .public-shell h2, .public-shell h3,
+.public-shell h4, .public-shell h5, .public-shell h6 {
+  line-height: 1.2;
+  font-weight: 600;
+}
+.public-shell h1 { font-size: 2.4rem; letter-spacing: -0.025em; font-weight: 700; }
+.public-shell h2 { font-size: 1.75rem; letter-spacing: -0.02em; }
+.public-shell h3 { font-size: 1.25rem; }
+.public-shell h4 { font-size: 1rem; }
+
+.public-shell p { max-width: 65ch; }
+
+.public-shell a { color: var(--purple-400); text-decoration: none; transition: color var(--duration-fast) var(--ease-out); }
+.public-shell a:hover { color: var(--purple-300); }
+:root.light .public-shell a:hover { color: var(--purple-600); }
+
+.public-shell code, .public-shell .mono {
+  font-family: var(--font-mono);
+  font-size: 0.87em;
+  font-variant-numeric: tabular-nums;
+}
+
+.public-shell .eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--purple-400);
+}
+
+/* ── Layout ── */
+.public-shell .p-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+.public-shell .p-container-narrow {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+.public-shell .p-section {
+  padding: var(--space-20) 0;
+}
+
+.public-shell .p-section + .p-section {
+  border-top: 1px solid var(--border-secondary);
+}
+
+/* ── Card ── */
+.public-shell .p-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.public-shell .p-card:hover {
+  border-color: var(--purple-500);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Badges ── */
+.public-shell .p-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.public-shell .p-badge-verified {
+  background: oklch(0.200 0.040 152);
+  color: var(--green-400);
+  border: 1px solid oklch(0.300 0.050 152);
+}
+:root.light .public-shell .p-badge-verified {
+  background: var(--green-50);
+  color: var(--green-700);
+  border-color: var(--green-100);
+}
+
+.public-shell .p-badge-tier {
+  background: oklch(0.200 0.035 295);
+  color: var(--purple-300);
+  border: 1px solid oklch(0.300 0.050 295);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+:root.light .public-shell .p-badge-tier {
+  background: var(--purple-50);
+  color: var(--purple-600);
+  border-color: var(--purple-100);
+}
+
+.public-shell .p-badge-monitoring {
+  background: oklch(0.200 0.008 265);
+  color: var(--text-muted);
+  border: 1px solid oklch(0.300 0.010 265);
+}
+:root.light .public-shell .p-badge-monitoring {
+  background: oklch(0.945 0.006 265);
+  color: var(--text-muted);
+  border-color: oklch(0.875 0.006 265);
+}
+
+.public-shell .p-badge-warning {
+  background: oklch(0.200 0.035 85);
+  color: var(--amber-400);
+  border: 1px solid oklch(0.300 0.040 85);
+}
+:root.light .public-shell .p-badge-warning {
+  background: var(--amber-50);
+  color: var(--amber-700);
+  border-color: var(--amber-100);
+}
+
+/* ── Buttons ── */
+.public-shell .p-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.public-shell .p-btn-primary {
+  background: var(--purple-500);
+  color: white;
+}
+.public-shell .p-btn-primary:hover {
+  background: var(--purple-400);
+  color: white;
+}
+
+.public-shell .p-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+}
+.public-shell .p-btn-secondary:hover {
+  border-color: var(--purple-500);
+  color: var(--text-primary);
+}
+
+.public-shell .p-btn-ghost {
+  background: transparent;
+  color: var(--purple-400);
+  padding: 8px 12px;
+}
+.public-shell .p-btn-ghost:hover {
+  background: var(--bg-hover);
+}
+
+.public-shell .p-btn-sm {
+  font-size: 0.8rem;
+  padding: 6px 14px;
+}
+
+/* ── Chips ── */
+.public-shell .p-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: var(--font-mono);
+}
+.public-shell .p-chip-purple {
+  background: oklch(0.200 0.040 295);
+  color: var(--purple-300);
+}
+:root.light .public-shell .p-chip-purple {
+  background: var(--purple-50);
+  color: var(--purple-600);
+}
+.public-shell .p-chip-teal {
+  background: oklch(0.200 0.035 185);
+  color: var(--teal-400);
+}
+:root.light .public-shell .p-chip-teal {
+  background: var(--teal-50);
+  color: var(--teal-600);
+}
+.public-shell .p-chip-green {
+  background: oklch(0.200 0.040 152);
+  color: var(--green-400);
+}
+:root.light .public-shell .p-chip-green {
+  background: var(--green-50);
+  color: var(--green-600);
+}
+
+/* ── Proof icon ── */
+.public-shell .p-proof-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+}
+.public-shell .p-proof-icon svg { width: 20px; height: 20px; }
+
+.public-shell .p-proof-icon-purple { background: oklch(0.200 0.040 295); color: var(--purple-400); }
+:root.light .public-shell .p-proof-icon-purple { background: var(--purple-50); color: var(--purple-600); }
+.public-shell .p-proof-icon-teal { background: oklch(0.200 0.035 185); color: var(--teal-400); }
+:root.light .public-shell .p-proof-icon-teal { background: var(--teal-50); color: var(--teal-600); }
+.public-shell .p-proof-icon-green { background: oklch(0.200 0.040 152); color: var(--green-400); }
+:root.light .public-shell .p-proof-icon-green { background: var(--green-50); color: var(--green-600); }
+.public-shell .p-proof-icon-amber { background: oklch(0.200 0.035 85); color: var(--amber-400); }
+:root.light .public-shell .p-proof-icon-amber { background: var(--amber-50); color: var(--amber-600); }
+
+/* ── Pulse dot ── */
+.public-shell .p-pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green-500);
+  animation: p-pulse-ring 2s ease-in-out infinite;
+}
+@keyframes p-pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.545 0.170 152 / 0.4); }
+  50% { box-shadow: 0 0 0 5px oklch(0.545 0.170 152 / 0); }
+}
+
+/* ── Score bar ── */
+.public-shell .p-score-bar-track {
+  height: 6px;
+  background: var(--bg-sunken);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.public-shell .p-score-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s var(--ease-out);
+}
+.public-shell .p-score-bar-fill.green { background: var(--green-500); }
+.public-shell .p-score-bar-fill.purple { background: var(--purple-500); }
+.public-shell .p-score-bar-fill.amber { background: var(--amber-500); }
+.public-shell .p-score-bar-fill.teal { background: var(--teal-500); }
+
+/* ── Scroll-in animation ── */
+.public-shell .p-scroll-in {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.55s var(--ease-out), transform 0.55s var(--ease-out);
+}
+.public-shell .p-scroll-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Nav (sticky) ── */
+.public-shell .p-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: oklch(0.145 0.008 265 / 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-secondary);
+}
+:root.light .public-shell .p-nav {
+  background: oklch(0.965 0.004 265 / 0.92);
+}
+
+/* ── Footer ── */
+.public-shell .p-footer {
+  padding: var(--space-12) 0 var(--space-8);
+  border-top: 1px solid var(--border-secondary);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.public-shell .p-footer a {
+  color: var(--text-muted);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+.public-shell .p-footer a:hover {
+  color: var(--text-secondary);
+}
+
+/* ── Responsive type ── */
+@media (max-width: 768px) {
+  .public-shell {
+    font-size: 14px;
+  }
+  .public-shell h1 { font-size: 1.85rem; }
+  .public-shell h2 { font-size: 1.4rem; }
+  .public-shell .p-section { padding: var(--space-12) 0; }
+}
