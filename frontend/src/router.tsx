@@ -202,14 +202,19 @@ export const router = createBrowserRouter([
         element: <AgentRedirect />,
       },
 
-      // ── Agent Matrix ────────────────────────────────────────────────
+      // ── Agent Matrix (Fleet sub-route) ──────────────────────────────
       {
-        path: 'matrix',
+        path: 'fleet/matrix',
         element: (
           <ErrorBoundary>
             <AgentMatrixPage />
           </ErrorBoundary>
         ),
+      },
+      // Legacy redirect: /matrix → /fleet/matrix
+      {
+        path: 'matrix',
+        element: <Navigate to="/fleet/matrix" replace />,
       },
 
       // ── Paradox Console (renamed from agents/breach) ────────────────

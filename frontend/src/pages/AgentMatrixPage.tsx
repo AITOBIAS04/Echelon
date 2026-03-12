@@ -19,10 +19,10 @@ export function AgentMatrixPage() {
         <div className="mx-auto max-w-7xl space-y-6">
           <div>
             <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--e-text-muted)]">
-              Operations
+              Fleet
             </div>
             <h1 className="text-[28px] font-bold tracking-[-0.02em] text-[var(--e-text-primary)]">
-              Agent Matrix
+              Deployments
             </h1>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -46,7 +46,7 @@ export function AgentMatrixPage() {
         <div className="mx-auto max-w-7xl">
           <div className="rounded-lg border border-[oklch(0.545_0.185_25_/_0.2)] bg-[var(--e-red-50)] p-6 text-center">
             <p className="text-[14px] font-medium text-[var(--status-danger)]">
-              Failed to load matrix data
+              Failed to load deployment data
             </p>
             <p className="mt-1 text-[12px] text-[var(--e-text-muted)]">
               Check your connection and try refreshing.
@@ -64,10 +64,10 @@ export function AgentMatrixPage() {
         <div className="mx-auto max-w-7xl space-y-6">
           <div>
             <div className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--e-text-muted)]">
-              Operations
+              Fleet
             </div>
             <h1 className="text-[28px] font-bold tracking-[-0.02em] text-[var(--e-text-primary)]">
-              Agent Matrix
+              Deployments
             </h1>
             <p className="mt-1 max-w-2xl text-[15px] leading-6 text-[var(--e-text-secondary)]">
               Cross-theatre deployment view — every active agent-to-theatre assignment in one grid.

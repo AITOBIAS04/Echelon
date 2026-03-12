@@ -8,7 +8,7 @@ import {
   Clock3,
   CreditCard,
   GitBranch,
-  Grid3X3,
+
   Hash,
   LayoutGrid,
   Mountain,
@@ -59,7 +59,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Operations',
     items: [
       { path: '/fleet', label: 'Fleet', icon: SlidersHorizontal, matchPrefixes: ['/fleet'] },
-      { path: '/matrix', label: 'Agent Matrix', icon: Grid3X3 },
       { path: '/paradox-console', label: 'Paradox Console', icon: GitBranch },
       { path: '/scenario-packs', label: 'Scenario Packs', icon: SquareStack },
     ],
