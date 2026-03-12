@@ -8,8 +8,8 @@ export function PublicFooter() {
         <span>&copy; {new Date().getFullYear()} Echelon. Verification infrastructure for AI agents.</span>
         <div className="flex items-center gap-4">
           <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href="/public/verify">Verify</a>
-          <a href="/public/results">Results</a>
+          <a href="/verify-public">Verify</a>
+          <a href="/results">Results</a>
         </div>
       </div>
     </footer>

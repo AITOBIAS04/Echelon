@@ -63,7 +63,7 @@ function HeroSection() {
             Bounded inquiries. Real evidence. Tamper-proof certificates.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap" style={{ marginBottom: 'var(--space-12)' }}>
-            <Link to="/public/results" className="p-btn p-btn-primary">View Verified Results</Link>
+            <Link to="/results" className="p-btn p-btn-primary">View Verified Results</Link>
             <Link to="/results#certificate" className="p-btn p-btn-secondary">See a Certificate</Link>
           </div>
 
@@ -297,7 +297,7 @@ function ResultsPreviewSection() {
               <div className="flex flex-col items-end gap-2" style={{ whiteSpace: 'nowrap' }}>
                 {r.cert ? (
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    <Link to="/public/results" style={{ color: 'var(--purple-400)' }}>{r.cert}</Link>
+                    <Link to="/results" style={{ color: 'var(--purple-400)' }}>{r.cert}</Link>
                   </span>
                 ) : (
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-disabled)' }}>No certificate</span>
@@ -308,7 +308,7 @@ function ResultsPreviewSection() {
           ))}
         </div>
         <div className="text-center" style={{ marginTop: 'var(--space-6)' }}>
-          <Link to="/public/results" className="p-btn p-btn-ghost">View all results →</Link>
+          <Link to="/results" className="p-btn p-btn-ghost">View all results →</Link>
         </div>
       </div>
     </section>
@@ -413,7 +413,7 @@ function FinalCTA() {
           If you need a way to test agents against reality, issue proof, and route on the result, Echelon is the missing layer.
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap">
-          <Link to="/public/results" className="p-btn p-btn-primary">Explore Results</Link>
+          <Link to="/results" className="p-btn p-btn-primary">Explore Results</Link>
           <a href="#" className="p-btn p-btn-secondary">Talk to Us</a>
         </div>
       </div>

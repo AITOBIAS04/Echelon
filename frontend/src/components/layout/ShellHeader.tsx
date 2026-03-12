@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Bell, ChevronDown, ExternalLink, Menu, PanelLeftClose, PanelLeftOpen, Search, Shield, Wallet } from 'lucide-react';
+import { Bell, ChevronDown, ExternalLink, Menu, Moon, PanelLeftClose, PanelLeftOpen, Search, Shield, Sun, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../../api/auth';
 import { paymentsApi } from '../../api/payments';
@@ -40,6 +40,9 @@ export function ShellHeader({
   onToggleSidebar,
   onOpenMobileMenu,
 }: ShellHeaderProps) {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
+    document.documentElement.classList.contains('light') ? 'light' : 'dark'
+  );
   const [walletPanelOpen, setWalletPanelOpen] = useState(false);
   const [walletAddress, setWalletAddress] = useState(() => localStorage.getItem(WALLET_STORAGE_KEY) ?? '');
   const [depositAmount, setDepositAmount] = useState('25');
@@ -119,6 +122,16 @@ export function ShellHeader({
     }
   }
 
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    if (next === 'light') {
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+    }
+  }
+
   const canCreateDeposit = Boolean(currentUser?.id) && Number(depositAmount) > 0;
   const walletConnected = Boolean(persistedWalletAddress);
 
@@ -171,6 +184,14 @@ export function ShellHeader({
           <span className="h-2 w-2 rounded-full bg-[var(--status-success)] shadow-[0_0_0_2px_oklch(0.545_0.170_152_/_0.20)]" />
           Testnet Live
         </div>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--e-border-secondary)] bg-[var(--e-bg-card)] text-[var(--e-text-secondary)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </button>
         <button
           type="button"
           className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--e-border-secondary)] bg-[var(--e-bg-card)] text-[var(--e-text-secondary)] transition hover:bg-[var(--e-bg-hover)] hover:text-[var(--e-text-primary)]"

@@ -3,10 +3,10 @@ import { Link, useLocation } from 'react-router-dom';
 import { Sun, Moon, Menu, X } from 'lucide-react';
 
 const NAV_LINKS = [
-  { to: '/public/results', label: 'Results' },
-  { to: '/public/verify', label: 'Verify' },
-  { to: '/public/certificates', label: 'Certificates' },
-  { to: '/public#how-it-works', label: 'How It Works' },
+  { to: '/results', label: 'Results' },
+  { to: '/verify-public', label: 'Verify' },
+  { to: '/results', label: 'Certificates' },
+  { to: '/#how-it-works', label: 'How It Works' },
 ];
 
 export function PublicNav() {
@@ -38,7 +38,7 @@ export function PublicNav() {
         style={{ height: 56, maxWidth: 1200, margin: '0 auto', padding: '0 var(--space-6)' }}
       >
         {/* Logo */}
-        <Link to="/public" className="flex items-center gap-2 no-underline" style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
+        <Link to="/" className="flex items-center gap-2 no-underline" style={{ color: 'var(--text-primary)', fontWeight: 700, fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
           <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
             <rect x="2" y="2" width="28" height="28" rx="6" stroke="currentColor" strokeWidth="2" />
             <path d="M8 10h16M8 16h12M8 22h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -83,7 +83,7 @@ export function PublicNav() {
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           <Link
-            to="/public/results"
+            to="/results"
             className="p-btn p-btn-primary p-btn-sm hidden md:inline-flex"
           >
             View Results
@@ -127,7 +127,7 @@ export function PublicNav() {
             </Link>
           ))}
           <Link
-            to="/public/results"
+            to="/results"
             onClick={() => setMobileOpen(false)}
             className="block no-underline"
             style={{ padding: '10px 12px', color: 'var(--purple-400)', fontWeight: 600 }}

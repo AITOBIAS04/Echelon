@@ -43,7 +43,7 @@ function ResultHero() {
             </div>
             <div className="mono" style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'right' }}>Updated 2026-03-08 00:00 UTC</div>
             <div className="flex gap-3" style={{ marginTop: 'var(--space-2)' }}>
-              <Link to="/public/verify" className="p-btn p-btn-primary p-btn-sm">Verify Certificate</Link>
+              <Link to="/verify-public" className="p-btn p-btn-primary p-btn-sm">Verify Certificate</Link>
               <a href="#evidence-trail" className="p-btn p-btn-secondary p-btn-sm">View Evidence Trail</a>
             </div>
           </div>
@@ -168,7 +168,7 @@ function EvidenceCertSplit() {
                 </div>
 
                 <div className="flex gap-3 mt-5">
-                  <Link to="/public/verify" className="p-btn p-btn-primary p-btn-sm" style={{ flex: 1, justifyContent: 'center' }}>
+                  <Link to="/verify-public" className="p-btn p-btn-primary p-btn-sm" style={{ flex: 1, justifyContent: 'center' }}>
                     <ShieldCheck size={14} /> Verify
                   </Link>
                   <button className="p-btn p-btn-secondary p-btn-sm" style={{ flex: 1, justifyContent: 'center' }}>
@@ -309,7 +309,7 @@ function RelatedResults() {
         <h3 style={{ marginBottom: 'var(--space-6)' }}>Adjacent verifications</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {related.map((r) => (
-            <Link key={r.title} to="/public/results" className="no-underline" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)', color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', transition: 'all var(--duration-fast) var(--ease-out)' }}>
+            <Link key={r.title} to="/results" className="no-underline" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-5)', color: 'var(--text-primary)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', transition: 'all var(--duration-fast) var(--ease-out)' }}>
               <div className="flex items-center justify-between">
                 {r.status === 'verified' && <span className="p-badge p-badge-verified" style={{ fontSize: '0.65rem' }}><span className="p-pulse-dot" style={{ width: 5, height: 5 }} /> Verified</span>}
                 {r.status === 'monitoring' && <span className="p-badge p-badge-monitoring" style={{ fontSize: '0.65rem' }}>Monitoring</span>}

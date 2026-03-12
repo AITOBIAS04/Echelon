@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
-import { PublicLayout } from './components/public/PublicLayout';
+import { PublicShell } from './components/public/PublicShell';
 
 /** Redirect that preserves :agentId param from old /agent/:agentId to /fleet/:agentId */
 function AgentRedirect() {
@@ -82,61 +82,39 @@ const PublicLandingPage = lazyWithRetry(() => import('./pages/PublicLandingPage'
 const PublicResultsPage = lazyWithRetry(() => import('./pages/PublicResultsPage'));
 const PublicVerifyPage = lazyWithRetry(() => import('./pages/PublicVerifyPage'));
 
-const PublicSuspense = ({ children }: { children: React.ReactNode }) => (
-  <Suspense
-    fallback={
-      <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-        Loading...
-      </div>
-    }
-  >
-    {children}
-  </Suspense>
-);
-
 export const router = createBrowserRouter([
-  // ── Public pages (unauthenticated, PublicLayout) ──────────────────────
-  {
-    path: '/public',
-    element: <PublicLayout />,
-    errorElement: <RouteErrorBoundary />,
-    children: [
-      {
-        index: true,
-        element: <PublicSuspense><PublicLandingPage /></PublicSuspense>,
-      },
-      {
-        path: 'results',
-        element: <PublicSuspense><PublicResultsPage /></PublicSuspense>,
-      },
-      {
-        path: 'results/:resultId',
-        element: <PublicSuspense><PublicResultsPage /></PublicSuspense>,
-      },
-      {
-        path: 'verify',
-        element: <PublicSuspense><PublicVerifyPage /></PublicSuspense>,
-      },
-      {
-        path: 'certificates',
-        element: <PublicSuspense><PublicResultsPage /></PublicSuspense>,
-      },
-    ],
-  },
+  // Legacy: /public/* redirects to new root paths
+  { path: '/public', element: <Navigate to="/" replace /> },
+  { path: '/public/results', element: <Navigate to="/results" replace /> },
+  { path: '/public/verify', element: <Navigate to="/verify-public" replace /> },
+  { path: '/public/certificates', element: <Navigate to="/results" replace /> },
 
-  // ── Operator pages (authenticated, AppLayout) ─────────────────────────
+  // ── All pages (AppLayout — sidebar + header) ──────────────────────────
   {
-    path: '/',
     element: <AppLayout />,
     errorElement: <RouteErrorBoundary />,
     children: [
-      // Default route → Dashboard
+      // ── Echelon (public pages inside operator shell) ────────────────
       {
-        index: true,
-        element: <Navigate to="/home" replace />,
+        path: '/',
+        element: <PublicShell><PublicLandingPage /></PublicShell>,
       },
       {
-        path: 'home',
+        path: '/results',
+        element: <PublicShell><PublicResultsPage /></PublicShell>,
+      },
+      {
+        path: '/results/:resultId',
+        element: <PublicShell><PublicResultsPage /></PublicShell>,
+      },
+      {
+        path: '/verify-public',
+        element: <PublicShell><PublicVerifyPage /></PublicShell>,
+      },
+
+      // ── Mission Control ────────────────────────────────────────────
+      {
+        path: '/home',
         element: (
           <ErrorBoundary>
             <HomePage />
@@ -146,7 +124,7 @@ export const router = createBrowserRouter([
 
       // ── Theatres (renamed from marketplace) ─────────────────────────
       {
-        path: 'theatres',
+        path: '/theatres',
         element: (
           <ErrorBoundary>
             <MarketplacePage />
@@ -154,7 +132,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'theatres/create',
+        path: '/theatres/create',
         element: (
           <ErrorBoundary>
             <CreateTheatrePage />
@@ -162,7 +140,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'theatre/:theatreId',
+        path: '/theatre/:theatreId',
         element: (
           <ErrorBoundary>
             <TimelineDetailPage />
@@ -171,13 +149,13 @@ export const router = createBrowserRouter([
       },
       // Keep /marketplace as redirect for backward compat
       {
-        path: 'marketplace',
+        path: '/marketplace',
         element: <Navigate to="/theatres" replace />,
       },
 
       // ── Fleet (renamed from agents) ─────────────────────────────────
       {
-        path: 'fleet',
+        path: '/fleet',
         element: (
           <ErrorBoundary>
             <AgentRoster />
@@ -185,7 +163,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'fleet/:agentId',
+        path: '/fleet/:agentId',
         element: (
           <ErrorBoundary>
             <AgentDetail />
@@ -194,17 +172,17 @@ export const router = createBrowserRouter([
       },
       // Keep /agents as redirect
       {
-        path: 'agents',
+        path: '/agents',
         element: <Navigate to="/fleet" replace />,
       },
       {
-        path: 'agent/:agentId',
+        path: '/agent/:agentId',
         element: <AgentRedirect />,
       },
 
       // ── Agent Matrix (Fleet sub-route) ──────────────────────────────
       {
-        path: 'fleet/matrix',
+        path: '/fleet/matrix',
         element: (
           <ErrorBoundary>
             <AgentMatrixPage />
@@ -213,13 +191,13 @@ export const router = createBrowserRouter([
       },
       // Legacy redirect: /matrix → /fleet/matrix
       {
-        path: 'matrix',
+        path: '/matrix',
         element: <Navigate to="/fleet/matrix" replace />,
       },
 
       // ── Paradox Console (renamed from agents/breach) ────────────────
       {
-        path: 'paradox-console',
+        path: '/paradox-console',
         element: (
           <ErrorBoundary>
             <BreachConsolePage />
@@ -228,13 +206,13 @@ export const router = createBrowserRouter([
       },
       // Keep old route as redirect
       {
-        path: 'agents/breach',
+        path: '/agents/breach',
         element: <Navigate to="/paradox-console" replace />,
       },
 
       // ── New pages ───────────────────────────────────────────────────
       {
-        path: 'world-monitor',
+        path: '/world-monitor',
         element: (
           <ErrorBoundary>
             <WorldMonitorPage />
@@ -242,7 +220,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'world-monitor/live',
+        path: '/world-monitor/live',
         element: (
           <ErrorBoundary>
             <WorldMonitorLivePage />
@@ -250,7 +228,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'signal-map',
+        path: '/signal-map',
         element: (
           <ErrorBoundary>
             <SignalMapPage />
@@ -258,7 +236,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'certificates',
+        path: '/certificates',
         element: (
           <ErrorBoundary>
             <CertificatesPage />
@@ -266,7 +244,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'scenario-packs',
+        path: '/scenario-packs',
         element: (
           <ErrorBoundary>
             <ScenarioPacksPage />
@@ -274,7 +252,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'scenario-packs/:templateId',
+        path: '/scenario-packs/:templateId',
         element: (
           <ErrorBoundary>
             <ScenarioPackDetailPage />
@@ -284,7 +262,7 @@ export const router = createBrowserRouter([
 
       // ── Kept as-is ──────────────────────────────────────────────────
       {
-        path: 'analytics',
+        path: '/analytics',
         element: (
           <ErrorBoundary>
             <BlackboxPage />
@@ -292,7 +270,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'portfolio',
+        path: '/portfolio',
         element: (
           <ErrorBoundary>
             <PortfolioPage />
@@ -300,7 +278,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'rlmf',
+        path: '/rlmf',
         element: (
           <ErrorBoundary>
             <RLMFPage />
@@ -308,7 +286,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'vrf',
+        path: '/vrf',
         element: (
           <ErrorBoundary>
             <VRFPage />
@@ -316,7 +294,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'investigation',
+        path: '/investigation',
         element: (
           <ErrorBoundary>
             <InvestigationPage />
@@ -325,11 +303,11 @@ export const router = createBrowserRouter([
       },
       // Legacy: /investigation/signals → /signal-map (promoted to top-level)
       {
-        path: 'investigation/signals',
+        path: '/investigation/signals',
         element: <Navigate to="/signal-map" replace />,
       },
       {
-        path: 'investigation/create',
+        path: '/investigation/create',
         element: (
           <ErrorBoundary>
             <CreateInvestigationPage />
@@ -337,7 +315,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'convergence',
+        path: '/convergence',
         element: (
           <ErrorBoundary>
             <ConvergencePage />
@@ -345,7 +323,7 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: 'verify',
+        path: '/verify',
         element: (
           <ErrorBoundary>
             <Suspense
@@ -362,13 +340,13 @@ export const router = createBrowserRouter([
       },
       // Legacy: /agents/export → /rlmf (export surface lives under RLMF now)
       {
-        path: 'agents/export',
+        path: '/agents/export',
         element: <Navigate to="/rlmf" replace />,
       },
 
       // ── Timeline detail (backward compat — also served at /theatre/:id) ──
       {
-        path: 'timeline/:timelineId',
+        path: '/timeline/:timelineId',
         element: (
           <ErrorBoundary>
             <TimelineDetailPage />
@@ -378,23 +356,23 @@ export const router = createBrowserRouter([
 
       // ── Legacy redirects ────────────────────────────────────────────
       {
-        path: 'fieldkit',
+        path: '/fieldkit',
         element: <Navigate to="/portfolio" replace />,
       },
       {
-        path: 'blackbox',
+        path: '/blackbox',
         element: <Navigate to="/analytics" replace />,
       },
       {
-        path: 'launchpad',
+        path: '/launchpad',
         element: <LaunchpadRedirect />,
       },
       {
-        path: 'launchpad/:id',
+        path: '/launchpad/:id',
         element: <LaunchpadRedirect />,
       },
       {
-        path: 'launchpad/new',
+        path: '/launchpad/new',
         element: <LaunchpadNewRedirect />,
       },
     ],

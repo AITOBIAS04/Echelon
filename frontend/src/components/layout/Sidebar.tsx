@@ -8,11 +8,12 @@ import {
   Clock3,
   CreditCard,
   GitBranch,
-
   Hash,
+  Home,
   LayoutGrid,
   Mountain,
   Radar,
+  Search,
   Shield,
   ShieldCheck,
   SlidersHorizontal,
@@ -39,6 +40,14 @@ interface NavGroup {
 }
 
 const NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'Echelon',
+    items: [
+      { path: '/', label: 'Home', icon: Home },
+      { path: '/results', label: 'Results', icon: BarChart3 },
+      { path: '/verify-public', label: 'Verify', icon: Search },
+    ],
+  },
   {
     label: 'Command',
     items: [
