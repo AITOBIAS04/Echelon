@@ -8,7 +8,7 @@ Does NOT execute prompts — defines the evaluation contract.
 import hashlib
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 from uuid import uuid4
 
@@ -252,7 +252,7 @@ class ConstructAdapter:
         investigation.stop_condition_reason = (
             f"all {len(evidence_items)} committed prompts have evidence"
         )
-        investigation.stop_condition_evaluated_at = datetime.now(timezone.utc)
+        investigation.stop_condition_evaluated_at = datetime.utcnow()
         await self._db.flush()
 
         return RunSummary(

@@ -193,3 +193,62 @@ class TestConstructScorer:
         assert scorer.compute_routing_hint("PASS", "UNVERIFIED") == "REVIEW_REQUIRED"
         assert scorer.compute_routing_hint("FAIL", "BACKTESTED") == "BLOCKED"
         assert scorer.compute_routing_hint("FAIL", "UNVERIFIED") == "BLOCKED"
+
+
+class TestRubricRegistry:
+    """Test construct-aware rubric dispatch."""
+
+    def test_get_rubrics_returns_artisan(self):
+        """Registry returns artisan rubrics for slug 'artisan'."""
+        from backend.data.construct_rubrics import get_rubrics
+        rubrics = get_rubrics("artisan")
+        assert rubrics is not None
+        assert "Design Systems" in rubrics
+        assert "Motion Design" in rubrics
+        assert len(rubrics) == 5
+
+    def test_get_rubrics_returns_khole(self):
+        """Registry returns khole rubrics for slug 'khole'."""
+        from backend.data.construct_rubrics import get_rubrics
+        rubrics = get_rubrics("khole")
+        assert rubrics is not None
+        assert "Intentional Descent" in rubrics
+        assert "Pipeline Orchestration" in rubrics
+        assert len(rubrics) == 4
+
+    def test_get_rubrics_returns_mibera_codex(self):
+        """Registry returns mibera-codex rubrics for slug 'mibera-codex'."""
+        from backend.data.construct_rubrics import get_rubrics
+        rubrics = get_rubrics("mibera-codex")
+        assert rubrics is not None
+        assert "Entity Query" in rubrics
+        assert "Boundary Enforcement" in rubrics
+        assert len(rubrics) == 4
+
+    def test_get_rubrics_returns_none_for_unknown(self):
+        """Registry returns None for unregistered slug."""
+        from backend.data.construct_rubrics import get_rubrics
+        assert get_rubrics("unknown-construct") is None
+
+    def test_khole_intentional_descent_scores_good_output(self):
+        """K-Hole Intentional Descent rubric scores research output."""
+        from backend.data.construct_rubrics.khole_rubrics import score_intentional_descent
+        scores = score_intentional_descent(
+            "/dig", "Intentional Descent", "Research DID standards",
+            "A thorough deep-dive into the W3C DID specification architecture. "
+            "The protocol comparison reveals key trade-offs between methods. "
+            "According to the RFC, the function parameters define threshold behavior."
+        )
+        assert scores["output_conformance"] > 0
+        assert scores["domain_accuracy"] > 0
+
+    def test_mibera_codex_boundary_scores_refusal(self):
+        """Mibera Codex boundary rubric scores clean refusal at high value."""
+        from backend.data.construct_rubrics.mibera_codex_rubrics import score_boundary_enforcement
+        scores = score_boundary_enforcement(
+            "/entity", "Boundary Enforcement", "What is the market price?",
+            "I cannot provide market valuations or pricing information. "
+            "This is beyond the scope of the codex. Entity data does not include "
+            "financial attributes."
+        )
+        assert scores["boundary_enforcement"] > 0.5

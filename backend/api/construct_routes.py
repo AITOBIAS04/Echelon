@@ -458,10 +458,19 @@ async def issue_certificate(
     manifest = bundle_builder.build_manifest(evidence_items)
     bundle_hash = bundle_builder.compute_bundle_hash(manifest)
 
-    # Score episodes
-    from backend.data.construct_rubrics.artisan_rubrics import ARTISAN_RUBRICS
+    # Dispatch rubrics by construct slug
+    config = investigation.stop_config_json or {}
+    construct_slug = config.get("construct_slug", slug)
+
+    from backend.data.construct_rubrics import get_rubrics
     from backend.services.construct_scorer import ConstructScorer
-    scorer = ConstructScorer(rubrics=ARTISAN_RUBRICS)
+    rubrics = get_rubrics(construct_slug)
+    if rubrics is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No rubrics registered for construct '{construct_slug}'",
+        )
+    scorer = ConstructScorer(rubrics=rubrics)
 
     domain_episode_scores: dict[str, list[dict]] = {}
     tested_skills: set[str] = set()
