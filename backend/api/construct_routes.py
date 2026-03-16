@@ -510,10 +510,16 @@ async def issue_certificate(
 
     skill_coverage = scorer.compute_skill_coverage(reg.skill_manifest, tested_skills)
 
-    # Get template config for thresholds — read directly from the
-    # investigation column, not the lazy-loaded template relationship
-    # (which would raise MissingGreenlet in async context).
-    template_config = investigation.template_config_json
+    # Get template config for thresholds — query the InvestigationTemplate
+    # directly instead of traversing the lazy-loaded relationship (which
+    # would raise MissingGreenlet in async context). template_config_json
+    # lives on InvestigationTemplate, not Investigation.
+    template_config = None
+    if investigation.template_id:
+        from backend.database.models import InvestigationTemplate
+        tmpl_result = await session.get(InvestigationTemplate, investigation.template_id)
+        if tmpl_result is not None:
+            template_config = tmpl_result.template_config_json
 
     verdict = scorer.compute_verdict(composite, skill_coverage, template_config)
     tier = scorer.compute_tier(len(evidence_items))
