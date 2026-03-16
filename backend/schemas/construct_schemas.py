@@ -52,6 +52,15 @@ class CreateRunResponse(BaseModel):
     construct_id: str
 
 
+class RunListItem(BaseModel):
+    """List item for GET .../runs."""
+    run_number: int
+    investigation_id: str
+    status: str
+    episode_count: int
+    started_at: Optional[datetime] = None
+
+
 class EpisodeCaptureRequest(BaseModel):
     """POST .../episodes request body."""
     skill_command: str

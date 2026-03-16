@@ -137,6 +137,12 @@ class TestConstructRegistry:
     async def test_register_artisan_v1_4_0(self):
         """Register Artisan v1.4.0 with correct hash, status=REGISTERED, skill_manifest has 14 entries."""
         session = _make_mock_session()
+
+        # Mock execute to return None for duplicate check (scalar_one_or_none)
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        session.execute = AsyncMock(return_value=mock_result)
+
         registry = ConstructRegistry(session)
 
         content_hash = "sha256:abc123def456"

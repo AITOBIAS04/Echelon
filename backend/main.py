@@ -583,6 +583,16 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+# Include Construct Verification routes (Cycle-024)
+try:
+    from backend.api.construct_routes import construct_router
+    app.include_router(construct_router)
+    print("✅ Construct Verification router included")
+except Exception as e:
+    print(f"❌ Failed to include Construct Verification router: {e}")
+    import traceback
+    traceback.print_exc()
+
 # --- API ENDPOINTS ---
 
 # --- HEALTH CHECK ENDPOINT ---

@@ -64,6 +64,14 @@ class ConstructRegistry:
             if "domain" not in entry:
                 raise ValueError(f"skill_manifest[{i}] missing 'domain' key")
 
+        # Check for duplicate (slug, version) before inserting
+        existing = await self.get(slug, version)
+        if existing is not None:
+            raise ValueError(
+                f"Construct {slug}:{version} is already registered "
+                f"(status={existing.status}, id={existing.id})"
+            )
+
         # Compute commitment_hash = sha256(content_hash + test_prompts_hash + rubric_hash)
         commitment_input = content_hash + test_prompts_hash + rubric_hash
         commitment_hash = f"sha256:{hashlib.sha256(commitment_input.encode()).hexdigest()}"

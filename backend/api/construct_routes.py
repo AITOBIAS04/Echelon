@@ -7,13 +7,15 @@ All routes version-addressable via /:slug/:version. No UUID in public API.
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from backend.database.models import (
     ConstructRegistration,
     Investigation,
     InvestigationEvidenceItem,
+    InvestigationCertificateRecord,
 )
 from backend.dependencies import get_db
 from backend.schemas.construct_schemas import (
@@ -21,6 +23,7 @@ from backend.schemas.construct_schemas import (
     ConstructRegistrationResponse,
     ConstructRegistrationListItem,
     CreateRunResponse,
+    RunListItem,
     EpisodeCaptureRequest,
     EpisodeCaptureResponse,
     EpisodeDetail,
@@ -40,6 +43,29 @@ construct_router = APIRouter(
 
 # Singleton prompt registry (loaded once)
 _prompt_registry = TestPromptRegistry()
+
+
+# ── Helper ──
+
+
+async def _resolve_investigation(
+    session: AsyncSession, slug: str, version: str, run_number: int
+) -> Investigation:
+    """Resolve a construct run to its Investigation row, or raise 404."""
+    construct_id = f"{slug}:{version}"
+    result = await session.execute(
+        select(Investigation).where(
+            Investigation.construct_id == construct_id,
+            Investigation.run_number == run_number,
+        )
+    )
+    investigation = result.scalar_one_or_none()
+    if investigation is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Run {run_number} not found for {slug}:{version}",
+        )
+    return investigation
 
 
 # ── Registration ──
@@ -65,7 +91,13 @@ async def register_construct(
         )
         await session.commit()
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=409 if "already registered" in str(e) else 400, detail=str(e))
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail=f"Construct {body.slug}:{body.version} is already registered",
+        )
 
     return ConstructRegistrationResponse(
         id=reg.id,
@@ -154,6 +186,43 @@ async def create_run(
     )
 
 
+@construct_router.get("/{slug}/{version}/runs", response_model=list[RunListItem])
+async def list_runs(
+    slug: str,
+    version: str,
+    session: AsyncSession = Depends(get_db),
+):
+    """List all evaluation runs for a registered construct."""
+    construct_id = f"{slug}:{version}"
+
+    result = await session.execute(
+        select(Investigation).where(
+            Investigation.construct_id == construct_id,
+        ).order_by(Investigation.run_number)
+    )
+    investigations = list(result.scalars().all())
+
+    items = []
+    for inv in investigations:
+        # Count evidence items per investigation
+        count_result = await session.execute(
+            select(func.count()).select_from(InvestigationEvidenceItem).where(
+                InvestigationEvidenceItem.investigation_id == inv.id,
+            )
+        )
+        episode_count = count_result.scalar() or 0
+
+        items.append(RunListItem(
+            run_number=inv.run_number,
+            investigation_id=inv.id,
+            status=inv.status,
+            episode_count=episode_count,
+            started_at=getattr(inv, "created_at", None),
+        ))
+
+    return items
+
+
 @construct_router.get("/{slug}/{version}/runs/{run_number}", response_model=RunDetailResponse)
 async def get_run_detail(
     slug: str,
@@ -162,18 +231,7 @@ async def get_run_detail(
     session: AsyncSession = Depends(get_db),
 ):
     """Get run details with per-episode activity."""
-    construct_id = f"{slug}:{version}"
-
-    result = await session.execute(
-        select(Investigation).where(
-            Investigation.construct_id == construct_id,
-            Investigation.run_number == run_number,
-        )
-    )
-    investigation = result.scalar_one_or_none()
-
-    if investigation is None:
-        raise HTTPException(status_code=404, detail=f"Run {run_number} not found for {slug}:{version}")
+    investigation = await _resolve_investigation(session, slug, version, run_number)
 
     # Get evidence items
     ev_result = await session.execute(
@@ -231,18 +289,7 @@ async def capture_episode(
     session: AsyncSession = Depends(get_db),
 ):
     """Capture an episode output as evidence."""
-    construct_id = f"{slug}:{version}"
-
-    result = await session.execute(
-        select(Investigation).where(
-            Investigation.construct_id == construct_id,
-            Investigation.run_number == run_number,
-        )
-    )
-    investigation = result.scalar_one_or_none()
-
-    if investigation is None:
-        raise HTTPException(status_code=404, detail=f"Run {run_number} not found for {slug}:{version}")
+    investigation = await _resolve_investigation(session, slug, version, run_number)
 
     adapter = ConstructAdapter(session, _prompt_registry)
 
@@ -274,18 +321,7 @@ async def complete_run(
     session: AsyncSession = Depends(get_db),
 ):
     """Complete an evaluation run and trigger validation."""
-    construct_id = f"{slug}:{version}"
-
-    result = await session.execute(
-        select(Investigation).where(
-            Investigation.construct_id == construct_id,
-            Investigation.run_number == run_number,
-        )
-    )
-    investigation = result.scalar_one_or_none()
-
-    if investigation is None:
-        raise HTTPException(status_code=404, detail=f"Run {run_number} not found for {slug}:{version}")
+    investigation = await _resolve_investigation(session, slug, version, run_number)
 
     adapter = ConstructAdapter(session, _prompt_registry)
 
@@ -302,3 +338,204 @@ async def complete_run(
         "skill_coverage": summary.skill_coverage,
         "skill_coverage_ratio": summary.skill_coverage_ratio,
     }
+
+
+# ── Certificates ──
+
+
+@construct_router.get("/{slug}/{version}/certificate", response_model=CertificateResponse)
+async def get_certificate(
+    slug: str,
+    version: str,
+    session: AsyncSession = Depends(get_db),
+):
+    """Get the latest certificate for a construct version."""
+    construct_id = f"{slug}:{version}"
+
+    # Find the most recent investigation with a certificate
+    result = await session.execute(
+        select(Investigation).where(
+            Investigation.construct_id == construct_id,
+        ).order_by(Investigation.run_number.desc())
+    )
+    investigations = list(result.scalars().all())
+
+    for inv in investigations:
+        cert_result = await session.execute(
+            select(InvestigationCertificateRecord).where(
+                InvestigationCertificateRecord.investigation_id == inv.id,
+            )
+        )
+        cert_record = cert_result.scalar_one_or_none()
+        if cert_record is not None:
+            cert_json = cert_record.certificate_json or {}
+            return CertificateResponse(
+                certificate_id=cert_json.get("certificate_id", cert_record.id),
+                construct_slug=cert_json.get("construct_slug", slug),
+                construct_version=cert_json.get("construct_version", version),
+                composite_score=cert_json.get("composite_score", 0.0),
+                domain_scores=cert_json.get("domain_scores", {}),
+                skill_coverage=cert_json.get("skill_coverage", 0.0),
+                verification_tier=cert_json.get("verification_tier", "UNVERIFIED"),
+                verdict=cert_json.get("verdict", "UNKNOWN"),
+                routing_decision=cert_record.routing_decision,
+                evidence_bundle_hash=cert_json.get("evidence_bundle_hash", ""),
+                episode_count=cert_json.get("episode_count", 0),
+            )
+
+    raise HTTPException(
+        status_code=404,
+        detail=f"No certificate found for {slug}:{version}",
+    )
+
+
+@construct_router.post("/{slug}/{version}/certificate", response_model=CertificateResponse, status_code=201)
+async def issue_certificate(
+    slug: str,
+    version: str,
+    session: AsyncSession = Depends(get_db),
+):
+    """Issue a certificate from the most recent completed run.
+
+    Requires a completed run with all prompts evaluated. Builds evidence
+    bundle, scores episodes, computes verdict, and persists the certificate.
+    """
+    construct_id = f"{slug}:{version}"
+
+    # Find the most recent investigation for this construct
+    result = await session.execute(
+        select(Investigation).where(
+            Investigation.construct_id == construct_id,
+        ).order_by(Investigation.run_number.desc())
+    )
+    investigation = result.scalars().first()
+
+    if investigation is None:
+        raise HTTPException(status_code=404, detail=f"No runs found for {slug}:{version}")
+
+    # Check for existing certificate on this investigation
+    existing_cert = await session.execute(
+        select(InvestigationCertificateRecord).where(
+            InvestigationCertificateRecord.investigation_id == investigation.id,
+        )
+    )
+    if existing_cert.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Certificate already exists for run {investigation.run_number}",
+        )
+
+    # Get evidence items
+    ev_result = await session.execute(
+        select(InvestigationEvidenceItem).where(
+            InvestigationEvidenceItem.investigation_id == investigation.id,
+        )
+    )
+    evidence_items = list(ev_result.scalars().all())
+
+    if not evidence_items:
+        raise HTTPException(status_code=400, detail="No episodes captured for this run")
+
+    # Build evidence bundle
+    from backend.services.construct_evidence_bundle import ConstructEvidenceBundleBuilder
+    bundle_builder = ConstructEvidenceBundleBuilder()
+    manifest = bundle_builder.build_manifest(evidence_items)
+    bundle_hash = bundle_builder.compute_bundle_hash(manifest)
+
+    # Score episodes
+    from backend.data.construct_rubrics.artisan_rubrics import ARTISAN_RUBRICS
+    from backend.services.construct_scorer import ConstructScorer
+    scorer = ConstructScorer(rubrics=ARTISAN_RUBRICS)
+
+    domain_episode_scores: dict[str, list[dict]] = {}
+    tested_skills: set[str] = set()
+
+    for item in evidence_items:
+        meta = item.construct_meta_json or {}
+        domain = meta.get("domain", "")
+        skill = meta.get("skill_command", "")
+        prompt_text = meta.get("prompt_text", "")
+        output_text = item.content_text or ""
+
+        scores = scorer.score_episode(skill, domain, prompt_text, output_text)
+        if domain not in domain_episode_scores:
+            domain_episode_scores[domain] = []
+        domain_episode_scores[domain].append(scores)
+        tested_skills.add(skill)
+
+    # Aggregate
+    domain_scores = {
+        domain: scorer.aggregate_domain(ep_scores, domain)
+        for domain, ep_scores in domain_episode_scores.items()
+    }
+    composite = scorer.aggregate_composite(domain_scores)
+
+    # Get registration for skill manifest
+    registry = ConstructRegistry(session)
+    reg = await registry.get(slug, version)
+    if reg is None:
+        raise HTTPException(status_code=404, detail=f"Registration not found for {slug}:{version}")
+
+    skill_coverage = scorer.compute_skill_coverage(reg.skill_manifest, tested_skills)
+
+    # Get template config for thresholds
+    template_config = None
+    if hasattr(investigation, "template") and investigation.template:
+        template_config = getattr(investigation.template, "template_config_json", None)
+
+    verdict = scorer.compute_verdict(composite, skill_coverage, template_config)
+    tier = scorer.compute_tier(len(evidence_items))
+    routing_hint = scorer.compute_routing_hint(verdict, tier)
+
+    # Build certificate
+    from backend.services.construct_certificate_builder import (
+        ConstructCertificateBuilder,
+        ScorerOutput,
+    )
+    cert_builder = ConstructCertificateBuilder()
+    scorer_output = ScorerOutput(
+        composite_score=composite,
+        domain_scores=domain_scores,
+        skill_coverage=skill_coverage,
+        verdict=verdict,
+        tier=tier,
+        routing_hint=routing_hint,
+        episode_count=len(evidence_items),
+    )
+
+    cert = cert_builder.build(reg, investigation, scorer_output, bundle_hash)
+    cert_json = cert_builder.to_certificate_json(cert)
+    routing_decision, routing_reason = cert_builder.compute_routing_decision(scorer_output)
+
+    # Persist certificate
+    from uuid import uuid4
+    cert_record = InvestigationCertificateRecord(
+        id=str(uuid4()),
+        investigation_id=investigation.id,
+        certificate_hash=bundle_hash.replace("sha256:", ""),
+        certificate_json=cert_json,
+        routing_decision=routing_decision,
+        routing_reason=routing_reason,
+        certificate_status="READY",
+    )
+    session.add(cert_record)
+
+    # Update registration status
+    new_status = "CERTIFIED" if verdict == "PASS" else "FAILED"
+    await registry.update_status(reg.id, new_status)
+
+    await session.commit()
+
+    return CertificateResponse(
+        certificate_id=cert.certificate_id,
+        construct_slug=slug,
+        construct_version=version,
+        composite_score=composite,
+        domain_scores=domain_scores,
+        skill_coverage=skill_coverage,
+        verification_tier=tier,
+        verdict=verdict,
+        routing_decision=routing_decision,
+        evidence_bundle_hash=bundle_hash,
+        episode_count=len(evidence_items),
+    )
