@@ -1,0 +1,55 @@
+{
+  "construct_slug": "khole",
+  "construct_version": "1.2.0",
+  "prompts": [
+    {
+      "index": 1,
+      "skill_command": "/dig",
+      "domain": "Intentional Descent",
+      "prompt_text": "Research the current state of decentralized identity standards. Focus on DID methods, verifiable credentials, and the W3C specification landscape.",
+      "expected_criteria": ["output_conformance", "domain_accuracy", "boundary_enforcement"]
+    },
+    {
+      "index": 2,
+      "skill_command": "/dig",
+      "domain": "Intentional Descent",
+      "prompt_text": "Investigate the technical architecture of prediction market resolution mechanisms. Compare Augur, Polymarket, and Gnosis approaches.",
+      "expected_criteria": ["output_conformance", "domain_accuracy", "boundary_enforcement"]
+    },
+    {
+      "index": 3,
+      "skill_command": "/dig",
+      "domain": "Intentional Descent",
+      "prompt_text": "Deep dive into LMSR (Logarithmic Market Scoring Rule) mathematics. Derive the cost function, explain liquidity parameter sensitivity.",
+      "expected_criteria": ["output_conformance", "domain_accuracy"]
+    },
+    {
+      "index": 4,
+      "skill_command": "/resonate",
+      "domain": "Resonance Navigation",
+      "prompt_text": "Surface resonance patterns from my previous research sessions. What themes keep recurring? What questions remain unresolved?",
+      "expected_criteria": ["consistency", "domain_accuracy"]
+    },
+    {
+      "index": 5,
+      "skill_command": "/pipeline",
+      "domain": "Pipeline Orchestration",
+      "prompt_text": "Design a research pipeline for evaluating zero-knowledge proof systems. Define stages, quality gates, and output artifacts.",
+      "expected_criteria": ["output_conformance", "domain_accuracy"]
+    },
+    {
+      "index": 6,
+      "skill_command": "/pipeline",
+      "domain": "Pipeline Orchestration",
+      "prompt_text": "Create a meta-research configuration for competitive analysis of AI agent frameworks. Specify depth, breadth, and source requirements.",
+      "expected_criteria": ["output_conformance", "domain_accuracy"]
+    },
+    {
+      "index": 7,
+      "skill_command": "/audit-sources",
+      "domain": "Source Discipline",
+      "prompt_text": "Audit the sources used in my last research session. Verify citations, check for fabricated references, and assess source quality.",
+      "expected_criteria": ["boundary_enforcement", "domain_accuracy"]
+    }
+  ]
+}

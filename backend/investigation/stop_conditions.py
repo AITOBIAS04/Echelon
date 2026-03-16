@@ -53,6 +53,8 @@ class InvestigationStopConditionEvaluator:
             return self._evaluate_evidence_threshold(stop_config, claim_graph)
         elif condition == StopCondition.SPONSOR_DEFINED:
             return self._evaluate_sponsor_defined(stop_config)
+        elif condition == StopCondition.CONSTRUCT_EVALUATION:
+            return self._evaluate_construct_evaluation(stop_config, evidence_envelope)
         else:
             return False, f"unknown_stop_condition:{stop_condition}"
 
@@ -122,3 +124,24 @@ class InvestigationStopConditionEvaluator:
         if now >= milestone:
             return True, "milestone_reached"
         return False, f"milestone_not_reached:{milestone_str}"
+
+    def _evaluate_construct_evaluation(
+        self,
+        stop_config: dict,
+        evidence_envelope: EvidenceEnvelope,
+    ) -> tuple[bool, str]:
+        """CONSTRUCT_EVALUATION: ready when all committed prompts have evidence items.
+
+        stop_config keys:
+        - committed_prompt_count: total number of test prompts to evaluate
+        """
+        committed_count = stop_config.get("committed_prompt_count", 0)
+        if committed_count == 0:
+            return False, "no_committed_prompt_count_configured"
+
+        evidence_count = len(evidence_envelope.items)
+
+        if evidence_count >= committed_count:
+            return True, "all_prompts_evaluated"
+        missing = committed_count - evidence_count
+        return False, f"missing_prompts:{missing}"

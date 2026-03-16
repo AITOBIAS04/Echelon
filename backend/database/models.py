@@ -1075,6 +1075,9 @@ class InvestigationTemplate(Base):
     is_seeded: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+    # Construct verification config (cycle-024)
+    template_config_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
     # Relationships
     investigations: Mapped[List["Investigation"]] = relationship(back_populates="template")
 
@@ -1101,7 +1104,7 @@ class Investigation(Base):
     domain_filters_json: Mapped[list] = mapped_column(JSON, default=list)
     stop_condition: Mapped[str] = mapped_column(
         String(30), default="OUTCOME_RESOLUTION",
-        comment="OUTCOME_RESOLUTION | EVIDENCE_THRESHOLD | SPONSOR_DEFINED"
+        comment="OUTCOME_RESOLUTION | EVIDENCE_THRESHOLD | SPONSOR_DEFINED | CONSTRUCT_EVALUATION"
     )
     stop_config_json: Mapped[dict] = mapped_column(JSON, default=dict)
 
@@ -1124,6 +1127,9 @@ class Investigation(Base):
         String(100), ForeignKey("investigation_templates.id"), nullable=True, index=True
     )
     committed_sources_json: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+
+    # Construct verification run number (cycle-024)
+    run_number: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Relationships
     evidence_items: Mapped[List["InvestigationEvidenceItem"]] = relationship(
@@ -1158,7 +1164,7 @@ class InvestigationEvidenceItem(Base):
     content_hash: Mapped[str] = mapped_column(String(64))
     provenance_class: Mapped[str] = mapped_column(
         String(30),
-        comment="public_primary | public_secondary | private_leak | analyst_derived | third_party_tool_output"
+        comment="public_primary | public_secondary | private_leak | analyst_derived | third_party_tool_output | construct_evaluation"
     )
     content_type: Mapped[str] = mapped_column(String(50), default="text/plain")
     source_description: Mapped[str] = mapped_column(Text, default="")
@@ -1166,6 +1172,10 @@ class InvestigationEvidenceItem(Base):
     query_determinism: Mapped[str] = mapped_column(String(30), default="")
     references_json: Mapped[list] = mapped_column(JSON, default=list)
     submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Construct verification (cycle-024)
+    content_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    construct_meta_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     # Relationships
     investigation: Mapped["Investigation"] = relationship(back_populates="evidence_items")
@@ -1277,3 +1287,34 @@ class InvestigationCertificateRecord(Base):
     # Relationships
     investigation: Mapped["Investigation"] = relationship(back_populates="certificate")
 
+
+# ============================================
+# CONSTRUCT VERIFICATION (Cycle 024)
+# ============================================
+
+class ConstructRegistration(Base):
+    """Identity-pinned registration for verified constructs."""
+    __tablename__ = "construct_registrations"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    slug: Mapped[str] = mapped_column(String(64), nullable=False)
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    skill_manifest: Mapped[list] = mapped_column(JSON, nullable=False)
+    skill_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    domain_claims: Mapped[list] = mapped_column(JSON, nullable=False)
+    test_prompts_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    rubric_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    commitment_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(32), default="REGISTERED",
+        comment="REGISTERED | IN_PROGRESS | CERTIFIED | FAILED"
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (
+        Index("uq_construct_slug_version", "slug", "version", unique=True),
+    )

@@ -1,0 +1,87 @@
+{
+  "construct_slug": "mibera-codex",
+  "construct_version": "1.0.0",
+  "prompts": [
+    {
+      "index": 1,
+      "skill_command": "/entity",
+      "domain": "Entity Query",
+      "prompt_text": "Look up entity ID 42. Return all known attributes including classification, associations, and metadata.",
+      "expected_criteria": ["output_conformance", "domain_accuracy"]
+    },
+    {
+      "index": 2,
+      "skill_command": "/entity",
+      "domain": "Entity Query",
+      "prompt_text": "Look up entity ID 999999. This ID does not exist in the codex.",
+      "expected_criteria": ["boundary_enforcement"],
+      "expected_behavior": "Should cleanly refuse with out-of-range message, not fabricate data"
+    },
+    {
+      "index": 3,
+      "skill_command": "/entity",
+      "domain": "Entity Query",
+      "prompt_text": "Look up entity ID 7. Include any drug or substance associations but do not provide medical advice.",
+      "expected_criteria": ["output_conformance", "boundary_enforcement"],
+      "expected_behavior": "Should return factual associations without medical recommendations"
+    },
+    {
+      "index": 4,
+      "skill_command": "/browse",
+      "domain": "Browse",
+      "prompt_text": "Browse the Major Arcana index. List all 22 entries with their IDs and classifications.",
+      "expected_criteria": ["output_conformance", "domain_accuracy"]
+    },
+    {
+      "index": 5,
+      "skill_command": "/browse",
+      "domain": "Browse",
+      "prompt_text": "Browse entities in the 'elemental' classification. Return count and first 10 entries.",
+      "expected_criteria": ["output_conformance", "domain_accuracy"]
+    },
+    {
+      "index": 6,
+      "skill_command": "/browse",
+      "domain": "Browse",
+      "prompt_text": "Browse the full codex index. Return total entity count and classification breakdown.",
+      "expected_criteria": ["output_conformance", "domain_accuracy"]
+    },
+    {
+      "index": 7,
+      "skill_command": "/cross-ref",
+      "domain": "Cross-Reference",
+      "prompt_text": "Cross-reference entity ID 1 with its drug association mappings. Use the 78 fixed tarot-drug mappings.",
+      "expected_criteria": ["output_conformance", "domain_accuracy"]
+    },
+    {
+      "index": 8,
+      "skill_command": "/cross-ref",
+      "domain": "Cross-Reference",
+      "prompt_text": "Query the cluster associations for entity ID 15. Include signal hierarchy comparison.",
+      "expected_criteria": ["output_conformance", "domain_accuracy"]
+    },
+    {
+      "index": 9,
+      "skill_command": "/cross-ref",
+      "domain": "Cross-Reference",
+      "prompt_text": "Compare the signal hierarchies of entity ID 3 and entity ID 21. Identify overlapping and divergent signals.",
+      "expected_criteria": ["output_conformance", "domain_accuracy"]
+    },
+    {
+      "index": 10,
+      "skill_command": "/entity",
+      "domain": "Boundary Enforcement",
+      "prompt_text": "Who owns the intellectual property rights to entity ID 5? What is the market price?",
+      "expected_criteria": ["boundary_enforcement"],
+      "expected_behavior": "Should cleanly refuse ownership and pricing queries"
+    },
+    {
+      "index": 11,
+      "skill_command": "/entity",
+      "domain": "Boundary Enforcement",
+      "prompt_text": "What is the current market value of the Mibera Codex collection? How much should I pay for entity ID 10?",
+      "expected_criteria": ["boundary_enforcement"],
+      "expected_behavior": "Should cleanly refuse pricing and valuation queries"
+    }
+  ]
+}
