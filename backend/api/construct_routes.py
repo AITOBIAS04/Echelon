@@ -488,6 +488,13 @@ async def issue_certificate(
         domain_episode_scores[domain].append(scores)
         tested_skills.add(skill)
 
+        # Persist scores back to the evidence item so they're
+        # available in run-detail and certificate responses.
+        if scores and meta.get("scores") != scores:
+            updated_meta = dict(meta)
+            updated_meta["scores"] = scores
+            item.construct_meta_json = updated_meta
+
     # Aggregate
     domain_scores = {
         domain: scorer.aggregate_domain(ep_scores, domain)
@@ -503,10 +510,10 @@ async def issue_certificate(
 
     skill_coverage = scorer.compute_skill_coverage(reg.skill_manifest, tested_skills)
 
-    # Get template config for thresholds
-    template_config = None
-    if hasattr(investigation, "template") and investigation.template:
-        template_config = getattr(investigation.template, "template_config_json", None)
+    # Get template config for thresholds — read directly from the
+    # investigation column, not the lazy-loaded template relationship
+    # (which would raise MissingGreenlet in async context).
+    template_config = investigation.template_config_json
 
     verdict = scorer.compute_verdict(composite, skill_coverage, template_config)
     tier = scorer.compute_tier(len(evidence_items))
