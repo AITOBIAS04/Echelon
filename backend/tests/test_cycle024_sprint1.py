@@ -389,6 +389,7 @@ class TestConstructAdapter:
 
         # Mock investigation with artisan config
         inv = MagicMock()
+        inv.status = "ACTIVE"
         inv.stop_config_json = {
             "committed_prompt_count": 12,
             "construct_slug": "artisan",
@@ -418,4 +419,69 @@ class TestConstructAdapter:
         session.execute = AsyncMock(return_value=mock_result)
 
         with pytest.raises(ValueError, match="Incomplete run.*missing evidence items"):
+            await adapter.complete_run("inv-001")
+
+    @pytest.mark.asyncio
+    async def test_complete_run_sets_stop_condition_status(self):
+        """Successful complete_run sets stop_condition_status='READY' on investigation."""
+        session = _make_mock_session()
+        prompt_registry = TestPromptRegistry()
+
+        adapter = ConstructAdapter(session, prompt_registry)
+
+        # Use a slug with no registered prompts so the prompt_set is None
+        # and the missing-indices check is skipped (all evidence accepted).
+        inv = MagicMock()
+        inv.status = "ACTIVE"
+        inv.stop_condition_status = None
+        inv.stop_condition_reason = None
+        inv.stop_condition_evaluated_at = None
+        inv.stop_config_json = {
+            "committed_prompt_count": 2,
+            "construct_slug": "unknown-construct",
+            "construct_version": "0.0.1",
+            "construct_registration_id": "reg-001",
+        }
+
+        session.get = AsyncMock(return_value=inv)
+
+        # Two evidence items
+        item1 = MagicMock()
+        item1.construct_meta_json = {
+            "domain": "Design Systems",
+            "skill_command": "/distill",
+            "prompt_index": 0,
+        }
+        item2 = MagicMock()
+        item2.construct_meta_json = {
+            "domain": "Visual Refinement",
+            "skill_command": "/iterate",
+            "prompt_index": 1,
+        }
+
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = [item1, item2]
+        mock_result = MagicMock()
+        mock_result.scalars.return_value = mock_scalars
+        session.execute = AsyncMock(return_value=mock_result)
+
+        summary = await adapter.complete_run("inv-001")
+        assert summary.episode_count == 2
+        assert inv.stop_condition_status == "READY"
+        assert inv.stop_condition_reason is not None
+        assert inv.stop_condition_evaluated_at is not None
+
+    @pytest.mark.asyncio
+    async def test_complete_run_rejects_non_active_investigation(self):
+        """Cannot complete a run that is already CERTIFICATE_READY."""
+        session = _make_mock_session()
+        prompt_registry = TestPromptRegistry()
+
+        adapter = ConstructAdapter(session, prompt_registry)
+
+        inv = MagicMock()
+        inv.status = "CERTIFICATE_READY"
+        session.get = AsyncMock(return_value=inv)
+
+        with pytest.raises(ValueError, match="Expected 'ACTIVE'"):
             await adapter.complete_run("inv-001")

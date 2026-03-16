@@ -183,12 +183,19 @@ class ConstructAdapter:
     async def complete_run(self, investigation_id: str) -> RunSummary:
         """Validate that all committed prompts have evidence items.
 
-        Returns a RunSummary with coverage details.
-        Does NOT issue certificates — that's ConstructCertificateBuilder's job.
+        On success, sets stop_condition_status='READY' so the certificate
+        endpoint can gate on it. Does NOT issue certificates — that's
+        ConstructCertificateBuilder's job.
         """
         investigation = await self._db.get(Investigation, investigation_id)
         if investigation is None:
             raise ValueError(f"Investigation {investigation_id} not found")
+
+        if investigation.status != "ACTIVE":
+            raise ValueError(
+                f"Cannot complete investigation in status '{investigation.status}'. "
+                f"Expected 'ACTIVE'."
+            )
 
         config = investigation.stop_config_json or {}
         committed_count = config.get("committed_prompt_count", 0)
@@ -239,6 +246,14 @@ class ConstructAdapter:
                 f"Incomplete run: {len(missing)} committed prompts missing evidence items. "
                 f"Missing indices: {missing}"
             )
+
+        # Mark stop condition satisfied — certificate endpoint gates on this
+        investigation.stop_condition_status = "READY"
+        investigation.stop_condition_reason = (
+            f"all {len(evidence_items)} committed prompts have evidence"
+        )
+        investigation.stop_condition_evaluated_at = datetime.now(timezone.utc)
+        await self._db.flush()
 
         return RunSummary(
             episode_count=len(evidence_items),

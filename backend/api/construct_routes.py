@@ -33,6 +33,7 @@ from backend.schemas.construct_schemas import (
 from backend.services.construct_registry import ConstructRegistry
 from backend.services.construct_adapter import ConstructAdapter
 from backend.services.test_prompt_registry import TestPromptRegistry
+from backend.services.certificate_lifecycle_service import transition_to_ready
 
 logger = logging.getLogger(__name__)
 
@@ -397,8 +398,10 @@ async def issue_certificate(
 ):
     """Issue a certificate from the most recent completed run.
 
-    Requires a completed run with all prompts evaluated. Builds evidence
-    bundle, scores episodes, computes verdict, and persists the certificate.
+    Enforces completion contract: run must have been completed via
+    POST .../complete (stop_condition_status == READY) before certificate
+    issuance. Uses the shared certificate lifecycle (transition_to_ready)
+    so certificates participate in the batch anchor flow.
     """
     construct_id = f"{slug}:{version}"
 
@@ -413,7 +416,20 @@ async def issue_certificate(
     if investigation is None:
         raise HTTPException(status_code=404, detail=f"No runs found for {slug}:{version}")
 
-    # Check for existing certificate on this investigation
+    # ── Gate 1: Enforce completion contract ──
+    # stop_condition_status is set by complete_run() after validating
+    # that all committed prompts have evidence items.
+    if investigation.stop_condition_status != "READY":
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Run {investigation.run_number} has not been completed. "
+                f"Call POST /{slug}/{version}/runs/{investigation.run_number}/complete first. "
+                f"(stop_condition_status={investigation.stop_condition_status!r})"
+            ),
+        )
+
+    # ── Gate 2: No duplicate certificates ──
     existing_cert = await session.execute(
         select(InvestigationCertificateRecord).where(
             InvestigationCertificateRecord.investigation_id == investigation.id,
@@ -507,7 +523,7 @@ async def issue_certificate(
     cert_json = cert_builder.to_certificate_json(cert)
     routing_decision, routing_reason = cert_builder.compute_routing_decision(scorer_output)
 
-    # Persist certificate
+    # ── Persist via shared certificate lifecycle ──
     from uuid import uuid4
     cert_record = InvestigationCertificateRecord(
         id=str(uuid4()),
@@ -516,11 +532,18 @@ async def issue_certificate(
         certificate_json=cert_json,
         routing_decision=routing_decision,
         routing_reason=routing_reason,
-        certificate_status="READY",
     )
     session.add(cert_record)
+    await session.flush()
 
-    # Update registration status
+    # Use shared lifecycle: sets ready_at, transitions investigation
+    # to CERTIFICATE_READY, emits WebSocket event. Certificate then
+    # participates in batch anchor flow (READY → ANCHORED → ISSUED).
+    await transition_to_ready(session, cert_record, investigation)
+
+    # Registration status updates when certificate is ultimately ISSUED
+    # via batch anchor. For now, mark the intent based on verdict so
+    # the registration reflects the evaluation result immediately.
     new_status = "CERTIFIED" if verdict == "PASS" else "FAILED"
     await registry.update_status(reg.id, new_status)
 
