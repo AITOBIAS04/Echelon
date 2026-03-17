@@ -85,11 +85,11 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
   const globeRef = useRef<GlobeInstance>(null);
   const modeRef = useRef(mode);
   const onScopeRef = useRef(onScopeTransition);
-  const zoomIntentRef = useRef(false);
-  const zoomIntentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const buildAttempt = useRef(0);
+  // Track altitude for zoom-in detection (avoids reliance on wheel events)
+  const lastAltitudeRef = useRef(Infinity);
 
   // Keep refs current so closures see fresh values
   modeRef.current = mode;
@@ -113,14 +113,6 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
     : FALLBACK_SIGNAL_POINTS;
 
   const arcSignals = FALLBACK_ARC_SIGNALS;
-
-  const markZoomIntent = useCallback(() => {
-    zoomIntentRef.current = true;
-    if (zoomIntentTimer.current) clearTimeout(zoomIntentTimer.current);
-    zoomIntentTimer.current = setTimeout(() => {
-      zoomIntentRef.current = false;
-    }, 1100);
-  }, []);
 
   const scheduleAutoRotate = useCallback(() => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
@@ -222,12 +214,17 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               .ringPropagationSpeed(1.6)
               .ringRepeatPeriod(1100);
 
-            // Globe surface material
+            // Globe surface material — strip default satellite texture
             const material = globe.globeMaterial();
+            if (material.map) {
+              material.map.dispose();
+              material.map = null;
+            }
             material.color.set(theme.surface);
             material.emissive.set(theme.emissive);
             material.emissiveIntensity = theme.emissiveIntensity;
             material.shininess = theme.shininess;
+            material.needsUpdate = true;
 
             // Orbit controls
             const controls = globe.controls();
@@ -253,17 +250,24 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               container.style.cursor = point ? 'pointer' : 'grab';
             });
 
-            // Zoom-in detection polling (reads modeRef to avoid stale closure)
+            // Zoom-in detection: track altitude decrease instead of wheel events
+            // (OrbitControls may consume wheel before our handler fires)
+            lastAltitudeRef.current = GLOBE_DEFAULT_VIEW.altitude;
             pollRef.current = setInterval(() => {
-              if (modeRef.current !== 'global' || !zoomIntentRef.current) return;
+              if (modeRef.current !== 'global') {
+                lastAltitudeRef.current = Infinity;
+                return;
+              }
               const pov = globe.pointOfView();
-              if (pov?.altitude <= GLOBE_TO_SCOPED_ALTITUDE) {
-                zoomIntentRef.current = false;
+              if (!pov) return;
+              const alt = pov.altitude;
+              const isZoomingIn = alt < lastAltitudeRef.current - 0.005;
+              lastAltitudeRef.current = alt;
+              if (isZoomingIn && alt <= GLOBE_TO_SCOPED_ALTITUDE) {
                 onScopeRef.current({ center: [pov.lng, pov.lat], zoom: 4.8 });
               }
             }, 180);
 
-            container.addEventListener('wheel', markZoomIntent);
             container.addEventListener('pointerdown', () => {
               if (controls) controls.autoRotate = false;
             });
