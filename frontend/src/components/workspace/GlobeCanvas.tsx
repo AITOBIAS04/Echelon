@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { feature } from 'topojson-client';
 import type { Topology, GeometryCollection } from 'topojson-specification';
 import type { CanvasMode, ViewState } from '../../hooks/useWorkspaceState';
@@ -39,28 +39,28 @@ const FALLBACK_ARC_SIGNALS = [
 // raster texture underneath. Land needs to read as solid geography.
 const GLOBE_THEMES = {
   light: {
-    surface: '#f5f5f5',
-    emissive: '#f0f0f0',
-    emissiveIntensity: 0.02,
-    shininess: 0.02,
-    polygonCap: 'rgba(26,28,33,0.82)',
-    polygonSide: 'rgba(26,28,33,0.60)',
-    polygonStroke: 'rgba(50,54,62,0.45)',
-    polygonAltitude: 0.006,
-    atmosphere: '#c8c0e8',       // soft purple rim
-    atmosphereAltitude: 0.10,    // visible halo around globe edge
+    surface: '#c8cdd8',          // cool grey-blue ocean — blends with light bg
+    emissive: '#b8bcc8',
+    emissiveIntensity: 0.06,
+    shininess: 0.15,
+    polygonCap: 'rgba(72,78,95,0.48)',       // soft land — sleek, not stark
+    polygonSide: 'rgba(72,78,95,0.30)',
+    polygonStroke: 'rgba(95,100,115,0.20)',
+    polygonAltitude: 0,          // flush with surface — don't occlude signal points
+    atmosphere: '#c8c0e8',
+    atmosphereAltitude: 0.10,
   },
   dark: {
-    surface: '#0c0c14',          // slightly lifted from pure black
-    emissive: '#181d2a',         // navy glow
-    emissiveIntensity: 0.40,     // surface self-illumination
-    shininess: 0.30,
-    polygonCap: 'rgba(148,155,172,0.50)',    // soft mid-grey land — sleek, not stark
-    polygonSide: 'rgba(148,155,172,0.32)',
-    polygonStroke: 'rgba(128,135,155,0.28)', // subtle border
-    polygonAltitude: 0.006,
-    atmosphere: '#5848a0',       // brighter purple atmosphere
-    atmosphereAltitude: 0.22,    // wide glow separates globe from background
+    surface: '#111118',          // matches dark page background
+    emissive: '#181d2a',
+    emissiveIntensity: 0.35,
+    shininess: 0.25,
+    polygonCap: 'rgba(140,148,168,0.45)',    // soft grey land — same sleek language
+    polygonSide: 'rgba(140,148,168,0.28)',
+    polygonStroke: 'rgba(120,128,148,0.22)',
+    polygonAltitude: 0,          // flush with surface — don't occlude signal points
+    atmosphere: '#5848a0',
+    atmosphereAltitude: 0.20,
   },
 } as const;
 
@@ -183,6 +183,9 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
   const buildAttempt = useRef(0);
   const themeObserverRef = useRef<MutationObserver | null>(null);
   const transitionLockRef = useRef(false);
+  const [isLight, setIsLight] = useState(
+    () => document.documentElement.classList.contains('light'),
+  );
 
   modeRef.current = mode;
   onScopeRef.current = onScopeTransition;
@@ -391,6 +394,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
 
             // Watch for theme toggle (MutationObserver on <html> class)
             themeObserverRef.current = new MutationObserver(() => {
+              setIsLight(document.documentElement.classList.contains('light'));
               if (globeRef.current) {
                 applyGlobeTheme(globeRef.current);
               }
@@ -470,6 +474,9 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
         opacity: mode === 'global' ? 1 : 0.3,
         transition: 'opacity 0.6s ease-out',
         pointerEvents: mode === 'global' ? 'auto' : 'none',
+        filter: isLight
+          ? 'drop-shadow(0 0 28px rgba(0,0,0,0.12))'
+          : 'drop-shadow(0 0 32px rgba(255,255,255,0.08))',
       }}
     />
   );
