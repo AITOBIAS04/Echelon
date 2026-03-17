@@ -80,6 +80,8 @@ class TestOpenAQCollector:
         assert abs(result.bundle.normalised_event.measure.value - 15.4) < 0.01
         # Geo from first measurement
         assert abs(result.bundle.normalised_event.geo.lat - 38.9) < 0.01
+        # API key must NOT appear in receipt
+        assert "test-key" not in str(result.bundle.receipt.request_parameters)
 
     @pytest.mark.asyncio
     async def test_no_measurements(self):
@@ -115,6 +117,8 @@ class TestCalendarificCollector:
         assert result.bundle.source_id == "calendarific_api"
         assert result.bundle.normalised_event.measure.value == 2.0  # 2 holidays
         assert result.bundle.resolution_role == "counter_signal"
+        # API key must NOT appear in receipt
+        assert "test-key" not in str(result.bundle.receipt.request_parameters)
 
     @pytest.mark.asyncio
     async def test_non_holiday_date(self):
