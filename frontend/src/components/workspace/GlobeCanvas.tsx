@@ -130,93 +130,96 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
         : { atmosphere: '#1a3d5c', atmosphereAltitude: 0.18, surface: '#0c3e5c', emissive: '#1a3d5c', emissiveIntensity: 0.14 };
 
       try {
+        // Phase 1: construct with layout-only props.
+        // Animation loop starts immediately — atmosphere/material/data MUST
+        // wait for onGlobeReady or the loop reads null material.opacity.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const globe: any = new Globe(container)
           .backgroundColor('rgba(0,0,0,0)')
           .width(width)
           .height(height)
-          .showAtmosphere(true)
-          .atmosphereColor(theme.atmosphere)
-          .atmosphereAltitude(theme.atmosphereAltitude)
           .globeImageUrl(textureUrl)
-          .pointsData(signalPoints)
-          .pointLat('lat')
-          .pointLng('lng')
-          .pointAltitude((d: any) => d.size)
-          .pointRadius((d: any) => d.size * 0.9)
-          .pointColor('color')
-          .pointResolution(18)
-          .arcsData(arcSignals)
-          .arcStartLat('startLat')
-          .arcStartLng('startLng')
-          .arcEndLat('endLat')
-          .arcEndLng('endLng')
-          .arcColor('color')
-          .arcAltitude(0.2)
-          .arcStroke(0.6)
-          .arcDashLength(0.45)
-          .arcDashGap(0.8)
-          .arcDashAnimateTime(2200)
-          .ringsData(signalPoints.slice(0, 6))
-          .ringColor((d: any) => (t: number) =>
-            d.color.replace(')', `,${1 - t})`).replace('rgb', 'rgba')
-          )
-          .ringMaxRadius((d: any) => 4 + d.size * 16)
-          .ringPropagationSpeed(1.6)
-          .ringRepeatPeriod(1100);
+          .onGlobeReady(() => {
+            if (cancelled) return;
 
-        const material = globe.globeMaterial();
-        material.color.set(theme.surface);
-        material.emissive.set(theme.emissive);
-        material.emissiveIntensity = theme.emissiveIntensity;
-        material.shininess = isLight ? 0.02 : 0.34;
+            // Phase 2: Three.js scene is now initialised — safe to configure
+            globe
+              .showAtmosphere(true)
+              .atmosphereColor(theme.atmosphere)
+              .atmosphereAltitude(theme.atmosphereAltitude)
+              .pointsData(signalPoints)
+              .pointLat('lat')
+              .pointLng('lng')
+              .pointAltitude((d: any) => d.size)
+              .pointRadius((d: any) => d.size * 0.9)
+              .pointColor('color')
+              .pointResolution(18)
+              .arcsData(arcSignals)
+              .arcStartLat('startLat')
+              .arcStartLng('startLng')
+              .arcEndLat('endLat')
+              .arcEndLng('endLng')
+              .arcColor('color')
+              .arcAltitude(0.2)
+              .arcStroke(0.6)
+              .arcDashLength(0.45)
+              .arcDashGap(0.8)
+              .arcDashAnimateTime(2200)
+              .ringsData(signalPoints.slice(0, 6))
+              .ringColor((d: any) => (t: number) =>
+                d.color.replace(')', `,${1 - t})`).replace('rgb', 'rgba')
+              )
+              .ringMaxRadius((d: any) => 4 + d.size * 16)
+              .ringPropagationSpeed(1.6)
+              .ringRepeatPeriod(1100);
 
-        const controls = globe.controls();
-        controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.32;
-        controls.enablePan = false;
-        controls.minDistance = width < 500 ? 155 : 180;
-        controls.maxDistance = width < 500 ? 420 : 520;
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.08;
+            const material = globe.globeMaterial();
+            material.color.set(theme.surface);
+            material.emissive.set(theme.emissive);
+            material.emissiveIntensity = theme.emissiveIntensity;
+            material.shininess = isLight ? 0.02 : 0.34;
 
-        globe.pointOfView(
-          modeRef.current === 'scoped' ? GLOBE_SCOPE_VIEW : GLOBE_DEFAULT_VIEW,
-          0,
-        );
+            const controls = globe.controls();
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.32;
+            controls.enablePan = false;
+            controls.minDistance = width < 500 ? 155 : 180;
+            controls.maxDistance = width < 500 ? 420 : 520;
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
 
-        globe.onPointClick((point: any) => {
-          if (!point) return;
-          onScopeRef.current({ center: [point.lng, point.lat], zoom: 5.4 });
-        });
+            globe.pointOfView(
+              modeRef.current === 'scoped' ? GLOBE_SCOPE_VIEW : GLOBE_DEFAULT_VIEW,
+              0,
+            );
 
-        globe.onPointHover((point: any) => {
-          container.style.cursor = point ? 'pointer' : 'grab';
-        });
+            globe.onPointClick((point: any) => {
+              if (!point) return;
+              onScopeRef.current({ center: [point.lng, point.lat], zoom: 5.4 });
+            });
 
-        // Zoom-in detection polling (reads modeRef to avoid stale closure)
-        pollRef.current = setInterval(() => {
-          if (modeRef.current !== 'global' || !zoomIntentRef.current) return;
-          const pov = globe.pointOfView();
-          if (pov?.altitude <= GLOBE_TO_SCOPED_ALTITUDE) {
-            zoomIntentRef.current = false;
-            onScopeRef.current({ center: [pov.lng, pov.lat], zoom: 4.8 });
-          }
-        }, 180);
+            globe.onPointHover((point: any) => {
+              container.style.cursor = point ? 'pointer' : 'grab';
+            });
 
-        container.addEventListener('wheel', markZoomIntent);
-        container.addEventListener('pointerdown', () => {
-          if (controls) controls.autoRotate = false;
-        });
-        container.addEventListener('pointerup', scheduleAutoRotate);
+            // Zoom-in detection polling (reads modeRef to avoid stale closure)
+            pollRef.current = setInterval(() => {
+              if (modeRef.current !== 'global' || !zoomIntentRef.current) return;
+              const pov = globe.pointOfView();
+              if (pov?.altitude <= GLOBE_TO_SCOPED_ALTITUDE) {
+                zoomIntentRef.current = false;
+                onScopeRef.current({ center: [pov.lng, pov.lat], zoom: 4.8 });
+              }
+            }, 180);
 
-        globeRef.current = globe;
+            container.addEventListener('wheel', markZoomIntent);
+            container.addEventListener('pointerdown', () => {
+              if (controls) controls.autoRotate = false;
+            });
+            container.addEventListener('pointerup', scheduleAutoRotate);
 
-        // Verify the canvas was created
-        const canvas = container.querySelector('canvas');
-        if (!canvas) {
-          console.warn('[GlobeCanvas] No <canvas> found after build — globe may not have initialised');
-        }
+            globeRef.current = globe;
+          });
       } catch (err) {
         console.warn('[GlobeCanvas] build attempt failed:', err);
         buildAttempt.current += 1;
