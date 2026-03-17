@@ -57,8 +57,8 @@ export function InvestigationWorkspacePage() {
         />
       </div>
 
-      {/* ── Mode toggle (header) ───────────────────────────────── */}
-      <div className="absolute top-4 right-4 z-40 flex items-center gap-1
+      {/* ── Mode toggle (bottom-right, above zoom controls) ───── */}
+      <div className="absolute bottom-24 right-4 z-40 flex items-center gap-1
         bg-[var(--e-bg-card)]/80 backdrop-blur-md rounded-full p-0.5
         border border-[var(--e-border-secondary)]">
         <ModeButton
