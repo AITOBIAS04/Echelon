@@ -51,8 +51,8 @@ const GLOBE_THEMES = {
     atmosphereAltitude: 0.10,
   },
   dark: {
-    surface: '#1c1c30',          // dark charcoal with blue/purple undertone — CARTO Dark Matter water
-    emissive: '#1a1a2e',
+    surface: '#353D49',          // CARTO Dark Matter water — sampled from 2D map
+    emissive: '#2e3540',
     emissiveIntensity: 0.20,
     shininess: 0.15,
     polygonCap: 'rgba(13,13,26,0.97)',       // near-black land — #0d0d1a range
