@@ -46,7 +46,7 @@ const GLOBE_THEMES = {
     polygonCap: 'rgba(72,78,95,0.48)',      // soft land — clear but not dominant
     polygonSide: 'rgba(72,78,95,0.30)',
     polygonStroke: 'rgba(95,100,115,0.20)',  // whisper-thin border definition
-    polygonAltitude: 0.001,
+    polygonAltitude: 0.006,
     atmosphere: '#b8b0e0',     // soft purple haze
     atmosphereAltitude: 0.08,  // more visible than 0.03
   },
@@ -58,7 +58,7 @@ const GLOBE_THEMES = {
     polygonCap: 'rgba(220,225,235,0.65)',
     polygonSide: 'rgba(220,225,235,0.40)',
     polygonStroke: 'rgba(180,185,200,0.40)',
-    polygonAltitude: 0.001,
+    polygonAltitude: 0.006,
     atmosphere: '#4a4080',
     atmosphereAltitude: 0.12,
   },
@@ -133,8 +133,8 @@ function applyMaterialTheme(globe: GlobeInstance, theme: (typeof GLOBE_THEMES)[k
     // (land masses) always win the z-test. Without this, islands z-fight
     // against the sphere and flash between surface colour and polygon colour.
     material.polygonOffset = true;
-    material.polygonOffsetFactor = 1;
-    material.polygonOffsetUnits = 1;
+    material.polygonOffsetFactor = 4;
+    material.polygonOffsetUnits = 4;
 
     material.needsUpdate = true;
   } catch (_) {
