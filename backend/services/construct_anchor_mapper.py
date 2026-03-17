@@ -1,0 +1,122 @@
+"""Construct Anchor Mapper — dimension-to-anchor resolution.
+
+Maps evaluation dimensions to external evidence anchors using
+keyword-based matching rules. Dimensions with no recognized anchor
+are flagged as weakly anchored.
+
+Used by the construct evidence anchoring pipeline (Cycle-026a).
+"""
+
+from __future__ import annotations
+
+from backend.schemas.construct_anchor_schema import (
+    AnchorClass,
+    AnchorReference,
+    EvaluationDimensionAnchor,
+)
+
+
+# ── Mapping Rules ────────────────────────────────────────────────────
+#
+# Each rule is a tuple of (keywords, anchor_class, anchor_id, rationale).
+# A dimension matches a rule if ANY keyword appears in the lowercased
+# dimension name.  A dimension may match multiple rules.
+
+_MAPPING_RULES: list[tuple[list[str], AnchorClass, str, str]] = [
+    # Code compilation / lint / test → deterministic_check
+    (
+        ["code", "compile", "lint", "test", "syntax", "type_check", "static_analysis"],
+        AnchorClass.DETERMINISTIC_CHECK,
+        "code_verification",
+        "Deterministic code compilation, linting, or test-suite execution",
+    ),
+    # Benchmark prompt family → benchmark_dataset
+    (
+        ["benchmark", "eval_score", "humaneval", "mbpp", "mmlu", "hellaswag", "swe_bench"],
+        AnchorClass.BENCHMARK_DATASET,
+        "benchmark_suite",
+        "Evaluation against a versioned benchmark dataset",
+    ),
+    # Accessibility / UI compliance → public_standard
+    (
+        ["accessibility", "accessible", "wcag", "aria", "a11y", "ui_compliance", "standard", "compliance"],
+        AnchorClass.PUBLIC_STANDARD,
+        "public_standard_check",
+        "Verification against a published public standard (e.g. WCAG, ARIA APG)",
+    ),
+    # Real-world factual / expertise → live_external_evidence
+    (
+        ["factual", "real_world", "live", "external", "osint", "market_data", "regulatory"],
+        AnchorClass.LIVE_EXTERNAL_EVIDENCE,
+        "live_evidence_feed",
+        "Grounded in live or regularly-updated external evidence sources",
+    ),
+]
+
+
+# ── Core API ─────────────────────────────────────────────────────────
+
+def map_dimension_anchors(
+    dimension: str,
+    *,
+    available_anchors: list[str] | None = None,
+) -> EvaluationDimensionAnchor:
+    """Map a single evaluation dimension to its anchor references.
+
+    Uses keyword matching on the dimension name (case-insensitive) to
+    resolve which anchor classes apply.  If ``available_anchors`` is
+    provided, only anchors whose ``anchor_id`` appears in the list are
+    included.
+
+    Args:
+        dimension: Evaluation dimension name (e.g. ``"code_quality"``).
+        available_anchors: Optional allowlist of anchor IDs.  When set,
+            matched anchors not in this list are excluded.
+
+    Returns:
+        An ``EvaluationDimensionAnchor`` with resolved anchors.
+        If no rules match, ``weakly_anchored`` is ``True`` and
+        ``anchors`` is empty.
+    """
+    dim_lower = dimension.lower()
+    matched: list[AnchorReference] = []
+
+    for keywords, anchor_class, anchor_id, rationale in _MAPPING_RULES:
+        if any(kw in dim_lower for kw in keywords):
+            # If caller constrained the available anchors, respect that
+            if available_anchors is not None and anchor_id not in available_anchors:
+                continue
+            matched.append(
+                AnchorReference(
+                    anchor_class=anchor_class,
+                    anchor_id=anchor_id,
+                    rationale=rationale,
+                )
+            )
+
+    weakly_anchored = len(matched) == 0
+
+    return EvaluationDimensionAnchor(
+        dimension=dimension,
+        anchors=matched,
+        weakly_anchored=weakly_anchored,
+    )
+
+
+def map_contract_anchors(
+    dimensions: list[str],
+) -> list[EvaluationDimensionAnchor]:
+    """Map a full evaluation contract to anchor references.
+
+    Iterates over a list of dimension names and resolves anchors for
+    each.  Dimensions with no matching rules are returned with
+    ``weakly_anchored=True`` and an empty ``anchors`` list.
+
+    Args:
+        dimensions: List of evaluation dimension names.
+
+    Returns:
+        List of ``EvaluationDimensionAnchor`` objects, one per
+        input dimension, in the same order.
+    """
+    return [map_dimension_anchors(dim) for dim in dimensions]
