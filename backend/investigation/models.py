@@ -16,6 +16,7 @@ class ProvenanceClass(str, Enum):
     PRIVATE_LEAK = "private_leak"
     ANALYST_DERIVED = "analyst_derived"
     THIRD_PARTY_TOOL_OUTPUT = "third_party_tool_output"
+    CONSTRUCT_EVALUATION = "construct_evaluation"
 
 
 class EvidenceItem(BaseModel):

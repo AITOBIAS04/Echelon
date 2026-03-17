@@ -1,160 +1,139 @@
-# Sprint Plan — Cycle-023: Production Database Unification + Railway Hardening
+# Sprint Plan — Cycle-025: WorldMonitor Intelligence Contract v2
 
-**Cycle:** cycle-023
-**Date:** 9 March 2026
-**PRD:** grimoires/loa/context/prd_023.md
-**SDD:** grimoires/loa/context/sdd_023.md
+**Cycle:** cycle-025
+**Date:** 16 March 2026
+**Builder:** Loa
+**Sprints:** 4 (0–3)
 
 ---
 
-## Sprint 0: Grep Sweep + User Model Migration
+## Sprint 0 — Schema + Migration ✅
 
-**Goal:** Map every `backend.core.database` import, verify existing User model, create Alembic migration for the users table.
+**Goal:** Extend the WorldMonitor contract and create the signals table. No new routes yet — just the foundation.
 
 ### Tasks
 
-1. **Grep sweep**: Find all files importing from `backend.core.database`. Document each consumer and its replacement path. Known: main.py, start.sh, test_db.py, test_db_connection.py. (`seed_data.py` already deleted.)
+1. ✅ **Extend MeasureType enum** in `backend/schemas/worldmonitor_api_contract.py`
+   - Add 7 new values after `DARK_FLEET_PROBABILITY` (line 54)
+   - Values: FORECAST_SCORE, FORECAST_WEIGHT, CORRIDOR_RISK, SHIPPING_RATE_INDEX, SUPPLY_CHAIN_SEVERITY, SANCTIONS_EXPOSURE, CROSS_DOMAIN_CONVERGENCE
+   - Write 2 tests: all 14 values present, string serialisation roundtrip
 
-2. **Verify existing User model in `backend/database/models.py`** (line 78): The model already exists with fields `id: String(50)`, `username`, `email`, `password_hash`, `tier`, `balance_usdc`, `balance_echelon`, `wallet_address`, `created_at`, `updated_at` plus relationships. **Do not modify.** Confirm it is importable from `backend.database.models`.
+2. ✅ **Add nullable fields to response schemas** in same file
+   - CIIResponse: +3 fields (forecast_score, forecast_weight, sanctions_exposure)
+   - MaritimeAnomalyResponse: +3 fields (corridor, corridor_risk, shipping_rate_index)
+   - MarketSnapshotResponse: +1 field (supply_chain_severity)
+   - Write 3 tests: backward compat (old payloads still parse), new fields serialize as null, new fields serialize with values
 
-3. **Create Alembic migration `c023_user_model.py`**: Creates the `users` table if not exists. Depends on `c022_investigation_templates`. The model is already defined — this migration materializes it in PostgreSQL.
+3. ✅ **Add OsintSignal model** to `backend/database/models.py`
+   - All columns per SDD Section 2.3
+   - Three composite indexes + content_hash index
 
-4. **Verify migration chain**: Run `alembic upgrade head` locally against a test PostgreSQL to confirm all migrations apply cleanly.
+4. ✅ **Create Alembic migration** `c025_osint_signals`
+   - `upgrade()`: CREATE TABLE osint_signals
+   - `downgrade()`: DROP TABLE osint_signals
+   - Write 1 test: migration applies cleanly (upgrade + downgrade)
 
-### Exit criteria
-- `c023_user_model.py` exists and applies cleanly
-- `User` model importable from `backend.database.models` (already true — just verify)
-- Complete list of files needing `core.database` import changes
+5. ✅ **Create response schemas** in new file `backend/schemas/osint_schemas.py`
+   - OsintSignalResponse, PaginatedSignalsResponse, OsintHealthResponse, SignalSummaryResponse
+
+**Exit:** 6 tests pass. `alembic upgrade head` succeeds. MeasureType has 14 values. `npm run build` passes.
 
 ---
 
-## Sprint 1: Coordinated Startup-Path Replacement
+## Sprint 1 — POST Endpoints + Signal Persistence ✅
 
-**Goal:** Replace the old SQLite startup path with the async PostgreSQL layer. This is a coordinated replacement — main.py startup, health endpoint, auth endpoints, and start.sh all depend on the old layer and must be updated together.
+**Goal:** Promote the three POST stubs to live endpoints. All three write signals to the new table.
 
 ### Tasks
 
-1. **Delete or shim `backend/core/database.py`:**
-   - Preferred: delete entirely once all imports are migrated.
-   - Acceptable: reduce to a thin re-export shim from `backend.database.connection` (no SQLite engine/session). Use shim only if test files need a transitional bridge.
+1. ✅ **Implement `persist_signal` helper** — shared function that creates an OsintSignal row from a CollectionResult
+   - Computes content_hash via SHA-256 of normalised JSON
+   - Deduplicates on content_hash (skip if exists)
+   - Returns the signal row
 
-2. **Rewrite main.py database initialization:**
-   - Remove: `from backend.core.database import SessionLocal, engine, Base, User as DBUser`
-   - Remove: `Base.metadata.create_all(bind=engine)`
-   - Add: `from backend.database.connection import init_db, close_db, async_session_maker`
-   - Add startup event calling `await init_db()`
-   - Add shutdown event calling `await close_db()`
+2. ✅ **Implement `POST /intelligence/cii`** in `backend/api/world_monitor_routes.py`
+   - Accept CIIRequest body
+   - Call WorldMonitorCollector for INTELLIGENCE domain
+   - Generate HTTPTranscriptReceipt
+   - Persist signal
+   - Return EvidenceBundle[CIIResponse] with new nullable fields populated where available
+   - Write 3 tests: success, collector failure (returns 502), invalid request (returns 422)
 
-3. **Fix `/health` endpoint**: Replace `SessionLocal()` with `async_session_maker()` session + `await session.execute(text("SELECT 1"))`.
+3. ✅ **Implement `POST /market/snapshot`** — same pattern for MARKET domain
+   - Write 3 tests
 
-4. **Remove old auth endpoints from main.py:**
-   - Remove `/token` endpoint (~line 1540)
-   - Remove `/users/me` endpoint (~line 1584)
-   - Remove `/users/me/simulations` endpoint (~line 1589)
-   - Remove the old sync `get_db()` that yields `SessionLocal()`
+4. ✅ **Implement `POST /maritime/anomaly`** — same pattern for MARITIME domain
+   - Write 3 tests
 
-5. **Register auth router in main.py:**
-   ```python
-   try:
-       from backend.api.auth_routes import router as auth_router
-       app.include_router(auth_router)
-       print("✅ Auth router included")
-   except Exception as e:
-       print(f"❌ Failed to include Auth router: {e}")
-   ```
-
-6. **Fix all remaining `backend.core.database` imports** (start.sh, test_db.py, test_db_connection.py, any other consumers found in Sprint 0 grep sweep).
-
-7. **Remove USE_MOCKS entirely:**
-   - `dependencies.py`: Delete `USE_MOCKS` variable, `_EmptyRepo` stubs, all conditional branches
-   - `butterfly_routes.py`: Delete all `USE_MOCKS` checks and mock fallback branches (~16 refs)
-   - `paradox_routes.py`: Delete all `USE_MOCKS` checks and mock fallback branches (~14 refs)
-   - `main.py`: Delete mock engine warning block
-   - Verify: `grep -r USE_MOCKS backend/` returns zero results
-
-8. **Test locally**: Start the server with `DATABASE_URL` pointing to local PostgreSQL. Verify `/health`, `/api/v1/auth/register`, `/api/v1/auth/login`, `/api/v1/auth/me` all work.
-
-### Exit criteria
-- No file imports from `backend.core.database` (or shim contains no SQLite)
-- `grep -r USE_MOCKS backend/` returns zero results
-- Server starts cleanly with `DATABASE_URL` env var
-- `/health` checks PostgreSQL
-- Auth endpoints functional
+**Exit:** 9 tests pass. All three POST endpoints return 200. Signals persist to osint_signals table. `npm run build` passes.
 
 ---
 
-## Sprint 2: Auth Routes + Railway Config + Validation
+## Sprint 2 — Read Endpoints + Convergence ✅
 
-**Goal:** Make auth_routes.py production-ready (reconciled against existing User model), update both deploy configs, validate end-to-end including frontend smoke.
+**Goal:** Activate the signals query route, add health and summary endpoints, implement convergence scoring.
 
 ### Tasks
 
-1. **Rewrite `auth_routes.py` to use database (model reconciliation):**
-   - Replace `USERS = {}` in-memory dict
-   - `register`: Create `User` in DB via async session. **Use correct field names:**
-     - `password_hash` (not `hashed_password`)
-     - `id = str(uuid.uuid4())` (String(50) primary key, not auto-increment int)
-     - `balance_usdc=0.0`, `balance_echelon=0` (not `play_money_balance`)
-   - `login`: Query `User` by email, verify against `user.password_hash`, return JWT
-   - `/me`: Already works via `get_current_user` dependency (reads JWT)
-   - Add proper error handling (duplicate email, invalid credentials)
+1. ✅ **Replace signals stub** at `GET /api/v1/osint/signals` in `backend/api/osint_routes.py`
+   - Query osint_signals table with source_group, investigation_id, since filters
+   - Pagination via limit/offset
+   - Write 3 tests: unfiltered, source_group filter, investigation_id filter
 
-2. **Update both deploy configs as a pair:**
+2. ✅ **Add `GET /api/v1/osint/health`** in same file
+   - Count active sources from RegistryLoader
+   - Compute latency from latest signal timestamp
+   - Count escalated investigations (use status heuristic if no escalated column)
+   - Write 2 tests: all feeds healthy, degraded state (no recent signals)
 
-   `railway.toml`:
-   ```toml
-   [deploy]
-   startCommand = "sh -c 'cd backend && python -m alembic upgrade head && cd .. && uvicorn backend.main:app --host 0.0.0.0 --port \"$PORT\"'"
-   ```
+3. ✅ **Add `GET /api/v1/osint/signals/summary`** in same file
+   - Total signals, group by source_group, counter-signals, certificate candidates, convergence cells
+   - Write 2 tests: empty state, populated state
 
-   `nixpacks.toml`:
-   ```toml
-   [start]
-   cmd = "cd backend && python -m alembic upgrade head && cd .. && uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"
-   ```
+4. ✅ **Implement ConvergenceScorer** in new file `backend/services/convergence_scorer.py`
+   - Cluster signals by (geo_region, time_window)
+   - Emit ConvergenceCell for clusters with 2+ domain source_groups
+   - Score = domain_count / total_domains
+   - Write 3 tests: single domain (no cell), two domains (cell emitted), empty input
 
-3. **Add `psycopg2-binary` to requirements.txt** if not already present (needed for Alembic sync migrations).
-
-4. **Document required Railway env vars** in a `DEPLOY.md` or update existing README:
-   - `DATABASE_URL` (auto-set by Railway Postgres plugin)
-   - `JWT_SECRET_KEY` (generate with secrets module)
-   - `ENVIRONMENT=production`
-   - (Note: `USE_MOCKS` no longer exists — do not document it)
-
-5. **Full validation against local PostgreSQL:**
-   - `alembic upgrade head` — all migrations apply
-   - Start server (no USE_MOCKS flag needed — it's deleted)
-   - Hit all 15 surface endpoints — none return 500
-   - Register → Login → `/me` flow completes
-   - `/health` returns `"database": "ok"`
-   - `grep -r USE_MOCKS backend/` returns zero results
-   - Both `railway.toml` and `nixpacks.toml` contain `alembic upgrade head`
-
-### Exit criteria
-- All acceptance criteria from PRD §6 pass (both backend curl and frontend smoke)
-- Both Railway deploy configs updated
-- Auth flow works end-to-end against PostgreSQL using existing User model field names
-- No 500 errors on any registered endpoint (empty data is fine)
-- `USE_MOCKS` completely removed from codebase
+**Exit:** 10 tests pass. All three read endpoints return data. Convergence scorer produces cells. `npm run build` passes.
 
 ---
 
-## Pre-Deploy: Tobias Manual Steps
+## Sprint 3 — Integration + Regression ✅
 
-Before or during Loa's cycle, Tobias provisions Railway infrastructure:
+**Goal:** End-to-end integration. Path 2 regression. Final cleanup.
 
-1. **Railway dashboard → Add PostgreSQL plugin** to the project
-   - This auto-injects `DATABASE_URL` into the service env
-2. **Railway dashboard → Set env vars:**
-   - `JWT_SECRET_KEY` = (generate: `python -c 'import secrets; print(secrets.token_urlsafe(32))'`)
-   - `ENVIRONMENT` = `production`
-   - (Note: `USE_MOCKS` no longer needed — mock code is deleted in this cycle. If it exists from before, it can be removed from Railway env vars.)
-3. **Push Loa's code** → Railway auto-deploys → `alembic upgrade head` runs → all surfaces come alive
+### Tasks
+
+1. ✅ **Path 2 regression test**
+   - Verify `GET /api/v1/world-monitor/live` still returns synthetic signals from SignalDetector/OSINTRegistry
+   - Confirm no imports from `backend/core/signal_detector.py` or `backend/core/osint_registry.py` were added to any Cycle 025 file
+   - Write 1 test: live endpoint response shape unchanged
+
+2. ✅ **Integration sweep**
+   - Verify POST endpoints persist signals that GET endpoints can retrieve
+   - Verify convergence scorer correctly processes signals written by POST endpoints
+   - Verify health endpoint reflects actual registry state
+   - Write 2 integration tests
+
+3. ✅ **Update REPO_MAP** in `grimoires/loa/context/` if present
+   - Add ConvergenceScorer to services list
+   - Add osint_signals table to database section
+   - Add new routes to API section
+
+4. ✅ **Final `npm run build` + full test run**
+
+**Exit:** All ~29 tests pass. All endpoints return correct responses. Migration applies cleanly. `npm run build` passes.
 
 ---
 
-## Post-Deploy Verification
+## Sprint Summary
 
-Run through the 19-point checklist in SDD §6 against the live Railway URL:
-- §6.1: Backend curl checks (13 items — health, auth, all surface endpoints, grep/config checks)
-- §6.2: Frontend smoke checks (6 items — theatres, investigations, scenario-packs, certificates, verify, auth flow)
+| Sprint | Focus | Tests |
+|---|---|---|
+| 0 | Schema + migration + response models | 6 |
+| 1 | POST endpoints + signal persistence | 9 |
+| 2 | Read endpoints + convergence scorer | 10 |
+| 3 | Integration + Path 2 regression | 4 |
+| **Total** | | **~29** |

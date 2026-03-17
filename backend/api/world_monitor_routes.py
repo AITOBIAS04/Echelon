@@ -5,7 +5,7 @@ from datetime import datetime
 from math import sqrt
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +16,14 @@ from backend.core.osint_registry import get_osint_registry
 from backend.core.signal_detector import RegionOfInterest, Signal
 from backend.database.connection import get_db
 from backend.database.models import InvestigationCertificateRecord, InvestigationEvidenceItem
+from backend.osint.collectors.worldmonitor import WorldMonitorCollector
+from backend.osint.models.evidence import WMDomain
+from backend.schemas.worldmonitor_api_contract import (
+    CIIRequest, CIIResponse,
+    MarketSnapshotRequest, MarketSnapshotResponse,
+    MaritimeAnomalyRequest, MaritimeAnomalyResponse,
+)
+from backend.services.signal_persistence import persist_signal
 
 
 router = APIRouter(prefix="/api/v1/world-monitor", tags=["World Monitor"])
@@ -373,4 +381,134 @@ async def get_world_monitor_live(
         missions=missions,
         intel=intel,
         live_feed=live_feed,
+    )
+
+
+# ── POST Endpoints (Cycle-025) ─────────────────────────────────────
+
+
+@router.post("/intelligence/cii", response_model=CIIResponse)
+async def post_cii(
+    body: CIIRequest,
+    theatre_id: str = Query(..., description="Theatre context ID"),
+    investigation_id: str | None = Query(None, description="Investigation to associate signal with"),
+    db: AsyncSession = Depends(get_db),
+) -> CIIResponse:
+    """Country Instability Index — collect + persist + return evidence bundle."""
+    collector = WorldMonitorCollector(domain=WMDomain.INTELLIGENCE)
+    request_dict = {
+        "country_code": body.country_code,
+        "geo": body.geo.model_dump() if body.geo else None,
+        "evaluation_window_start": body.evaluation_window_start.isoformat(),
+        "evaluation_window_end": body.evaluation_window_end.isoformat(),
+    }
+    result = await collector.fetch(request_dict, theatre_id=theatre_id)
+
+    if not result.success or not result.bundle:
+        raise HTTPException(status_code=502, detail=result.error or "Collector failed")
+
+    await persist_signal(
+        session=db,
+        result=result,
+        source_id=collector.source_id(),
+        source_group=result.bundle.source_group,
+        investigation_id=investigation_id,
+    )
+    await db.commit()
+
+    metadata = {}
+    if result.bundle.normalised_event.measure.metadata:
+        metadata = result.bundle.normalised_event.measure.metadata
+
+    return CIIResponse(
+        bundle=result.bundle,
+        upstream_sources_consulted=[collector.source_id()],
+        forecast_score=metadata.get("forecast_score"),
+        forecast_weight=metadata.get("forecast_weight"),
+        sanctions_exposure=metadata.get("sanctions_exposure"),
+    )
+
+
+@router.post("/market/snapshot", response_model=MarketSnapshotResponse)
+async def post_market_snapshot(
+    body: MarketSnapshotRequest,
+    theatre_id: str = Query(..., description="Theatre context ID"),
+    investigation_id: str | None = Query(None, description="Investigation to associate signal with"),
+    db: AsyncSession = Depends(get_db),
+) -> MarketSnapshotResponse:
+    """Market Snapshot — collect + persist + return evidence bundle."""
+    collector = WorldMonitorCollector(domain=WMDomain.MARKET)
+    request_dict = {
+        "asset_class": body.asset_class,
+        "symbol": body.symbol,
+        "geo": body.geo.model_dump() if body.geo else None,
+        "evaluation_window_start": body.evaluation_window_start.isoformat(),
+        "evaluation_window_end": body.evaluation_window_end.isoformat(),
+    }
+    result = await collector.fetch(request_dict, theatre_id=theatre_id)
+
+    if not result.success or not result.bundle:
+        raise HTTPException(status_code=502, detail=result.error or "Collector failed")
+
+    await persist_signal(
+        session=db,
+        result=result,
+        source_id=collector.source_id(),
+        source_group=result.bundle.source_group,
+        investigation_id=investigation_id,
+    )
+    await db.commit()
+
+    metadata = {}
+    if result.bundle.normalised_event.measure.metadata:
+        metadata = result.bundle.normalised_event.measure.metadata
+
+    return MarketSnapshotResponse(
+        bundle=result.bundle,
+        upstream_sources_consulted=[collector.source_id()],
+        supply_chain_severity=metadata.get("supply_chain_severity"),
+    )
+
+
+@router.post("/maritime/anomaly", response_model=MaritimeAnomalyResponse)
+async def post_maritime_anomaly(
+    body: MaritimeAnomalyRequest,
+    theatre_id: str = Query(..., description="Theatre context ID"),
+    investigation_id: str | None = Query(None, description="Investigation to associate signal with"),
+    db: AsyncSession = Depends(get_db),
+) -> MaritimeAnomalyResponse:
+    """Maritime Anomaly Detection — collect + persist + return evidence bundle."""
+    collector = WorldMonitorCollector(domain=WMDomain.MARITIME)
+    request_dict = {
+        "geo": body.geo.model_dump(),
+        "radius_nm": body.radius_nm,
+        "anomaly_types": body.anomaly_types,
+        "evaluation_window_start": body.evaluation_window_start.isoformat(),
+        "evaluation_window_end": body.evaluation_window_end.isoformat(),
+    }
+    result = await collector.fetch(request_dict, theatre_id=theatre_id)
+
+    if not result.success or not result.bundle:
+        raise HTTPException(status_code=502, detail=result.error or "Collector failed")
+
+    await persist_signal(
+        session=db,
+        result=result,
+        source_id=collector.source_id(),
+        source_group=result.bundle.source_group,
+        investigation_id=investigation_id,
+    )
+    await db.commit()
+
+    metadata = {}
+    if result.bundle.normalised_event.measure.metadata:
+        metadata = result.bundle.normalised_event.measure.metadata
+
+    return MaritimeAnomalyResponse(
+        bundle=result.bundle,
+        anomaly_count=int(result.bundle.normalised_event.measure.value),
+        upstream_sources_consulted=[collector.source_id()],
+        corridor=metadata.get("corridor"),
+        corridor_risk=metadata.get("corridor_risk"),
+        shipping_rate_index=metadata.get("shipping_rate_index"),
     )

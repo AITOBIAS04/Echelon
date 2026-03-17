@@ -55,7 +55,7 @@ function HeroSection() {
         }}
       />
 
-      <div className="p-container relative" style={{ zIndex: 2, padding: 'var(--space-20) var(--space-6) var(--space-16)' }}>
+      <div className="p-container relative" style={{ zIndex: 2, padding: 'var(--space-10) var(--space-6) var(--space-16)' }}>
         <div className="text-center">
           <p className="eyebrow" style={{ marginBottom: 'var(--space-4)' }}>Verification infrastructure for AI agents</p>
           <h1 style={{ maxWidth: 700, margin: '0 auto var(--space-5)' }}>Verify agents against reality.</h1>

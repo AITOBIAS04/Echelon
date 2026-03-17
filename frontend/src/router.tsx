@@ -38,16 +38,15 @@ import { VRFPage } from './pages/VRFPage';
 import { RLMFPage } from './pages/RLMFPage';
 import { BreachConsolePage } from './pages/BreachConsolePage';
 // ExportConsolePage — now redirected to /rlmf
-import { InvestigationPage } from './pages/InvestigationPage';
+// InvestigationPage — now redirected to /workspace
 import { HomePage } from './pages/HomePage';
-// SignalFeedPage — now redirected to /signal-map
+// SignalFeedPage — now redirected to /workspace
 import { CreateInvestigationPage } from './pages/CreateInvestigationPage';
 import { ConvergencePage } from './pages/ConvergencePage';
 
 // ── New pages (Cycle 017 integration) ─────────────────────────────────
-import { WorldMonitorPage } from './pages/WorldMonitorPage';
-import { WorldMonitorLivePage } from './pages/WorldMonitorLivePage';
-import { SignalMapPage } from './pages/SignalMapPage';
+// WorldMonitorPage, WorldMonitorLivePage, SignalMapPage — now redirected to /workspace
+import { InvestigationWorkspacePage } from './pages/InvestigationWorkspacePage';
 import { CertificatesPage } from './pages/CertificatesPage';
 import { CreateTheatrePage } from './pages/CreateTheatrePage';
 import { ScenarioPacksPage } from './pages/ScenarioPacksPage';
@@ -210,30 +209,27 @@ export const router = createBrowserRouter([
         element: <Navigate to="/paradox-console" replace />,
       },
 
-      // ── New pages ───────────────────────────────────────────────────
+      // ── Investigation Workspace (replaces world-monitor, signal-map, investigation)
       {
-        path: '/world-monitor',
+        path: '/workspace',
         element: (
           <ErrorBoundary>
-            <WorldMonitorPage />
+            <InvestigationWorkspacePage />
           </ErrorBoundary>
         ),
+      },
+      // Legacy routes → workspace redirects
+      {
+        path: '/world-monitor',
+        element: <Navigate to="/workspace" replace />,
       },
       {
         path: '/world-monitor/live',
-        element: (
-          <ErrorBoundary>
-            <WorldMonitorLivePage />
-          </ErrorBoundary>
-        ),
+        element: <Navigate to="/workspace" replace />,
       },
       {
         path: '/signal-map',
-        element: (
-          <ErrorBoundary>
-            <SignalMapPage />
-          </ErrorBoundary>
-        ),
+        element: <Navigate to="/workspace" replace />,
       },
       {
         path: '/certificates',
@@ -295,16 +291,11 @@ export const router = createBrowserRouter([
       },
       {
         path: '/investigation',
-        element: (
-          <ErrorBoundary>
-            <InvestigationPage />
-          </ErrorBoundary>
-        ),
+        element: <Navigate to="/workspace" replace />,
       },
-      // Legacy: /investigation/signals → /signal-map (promoted to top-level)
       {
         path: '/investigation/signals',
-        element: <Navigate to="/signal-map" replace />,
+        element: <Navigate to="/workspace" replace />,
       },
       {
         path: '/investigation/create',

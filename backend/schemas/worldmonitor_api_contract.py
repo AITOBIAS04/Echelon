@@ -52,6 +52,14 @@ class MeasureType(str, Enum):
     VESSEL_DENSITY_ANOMALY = "vessel_density_anomaly"
     AIS_GAP_DETECTED = "ais_gap_detected"
     DARK_FLEET_PROBABILITY = "dark_fleet_probability"
+    # Cycle-025 additions
+    FORECAST_SCORE = "forecast_score"
+    FORECAST_WEIGHT = "forecast_weight"
+    CORRIDOR_RISK = "corridor_risk"
+    SHIPPING_RATE_INDEX = "shipping_rate_index"
+    SUPPLY_CHAIN_SEVERITY = "supply_chain_severity"
+    SANCTIONS_EXPOSURE = "sanctions_exposure"
+    CROSS_DOMAIN_CONVERGENCE = "cross_domain_convergence"
 
 
 class HealthStatus(str, Enum):
@@ -166,6 +174,10 @@ class CIIResponse(BaseModel):
         default_factory=list,
         description="List of upstream source_ids consumed to produce this CII score"
     )
+    # Cycle-025 nullable fields
+    forecast_score: Optional[float] = None
+    forecast_weight: Optional[float] = None
+    sanctions_exposure: Optional[float] = None
 
 
 # ── Market Domain ────────────────────────────────────────────────────
@@ -190,6 +202,8 @@ class MarketSnapshotResponse(BaseModel):
         default_factory=list,
         description="List of upstream source_ids consumed (e.g. polygon_io, commodities_api)"
     )
+    # Cycle-025 nullable field
+    supply_chain_severity: Optional[float] = None
 
 
 # ── Maritime Domain ──────────────────────────────────────────────────
@@ -218,6 +232,10 @@ class MaritimeAnomalyResponse(BaseModel):
         default_factory=list,
         description="List of upstream source_ids consumed (e.g. spire_ais, marinetraffic)"
     )
+    # Cycle-025 nullable fields
+    corridor: Optional[str] = None
+    corridor_risk: Optional[float] = None
+    shipping_rate_index: Optional[float] = None
 
 
 # ── Health / Meta ────────────────────────────────────────────────────

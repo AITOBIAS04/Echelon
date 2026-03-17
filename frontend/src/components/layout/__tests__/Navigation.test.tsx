@@ -18,49 +18,23 @@ function renderSidebar(path = '/home') {
 }
 
 describe('Navigation', () => {
-  it('renders all primary nav items', () => {
+  it('renders primary nav items', () => {
     renderSidebar();
 
-    expect(screen.getAllByText('Dashboard').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Marketplace').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Investigations').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Home').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Mission Control').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Workspace').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Analytics').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Portfolio').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Agents').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('RLMF Exports').length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText('Verify').length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('shows investigation subnav when on investigation routes', () => {
-    renderSidebar('/investigation');
-
-    // Mobile drawer shows subnav
-    expect(screen.getByText('Active')).toBeInTheDocument();
-    expect(screen.getByText('Signal Feed')).toBeInTheDocument();
-    expect(screen.getByText('Create')).toBeInTheDocument();
-  });
-
-  it('shows agents subnav when on agents routes', () => {
-    renderSidebar('/agents');
-
-    expect(screen.getByText('Breach Console')).toBeInTheDocument();
-    expect(screen.getByText('Export Console')).toBeInTheDocument();
-  });
-
-  it('does not show investigation subnav on non-investigation routes', () => {
-    renderSidebar('/marketplace');
-
-    expect(screen.queryByText('Signal Feed')).not.toBeInTheDocument();
-    expect(screen.queryByText('Active')).not.toBeInTheDocument();
+    expect(screen.getAllByText('RLMF Exports').length).toBeGreaterThanOrEqual(1);
   });
 
   it('all nav links point to valid routes', () => {
-    renderSidebar('/investigation');
+    renderSidebar('/workspace');
 
     const validRoutes = [
-      '/home', '/marketplace', '/investigation', '/analytics',
-      '/portfolio', '/agents', '/rlmf', '/verify',
-      '/investigation/signals', '/investigation/create',
+      '/', '/home', '/workspace', '/analytics',
+      '/portfolio', '/rlmf', '/verify',
     ];
 
     const links = screen.getAllByRole('link');

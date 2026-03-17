@@ -11,7 +11,6 @@ import {
   Hash,
   Home,
   LayoutGrid,
-  Mountain,
   Radar,
   Shield,
   ShieldCheck,
@@ -53,9 +52,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Intelligence',
     items: [
-      { path: '/world-monitor', label: 'WorldMonitor', icon: Radar, matchPrefixes: ['/world-monitor'] },
-      { path: '/signal-map', label: 'Signal Map', icon: Mountain },
-      { path: '/investigation', label: 'Investigations', icon: Hash, matchPrefixes: ['/investigation'] },
+      { path: '/workspace', label: 'Workspace', icon: Radar, matchPrefixes: ['/workspace'] },
+      { path: '/investigation/create', label: 'New Investigation', icon: Hash },
     ],
   },
   {

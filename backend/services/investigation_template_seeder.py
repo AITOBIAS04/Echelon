@@ -29,6 +29,21 @@ logger = logging.getLogger(__name__)
 
 # ── Genesis Template Definitions ──
 
+CONSTRUCT_VERIFICATION_TEMPLATE = {
+    "id": "CONSTRUCT_VERIFICATION_V1",
+    "name": "Construct Verification V1",
+    "description": "Evaluate prompt-invoked construct skill packs against committed test prompts and scoring rubrics.",
+    "inquiry_class": "INSPECTION",
+    "domain_filters": [],
+    "default_stop_condition": "CONSTRUCT_EVALUATION",
+    "default_time_window_days": None,
+    "min_corroboration_groups": 1,
+    "template_config_json": {
+        "verdict_threshold": 0.60,
+        "coverage_threshold": 0.70,
+    },
+}
+
 INVESTIGATION_TEMPLATES = [
     {
         "id": "blank",
@@ -125,7 +140,7 @@ def _derive_requires_legal_review(source_groups: set[str]) -> bool:
 
 
 def seed_investigation_templates(session: Session) -> int:
-    """Seed all 4 investigation templates. Idempotent — skips existing.
+    """Seed all investigation templates. Idempotent — skips existing.
 
     Returns the number of newly created templates.
     """
@@ -164,6 +179,29 @@ def seed_investigation_templates(session: Session) -> int:
         session.add(template)
         created += 1
 
+    # Seed construct verification template (cycle-024)
+    cv_id = CONSTRUCT_VERIFICATION_TEMPLATE["id"]
+    existing_cv = session.get(InvestigationTemplate, cv_id)
+    if not existing_cv:
+        cv_template = InvestigationTemplate(
+            id=cv_id,
+            name=CONSTRUCT_VERIFICATION_TEMPLATE["name"],
+            description=CONSTRUCT_VERIFICATION_TEMPLATE["description"],
+            inquiry_class=CONSTRUCT_VERIFICATION_TEMPLATE["inquiry_class"],
+            domain_filters_json=CONSTRUCT_VERIFICATION_TEMPLATE["domain_filters"],
+            default_sources_json=["construct_test_prompts"],
+            default_stop_condition=CONSTRUCT_VERIFICATION_TEMPLATE["default_stop_condition"],
+            default_time_window_days=CONSTRUCT_VERIFICATION_TEMPLATE["default_time_window_days"],
+            requires_legal_review=False,
+            min_corroboration_groups=CONSTRUCT_VERIFICATION_TEMPLATE["min_corroboration_groups"],
+            template_config_json=CONSTRUCT_VERIFICATION_TEMPLATE["template_config_json"],
+            template_status="ACTIVE",
+            is_seeded=True,
+            created_at=datetime.utcnow(),
+        )
+        session.add(cv_template)
+        created += 1
+
     session.commit()
-    logger.info("Seeded %d new investigation templates (total in registry: 4)", created)
+    logger.info("Seeded %d new investigation templates (total in registry: 5)", created)
     return created
