@@ -87,25 +87,43 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
     }, 1400);
   }, []);
 
-  // Build globe (once)
+  // Build globe (once, after layout is stable)
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     let cancelled = false;
+    let rafId: number;
 
     async function build() {
+      // Dynamic import — loads globe.gl chunk
       const GlobeModule = await import('globe.gl');
       const Globe = GlobeModule.default ?? GlobeModule;
       if (cancelled || !container) return;
 
-      const width = container.clientWidth || 800;
-      const height = container.clientHeight || 600;
+      // Wait one frame so the browser has finished layout
+      await new Promise<void>((resolve) => {
+        rafId = requestAnimationFrame(() => resolve());
+      });
+      if (cancelled) return;
+
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      if (!width || !height) {
+        console.warn('[GlobeCanvas] container has zero dimensions:', width, height);
+        // Retry after a short delay — parent layout may not be ready
+        buildAttempt.current += 1;
+        if (buildAttempt.current < 5) {
+          setTimeout(build, 200);
+        }
+        return;
+      }
 
       const isLight = document.documentElement.classList.contains('light');
       const textureUrl = isLight
-        ? '//unpkg.com/three-globe/example/img/earth-day.jpg'
-        : '//unpkg.com/three-globe/example/img/earth-night.jpg';
+        ? 'https://unpkg.com/three-globe/example/img/earth-day.jpg'
+        : 'https://unpkg.com/three-globe/example/img/earth-night.jpg';
 
       const theme = isLight
         ? { atmosphere: '#a8c8e6', atmosphereAltitude: 0.14, surface: '#c4d0dc', emissive: '#a8b8c6', emissiveIntensity: 0.06 }
@@ -193,11 +211,17 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
         container.addEventListener('pointerup', scheduleAutoRotate);
 
         globeRef.current = globe;
+
+        // Verify the canvas was created
+        const canvas = container.querySelector('canvas');
+        if (!canvas) {
+          console.warn('[GlobeCanvas] No <canvas> found after build — globe may not have initialised');
+        }
       } catch (err) {
         console.warn('[GlobeCanvas] build attempt failed:', err);
         buildAttempt.current += 1;
-        if (buildAttempt.current < 3) {
-          setTimeout(build, 260);
+        if (buildAttempt.current < 5) {
+          setTimeout(build, 300);
         }
       }
     }
@@ -206,6 +230,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(rafId);
       if (pollRef.current) clearInterval(pollRef.current);
       if (globeRef.current) {
         const renderer = globeRef.current.renderer?.();
@@ -252,7 +277,10 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
     <div
       ref={containerRef}
       className="absolute inset-0 z-0"
+      data-globe-canvas
       style={{
+        width: '100%',
+        height: '100%',
         opacity: mode === 'global' ? 1 : 0.3,
         transition: 'opacity 0.6s ease-out',
         pointerEvents: mode === 'global' ? 'auto' : 'none',
