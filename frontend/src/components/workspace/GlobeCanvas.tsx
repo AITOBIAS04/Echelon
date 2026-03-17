@@ -51,13 +51,13 @@ const GLOBE_THEMES = {
     atmosphereAltitude: 0.10,    // visible halo around globe edge
   },
   dark: {
-    surface: '#0c0c14',          // slightly lighter than pure black
-    emissive: '#181d2a',         // brighter navy glow
+    surface: '#0c0c14',          // slightly lifted from pure black
+    emissive: '#181d2a',         // navy glow
     emissiveIntensity: 0.40,     // surface self-illumination
     shininess: 0.30,
-    polygonCap: 'rgba(220,225,235,0.65)',
-    polygonSide: 'rgba(220,225,235,0.40)',
-    polygonStroke: 'rgba(180,185,200,0.40)',
+    polygonCap: 'rgba(148,155,172,0.50)',    // soft mid-grey land — sleek, not stark
+    polygonSide: 'rgba(148,155,172,0.32)',
+    polygonStroke: 'rgba(128,135,155,0.28)', // subtle border
     polygonAltitude: 0.006,
     atmosphere: '#5848a0',       // brighter purple atmosphere
     atmosphereAltitude: 0.22,    // wide glow separates globe from background
@@ -172,55 +172,6 @@ function applyGlobeTheme(globe: GlobeInstance) {
   //    (next-frame re-apply guards against Kapsule overwriting our changes)
   applyMaterialTheme(globe, theme);
   requestAnimationFrame(() => applyMaterialTheme(globe, theme));
-}
-
-/**
- * Z-order fix: find the polygon mesh group (the group with the most mesh
- * children, typically ~180 country meshes) and apply polygonOffset to push
- * them behind arcs/points in the depth buffer.
- *
- * Previous attempts matched by geometry.type string ("Conic", "Polygon" etc.)
- * but three-globe uses plain BufferGeometry — zero matches. This version
- * identifies the polygon group by mesh-child count instead.
- *
- * The globe surface material already has positive polygonOffset (set in
- * applyMaterialTheme) which pushes the sphere back in the depth buffer.
- * Polygon meshes must NOT have positive polygonOffset — that was pushing
- * them behind the sphere, causing island flicker (z-fighting).
- */
-function applyPolygonZOrder(globe: GlobeInstance) {
-  try {
-    const scene = globe.scene();
-
-    let polygonGroup: any = null;
-    let maxMeshCount = 0;
-
-    scene.traverse((obj: any) => {
-      if (!obj.isGroup) return;
-      const meshCount = obj.children.filter((c: any) => c.isMesh).length;
-      if (meshCount > maxMeshCount) {
-        maxMeshCount = meshCount;
-        polygonGroup = obj;
-      }
-    });
-
-    // Clear any positive polygonOffset on polygon meshes (it was pushing
-    // them behind the sphere). Do NOT set depthWrite — three-globe uses
-    // transparent materials (rgba alpha) which default to depthWrite=false.
-    // Forcing depthWrite=true blocks signal points/arcs from showing through.
-    if (polygonGroup && maxMeshCount > 10) {
-      polygonGroup.traverse((obj: any) => {
-        if (!obj.isMesh || !obj.material) return;
-        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-        mats.forEach((m: any) => {
-          m.polygonOffset = false;
-          m.needsUpdate = true;
-        });
-      });
-    }
-  } catch (_) {
-    // scene not ready
-  }
 }
 
 export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
@@ -357,11 +308,6 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
 
             // Apply theme colours directly to Three.js material
             applyMaterialTheme(globe, theme);
-
-            // Apply polygon z-order fix after meshes are built
-            requestAnimationFrame(() => {
-              applyPolygonZOrder(globe);
-            });
 
             // Orbit controls
             const controls = globe.controls();
