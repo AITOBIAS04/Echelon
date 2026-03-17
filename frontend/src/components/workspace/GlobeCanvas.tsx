@@ -133,8 +133,8 @@ function applyMaterialTheme(globe: GlobeInstance, theme: (typeof GLOBE_THEMES)[k
     // (land masses) always win the z-test. Without this, islands z-fight
     // against the sphere and flash between surface colour and polygon colour.
     material.polygonOffset = true;
-    material.polygonOffsetFactor = 6;
-    material.polygonOffsetUnits = 6;
+    material.polygonOffsetFactor = 10;
+    material.polygonOffsetUnits = 10;
 
     material.needsUpdate = true;
   } catch (_) {
