@@ -64,6 +64,12 @@ const GLOBE_THEMES = {
 
 const WORLD_ATLAS_URL = 'https://unpkg.com/world-atlas@2/countries-110m.json';
 
+// 1x1 white pixel PNG — fed to globeImageUrl to prevent three-globe from
+// loading its built-in satellite texture. The actual globe colour comes from
+// material.color set in onGlobeReady; this texture is effectively invisible.
+const BLANK_GLOBE_TEXTURE =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12P4////DwAJBgMBBYtFSQAAAABJRU5ErkJggg==';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GlobeInstance = any;
 
@@ -169,6 +175,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
         const globe: any = new Globe(container)
           .showAtmosphere(false)
           .backgroundColor('rgba(0,0,0,0)')
+          .globeImageUrl(BLANK_GLOBE_TEXTURE)
           .width(width)
           .height(height)
           .onGlobeReady(() => {
@@ -250,23 +257,28 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               container.style.cursor = point ? 'pointer' : 'grab';
             });
 
-            // Zoom-in detection: track altitude decrease instead of wheel events
-            // (OrbitControls may consume wheel before our handler fires)
+            // Zoom-in detection: track altitude decrease frame-to-frame.
+            // Does NOT rely on wheel events (OrbitControls may consume them).
+            // Only triggers when altitude is actively dropping (user zooming in),
+            // not during programmatic camera animations (which increase altitude).
             lastAltitudeRef.current = GLOBE_DEFAULT_VIEW.altitude;
             pollRef.current = setInterval(() => {
               if (modeRef.current !== 'global') {
+                // Reset when not in global mode so returning to global
+                // doesn't false-trigger during the zoom-out animation.
                 lastAltitudeRef.current = Infinity;
                 return;
               }
               const pov = globe.pointOfView();
               if (!pov) return;
               const alt = pov.altitude;
-              const isZoomingIn = alt < lastAltitudeRef.current - 0.005;
+              const prevAlt = lastAltitudeRef.current;
               lastAltitudeRef.current = alt;
-              if (isZoomingIn && alt <= GLOBE_TO_SCOPED_ALTITUDE) {
+              // Only transition when user is actively zooming in (altitude decreasing)
+              if (alt < prevAlt - 0.005 && alt <= GLOBE_TO_SCOPED_ALTITUDE) {
                 onScopeRef.current({ center: [pov.lng, pov.lat], zoom: 4.8 });
               }
-            }, 180);
+            }, 150);
 
             container.addEventListener('pointerdown', () => {
               if (controls) controls.autoRotate = false;
