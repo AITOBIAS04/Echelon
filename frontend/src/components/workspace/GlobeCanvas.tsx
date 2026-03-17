@@ -39,16 +39,16 @@ const FALLBACK_ARC_SIGNALS = [
 // raster texture underneath. Land needs to read as solid geography.
 const GLOBE_THEMES = {
   light: {
-    surface: '#f5f5f5',
-    emissive: '#f0f0f0',
-    emissiveIntensity: 0.02,
-    shininess: 0.02,
-    polygonCap: 'rgba(26,28,33,0.82)',
-    polygonSide: 'rgba(26,28,33,0.60)',
-    polygonStroke: 'rgba(50,54,62,0.45)',
+    surface: '#c8cdd8',        // cool grey-blue ocean — not white, has depth
+    emissive: '#b8bcc8',
+    emissiveIntensity: 0.06,
+    shininess: 0.15,
+    polygonCap: 'rgba(62,66,78,0.72)',      // mid-dark land — readable but not stark
+    polygonSide: 'rgba(62,66,78,0.50)',
+    polygonStroke: 'rgba(90,95,110,0.35)',   // subtle border definition
     polygonAltitude: 0.001,
-    atmosphere: '#d8d4ee',
-    atmosphereAltitude: 0.03,
+    atmosphere: '#b8b0e0',     // soft purple haze
+    atmosphereAltitude: 0.08,  // more visible than 0.03
   },
   dark: {
     surface: '#0a0a0f',
