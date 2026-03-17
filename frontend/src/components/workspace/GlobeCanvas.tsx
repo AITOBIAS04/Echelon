@@ -35,30 +35,38 @@ const FALLBACK_ARC_SIGNALS = [
   { startLat: 29.9, startLng: 32.55, endLat: -33.86, endLng: 151.2, color: ['rgba(251,191,36,0.8)', 'rgba(251,191,36,0.1)'] },
 ];
 
+// Globe theme colours — high-opacity polygon fills since there's no
+// raster texture underneath. Land needs to read as solid geography.
 const GLOBE_THEMES = {
   light: {
-    atmosphere: '#f2efff',
-    atmosphereAltitude: 0.028,
-    surface: '#f8f7f3',
-    emissive: '#f7f4ec',
-    emissiveIntensity: 0.025,
-    polygonCap: 'rgba(17,19,24,0.03)',
-    polygonSide: 'rgba(17,19,24,0.025)',
-    polygonStroke: 'rgba(26,30,36,0.30)',
-    polygonAltitude: 0.0035,
+    // White/cream ocean sphere
+    surface: '#f5f5f5',
+    emissive: '#f0f0f0',
+    emissiveIntensity: 0.02,
     shininess: 0.02,
+    // Dark landmasses on light ocean
+    polygonCap: 'rgba(26,28,33,0.82)',
+    polygonSide: 'rgba(26,28,33,0.60)',
+    polygonStroke: 'rgba(50,54,62,0.45)',
+    polygonAltitude: 0.004,
+    // Soft barely-there atmosphere
+    atmosphere: '#d8d4ee',
+    atmosphereAltitude: 0.03,
   },
   dark: {
-    atmosphere: '#8074ff',
-    atmosphereAltitude: 0.13,
-    surface: '#070a11',
+    // Near-black ocean sphere
+    surface: '#0a0a0f',
     emissive: '#10131b',
-    emissiveIntensity: 0.32,
-    polygonCap: 'rgba(235,239,245,0.06)',
-    polygonSide: 'rgba(235,239,245,0.03)',
-    polygonStroke: 'rgba(255,255,255,0.34)',
-    polygonAltitude: 0.0055,
-    shininess: 0.34,
+    emissiveIntensity: 0.25,
+    shininess: 0.30,
+    // Light landmasses on dark ocean
+    polygonCap: 'rgba(220,225,235,0.65)',
+    polygonSide: 'rgba(220,225,235,0.40)',
+    polygonStroke: 'rgba(180,185,200,0.40)',
+    polygonAltitude: 0.005,
+    // Cool-toned faint atmosphere
+    atmosphere: '#4a4080',
+    atmosphereAltitude: 0.12,
   },
 } as const;
 
@@ -86,6 +94,37 @@ async function loadCountries() {
   return countriesCache;
 }
 
+function getTheme() {
+  const isLight = document.documentElement.classList.contains('light');
+  return isLight ? GLOBE_THEMES.light : GLOBE_THEMES.dark;
+}
+
+/** Re-apply all theme-dependent globe properties. Called on init + theme toggle. */
+function applyGlobeTheme(globe: GlobeInstance) {
+  const theme = getTheme();
+
+  // Polygon colours (globe.gl re-renders reactively)
+  globe
+    .polygonCapColor(() => theme.polygonCap)
+    .polygonSideColor(() => theme.polygonSide)
+    .polygonStrokeColor(() => theme.polygonStroke)
+    .polygonAltitude(() => theme.polygonAltitude)
+    .atmosphereColor(theme.atmosphere)
+    .atmosphereAltitude(theme.atmosphereAltitude);
+
+  // Three.js material (ocean sphere)
+  const material = globe.globeMaterial();
+  if (material.map) {
+    material.map.dispose();
+    material.map = null;
+  }
+  material.color.set(theme.surface);
+  material.emissive.set(theme.emissive);
+  material.emissiveIntensity = theme.emissiveIntensity;
+  material.shininess = theme.shininess;
+  material.needsUpdate = true;
+}
+
 export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<GlobeInstance>(null);
@@ -94,10 +133,9 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const buildAttempt = useRef(0);
-  // Track altitude for zoom-in detection (avoids reliance on wheel events)
   const lastAltitudeRef = useRef(Infinity);
+  const themeObserverRef = useRef<MutationObserver | null>(null);
 
-  // Keep refs current so closures see fresh values
   modeRef.current = mode;
   onScopeRef.current = onScopeTransition;
 
@@ -138,7 +176,6 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
     let rafId: number;
 
     async function build() {
-      // Dynamic imports — loads globe.gl chunk + country polygons
       const [GlobeModule, countries] = await Promise.all([
         import('globe.gl'),
         loadCountries(),
@@ -146,7 +183,6 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
       const Globe = GlobeModule.default ?? GlobeModule;
       if (cancelled || !container) return;
 
-      // Wait one frame so the browser has finished layout
       await new Promise<void>((resolve) => {
         rafId = requestAnimationFrame(() => resolve());
       });
@@ -164,13 +200,12 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
         return;
       }
 
-      const isLight = document.documentElement.classList.contains('light');
-      const theme = isLight ? GLOBE_THEMES.light : GLOBE_THEMES.dark;
+      const theme = getTheme();
 
       try {
-        // Phase 1: construct with layout-only props.
-        // Animation loop starts immediately — atmosphere/material/data MUST
-        // wait for onGlobeReady or the loop reads null material.opacity.
+        // Phase 1: construct with layout + blank texture.
+        // showAtmosphere(false) prevents null material.opacity tween crash.
+        // globeImageUrl(BLANK) prevents default satellite texture from loading.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const globe: any = new Globe(container)
           .showAtmosphere(false)
@@ -181,12 +216,12 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
           .onGlobeReady(() => {
             if (cancelled) return;
 
-            // Phase 2: Three.js scene is now initialised — safe to configure
+            // Phase 2: Three.js scene ready — safe to configure everything.
             globe
               .showAtmosphere(true)
               .atmosphereColor(theme.atmosphere)
               .atmosphereAltitude(theme.atmosphereAltitude)
-              // Country polygons (stipple-dot style)
+              // Country polygons
               .polygonsData(countries)
               .polygonAltitude(() => theme.polygonAltitude)
               .polygonCapColor(() => theme.polygonCap)
@@ -221,17 +256,8 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               .ringPropagationSpeed(1.6)
               .ringRepeatPeriod(1100);
 
-            // Globe surface material — strip default satellite texture
-            const material = globe.globeMaterial();
-            if (material.map) {
-              material.map.dispose();
-              material.map = null;
-            }
-            material.color.set(theme.surface);
-            material.emissive.set(theme.emissive);
-            material.emissiveIntensity = theme.emissiveIntensity;
-            material.shininess = theme.shininess;
-            material.needsUpdate = true;
+            // Apply theme to material (strips blank texture map, sets solid colour)
+            applyGlobeTheme(globe);
 
             // Orbit controls
             const controls = globe.controls();
@@ -257,15 +283,10 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               container.style.cursor = point ? 'pointer' : 'grab';
             });
 
-            // Zoom-in detection: track altitude decrease frame-to-frame.
-            // Does NOT rely on wheel events (OrbitControls may consume them).
-            // Only triggers when altitude is actively dropping (user zooming in),
-            // not during programmatic camera animations (which increase altitude).
+            // Zoom-in detection: altitude-decrease polling.
             lastAltitudeRef.current = GLOBE_DEFAULT_VIEW.altitude;
             pollRef.current = setInterval(() => {
               if (modeRef.current !== 'global') {
-                // Reset when not in global mode so returning to global
-                // doesn't false-trigger during the zoom-out animation.
                 lastAltitudeRef.current = Infinity;
                 return;
               }
@@ -274,7 +295,6 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               const alt = pov.altitude;
               const prevAlt = lastAltitudeRef.current;
               lastAltitudeRef.current = alt;
-              // Only transition when user is actively zooming in (altitude decreasing)
               if (alt < prevAlt - 0.005 && alt <= GLOBE_TO_SCOPED_ALTITUDE) {
                 onScopeRef.current({ center: [pov.lng, pov.lat], zoom: 4.8 });
               }
@@ -286,6 +306,17 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
             container.addEventListener('pointerup', scheduleAutoRotate);
 
             globeRef.current = globe;
+
+            // Watch for theme toggle (MutationObserver on <html> class)
+            themeObserverRef.current = new MutationObserver(() => {
+              if (globeRef.current) {
+                applyGlobeTheme(globeRef.current);
+              }
+            });
+            themeObserverRef.current.observe(document.documentElement, {
+              attributes: true,
+              attributeFilter: ['class'],
+            });
           });
       } catch (err) {
         console.warn('[GlobeCanvas] build attempt failed:', err);
@@ -302,6 +333,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
       cancelled = true;
       cancelAnimationFrame(rafId);
       if (pollRef.current) clearInterval(pollRef.current);
+      if (themeObserverRef.current) themeObserverRef.current.disconnect();
       if (globeRef.current) {
         const renderer = globeRef.current.renderer?.();
         if (renderer) renderer.dispose();
