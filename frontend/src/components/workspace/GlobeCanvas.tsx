@@ -47,7 +47,7 @@ const GLOBE_THEMES = {
     polygonSide: 'rgba(243,243,246,0.70)',
     polygonStroke: 'rgba(180,184,195,0.35)', // subtle silver border
     polygonAltitude: 0,          // flush with surface — don't occlude signal points
-    atmosphere: '#c8c0e8',
+    atmosphere: '#1a1a2e',
     atmosphereAltitude: 0.10,
   },
   dark: {
@@ -59,8 +59,8 @@ const GLOBE_THEMES = {
     polygonSide: 'rgba(13,13,26,0.88)',
     polygonStroke: 'rgba(40,40,60,0.12)',    // barely visible border
     polygonAltitude: 0,          // flush with surface — don't occlude signal points
-    atmosphere: '#5848a0',
-    atmosphereAltitude: 0.20,
+    atmosphere: '#e8e4f0',
+    atmosphereAltitude: 0.18,
   },
 } as const;
 
@@ -133,8 +133,8 @@ function applyMaterialTheme(globe: GlobeInstance, theme: (typeof GLOBE_THEMES)[k
     // (land masses) always win the z-test. Without this, islands z-fight
     // against the sphere and flash between surface colour and polygon colour.
     material.polygonOffset = true;
-    material.polygonOffsetFactor = 4;
-    material.polygonOffsetUnits = 4;
+    material.polygonOffsetFactor = 6;
+    material.polygonOffsetUnits = 6;
 
     material.needsUpdate = true;
   } catch (_) {
@@ -329,7 +329,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
 
             globe.onPointClick((point: any) => {
               if (!point) return;
-              onScopeRef.current({ center: [point.lng, point.lat], zoom: 5.4 });
+              onScopeRef.current({ center: [point.lng, point.lat], zoom: 3.0 });
             });
 
             globe.onPointHover((point: any) => {
@@ -343,7 +343,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
 
             function triggerScopeTransition(lat: number, lng: number) {
               transitionLockRef.current = true;
-              onScopeRef.current({ center: [lng, lat], zoom: 4.8 });
+              onScopeRef.current({ center: [lng, lat], zoom: 3.0 });
               setTimeout(() => {
                 transitionLockRef.current = false;
               }, 1200);

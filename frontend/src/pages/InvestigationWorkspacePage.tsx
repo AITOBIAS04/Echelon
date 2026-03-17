@@ -34,7 +34,7 @@ export function InvestigationWorkspacePage() {
 
   const handleLaunchInvestigation = useCallback(() => {
     // Transition to scoped view when an investigation is selected
-    handleScopeTransition({ center: [43.0, 15.0], zoom: 5 });
+    handleScopeTransition({ center: [43.0, 15.0], zoom: 3 });
   }, [handleScopeTransition]);
 
   return (
@@ -71,7 +71,7 @@ export function InvestigationWorkspacePage() {
           icon={Map}
           label="Scoped"
           active={workspace.mode === 'scoped'}
-          onClick={() => handleScopeTransition(scopeViewState ?? { center: [43.0, 15.0], zoom: 5 })}
+          onClick={() => handleScopeTransition(scopeViewState ?? { center: [43.0, 15.0], zoom: 3 })}
         />
       </div>
 
