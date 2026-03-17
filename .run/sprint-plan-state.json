@@ -1,20 +1,20 @@
 {
-  "plan_id": "plan-20260317-c026b1",
-  "branch": "feature/cycle-026-osint-batch1",
-  "state": "JACKED_OUT",
+  "plan_id": "plan-20260317-c026a",
+  "branch": "feature/cycle-026a-evidence-anchoring",
+  "state": "RUNNING",
   "timestamps": {
-    "started": "2026-03-17T19:10:00Z",
-    "last_activity": "2026-03-17T23:15:00Z"
+    "started": "2026-03-17T23:50:00Z",
+    "last_activity": "2026-03-17T23:50:00Z"
   },
   "sprints": {
     "total": 4,
-    "completed": 4,
-    "current": null,
+    "completed": 0,
+    "current": "sprint-0",
     "list": [
-      {"id": "sprint-0", "global_id": 85, "status": "completed", "cycles": 1, "files_changed": 14},
-      {"id": "sprint-1", "global_id": 86, "status": "completed", "cycles": 1, "files_changed": 5},
-      {"id": "sprint-2", "global_id": 87, "status": "completed", "cycles": 1, "files_changed": 5},
-      {"id": "sprint-3", "global_id": 88, "status": "completed", "cycles": 1, "files_changed": 3}
+      {"id": "sprint-0", "global_id": 89, "status": "pending", "cycles": 0, "files_changed": 0},
+      {"id": "sprint-1", "global_id": 90, "status": "pending", "cycles": 0, "files_changed": 0},
+      {"id": "sprint-2", "global_id": 91, "status": "pending", "cycles": 0, "files_changed": 0},
+      {"id": "sprint-3", "global_id": 92, "status": "pending", "cycles": 0, "files_changed": 0}
     ]
   },
   "options": {
@@ -24,8 +24,8 @@
     "timeout_hours": 8
   },
   "metrics": {
-    "total_cycles": 4,
-    "total_files_changed": 27,
+    "total_cycles": 0,
+    "total_files_changed": 0,
     "total_findings_fixed": 0
   }
 }
