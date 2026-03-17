@@ -391,6 +391,7 @@ async def get_world_monitor_live(
 async def post_cii(
     body: CIIRequest,
     theatre_id: str = Query(..., description="Theatre context ID"),
+    investigation_id: str | None = Query(None, description="Investigation to associate signal with"),
     db: AsyncSession = Depends(get_db),
 ) -> CIIResponse:
     """Country Instability Index — collect + persist + return evidence bundle."""
@@ -411,6 +412,7 @@ async def post_cii(
         result=result,
         source_id=collector.source_id(),
         source_group=result.bundle.source_group,
+        investigation_id=investigation_id,
     )
     await db.commit()
 
@@ -431,6 +433,7 @@ async def post_cii(
 async def post_market_snapshot(
     body: MarketSnapshotRequest,
     theatre_id: str = Query(..., description="Theatre context ID"),
+    investigation_id: str | None = Query(None, description="Investigation to associate signal with"),
     db: AsyncSession = Depends(get_db),
 ) -> MarketSnapshotResponse:
     """Market Snapshot — collect + persist + return evidence bundle."""
@@ -452,6 +455,7 @@ async def post_market_snapshot(
         result=result,
         source_id=collector.source_id(),
         source_group=result.bundle.source_group,
+        investigation_id=investigation_id,
     )
     await db.commit()
 
@@ -470,6 +474,7 @@ async def post_market_snapshot(
 async def post_maritime_anomaly(
     body: MaritimeAnomalyRequest,
     theatre_id: str = Query(..., description="Theatre context ID"),
+    investigation_id: str | None = Query(None, description="Investigation to associate signal with"),
     db: AsyncSession = Depends(get_db),
 ) -> MaritimeAnomalyResponse:
     """Maritime Anomaly Detection — collect + persist + return evidence bundle."""
@@ -491,6 +496,7 @@ async def post_maritime_anomaly(
         result=result,
         source_id=collector.source_id(),
         source_group=result.bundle.source_group,
+        investigation_id=investigation_id,
     )
     await db.commit()
 

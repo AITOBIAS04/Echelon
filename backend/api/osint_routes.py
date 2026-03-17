@@ -26,6 +26,7 @@ from ..schemas.osint_schemas import (
     SignalSummaryResponse,
 )
 from ..osint.models.registry import RegistryLoader
+from ..services.convergence_scorer import ConvergenceScorer
 
 router = APIRouter(prefix="/api/v1/osint", tags=["OSINT"])
 
@@ -136,10 +137,22 @@ async def get_signals_summary(session: AsyncSession = Depends(get_db)):
         .where(Investigation.status == "CERTIFICATE_READY")
     )
 
+    # Convergence cells: run scorer over recent signals (last 24h)
+    convergence_cells_count = 0
+    recent_cutoff = datetime.utcnow() - timedelta(hours=24)
+    recent_signals_result = await session.execute(
+        select(OsintSignal).where(OsintSignal.collected_at >= recent_cutoff)
+    )
+    recent_signals = recent_signals_result.scalars().all()
+    if recent_signals:
+        scorer = ConvergenceScorer()
+        cells = scorer.score(recent_signals)
+        convergence_cells_count = len(cells)
+
     return SignalSummaryResponse(
         total_signals=total.scalar() or 0,
         by_source_group=dict(by_group.all()),
         counter_signals=counter_count_val,
         certificate_candidates=cert_candidates.scalar() or 0,
-        convergence_cells=0,  # Populated once convergence scorer runs
+        convergence_cells=convergence_cells_count,
     )

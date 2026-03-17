@@ -230,10 +230,15 @@ class TestGetSignalsSummaryEndpoint:
         cert_result = MagicMock()
         cert_result.scalar.return_value = 0
 
+        # recent signals for convergence scorer (empty)
+        recent_signals_result = MagicMock()
+        recent_signals_result.scalars.return_value.all.return_value = []
+
         mock_session.execute.side_effect = [
             total_result,
             by_group_result,
             cert_result,
+            recent_signals_result,
         ]
 
         with patch("backend.api.osint_routes.os.path.exists", return_value=False):
@@ -244,6 +249,7 @@ class TestGetSignalsSummaryEndpoint:
         assert resp.by_source_group == {}
         assert resp.counter_signals == 0
         assert resp.certificate_candidates == 0
+        assert resp.convergence_cells == 0
 
     @pytest.mark.asyncio
     async def test_populated_state(self):
@@ -272,11 +278,16 @@ class TestGetSignalsSummaryEndpoint:
         cert_result = MagicMock()
         cert_result.scalar.return_value = 1
 
+        # recent signals for convergence scorer (empty — scorer tested separately)
+        recent_signals_result = MagicMock()
+        recent_signals_result.scalars.return_value.all.return_value = []
+
         mock_session.execute.side_effect = [
             total_result,
             by_group_result,
             counter_result,
             cert_result,
+            recent_signals_result,
         ]
 
         mock_source_counter = MagicMock()

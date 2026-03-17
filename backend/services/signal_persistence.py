@@ -6,8 +6,6 @@ Shared helper for writing OSINT signals to the osint_signals table.
 Used by the three POST endpoints (CII, Market, Maritime).
 """
 
-import hashlib
-import json
 from datetime import datetime
 from uuid import uuid4
 
@@ -29,11 +27,18 @@ async def persist_signal(
 
     Deduplicates on content_hash — if a signal with the same hash
     already exists, returns None (skip).
+
+    Uses the bundle's raw_payload_hash (collector-computed SHA-256)
+    for both dedup and provenance, rather than recomputing from a
+    reduced dict.
     """
     if not result.bundle:
         return None
 
-    # Build normalised data dict from bundle
+    # Use the collector's canonical hash — single source of truth
+    content_hash = result.bundle.raw_payload_hash
+
+    # Build normalised data dict from bundle for storage
     event = result.bundle.normalised_event
     normalised = {
         "event_id": event.event_id,
@@ -45,10 +50,6 @@ async def persist_signal(
     }
     if event.measure.metadata:
         normalised["metadata"] = event.measure.metadata
-
-    # Compute content hash for dedup
-    canonical = json.dumps(normalised, sort_keys=True, separators=(",", ":"))
-    content_hash = hashlib.sha256(canonical.encode()).hexdigest()
 
     # Dedup check
     existing = await session.execute(
