@@ -43,9 +43,9 @@ const GLOBE_THEMES = {
     emissive: '#b8bcc8',
     emissiveIntensity: 0.06,
     shininess: 0.15,
-    polygonCap: 'rgba(62,66,78,0.72)',      // mid-dark land — readable but not stark
-    polygonSide: 'rgba(62,66,78,0.50)',
-    polygonStroke: 'rgba(90,95,110,0.35)',   // subtle border definition
+    polygonCap: 'rgba(72,78,95,0.48)',      // soft land — clear but not dominant
+    polygonSide: 'rgba(72,78,95,0.30)',
+    polygonStroke: 'rgba(95,100,115,0.20)',  // whisper-thin border definition
     polygonAltitude: 0.001,
     atmosphere: '#b8b0e0',     // soft purple haze
     atmosphereAltitude: 0.08,  // more visible than 0.03
