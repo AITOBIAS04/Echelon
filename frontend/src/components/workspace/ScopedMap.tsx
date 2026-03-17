@@ -266,18 +266,27 @@ export function ScopedMap({ mode, viewState, layers, onGlobeTransition, onMapRea
     const LIGHT_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
     const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
+    const isLightNow = document.documentElement.classList.contains('light');
+    let currentStyle = isLightNow ? LIGHT_STYLE : DARK_STYLE;
+
+    const handleStyleReload = () => { addLayers(map); };
+
     const observer = new MutationObserver(() => {
       const isLight = document.documentElement.classList.contains('light');
       const nextStyle = isLight ? LIGHT_STYLE : DARK_STYLE;
-      // setStyle strips all sources/layers — re-add after load
+      if (nextStyle === currentStyle) return; // no change
+      currentStyle = nextStyle;
+      // Remove any pending listener before registering new one
+      map.off('style.load', handleStyleReload);
       map.setStyle(nextStyle);
-      map.once('style.load', () => {
-        addLayers(map);
-      });
+      map.once('style.load', handleStyleReload);
     });
 
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      map.off('style.load', handleStyleReload);
+    };
   }, [addLayers]);
 
   // Fly to new view state
