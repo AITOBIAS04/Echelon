@@ -18,7 +18,8 @@ prediction-market-monorepo/
 │   │   ├── butterfly_routes.py
 │   │   ├── markets.py
 │   │   ├── operations.py
-│   │   ├── osint_routes.py
+│   │   ├── osint_routes.py           OSINT API: GET signals (paginated), GET health, GET summary (Cycle-025)
+│   │   ├── world_monitor_routes.py   WorldMonitor API: POST cii/market/maritime, GET live (Cycle-025)
 │   │   ├── paradox_routes.py
 │   │   ├── positions_routes.py
 │   │   ├── scheduler_api.py
@@ -49,7 +50,7 @@ prediction-market-monorepo/
 │   ├── database/                     ORM layer
 │   │   ├── config.py
 │   │   ├── connection.py
-│   │   ├── models.py                 SQLAlchemy models (26 KB)
+│   │   ├── models.py                 SQLAlchemy models (26 KB) — includes OsintSignal (osint_signals table, Cycle-025)
 │   │   └── repositories/             Data-access layer
 │   │
 │   ├── schemas/                      Pydantic request/response schemas
@@ -58,7 +59,8 @@ prediction-market-monorepo/
 │   │   ├── butterfly_schemas.py
 │   │   ├── paradox_schemas.py
 │   │   ├── user_schemas.py
-│   │   └── worldmonitor_api_contract.py  World Monitor API contract (Pydantic v2)
+│   │   ├── worldmonitor_api_contract.py  World Monitor API contract (Pydantic v2, 14 MeasureTypes)
+│   │   └── osint_schemas.py             OSINT response schemas (signal, paginated, health, summary)
 │   │
 │   ├── agents/                       Agent system (11 modules, 496 KB)
 │   │   ├── schemas.py                Agent data schemas (36 KB)
@@ -111,7 +113,9 @@ prediction-market-monorepo/
 │   │
 │   ├── services/                     Service layer
 │   │   ├── theatre_bridge.py         Theatre integration (11 KB)
-│   │   └── verification_bridge.py    Verification integration (8 KB)
+│   │   ├── verification_bridge.py    Verification integration (8 KB)
+│   │   ├── signal_persistence.py     OSINT signal persistence (persist_signal helper, SHA-256 dedup)
+│   │   └── convergence_scorer.py     Convergence scoring (cluster signals by geo+time, multi-domain cells)
 │   │
 │   ├── integrations/                 External APIs
 │   │   ├── kalshi_client.py          Kalshi prediction market (35 KB)

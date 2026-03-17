@@ -853,11 +853,98 @@
           "tasks": 5
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-024",
+      "label": "Construct Verification V1",
+      "status": "archived",
+      "created_at": "2026-03-16T00:00:00Z",
+      "archived": "2026-03-17T00:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-17-construct-verification-v1",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 76,
+          "label": "Schema + Template Foundation",
+          "status": "completed",
+          "tasks": 3
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 77,
+          "label": "Construct Registry + Adapter",
+          "status": "completed",
+          "tasks": 2
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 78,
+          "label": "Scoring Pipeline",
+          "status": "completed",
+          "tasks": 2
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 79,
+          "label": "Certificate Issuance + Evidence Bundle",
+          "status": "completed",
+          "tasks": 3
+        },
+        {
+          "local_id": "sprint-4",
+          "global_id": 80,
+          "label": "API Routes + First Certification Run",
+          "status": "completed",
+          "tasks": 2
+        }
+      ]
+    },
+    {
+      "cycle_id": "cycle-025",
+      "label": "WorldMonitor Intelligence Contract v2",
+      "status": "active",
+      "created_at": "2026-03-17T00:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 81,
+          "label": "Schema + Migration",
+          "status": "completed",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 82,
+          "label": "POST Endpoints + Signal Persistence",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 83,
+          "label": "Read Endpoints + Convergence",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 84,
+          "label": "Integration + Regression",
+          "status": "completed",
+          "tasks": 4
+        }
+      ]
     }
   ],
-  "active_cycle": null,
+  "active_cycle": "cycle-025",
   "active_bugfix": null,
-  "global_sprint_counter": 75,
+  "global_sprint_counter": 84,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

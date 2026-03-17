@@ -113,3 +113,12 @@
 | Sprint 0 | sprint-73 | COMPLETED | [reviewer.md](sprint-73/reviewer.md) | [engineer-feedback.md](sprint-73/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-73/auditor-sprint-feedback.md) |
 | Sprint 1 | sprint-74 | COMPLETED | [reviewer.md](sprint-74/reviewer.md) | [engineer-feedback.md](sprint-74/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-74/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-75 | COMPLETED | [reviewer.md](sprint-75/reviewer.md) | [engineer-feedback.md](sprint-75/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-75/auditor-sprint-feedback.md) |
+
+## Cycle-025: WorldMonitor Intelligence Contract v2
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 0 | sprint-81 | COMPLETED | [reviewer.md](sprint-81/reviewer.md) | [engineer-feedback.md](sprint-81/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-81/auditor-sprint-feedback.md) |
+| Sprint 1 | sprint-82 | COMPLETED | [reviewer.md](sprint-82/reviewer.md) | [engineer-feedback.md](sprint-82/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-82/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-83 | COMPLETED | [reviewer.md](sprint-83/reviewer.md) | [engineer-feedback.md](sprint-83/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-83/auditor-sprint-feedback.md) |
+| Sprint 3 | sprint-84 | COMPLETED | [reviewer.md](sprint-84/reviewer.md) | [engineer-feedback.md](sprint-84/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-84/auditor-sprint-feedback.md) |
