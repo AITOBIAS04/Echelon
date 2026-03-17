@@ -82,6 +82,26 @@ BENCHMARK_CATALOG: list[tuple[str, str, str, Optional[str]]] = [
 ]
 
 
+# ── Standards Registry ─────────────────────────────────────────────
+
+# Initial standards assets with canonical metadata.
+# Each tuple: (asset_id, source_url, version, license)
+STANDARDS_CATALOG: list[tuple[str, str, str, Optional[str]]] = [
+    (
+        "wcag",
+        "https://www.w3.org/TR/WCAG22/",
+        "2.2",
+        None,
+    ),
+    (
+        "aria-apg",
+        "https://www.w3.org/WAI/ARIA/apg/",
+        "2024",
+        None,
+    ),
+]
+
+
 # ── Helpers ─────────────────────────────────────────────────────────
 
 def sha256_file(filepath: Path) -> str:
@@ -134,12 +154,32 @@ def get_staging_root() -> Path:
     return Path.home() / ".echelon" / "eval_data"
 
 
-def r2_key_prefix(asset_id: str, version: str) -> str:
+def r2_key_prefix(
+    asset_id: str,
+    version: str,
+    *,
+    asset_class: str = "benchmark",
+) -> str:
     """Return the R2 key prefix for a given asset and version.
 
-    Convention: ``benchmarks/{asset_id}/{version}/``
+    Convention:
+      - ``benchmarks/{asset_id}/{version}/`` for ``asset_class="benchmark"``
+      - ``standards/{asset_id}/{version}/`` for ``asset_class="standard"``
+
+    Raises:
+        ValueError: If ``asset_class`` is not ``"benchmark"`` or ``"standard"``.
     """
-    return f"benchmarks/{asset_id}/{version}/"
+    prefix_map = {
+        "benchmark": "benchmarks",
+        "standard": "standards",
+    }
+    bucket = prefix_map.get(asset_class)
+    if bucket is None:
+        raise ValueError(
+            f"Unknown asset_class {asset_class!r}. "
+            f"Expected one of: {sorted(prefix_map.keys())}"
+        )
+    return f"{bucket}/{asset_id}/{version}/"
 
 
 # ── Core Builder ────────────────────────────────────────────────────
@@ -248,3 +288,62 @@ def build_registry_document(
         generated_at=datetime.now(timezone.utc),
         entries=entries,
     )
+
+
+# ── Standards Registry Builder ─────────────────────────────────────
+
+def build_standards_registry(
+    staging_root: Optional[Path] = None,
+    *,
+    registry_version: str = "1.0",
+) -> DatasetRegistryDocument:
+    """Build a ``DatasetRegistryDocument`` for all catalogued standards.
+
+    Iterates over ``STANDARDS_CATALOG``, builds a manifest for each
+    standard whose local directory exists under ``staging_root``, and
+    wraps the results in a registry document.
+
+    The expected directory layout under ``staging_root`` is::
+
+        standards/{asset_id}/{version}/raw/
+
+    Args:
+        staging_root: Base directory containing downloaded standard assets.
+            Defaults to :func:`get_staging_root` if not provided.
+        registry_version: Version string for the registry document.
+
+    Returns:
+        A ``DatasetRegistryDocument`` containing one entry per standard
+        whose local directory is present.
+
+    Raises:
+        ValueError: If no standards could be built (no directories found).
+    """
+    if staging_root is None:
+        staging_root = get_staging_root()
+
+    entries: list[DatasetRegistryEntry] = []
+
+    for asset_id, source_url, version, asset_license in STANDARDS_CATALOG:
+        asset_dir = staging_root / "standards" / asset_id / version / "raw"
+        if not asset_dir.is_dir():
+            continue
+
+        entry = build_manifest(
+            asset_dir,
+            asset_id=asset_id,
+            asset_class="standard",
+            source_url=source_url,
+            version=version,
+            license=asset_license,
+        )
+        entries.append(entry)
+
+    if not entries:
+        raise ValueError(
+            "No standards could be built. Ensure at least one standard "
+            "directory exists under the staging root at "
+            f"standards/{{asset_id}}/{{version}}/raw/."
+        )
+
+    return build_registry_document(entries, registry_version=registry_version)
