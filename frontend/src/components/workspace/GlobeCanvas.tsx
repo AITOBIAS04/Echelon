@@ -51,13 +51,13 @@ const GLOBE_THEMES = {
     atmosphereAltitude: 0.10,
   },
   dark: {
-    surface: '#2a2c38',          // dark blue-grey sea — echoes CARTO Dark Matter water
-    emissive: '#262836',
-    emissiveIntensity: 0.25,
-    shininess: 0.20,
-    polygonCap: 'rgba(26,27,34,0.92)',       // near-black land — matches --e-bg-app dark
-    polygonSide: 'rgba(26,27,34,0.72)',
-    polygonStroke: 'rgba(55,58,72,0.20)',    // very subtle border
+    surface: '#2e3142',          // muted blue-grey sea — matches CARTO Dark Matter water
+    emissive: '#2a2d3c',
+    emissiveIntensity: 0.22,
+    shininess: 0.18,
+    polygonCap: 'rgba(24,25,32,0.97)',       // near-opaque black land — matches page bg
+    polygonSide: 'rgba(24,25,32,0.85)',
+    polygonStroke: 'rgba(48,50,66,0.15)',    // barely visible border
     polygonAltitude: 0,          // flush with surface — don't occlude signal points
     atmosphere: '#5848a0',
     atmosphereAltitude: 0.20,
