@@ -440,13 +440,13 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
     const controls = globe.controls();
     if (mode === 'global') {
       transitionLockRef.current = true;
-      globe.pointOfView(GLOBE_DEFAULT_VIEW, 1800);
+      globe.pointOfView(GLOBE_DEFAULT_VIEW, 3200);
       setTimeout(() => {
         if (controls) controls.autoRotate = true;
         transitionLockRef.current = false;
-      }, 2200);
+      }, 3600);
     } else {
-      globe.pointOfView(GLOBE_SCOPE_VIEW, 1800);
+      globe.pointOfView(GLOBE_SCOPE_VIEW, 3200);
       if (controls) controls.autoRotate = false;
     }
   }, [mode]);
