@@ -135,6 +135,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
         // wait for onGlobeReady or the loop reads null material.opacity.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const globe: any = new Globe(container)
+          .showAtmosphere(false)
           .backgroundColor('rgba(0,0,0,0)')
           .width(width)
           .height(height)
