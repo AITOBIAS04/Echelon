@@ -67,11 +67,15 @@ export function ScopedMap({ mode, viewState, layers, onGlobeTransition, onMapRea
   const initialised = useRef(false);
   const modeRef = useRef(mode);
   const onGlobeRef = useRef(onGlobeTransition);
+  const layersRef = useRef(layers);
 
   // Keep refs current so closures see fresh values
   modeRef.current = mode;
   onGlobeRef.current = onGlobeTransition;
+  layersRef.current = layers;
 
+  /** Add all GeoJSON sources, layers, popups — and apply current layer visibility.
+   *  Reads layersRef so it's safe to call from any closure (MutationObserver, style.load). */
   const addLayers = useCallback((map: maplibregl.Map) => {
     // Sources
     map.addSource('scoped-markers', { type: 'geojson', data: SCOPED_MARKERS });
@@ -175,9 +179,10 @@ export function ScopedMap({ mode, viewState, layers, onGlobeTransition, onMapRea
       paint: { 'circle-radius': 6, 'circle-color': '#f59e0b', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff7ed', 'circle-opacity': 0.94 },
     });
 
-    // Apply current layer visibility
+    // Apply current layer visibility (reads ref for fresh state)
+    const currentLayers = layersRef.current;
     for (const key of ALL_LAYERS) {
-      const visibility = layers[key] ? 'visible' : 'none';
+      const visibility = currentLayers[key] ? 'visible' : 'none';
       for (const layerId of LAYER_MAP_IDS[key]) {
         if (map.getLayer(layerId)) {
           map.setLayoutProperty(layerId, 'visibility', visibility);
@@ -202,7 +207,7 @@ export function ScopedMap({ mode, viewState, layers, onGlobeTransition, onMapRea
     ['scoped-routes', 'scoped-clusters', 'scoped-cluster-counts',
      'scoped-inferred-points', 'scoped-evidence-points', 'scoped-certified-points',
      'scoped-adsb', 'scoped-quakes'].forEach(addPopup);
-  }, [layers]);
+  }, []);
 
   // Initialise map
   useEffect(() => {
@@ -252,6 +257,28 @@ export function ScopedMap({ mode, viewState, layers, onGlobeTransition, onMapRea
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Swap basemap tiles on theme change (MutationObserver on <html> class)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const LIGHT_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+    const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+
+    const observer = new MutationObserver(() => {
+      const isLight = document.documentElement.classList.contains('light');
+      const nextStyle = isLight ? LIGHT_STYLE : DARK_STYLE;
+      // setStyle strips all sources/layers — re-add after load
+      map.setStyle(nextStyle);
+      map.once('style.load', () => {
+        addLayers(map);
+      });
+    });
+
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, [addLayers]);
 
   // Fly to new view state
   useEffect(() => {

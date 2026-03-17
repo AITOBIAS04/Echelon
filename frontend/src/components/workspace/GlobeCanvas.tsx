@@ -96,7 +96,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
 
     async function build() {
       const GlobeModule = await import('globe.gl');
-      const Globe = GlobeModule.default;
+      const Globe = GlobeModule.default ?? GlobeModule;
       if (cancelled || !container) return;
 
       const width = container.clientWidth || 800;
@@ -104,8 +104,8 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
 
       const isLight = document.documentElement.classList.contains('light');
       const textureUrl = isLight
-        ? '/globe-land-light.png'
-        : '/globe-land-dark.png';
+        ? '//unpkg.com/three-globe/example/img/earth-day.jpg'
+        : '//unpkg.com/three-globe/example/img/earth-night.jpg';
 
       const theme = isLight
         ? { atmosphere: '#a8c8e6', atmosphereAltitude: 0.14, surface: '#c4d0dc', emissive: '#a8b8c6', emissiveIntensity: 0.06 }
@@ -193,7 +193,8 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
         container.addEventListener('pointerup', scheduleAutoRotate);
 
         globeRef.current = globe;
-      } catch {
+      } catch (err) {
+        console.warn('[GlobeCanvas] build attempt failed:', err);
         buildAttempt.current += 1;
         if (buildAttempt.current < 3) {
           setTimeout(build, 260);
