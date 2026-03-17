@@ -49,7 +49,7 @@ const GLOBE_THEMES = {
     polygonCap: 'rgba(26,28,33,0.82)',
     polygonSide: 'rgba(26,28,33,0.60)',
     polygonStroke: 'rgba(50,54,62,0.45)',
-    polygonAltitude: 0.001,
+    polygonAltitude: 0,
     // Soft barely-there atmosphere
     atmosphere: '#d8d4ee',
     atmosphereAltitude: 0.03,
@@ -64,7 +64,7 @@ const GLOBE_THEMES = {
     polygonCap: 'rgba(220,225,235,0.65)',
     polygonSide: 'rgba(220,225,235,0.40)',
     polygonStroke: 'rgba(180,185,200,0.40)',
-    polygonAltitude: 0.001,
+    polygonAltitude: 0,
     // Cool-toned faint atmosphere
     atmosphere: '#4a4080',
     atmosphereAltitude: 0.12,
@@ -113,11 +113,11 @@ function applyGlobeTheme(globe: GlobeInstance) {
     .atmosphereColor(theme.atmosphere)
     .atmosphereAltitude(theme.atmosphereAltitude);
 
-  // Force polygon re-evaluation — globe.gl caches accessor results internally.
-  // Re-setting polygonsData with the same array triggers a full re-render.
+  // Force polygon re-evaluation — Kapsule compares data references internally.
+  // Passing a new array reference forces a full re-render of all polygons.
   const currentPolygons = globe.polygonsData();
   if (currentPolygons) {
-    globe.polygonsData(currentPolygons);
+    globe.polygonsData([...currentPolygons]);
   }
 
   // Three.js material (ocean sphere)
@@ -182,10 +182,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
 
     let cancelled = false;
     let rafId: number;
-    // Store the controls 'change' handler for cleanup
-    let controlsChangeHandler: (() => void) | null = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let controlsRef: any = null;
+    let zoomRafId: number;
 
     async function build() {
       const [GlobeModule, countries] = await Promise.all([
@@ -233,7 +230,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               .showAtmosphere(true)
               .atmosphereColor(theme.atmosphere)
               .atmosphereAltitude(theme.atmosphereAltitude)
-              // Country polygons — altitude 0.001 keeps land flush with surface
+              // Country polygons — altitude 0 = flat (no extrusion side walls)
               // so signal arcs (altitude 0.15) render above, not behind.
               .polygonsData(countries)
               .polygonAltitude(() => theme.polygonAltitude)
@@ -274,7 +271,6 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
 
             // Orbit controls
             const controls = globe.controls();
-            controlsRef = controls;
             controls.autoRotate = true;
             controls.autoRotateSpeed = 0.32;
             controls.enablePan = false;
@@ -297,22 +293,24 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               container.style.cursor = point ? 'pointer' : 'grab';
             });
 
-            // Zoom-in detection: OrbitControls 'change' event fires on every
-            // camera movement (pan, zoom, rotate). Check altitude against
-            // threshold to trigger globe → scoped transition.
-            controlsChangeHandler = () => {
-              if (modeRef.current !== 'global' || transitionLockRef.current) return;
-              const pov = globe.pointOfView();
-              if (!pov) return;
-              if (pov.altitude <= GLOBE_TO_SCOPED_ALTITUDE) {
-                transitionLockRef.current = true;
-                onScopeRef.current({ center: [pov.lng, pov.lat], zoom: 4.8 });
-                setTimeout(() => {
-                  transitionLockRef.current = false;
-                }, 1200);
+            // Zoom-in detection: rAF loop checks altitude every frame.
+            // OrbitControls 'change' event doesn't reliably propagate
+            // through globe.gl's wrapper, so we poll instead.
+            function checkZoom() {
+              if (cancelled) return;
+              if (modeRef.current === 'global' && !transitionLockRef.current) {
+                const pov = globe.pointOfView();
+                if (pov && pov.altitude <= GLOBE_TO_SCOPED_ALTITUDE) {
+                  transitionLockRef.current = true;
+                  onScopeRef.current({ center: [pov.lng, pov.lat], zoom: 4.8 });
+                  setTimeout(() => {
+                    transitionLockRef.current = false;
+                  }, 1200);
+                }
               }
-            };
-            controls.addEventListener('change', controlsChangeHandler);
+              zoomRafId = requestAnimationFrame(checkZoom);
+            }
+            zoomRafId = requestAnimationFrame(checkZoom);
 
             container.addEventListener('pointerdown', () => {
               if (controls) controls.autoRotate = false;
@@ -346,9 +344,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
     return () => {
       cancelled = true;
       cancelAnimationFrame(rafId);
-      if (controlsChangeHandler && controlsRef) {
-        controlsRef.removeEventListener('change', controlsChangeHandler);
-      }
+      cancelAnimationFrame(zoomRafId);
       if (themeObserverRef.current) themeObserverRef.current.disconnect();
       if (globeRef.current) {
         const renderer = globeRef.current.renderer?.();
