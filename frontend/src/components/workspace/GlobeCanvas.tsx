@@ -37,35 +37,28 @@ const FALLBACK_ARC_SIGNALS = [
 
 // Globe theme colours — high-opacity polygon fills since there's no
 // raster texture underneath. Land needs to read as solid geography.
-// Polygon altitude kept near-zero so arcs/markers render above land.
 const GLOBE_THEMES = {
   light: {
-    // White/cream ocean sphere
     surface: '#f5f5f5',
     emissive: '#f0f0f0',
     emissiveIntensity: 0.02,
     shininess: 0.02,
-    // Dark landmasses on light ocean
     polygonCap: 'rgba(26,28,33,0.82)',
     polygonSide: 'rgba(26,28,33,0.60)',
     polygonStroke: 'rgba(50,54,62,0.45)',
     polygonAltitude: 0,
-    // Soft barely-there atmosphere
     atmosphere: '#d8d4ee',
     atmosphereAltitude: 0.03,
   },
   dark: {
-    // Near-black ocean sphere
     surface: '#0a0a0f',
     emissive: '#10131b',
     emissiveIntensity: 0.25,
     shininess: 0.30,
-    // Light landmasses on dark ocean
     polygonCap: 'rgba(220,225,235,0.65)',
     polygonSide: 'rgba(220,225,235,0.40)',
     polygonStroke: 'rgba(180,185,200,0.40)',
     polygonAltitude: 0,
-    // Cool-toned faint atmosphere
     atmosphere: '#4a4080',
     atmosphereAltitude: 0.12,
   },
@@ -73,11 +66,22 @@ const GLOBE_THEMES = {
 
 const WORLD_ATLAS_URL = 'https://unpkg.com/world-atlas@2/countries-110m.json';
 
-// 1x1 white pixel PNG — fed to globeImageUrl to prevent three-globe from
-// loading its built-in satellite texture. The actual globe colour comes from
-// material.color set in onGlobeReady; this texture is effectively invisible.
-const BLANK_GLOBE_TEXTURE =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12P4////DwAJBgMBBYtFSQAAAABJRU5ErkJggg==';
+// Generate a 1x1 pixel data URL of a given colour.
+// Used as globe surface texture — globe.gl's own API manages the texture lifecycle,
+// so we swap data URLs instead of fighting material.map directly.
+function createColorDataUrl(hex: string): string {
+  const c = document.createElement('canvas');
+  c.width = 1;
+  c.height = 1;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = hex;
+  ctx.fillRect(0, 0, 1, 1);
+  return c.toDataURL();
+}
+
+// Pre-generate themed globe surface textures
+const GLOBE_TEXTURE_LIGHT = createColorDataUrl(GLOBE_THEMES.light.surface);
+const GLOBE_TEXTURE_DARK = createColorDataUrl(GLOBE_THEMES.dark.surface);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GlobeInstance = any;
@@ -100,11 +104,28 @@ function getTheme() {
   return isLight ? GLOBE_THEMES.light : GLOBE_THEMES.dark;
 }
 
-/** Re-apply all theme-dependent globe properties. Called on init + theme toggle. */
+function getThemedTextureUrl() {
+  const isLight = document.documentElement.classList.contains('light');
+  return isLight ? GLOBE_TEXTURE_LIGHT : GLOBE_TEXTURE_DARK;
+}
+
+/**
+ * Re-apply all theme-dependent globe properties. Called on init + theme toggle.
+ *
+ * Uses globe.gl's own `globeImageUrl` API for surface colour — this lets
+ * globe.gl manage the Three.js texture lifecycle internally, avoiding the race
+ * where our `material.map = null` gets overwritten by globe.gl's internal update.
+ *
+ * For polygons, a two-phase clear → repopulate forces Kapsule to re-evaluate
+ * all accessor functions with the new theme values.
+ */
 function applyGlobeTheme(globe: GlobeInstance) {
   const theme = getTheme();
 
-  // Update polygon accessors
+  // 1. Swap globe surface via official API — globe.gl handles texture internally
+  globe.globeImageUrl(getThemedTextureUrl());
+
+  // 2. Update polygon accessor functions with new theme values
   globe
     .polygonCapColor(() => theme.polygonCap)
     .polygonSideColor(() => theme.polygonSide)
@@ -113,24 +134,71 @@ function applyGlobeTheme(globe: GlobeInstance) {
     .atmosphereColor(theme.atmosphere)
     .atmosphereAltitude(theme.atmosphereAltitude);
 
-  // Force polygon re-evaluation — Kapsule compares data references internally.
-  // Passing a new array reference forces a full re-render of all polygons.
-  const currentPolygons = globe.polygonsData();
-  if (currentPolygons) {
-    globe.polygonsData([...currentPolygons]);
+  // 3. Two-phase polygon reset: clear then repopulate on next frame.
+  //    This guarantees Kapsule sees a genuine remove-all + add-all cycle,
+  //    forcing every accessor function to be re-evaluated per data item.
+  //    The single-spread `[...data]` approach was insufficient because
+  //    Kapsule may short-circuit when element references are identical.
+  const data = globe.polygonsData();
+  if (data?.length) {
+    globe.polygonsData([]);
+    requestAnimationFrame(() => {
+      globe.polygonsData(data);
+      // Re-apply polygon offset after data is repopulated
+      applyPolygonOffset(globe);
+    });
   }
 
-  // Three.js material (ocean sphere)
-  const material = globe.globeMaterial();
-  if (material.map) {
-    material.map.dispose();
-    material.map = null;
+  // 4. Fine-tune Three.js material (emissive glow, shininess).
+  //    Don't touch material.map or material.color — globeImageUrl owns those.
+  try {
+    const material = globe.globeMaterial();
+    material.emissive.set(theme.emissive);
+    material.emissiveIntensity = theme.emissiveIntensity;
+    material.shininess = theme.shininess;
+    material.needsUpdate = true;
+  } catch (_) {
+    // Material not ready yet — next theme toggle will catch it
   }
-  material.color.set(theme.surface);
-  material.emissive.set(theme.emissive);
-  material.emissiveIntensity = theme.emissiveIntensity;
-  material.shininess = theme.shininess;
-  material.needsUpdate = true;
+}
+
+/**
+ * Traverse the Three.js scene and enable polygonOffset on polygon meshes.
+ * This pushes polygon surfaces slightly back in the depth buffer, so arcs
+ * and signal points always render in front — even at arc endpoints where
+ * both polygon and arc geometry are at the same altitude (surface level).
+ *
+ * Identifies polygon meshes by geometry type: three-globe creates country
+ * polygons using ConicPolygonGeometry or similar extruded shapes, while
+ * arcs use TubeGeometry and points use CylinderGeometry.
+ */
+function applyPolygonOffset(globe: GlobeInstance) {
+  try {
+    const scene = globe.scene();
+    scene.traverse((obj: any) => {
+      if (!obj.isMesh || !obj.material) return;
+      const geoType = obj.geometry?.type ?? '';
+      // Polygon/Conic/GeoJson geometries = country polygon meshes
+      // BufferGeometry with many vertices near the globe surface = also polygons
+      const isPolygonMesh =
+        geoType.includes('Conic') ||
+        geoType.includes('Polygon') ||
+        geoType.includes('GeoJson') ||
+        geoType.includes('Shape') ||
+        geoType.includes('Extrude');
+      if (isPolygonMesh) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach((m: any) => {
+          m.polygonOffset = true;
+          m.polygonOffsetFactor = 1;
+          m.polygonOffsetUnits = 1;
+          m.needsUpdate = true;
+        });
+      }
+    });
+  } catch (_) {
+    // Scene not ready — safe to skip
+  }
 }
 
 export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
@@ -183,6 +251,8 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
     let cancelled = false;
     let rafId: number;
     let zoomRafId: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let wheelHandler: any = null;
 
     async function build() {
       const [GlobeModule, countries] = await Promise.all([
@@ -212,14 +282,14 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
       const theme = getTheme();
 
       try {
-        // Phase 1: construct with layout + blank texture.
+        // Phase 1: construct with layout + themed texture.
         // showAtmosphere(false) prevents null material.opacity tween crash.
-        // globeImageUrl(BLANK) prevents default satellite texture from loading.
+        // globeImageUrl(themed) prevents default satellite texture from loading.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const globe: any = new Globe(container)
           .showAtmosphere(false)
           .backgroundColor('rgba(0,0,0,0)')
-          .globeImageUrl(BLANK_GLOBE_TEXTURE)
+          .globeImageUrl(getThemedTextureUrl())
           .width(width)
           .height(height)
           .onGlobeReady(() => {
@@ -231,28 +301,27 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               .atmosphereColor(theme.atmosphere)
               .atmosphereAltitude(theme.atmosphereAltitude)
               // Country polygons — altitude 0 = flat (no extrusion side walls)
-              // so signal arcs (altitude 0.15) render above, not behind.
               .polygonsData(countries)
               .polygonAltitude(() => theme.polygonAltitude)
               .polygonCapColor(() => theme.polygonCap)
               .polygonSideColor(() => theme.polygonSide)
               .polygonStrokeColor(() => theme.polygonStroke)
-              // Signal points — above polygon layer
+              // Signal points — raised well above polygon surface
               .pointsData(signalPoints)
               .pointLat('lat')
               .pointLng('lng')
-              .pointAltitude((d: any) => 0.01 + d.size)
+              .pointAltitude((d: any) => 0.12 + d.size)
               .pointRadius((d: any) => d.size * 0.9)
               .pointColor('color')
               .pointResolution(18)
-              // Arcs — well above polygon layer
+              // Arcs — peak altitude raised to clear polygon depth
               .arcsData(arcSignals)
               .arcStartLat('startLat')
               .arcStartLng('startLng')
               .arcEndLat('endLat')
               .arcEndLng('endLng')
               .arcColor('color')
-              .arcAltitude(0.15)
+              .arcAltitude(0.35)
               .arcStroke(0.6)
               .arcDashLength(0.45)
               .arcDashGap(0.8)
@@ -266,8 +335,13 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               .ringPropagationSpeed(1.6)
               .ringRepeatPeriod(1100);
 
-            // Apply theme to material (strips blank texture map, sets solid colour)
+            // Apply theme to material (emissive glow, shininess)
             applyGlobeTheme(globe);
+
+            // Apply polygon offset for z-order after meshes are built
+            requestAnimationFrame(() => {
+              applyPolygonOffset(globe);
+            });
 
             // Orbit controls
             const controls = globe.controls();
@@ -293,24 +367,47 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               container.style.cursor = point ? 'pointer' : 'grab';
             });
 
-            // Zoom-in detection: rAF loop checks altitude every frame.
-            // OrbitControls 'change' event doesn't reliably propagate
-            // through globe.gl's wrapper, so we poll instead.
-            function checkZoom() {
-              if (cancelled) return;
-              if (modeRef.current === 'global' && !transitionLockRef.current) {
+            // ── Zoom-in detection ────────────────────────────────────
+            // Two complementary mechanisms:
+            // 1. rAF loop — checks altitude every frame (covers all interactions)
+            // 2. wheel listener — explicit check after mouse wheel zoom
+
+            function triggerScopeTransition(pov: { lat: number; lng: number }) {
+              transitionLockRef.current = true;
+              onScopeRef.current({ center: [pov.lng, pov.lat], zoom: 4.8 });
+              setTimeout(() => {
+                transitionLockRef.current = false;
+              }, 1200);
+            }
+
+            function checkAltitudeThreshold(): boolean {
+              if (modeRef.current !== 'global' || transitionLockRef.current) return false;
+              try {
                 const pov = globe.pointOfView();
                 if (pov && pov.altitude <= GLOBE_TO_SCOPED_ALTITUDE) {
-                  transitionLockRef.current = true;
-                  onScopeRef.current({ center: [pov.lng, pov.lat], zoom: 4.8 });
-                  setTimeout(() => {
-                    transitionLockRef.current = false;
-                  }, 1200);
+                  triggerScopeTransition(pov);
+                  return true;
                 }
+              } catch (_) {
+                // globe not ready
               }
-              zoomRafId = requestAnimationFrame(checkZoom);
+              return false;
             }
-            zoomRafId = requestAnimationFrame(checkZoom);
+
+            // Mechanism 1: rAF poll
+            function checkZoomLoop() {
+              if (cancelled) return;
+              checkAltitudeThreshold();
+              zoomRafId = requestAnimationFrame(checkZoomLoop);
+            }
+            zoomRafId = requestAnimationFrame(checkZoomLoop);
+
+            // Mechanism 2: wheel event with delayed check
+            wheelHandler = () => {
+              // Delay lets OrbitControls finish processing the zoom
+              setTimeout(() => checkAltitudeThreshold(), 80);
+            };
+            container.addEventListener('wheel', wheelHandler, { passive: true });
 
             container.addEventListener('pointerdown', () => {
               if (controls) controls.autoRotate = false;
@@ -345,6 +442,9 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
       cancelled = true;
       cancelAnimationFrame(rafId);
       cancelAnimationFrame(zoomRafId);
+      if (wheelHandler && containerRef.current) {
+        containerRef.current.removeEventListener('wheel', wheelHandler);
+      }
       if (themeObserverRef.current) themeObserverRef.current.disconnect();
       if (globeRef.current) {
         const renderer = globeRef.current.renderer?.();
