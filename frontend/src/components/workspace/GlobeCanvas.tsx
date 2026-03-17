@@ -39,16 +39,16 @@ const FALLBACK_ARC_SIGNALS = [
 // raster texture underneath. Land needs to read as solid geography.
 const GLOBE_THEMES = {
   light: {
-    surface: '#c8cdd8',        // cool grey-blue ocean — not white, has depth
-    emissive: '#b8bcc8',
-    emissiveIntensity: 0.06,
-    shininess: 0.15,
-    polygonCap: 'rgba(72,78,95,0.48)',      // soft land — clear but not dominant
-    polygonSide: 'rgba(72,78,95,0.30)',
-    polygonStroke: 'rgba(95,100,115,0.20)',  // whisper-thin border definition
+    surface: '#f5f5f5',
+    emissive: '#f0f0f0',
+    emissiveIntensity: 0.02,
+    shininess: 0.02,
+    polygonCap: 'rgba(26,28,33,0.82)',
+    polygonSide: 'rgba(26,28,33,0.60)',
+    polygonStroke: 'rgba(50,54,62,0.45)',
     polygonAltitude: 0.006,
-    atmosphere: '#b8b0e0',     // soft purple haze
-    atmosphereAltitude: 0.08,  // more visible than 0.03
+    atmosphere: '#d8d4ee',
+    atmosphereAltitude: 0.03,
   },
   dark: {
     surface: '#0a0a0f',
@@ -204,14 +204,16 @@ function applyPolygonZOrder(globe: GlobeInstance) {
       }
     });
 
-    // Ensure polygon meshes do NOT have positive polygonOffset.
+    // Clear any positive polygonOffset on polygon meshes (it was pushing
+    // them behind the sphere). Do NOT set depthWrite — three-globe uses
+    // transparent materials (rgba alpha) which default to depthWrite=false.
+    // Forcing depthWrite=true blocks signal points/arcs from showing through.
     if (polygonGroup && maxMeshCount > 10) {
       polygonGroup.traverse((obj: any) => {
         if (!obj.isMesh || !obj.material) return;
         const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
         mats.forEach((m: any) => {
           m.polygonOffset = false;
-          m.depthWrite = true;
           m.needsUpdate = true;
         });
       });
