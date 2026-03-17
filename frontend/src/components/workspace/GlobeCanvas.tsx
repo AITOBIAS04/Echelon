@@ -1,4 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { feature } from 'topojson-client';
+import type { Topology, GeometryCollection } from 'topojson-specification';
 import type { CanvasMode, ViewState } from '../../hooks/useWorkspaceState';
 import {
   GLOBE_DEFAULT_VIEW,
@@ -33,8 +35,50 @@ const FALLBACK_ARC_SIGNALS = [
   { startLat: 29.9, startLng: 32.55, endLat: -33.86, endLng: 151.2, color: ['rgba(251,191,36,0.8)', 'rgba(251,191,36,0.1)'] },
 ];
 
+const GLOBE_THEMES = {
+  light: {
+    atmosphere: '#f2efff',
+    atmosphereAltitude: 0.028,
+    surface: '#f8f7f3',
+    emissive: '#f7f4ec',
+    emissiveIntensity: 0.025,
+    polygonCap: 'rgba(17,19,24,0.03)',
+    polygonSide: 'rgba(17,19,24,0.025)',
+    polygonStroke: 'rgba(26,30,36,0.30)',
+    polygonAltitude: 0.0035,
+    shininess: 0.02,
+  },
+  dark: {
+    atmosphere: '#8074ff',
+    atmosphereAltitude: 0.13,
+    surface: '#070a11',
+    emissive: '#10131b',
+    emissiveIntensity: 0.32,
+    polygonCap: 'rgba(235,239,245,0.06)',
+    polygonSide: 'rgba(235,239,245,0.03)',
+    polygonStroke: 'rgba(255,255,255,0.34)',
+    polygonAltitude: 0.0055,
+    shininess: 0.34,
+  },
+} as const;
+
+const WORLD_ATLAS_URL = 'https://unpkg.com/world-atlas@2/countries-110m.json';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type GlobeInstance = any;
+
+// Cache country features across builds
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let countriesCache: any[] | null = null;
+
+async function loadCountries() {
+  if (countriesCache) return countriesCache;
+  const res = await fetch(WORLD_ATLAS_URL);
+  const topo = (await res.json()) as Topology<{ countries: GeometryCollection }>;
+  const geo = feature(topo, topo.objects.countries);
+  countriesCache = geo.features;
+  return countriesCache;
+}
 
 export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -96,8 +140,11 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
     let rafId: number;
 
     async function build() {
-      // Dynamic import — loads globe.gl chunk
-      const GlobeModule = await import('globe.gl');
+      // Dynamic imports — loads globe.gl chunk + country polygons
+      const [GlobeModule, countries] = await Promise.all([
+        import('globe.gl'),
+        loadCountries(),
+      ]);
       const Globe = GlobeModule.default ?? GlobeModule;
       if (cancelled || !container) return;
 
@@ -112,7 +159,6 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
 
       if (!width || !height) {
         console.warn('[GlobeCanvas] container has zero dimensions:', width, height);
-        // Retry after a short delay — parent layout may not be ready
         buildAttempt.current += 1;
         if (buildAttempt.current < 5) {
           setTimeout(build, 200);
@@ -121,13 +167,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
       }
 
       const isLight = document.documentElement.classList.contains('light');
-      const textureUrl = isLight
-        ? 'https://unpkg.com/three-globe/example/img/earth-day.jpg'
-        : 'https://unpkg.com/three-globe/example/img/earth-night.jpg';
-
-      const theme = isLight
-        ? { atmosphere: '#a8c8e6', atmosphereAltitude: 0.14, surface: '#c4d0dc', emissive: '#a8b8c6', emissiveIntensity: 0.06 }
-        : { atmosphere: '#1a3d5c', atmosphereAltitude: 0.18, surface: '#0c3e5c', emissive: '#1a3d5c', emissiveIntensity: 0.14 };
+      const theme = isLight ? GLOBE_THEMES.light : GLOBE_THEMES.dark;
 
       try {
         // Phase 1: construct with layout-only props.
@@ -139,7 +179,6 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
           .backgroundColor('rgba(0,0,0,0)')
           .width(width)
           .height(height)
-          .globeImageUrl(textureUrl)
           .onGlobeReady(() => {
             if (cancelled) return;
 
@@ -148,6 +187,13 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               .showAtmosphere(true)
               .atmosphereColor(theme.atmosphere)
               .atmosphereAltitude(theme.atmosphereAltitude)
+              // Country polygons (stipple-dot style)
+              .polygonsData(countries)
+              .polygonAltitude(() => theme.polygonAltitude)
+              .polygonCapColor(() => theme.polygonCap)
+              .polygonSideColor(() => theme.polygonSide)
+              .polygonStrokeColor(() => theme.polygonStroke)
+              // Signal points
               .pointsData(signalPoints)
               .pointLat('lat')
               .pointLng('lng')
@@ -155,6 +201,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               .pointRadius((d: any) => d.size * 0.9)
               .pointColor('color')
               .pointResolution(18)
+              // Arcs
               .arcsData(arcSignals)
               .arcStartLat('startLat')
               .arcStartLng('startLng')
@@ -166,6 +213,7 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               .arcDashLength(0.45)
               .arcDashGap(0.8)
               .arcDashAnimateTime(2200)
+              // Rings
               .ringsData(signalPoints.slice(0, 6))
               .ringColor((d: any) => (t: number) =>
                 d.color.replace(')', `,${1 - t})`).replace('rgb', 'rgba')
@@ -174,12 +222,14 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               .ringPropagationSpeed(1.6)
               .ringRepeatPeriod(1100);
 
+            // Globe surface material
             const material = globe.globeMaterial();
             material.color.set(theme.surface);
             material.emissive.set(theme.emissive);
             material.emissiveIntensity = theme.emissiveIntensity;
-            material.shininess = isLight ? 0.02 : 0.34;
+            material.shininess = theme.shininess;
 
+            // Orbit controls
             const controls = globe.controls();
             controls.autoRotate = true;
             controls.autoRotateSpeed = 0.32;

@@ -13,7 +13,7 @@ const DEFAULT_SCOPE_ZOOM = 5;
 
 export const GLOBE_DEFAULT_VIEW = { lat: 18, lng: 10, altitude: 1.95 };
 export const GLOBE_SCOPE_VIEW = { lat: 15, lng: 43, altitude: 0.98 };
-export const GLOBE_TO_SCOPED_ALTITUDE = 0.62;
+export const GLOBE_TO_SCOPED_ALTITUDE = 1.02;
 export const SCOPED_TO_GLOBAL_ZOOM = 2.45;
 
 export function useWorkspaceState() {
