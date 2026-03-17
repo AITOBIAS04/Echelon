@@ -348,6 +348,18 @@ class TestConvergenceScorer:
         assert "market_data" in cells[0].domains
         assert cells[0].geo_region == "26.5,56.2"
 
+    def test_non_geocoded_signals_excluded(self):
+        """Signals without geo_region must not form false convergence cells."""
+        now = datetime.utcnow()
+        signals = [
+            _make_signal(source_group="alt_data_behavioural", geo_region=None, collected_at=now),
+            _make_signal(source_group="market_data", geo_region=None, collected_at=now),
+            _make_signal(source_group="maritime_ais", geo_region=None, collected_at=now),
+        ]
+        scorer = ConvergenceScorer(time_window_minutes=60)
+        cells = scorer.score(signals)
+        assert cells == []
+
     def test_empty_input(self):
         """Empty signal list returns no cells."""
         scorer = ConvergenceScorer(time_window_minutes=60)

@@ -59,8 +59,10 @@ class ConvergenceScorer:
         if bucket_seconds == 0:
             bucket_seconds = 3600
 
-        clusters: dict[tuple[str | None, int], list[OsintSignal]] = defaultdict(list)
+        clusters: dict[tuple[str, int], list[OsintSignal]] = defaultdict(list)
         for signal in signals:
+            if not signal.geo_region:
+                continue  # Non-geocoded signals cannot form spatial convergence
             ts = signal.collected_at
             time_bucket = int(ts.timestamp()) // bucket_seconds
             key = (signal.geo_region, time_bucket)
