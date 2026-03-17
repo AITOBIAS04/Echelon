@@ -320,7 +320,7 @@ export function ScopedMap({ mode, viewState, layers, onGlobeTransition, onMapRea
     if (!map || !viewState || mode !== 'scoped') return;
 
     map.resize();
-    map.flyTo({ center: viewState.center, zoom: viewState.zoom, duration: 800 });
+    map.flyTo({ center: viewState.center, zoom: viewState.zoom, duration: 2000 });
   }, [viewState, mode]);
 
   // Update layer visibility when layer state changes

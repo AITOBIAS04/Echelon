@@ -47,7 +47,7 @@ const GLOBE_THEMES = {
     polygonSide: 'rgba(243,243,246,0.70)',
     polygonStroke: 'rgba(180,184,195,0.35)', // subtle silver border
     polygonAltitude: 0,          // flush with surface — don't occlude signal points
-    atmosphere: '#1a1a2e',
+    atmosphere: '#c8c0e8',
     atmosphereAltitude: 0.10,
   },
   dark: {
@@ -59,8 +59,8 @@ const GLOBE_THEMES = {
     polygonSide: 'rgba(13,13,26,0.88)',
     polygonStroke: 'rgba(40,40,60,0.12)',    // barely visible border
     polygonAltitude: 0,          // flush with surface — don't occlude signal points
-    atmosphere: '#e8e4f0',
-    atmosphereAltitude: 0.18,
+    atmosphere: '#5848a0',
+    atmosphereAltitude: 0.20,
   },
 } as const;
 
@@ -302,9 +302,12 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
               .arcDashAnimateTime(2200)
               // Rings
               .ringsData(signalPoints.slice(0, 6))
-              .ringColor((d: any) => (t: number) =>
-                d.color.replace(')', `,${1 - t})`).replace('rgb', 'rgba')
-              )
+              .ringColor(() => (t: number) => {
+                const light = document.documentElement.classList.contains('light');
+                return light
+                  ? `rgba(0,0,0,${(1 - t) * 0.25})`
+                  : `rgba(255,255,255,${(1 - t) * 0.3})`;
+              })
               .ringMaxRadius((d: any) => 4 + d.size * 16)
               .ringPropagationSpeed(1.6)
               .ringRepeatPeriod(1100);
@@ -437,13 +440,13 @@ export function GlobeCanvas({ mode, onScopeTransition }: GlobeCanvasProps) {
     const controls = globe.controls();
     if (mode === 'global') {
       transitionLockRef.current = true;
-      globe.pointOfView(GLOBE_DEFAULT_VIEW, 720);
+      globe.pointOfView(GLOBE_DEFAULT_VIEW, 1800);
       setTimeout(() => {
         if (controls) controls.autoRotate = true;
         transitionLockRef.current = false;
-      }, 1400);
+      }, 2200);
     } else {
-      globe.pointOfView(GLOBE_SCOPE_VIEW, 720);
+      globe.pointOfView(GLOBE_SCOPE_VIEW, 1800);
       if (controls) controls.autoRotate = false;
     }
   }, [mode]);
