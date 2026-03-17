@@ -1318,3 +1318,32 @@ class ConstructRegistration(Base):
     __table_args__ = (
         Index("uq_construct_slug_version", "slug", "version", unique=True),
     )
+
+
+# ============================================
+# OSINT SIGNALS (Cycle 025)
+# ============================================
+
+class OsintSignal(Base):
+    """Persisted OSINT signal from Path 1 registry-based collectors."""
+    __tablename__ = "osint_signals"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    source_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    source_group: Mapped[str] = mapped_column(String(64), nullable=False)
+    signal_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    geo_region: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    entity_ref: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    content_hash: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    normalised_data: Mapped[dict] = mapped_column(JSON, nullable=False)
+    investigation_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("investigations.id"), nullable=True
+    )
+    collected_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_osint_signals_source_group_collected", "source_group", "collected_at"),
+        Index("ix_osint_signals_investigation_collected", "investigation_id", "collected_at"),
+        Index("ix_osint_signals_geo_collected", "geo_region", "collected_at"),
+    )
