@@ -75,8 +75,28 @@ export function ScopedMap({ mode, viewState, layers, onGlobeTransition, onMapRea
   layersRef.current = layers;
 
   /** Add all GeoJSON sources, layers, popups — and apply current layer visibility.
+   *  Idempotent: removes existing sources/layers first so it survives setStyle() re-entry.
    *  Reads layersRef so it's safe to call from any closure (MutationObserver, style.load). */
   const addLayers = useCallback((map: maplibregl.Map) => {
+    // Guard: clean up any existing layers/sources for idempotent re-entry
+    const allLayerIds = [
+      'scoped-routes', 'scoped-clusters', 'scoped-cluster-counts',
+      'scoped-inferred-halo', 'scoped-inferred-points',
+      'scoped-evidence-halo', 'scoped-evidence-points',
+      'scoped-certified-halo', 'scoped-certified-points',
+      'scoped-adsb', 'scoped-quakes',
+    ];
+    const allSourceIds = [
+      'scoped-markers', 'scoped-clusters-src', 'scoped-routes-src',
+      'scoped-adsb-src', 'scoped-quakes-src',
+    ];
+    for (const id of allLayerIds) {
+      if (map.getLayer(id)) map.removeLayer(id);
+    }
+    for (const id of allSourceIds) {
+      if (map.getSource(id)) map.removeSource(id);
+    }
+
     // Sources
     map.addSource('scoped-markers', { type: 'geojson', data: SCOPED_MARKERS });
     map.addSource('scoped-clusters-src', { type: 'geojson', data: SCOPED_CLUSTERS });
@@ -266,26 +286,31 @@ export function ScopedMap({ mode, viewState, layers, onGlobeTransition, onMapRea
     const LIGHT_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
     const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
-    const isLightNow = document.documentElement.classList.contains('light');
-    let currentStyle = isLightNow ? LIGHT_STYLE : DARK_STYLE;
-
-    const handleStyleReload = () => { addLayers(map); };
+    let swapping = false;
 
     const observer = new MutationObserver(() => {
+      if (swapping) return;
       const isLight = document.documentElement.classList.contains('light');
       const nextStyle = isLight ? LIGHT_STYLE : DARK_STYLE;
-      if (nextStyle === currentStyle) return; // no change
-      currentStyle = nextStyle;
-      // Remove any pending listener before registering new one
-      map.off('style.load', handleStyleReload);
+
+      // Read the map's current style URL to avoid stale closure comparison
+      const currentName = map.getStyle()?.name?.toLowerCase() ?? '';
+      const alreadyCorrect = isLight
+        ? currentName.includes('positron')
+        : currentName.includes('dark');
+      if (alreadyCorrect) return;
+
+      swapping = true;
+      map.once('style.load', () => {
+        addLayers(map);
+        swapping = false;
+      });
       map.setStyle(nextStyle);
-      map.once('style.load', handleStyleReload);
     });
 
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => {
       observer.disconnect();
-      map.off('style.load', handleStyleReload);
     };
   }, [addLayers]);
 
