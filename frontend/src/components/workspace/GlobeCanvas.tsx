@@ -47,20 +47,20 @@ const GLOBE_THEMES = {
     polygonSide: 'rgba(26,28,33,0.60)',
     polygonStroke: 'rgba(50,54,62,0.45)',
     polygonAltitude: 0.006,
-    atmosphere: '#d8d4ee',
-    atmosphereAltitude: 0.03,
+    atmosphere: '#c8c0e8',       // soft purple rim
+    atmosphereAltitude: 0.10,    // visible halo around globe edge
   },
   dark: {
-    surface: '#0a0a0f',
-    emissive: '#10131b',
-    emissiveIntensity: 0.25,
+    surface: '#0c0c14',          // slightly lighter than pure black
+    emissive: '#181d2a',         // brighter navy glow
+    emissiveIntensity: 0.40,     // surface self-illumination
     shininess: 0.30,
     polygonCap: 'rgba(220,225,235,0.65)',
     polygonSide: 'rgba(220,225,235,0.40)',
     polygonStroke: 'rgba(180,185,200,0.40)',
     polygonAltitude: 0.006,
-    atmosphere: '#4a4080',
-    atmosphereAltitude: 0.12,
+    atmosphere: '#5848a0',       // brighter purple atmosphere
+    atmosphereAltitude: 0.22,    // wide glow separates globe from background
   },
 } as const;
 
