@@ -961,7 +961,7 @@
           "local_id": "sprint-2",
           "global_id": 86,
           "label": "CheckPlanner, ContractService, Adapter Integration",
-          "status": "pending",
+          "status": "completed",
           "tasks": 4
         },
         {
