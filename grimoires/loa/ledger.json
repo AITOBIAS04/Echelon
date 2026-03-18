@@ -905,8 +905,10 @@
     {
       "cycle_id": "cycle-025",
       "label": "WorldMonitor Intelligence Contract v2",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-17T00:00:00Z",
+      "archived": "2026-03-17T18:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-17-worldmonitor-intelligence-contract-v2",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -940,9 +942,48 @@
           "tasks": 4
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-026",
+      "label": "OSINT Registry Expansion — Batch 1",
+      "status": "active",
+      "created_at": "2026-03-17T19:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 85,
+          "label": "Registry + Enum + Scaffold",
+          "status": "pending",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 86,
+          "label": "Financial + Corporate Collectors",
+          "status": "pending",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 87,
+          "label": "Open-Data Collectors",
+          "status": "pending",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 88,
+          "label": "Wiring + Counter-Signal + Integration",
+          "status": "pending",
+          "tasks": 4
+        }
+      ]
     }
   ],
-  "active_cycle": "cycle-025",
+  "active_cycle": "cycle-026",
   "active_bugfix": null,
   "global_sprint_counter": 84,
   "bugfix_cycles": [],
