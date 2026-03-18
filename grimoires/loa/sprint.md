@@ -1,113 +1,112 @@
-# Sprint Plan — Cycle-026a: Construct Evidence Anchoring + R2 Ingest Foundation
+# Sprint Plan — Cycle-027: OSINT Registry Expansion — Batch 2
 
-**Cycle:** cycle-026a
+**Cycle:** cycle-027
 **Date:** 17 March 2026
 **Builder:** Loa
-**Sprints:** 4 (0–3)
+**Sprints:** 3 (0–2)
 
 ---
 
-## Sprint 0 — Asset Policy + Registry Schema
+## Sprint 0 — Registry + Scaffold + Procurement Base
 
-**Goal:** define the classification and manifest model before any ingest work.
+**Goal:** Expand the registry, scaffold all 11 collector files, optionally create shared procurement base class.
 
 ### Tasks
 
-1. **Create registry schema models**
-   - `DatasetRegistryEntry`
-   - `DatasetRegistryDocument`
-   - `RegistryFileEntry`
-   - Write 3 tests: valid entry, missing files, invalid hash prefix
+1. **Add 11 entries to `sources.json`** — version bump to `0.6.0`
+   - Full field set per entry matching existing schema
+   - Write 2 tests: RegistryLoader loads 27 entries, `.validate()` returns no errors
 
-2. **Create construct anchor schema**
-   - `AnchorClass`, `AnchorReference`, `EvaluationDimensionAnchor`
-   - Write 2 tests: valid anchor mapping, weak anchor mapping
+2. **Scaffold 11 collector files** in `backend/osint/collectors/`
+   - Each file: class skeleton extending BaseCollector
+   - `source_id()` returns correct string
+   - `_fetch()` raises NotImplementedError (placeholder)
+   - `health_check()` returns UNAVAILABLE (placeholder)
 
-3. **Implement asset classification policy**
-   - snapshot allowlist
-   - live-only denylist
-   - Write 3 tests: snapshot accepted, live accepted, mixed misuse rejected
+3. **Wire all 11 into `build_collector_map()`**
+   - Write 1 test: all 24 source_ids registered in collector map
 
-**Exit:** 8 tests pass. Schema and policy surface are stable.
+4. **(Optional) Create `BaseProcurementCollector`** — shared date-windowing, normalisation, receipt construction for the 5 procurement collectors. If time is tight, skip and implement flat.
+
+**Exit:** 3 tests pass. Registry loads 27 sources. 11 collector files exist. `npm run build` passes.
 
 ---
 
-## Sprint 1 — Benchmark Ingest Registry
+## Sprint 1 — Government Open Data Portals (6 collectors)
 
-**Goal:** create manifest-ready benchmark entries for the initial construct verification pack.
+**Goal:** Implement the 6 government open data collectors: FR, DE, Bundestag DIP, SG, IN, TW.
 
 ### Tasks
 
-1. **Add manifest builder service**
-   - compute per-file hashes
-   - compute top-level asset hash
-   - emit `manifest.json`
+1. **Implement FrenchOpenGovCollector**
+   - GET `/datasets/` with q, organization params. API key header (optional).
+   - Parse CKAN response, extract dataset count and metadata
+   - Write 2 tests: success (mocked), auth failure
 
-2. **Register benchmark assets**
-   - HumanEval
-   - MBPP
-   - HellaSwag
-   - MMLU
-   - MMLU-Pro
-   - SWE-bench Verified metadata/splits
+2. **Implement GermanOpenGovCollector**
+   - GET CKAN `/action/package_search` with q. No auth.
+   - Write 2 tests: success, empty dataset
 
-3. **Create aggregate dataset registry document**
-   - `manifests/dataset_registry.json`
+3. **Implement BundestagDIPCollector**
+   - GET `/dokumente` or `/vorgaenge` with f.typ, date filters. API key header.
+   - Parse legislative documents (Drucksache, Plenarprotokoll)
+   - Write 2 tests: success, invalid Drucksache ID
 
-4. **Write tests**
-   - 4 tests: manifest generation, stable hash, aggregate registry shape, path layout
+4. **Implement SingaporeOpenGovCollector**
+   - GET CKAN `/datastore_search` with q. No auth.
+   - Write 2 tests: success, no datasets
 
-**Exit:** benchmark registry pipeline works locally against populated folders.
+5. **Implement IndianOpenGovCollector**
+   - GET with resource_id, filters, api-key query param.
+   - Write 2 tests: success, auth failure
+
+6. **Implement TaiwanOpenGovCollector**
+   - GET dataset search endpoint. No auth.
+   - Write 2 tests: success, empty response
+
+**Exit:** 12 tests pass. All 6 government collectors produce valid CollectionResult with mocked HTTP. `npm run build` passes.
 
 ---
 
-## Sprint 2 — Standards Snapshot Registry
+## Sprint 2 — European Procurement Collectors + Integration (5 collectors)
 
-**Goal:** add standards snapshots as first-class anchor assets.
-
-### Tasks
-
-1. **Add standards entries**
-   - WCAG 2.2
-   - ARIA APG
-
-2. **Create aggregate standards registry**
-   - `manifests/standards_registry.json`
-
-3. **Write tests**
-   - 2 tests: WCAG manifest, ARIA manifest
-
-**Exit:** standards have the same provenance contract as benchmarks.
-
----
-
-## Sprint 3 — Construct Anchor Mapping
-
-**Goal:** connect asset registries to construct verification semantics.
+**Goal:** Implement the 5 procurement collectors (HU, PL, RO, ES, UA). Integration sweep. Regression.
 
 ### Tasks
 
-1. **Implement construct anchor mapper**
-   - map dimensions to one or more anchor references
-   - mark dimensions with no recognized anchor as `weakly_anchored`
+1. **Implement HungarianTendersCollector**
+   - GET with dateFrom, dateTo. No auth. JSON response.
+   - Write 2 tests: success, no tenders in window
 
-2. **Add initial mapping rules**
-   - deterministic code checks -> `deterministic_check`
-   - benchmark prompt families -> `benchmark_dataset`
-   - accessibility/UI compliance -> `public_standard`
-   - real-world factual expertise -> `live_external_evidence`
+2. **Implement PolishTendersCollector**
+   - GET with dateFrom, dateTo. No auth. JSON response.
+   - Write 2 tests: success, no tenders in window
 
-3. **Optional utility script**
-   - `build_eval_asset_manifest.py`
+3. **Implement RomanianTendersCollector**
+   - GET with dateFrom, dateTo. No auth. JSON response.
+   - Write 2 tests: success, malformed response handling
 
-4. **Write tests**
-   - 3 tests: fully anchored mapping, mixed mapping, weak-only mapping
+4. **Implement SpanishTendersCollector**
+   - GET Atom syndication. No auth. **XML response** — parse with `xml.etree.ElementTree`.
+   - Write 2 tests: success, XML parse error handling
 
-5. **Final verification**
-   - `npm run build`
-   - full targeted test run
+5. **Implement UkrainianTendersCollector**
+   - GET Prozorro API v2.5 `/tenders` with offset pagination. No auth. JSON response.
+   - Write 2 tests: success (Prozorro JSON), no tenders in window
 
-**Exit:** anchor mapping works and weakly anchored criteria are explicit.
+6. **Integration sweep**
+   - Verify CollectionRunner executes all 24 collectors concurrently
+   - Verify persist_signal writes from Batch 2 collectors to osint_signals table
+   - Verify GET /api/v1/osint/signals returns signals filterable by jurisdiction
+   - Write 1 integration test
+
+7. **Path 2 regression test**
+   - Verify `GET /api/v1/world-monitor/live` still returns synthetic signals
+   - Confirm no imports from Path 2 files in any Cycle 027 file
+
+8. **Final `npm run build` + full test run**
+
+**Exit:** All ~26 tests pass. All 11 collectors produce valid results. Registry validates. `npm run build` passes.
 
 ---
 
@@ -115,9 +114,7 @@
 
 | Sprint | Focus | Tests |
 |---|---|---|
-| 0 | Policy + schema | 8 |
-| 1 | Benchmark manifest pipeline | 4 |
-| 2 | Standards manifest pipeline | 2 |
-| 3 | Construct anchor mapping | 3 |
-| **Total** | | **~17** |
-
+| 0 | Registry + scaffold + wiring + optional procurement base | 3 |
+| 1 | Government open data portals (FR, DE, Bundestag, SG, IN, TW) | 12 |
+| 2 | European procurement (HU, PL, RO, ES, UA) + integration + regression | 11 |
+| **Total** | | **~26** |

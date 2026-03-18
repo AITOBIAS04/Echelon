@@ -751,16 +751,16 @@ async def issue_certificate(
     session.add(cert_record)
     await session.flush()
 
-    # Use shared lifecycle: sets ready_at, transitions investigation
-    # to CERTIFICATE_READY, emits WebSocket event. Certificate then
-    # participates in batch anchor flow (READY → ANCHORED → ISSUED).
-    await transition_to_ready(session, cert_record, investigation)
-
-    # Registration status updates when certificate is ultimately ISSUED
-    # via batch anchor. For now, mark the intent based on verdict so
-    # the registration reflects the evaluation result immediately.
-    new_status = "CERTIFIED" if verdict == "PASS" else "FAILED"
-    await registry.update_status(reg.id, new_status)
+    # ── Gate lifecycle transition on issuance status ──
+    # Only READY certificates enter the shared lifecycle (batch anchor flow).
+    # DEFERRED certs are persisted but await remediation before transitioning.
+    # REJECTED certs are persisted for audit trail but never transition.
+    if cert.issuance_status == "READY":
+        await transition_to_ready(session, cert_record, investigation)
+        new_status = "CERTIFIED" if verdict == "PASS" else "FAILED"
+        await registry.update_status(reg.id, new_status)
+    elif cert.issuance_status == "REJECTED":
+        await registry.update_status(reg.id, "FAILED")
 
     await session.commit()
 

@@ -1058,11 +1058,53 @@
           "tasks": 4
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-027",
+      "label": "OSINT Registry Expansion — Batch 2",
+      "status": "active",
+      "created_at": "2026-03-18T19:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 96,
+          "label": "Registry + Scaffold + Procurement Base",
+          "status": "pending",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 97,
+          "label": "Government Open Data Portals (6 collectors)",
+          "status": "pending",
+          "tasks": 6
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 98,
+          "label": "European Procurement Collectors + Integration",
+          "status": "pending",
+          "tasks": 8
+        }
+      ]
     }
   ],
-  "active_cycle": null,
+  "active_cycle": "cycle-027",
   "active_bugfix": null,
-  "global_sprint_counter": 95,
-  "bugfix_cycles": [],
+  "global_sprint_counter": 98,
+  "bugfix_cycles": [
+    {
+      "bug_id": "20260318-d289ed",
+      "label": "Issuance gate: DEFERRED/REJECTED certs must not transition to READY",
+      "severity": "P1",
+      "sprint_id": "sprint-bug-4",
+      "status": "completed",
+      "created_at": "2026-03-18T17:45:00Z",
+      "source": "codex-review"
+    }
+  ],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }
