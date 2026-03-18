@@ -1,184 +1,227 @@
-# PRD — Cycle 037: Contract-Backed Verification Infrastructure
+# PRD — Cycle-026a: Construct Evidence Anchoring + R2 Ingest Foundation
 
-**Cycle:** 037
-**Date:** 2026-03-18
-**Status:** Draft
-**Previous:** Cycles 024 (Construct Verification V1), 026a-c (Evidence Anchoring + Domain Anchors)
+**Cycle:** cycle-026a
+**Date:** 17 March 2026
+**Depends on:** Cycle-024 (Construct Verification V1), Cycle-025 (WorldMonitor Intelligence Contract v2)
+**Sprints:** 4 (0–3)
+**Builder:** Loa (backend/infrastructure only)
+**Planning source:** Soju construct verification follow-up; external benchmark and standards anchoring
 
 ---
 
 ## 1. Problem Statement
 
-### 1.1 Verification Is Currently "Score Some Outputs"
+### 1.1 Construct Verification Still Leans Too Hard On AI-Scored Rubrics
 
-Construct verification works as: register → run episodes → rubric score → PASS/FAIL. There is no canonical declaration of what a construct claims, what checks are planned vs. executed, or what exactly failed. Certificates are unauditable — a PASS tells you nothing about what was tested, and a FAIL gives no machine-readable remediation path.
+Cycle-024 proved that Echelon can run construct verification end-to-end. But the strongest criticism still stands: too much of the verdict rests on AI-generated scoring rather than deterministic or externally anchored checks.
 
-### 1.2 The Trust Gap
+For a sceptical user, "Echelon evaluated the construct and said PASS" is not enough. The certificate needs a stronger answer to: **what external thing anchors this judgement?**
 
-- No formal contract between construct declaration and verification checks
-- No distinction between planned checks and executed checks
-- No explicit refusal tracking (what a construct declares it will NOT do)
-- Vague domain claims pass through unchallenged
-- Certificate provenance doesn't include the spec or contract hash
-- PASS/FAIL binary — no DEFERRED state when some checks can't run
+### 1.2 We Need A Stable Evidence Layer For Reproducible Evaluation
 
-### 1.3 What 037 Fixes
+The right anchor set for construct verification is not "more generic live OSINT." It is a mix of:
 
-This cycle turns construct verification into contract-backed verification infrastructure. Every evaluation run is grounded in a declared, hashed contract. Every certificate says exactly what was planned, what was executed, and what's missing. The substrate is ready for later cycles to add multi-scorer judging and domain packs without redesigning the foundation.
+- deterministic validators
+- benchmark/reference datasets
+- public standards/specifications
+- live external evidence sources when the construct claims real-world expertise
+
+Right now these inputs are scattered, implicit, or not versioned.
+
+### 1.3 R2 Needs A Policy Before It Becomes A Dumping Ground
+
+We are already uploading large assets into Cloudflare R2. Without a policy layer, we risk mixing:
+
+- immutable benchmark corpora
+- standards snapshots
+- live data feeds
+- one-off ad hoc files
+
+That creates provenance ambiguity and makes later certificates harder to defend.
 
 ---
 
 ## 2. Product Contracts
 
-### 2.1 EvaluationContract — Persisted, Hash-Addressed
+### 2.1 Two Anchor Classes
 
-New `evaluation_contracts` table. One ACTIVE contract per registration. Creating a new contract SUPERSEDES the previous one.
+Cycle-026a introduces two explicit evidence-anchor classes:
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `id` | UUID PK | |
-| `construct_registration_id` | FK | Links to construct_registrations |
-| `spec_hash` | SHA-256 | Hash of normalized construct.yaml content |
-| `contract_hash` | SHA-256 | Hash of full contract including check plan |
-| `normalized_claims` | JSON | Parsed domain claims with vagueness flags |
-| `explicit_refusals` | JSON | Things the construct declares it will NOT do |
-| `planned_checks` | JSON | Deterministic check plan derived from claims |
-| `tier_cap` | nullable string | Max achievable tier if vague claims detected |
-| `status` | enum | ACTIVE / SUPERSEDED |
-| `created_at`, `updated_at` | timestamps | |
+**A. Snapshot assets in R2**
+- versioned or pinned datasets/specifications
+- treated as reproducible evaluation inputs
+- hashed and listed in registry manifests
 
-### 2.2 Issuance Semantics — READY / DEFERRED / REJECTED
+**B. Live external evidence sources**
+- freshness matters
+- should remain API/collector-driven
+- may have small cache artifacts, but are not treated as canonical static ground truth
 
-| State | Meaning | Condition |
-|-------|---------|-----------|
-| READY | All planned checks executed, verdict PASS | `executed == planned` and `verdict == PASS` |
-| DEFERRED | Some planned checks couldn't execute | `executed < planned` — missing dataset, dependency unavailable |
-| REJECTED | Verdict FAIL or critical check failed | `verdict == FAIL` or critical planned check failed |
+### 2.2 First Snapshot Pack For R2
 
-DEFERRED certificates carry a machine-readable remediation payload:
+Load the following into R2 as the initial construct-evaluation anchor set:
+
+| Asset | Class | Why it belongs |
+|---|---|---|
+| HumanEval | benchmark | deterministic coding benchmark |
+| MBPP | benchmark | code generation benchmark |
+| HellaSwag | benchmark | reasoning/common-sense reference set |
+| MMLU | benchmark | broad cognitive/domain benchmark |
+| MMLU-Pro | benchmark | harder benchmark for stronger constructs |
+| SWE-bench Verified metadata/splits | benchmark | software maintenance / repo-task reference |
+| WCAG 2.2 | standard | accessibility anchor for UI/frontend constructs |
+| ARIA APG | standard | interaction/accessibility pattern anchor |
+
+### 2.3 Live Sources Stay Live
+
+These sources are recognized as valuable anchors for some verification workloads, but **must remain live collectors** rather than bucket-first truth snapshots:
+
+| Source | Why live |
+|---|---|
+| SEC EDGAR | filing freshness matters |
+| OFAC sanctions | list changes over time |
+| UN sanctions | list changes over time |
+| GDELT | event stream freshness matters |
+| Global Fishing Watch | activity and time window matter |
+
+### 2.4 R2 Layout Contract
+
+Use a stable, versioned R2 layout:
+
+```text
+r2://echelon-eval-assets/
+  benchmarks/
+    humaneval/{version}/
+    mbpp/{version}/
+    hellaswag/{version}/
+    mmlu/{version}/
+    mmlu-pro/{version}/
+    swe-bench-verified/{version}/
+  standards/
+    wcag/{version}/
+    aria-apg/{version}/
+  manifests/
+    dataset_registry.json
+    standards_registry.json
+```
+
+Each asset folder contains:
+
+```text
+{asset}/{version}/raw/
+{asset}/{version}/manifest.json
+{asset}/{version}/LICENSE
+```
+
+### 2.5 Local Staging Root Is Configurable
+
+Cycle-026a must not hardcode a developer-specific absolute filesystem path.
+
+The implementation should support a configurable local staging root, for example:
+
+- env var: `ECHELON_EVAL_DATA_ROOT`
+- or equivalent config setting consumed by the manifest/ingest utilities
+
+Example operator path only:
+
+```text
+/Users/tobiasharber/Developer/echelon-datasets/eval-benchmarks
+```
+
+This path is a valid local staging location, but it is **not** part of the product contract.
+
+### 2.6 Dataset Registry Contract
+
+Every snapshot asset must have a machine-readable registry entry:
 
 ```json
 {
-  "status": "DEFERRED",
-  "reason": "checks_unavailable",
-  "missing_checks": [
-    {"check_id": "bench-humaneval", "reason": "dataset_not_available"},
-    {"check_id": "bench-swe-verified", "reason": "r2_manifest_missing"}
-  ],
-  "executed_count": 8,
-  "planned_count": 10,
-  "recommendation": "Upload missing datasets and re-run"
+  "asset_id": "humaneval_v1",
+  "class": "benchmark",
+  "source_url": "https://github.com/openai/human-eval",
+  "version": "v1",
+  "license": "MIT",
+  "retrieved_at": "2026-03-17T12:00:00Z",
+  "content_hash": "sha256:...",
+  "files": [
+    {
+      "path": "raw/problem_file.jsonl",
+      "size_bytes": 12345,
+      "content_hash": "sha256:..."
+    }
+  ]
 }
 ```
 
-### 2.3 PolicyNormalizer — Accept + Downgrade
+### 2.7 Construct Anchor Mapping Contract
 
-Vague domain claims are accepted at registration but flagged. Tier cap limits the maximum achievable certificate tier:
+Every construct evaluation dimension must declare at least one anchor type:
 
-- Precise claims (e.g., "Design Systems", "Motion Design") → no tier cap
-- Vague claims (e.g., "security", "AI", "general") → tier capped at UNVERIFIED
-- Explicit refusals extracted from construct.yaml `refusals:` field and stored on contract
+- `deterministic_check`
+- `benchmark_dataset`
+- `public_standard`
+- `live_external_evidence`
 
-### 2.4 Planned vs Executed — Certificate Transparency
-
-Every certificate gains `check_plan` section:
-
-```json
-{
-  "check_plan": {
-    "total_planned": 10,
-    "total_executed": 8,
-    "checks": [
-      {"id": "rubric-design-systems", "type": "RUBRIC", "status": "EXECUTED", "score": 0.82},
-      {"id": "bench-humaneval", "type": "BENCHMARK", "status": "NOT_EXECUTED", "reason": "dataset_not_available"}
-    ]
-  },
-  "contract_hash": "sha256:...",
-  "spec_hash": "sha256:..."
-}
-```
-
-### 2.5 Hash Invalidation Rules
-
-- construct.yaml content changes → new `spec_hash` → existing contract SUPERSEDED
-- Check plan changes (new datasets available, new rubrics) → new `contract_hash`
-- Certificate references both hashes immutably — verifier checks if contract is still ACTIVE
+If a scoring dimension maps to none of these, it is flagged as **weakly anchored** in the evaluation contract and the certificate provenance.
 
 ---
 
 ## 3. What This Cycle Does NOT Do
 
-- **No multi-scorer orchestration** (future cycle)
-- **No domain-specific security/pack logic** (future cycle)
-- **No frontend work**
-- **No R2 upload integration** (evidence anchoring pipeline from 026a-c is separate)
-- **No changes to ConstructScorer** (rubric scoring engine stays as-is)
-- **No changes to existing rubric definitions**
+- **Does NOT replace live OSINT collectors with static bucket snapshots**
+- **Does NOT expand the osint_signals schema**
+- **Does NOT implement the next construct-spec ingestion cycle in full**
+- **Does NOT build frontend views**
+- **Does NOT ingest speculative large scientific datasets unless they are already in scope for active construct verification**
 
 ---
 
-## 4. Existing Surface Being Extended
+## 4. Acceptance Criteria
 
-| Component | Current | 037 Change |
-|-----------|---------|------------|
-| `ConstructRegistration` model | slug, version, skill_manifest, domain_claims | FK to evaluation_contracts |
-| `ConstructRegistry` service | Register, list, get, update_status | Trigger contract creation after registration |
-| `ConstructAdapter` service | Create runs, capture episodes, complete runs | Thread contract_hash into run config |
-| `ConstructScorer` service | Rubric scoring + verdict | **No change** |
-| `ConstructCertificateBuilder` | Build + persist certificates | Add check_plan, hashes, issuance status, remediation |
-| `construct_routes.py` | API endpoints | Add contract endpoints, update certificate response |
-| `eval_asset_policy.py` | Asset classification | Used by CheckPlanner to determine feasible benchmark checks |
-| `construct_anchor_mapper.py` | Maps dimensions to anchors | Used by CheckPlanner for anchor-based checks |
-
----
-
-## 5. New Components
-
-| Component | File | Purpose |
-|-----------|------|---------|
-| `SpecLoader` | `backend/services/spec_loader.py` | Parse construct.yaml → normalized ConstructSpec dataclass |
-| `PolicyNormalizer` | `backend/services/policy_normalizer.py` | Validate claims, extract refusals, flag vagueness, compute tier_cap |
-| `CheckPlanner` | `backend/services/check_planner.py` | Contract + available assets → deterministic list of planned checks |
-| `ContractService` | `backend/services/contract_service.py` | CRUD for contracts, hash computation, supersession logic |
-| `EvaluationContract` model | `backend/database/models.py` | SQLAlchemy model |
-| Alembic migration | `c037_evaluation_contracts` | New table + FK on investigations |
+1. R2 contains the first benchmark anchor pack
+2. R2 contains WCAG 2.2 and ARIA APG snapshots
+3. Each snapshot asset has a manifest with source URL, version, retrieval time, and content hash
+4. `dataset_registry.json` and `standards_registry.json` exist and validate
+5. Snapshot assets are clearly separated from live evidence sources
+6. Construct evaluation dimensions can declare anchor classes
+7. Weakly anchored dimensions are explicitly labeled
+8. No live source is misrepresented as immutable static ground truth
+9. `npm run build` still passes (no frontend changes expected)
 
 ---
 
-## 6. Acceptance Criteria
-
-1. Every new evaluation run references an ACTIVE contract via `contract_hash`
-2. Every certificate includes `contract_hash`, `spec_hash`, and `check_plan` with planned-vs-executed status
-3. DEFERRED certificates include machine-readable remediation payload listing missing checks
-4. Vague domain claims produce tier-capped contracts (not registration failures)
-5. Explicit refusals are extracted from construct.yaml and stored on the contract
-6. Contract hash changes when spec changes → old contract SUPERSEDED, new one ACTIVE
-7. Runs against a SUPERSEDED contract are rejected (must create new contract first)
-8. All existing construct verification tests pass (regression)
-9. New tests cover: contract creation, check planning, READY/DEFERRED/REJECTED paths, hash invalidation, vague claim detection, refusal extraction
-
----
-
-## 7. Test Plan
+## 5. Test Plan
 
 | Area | Tests | Coverage |
-|------|-------|---------|
-| SpecLoader | 6 | Parse valid yaml, reject malformed, hash stability, refusals extraction |
-| PolicyNormalizer | 8 | Precise claims pass, vague claims flagged, tier cap computed, refusals normalized |
-| CheckPlanner | 8 | Deterministic plan from contract, benchmark availability check, anchor-based checks, missing dataset handling |
-| ContractService | 6 | Create, supersede, hash computation, FK integrity, duplicate prevention |
-| Certificate integration | 6 | READY/DEFERRED/REJECTED paths, remediation payload, check_plan in output |
-| Hash invalidation | 4 | Spec change → supersede, contract_hash change detection, run rejection on superseded |
-| Regression | 4 | Existing V1 registration+run+certificate flow unchanged |
-| **Total** | **~42** | |
+|---|---|---|
+| Registry manifest schema | 3 | valid entry, missing field, bad hash prefix |
+| R2 path policy | 2 | benchmark path, standards path |
+| Snapshot vs live classification | 3 | snapshot accepted, live accepted, invalid mixed class rejected |
+| Benchmark ingest manifests | 4 | HumanEval, MBPP, MMLU, SWE-bench metadata |
+| Standards ingest manifests | 2 | WCAG, ARIA APG |
+| Anchor mapping model | 4 | deterministic, benchmark, standard, weakly anchored |
+| Construct anchor policy | 3 | fully anchored contract, mixed contract, weak-only contract flagged |
+| **Total** | **~21** | |
 
 ---
 
-## 8. Risks
+## 6. Recommended Source URLs
 
-| Risk | Mitigation |
-|------|------------|
-| construct.yaml format varies across packs | SpecLoader validates against strict schema; reject malformed with clear errors |
-| CheckPlanner depends on R2 manifest availability | Graceful degradation → DEFERRED issuance, not crash |
-| Hash invalidation cascading | Only ACTIVE contracts affected; historical certificates immutably reference their contract_hash |
-| Vague claim detection false positives | Conservative — only flag known-vague terms (configurable allowlist) |
+### Snapshot Into R2
+
+- HumanEval: `https://github.com/openai/human-eval`
+- MBPP: `https://github.com/google-research/google-research/tree/master/mbpp`
+- HellaSwag: `https://github.com/rowanz/hellaswag`
+- MMLU: `https://github.com/hendrycks/test`
+- MMLU-Pro: `https://github.com/TIGER-AI-Lab/MMLU-Pro`
+- SWE-bench: `https://github.com/SWE-bench/SWE-bench`
+- WCAG 2.2: `https://www.w3.org/TR/WCAG22/`
+- ARIA APG: `https://www.w3.org/WAI/ARIA/apg/`
+
+### Keep Live
+
+- SEC EDGAR: `https://www.sec.gov/edgar/sec-api-documentation`
+- OFAC: `https://ofac.treasury.gov/sdn-list-data-formats-data-schemas/tutorial-on-the-use-of-list-related-legacy-flat-files`
+- UN sanctions: `https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list`
+- GDELT: `https://www.gdeltproject.org/data.html`
+- Global Fishing Watch: `https://globalfishingwatch.org/our-apis/documentation`

@@ -1,24 +1,25 @@
 {
-  "plan_id": "plan-20260310-c023db",
-  "branch": "feature/cycle-023-db-unification",
+  "plan_id": "plan-20260317-c026a",
+  "branch": "feature/cycle-026a-evidence-anchoring",
   "state": "RUNNING",
   "timestamps": {
-    "started": "2026-03-10T10:05:00Z",
-    "last_activity": "2026-03-10T10:05:00Z"
+    "started": "2026-03-17T23:50:00Z",
+    "last_activity": "2026-03-17T23:50:00Z"
   },
   "sprints": {
-    "total": 3,
+    "total": 4,
     "completed": 0,
     "current": "sprint-0",
     "list": [
-      {"id": "sprint-0", "global_id": 73, "status": "pending", "cycles": 0},
-      {"id": "sprint-1", "global_id": 74, "status": "pending", "cycles": 0},
-      {"id": "sprint-2", "global_id": 75, "status": "pending", "cycles": 0}
+      {"id": "sprint-0", "global_id": 89, "status": "pending", "cycles": 0, "files_changed": 0},
+      {"id": "sprint-1", "global_id": 90, "status": "pending", "cycles": 0, "files_changed": 0},
+      {"id": "sprint-2", "global_id": 91, "status": "pending", "cycles": 0, "files_changed": 0},
+      {"id": "sprint-3", "global_id": 92, "status": "pending", "cycles": 0, "files_changed": 0}
     ]
   },
   "options": {
     "from": 0,
-    "to": 2,
+    "to": 3,
     "max_cycles": 20,
     "timeout_hours": 8
   },

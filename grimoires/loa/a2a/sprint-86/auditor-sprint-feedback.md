@@ -1,40 +1,52 @@
-# Sprint 86 (Cycle 037, Sprint 2) — Security Audit
+# Sprint 86 (cycle-026 sprint-1) — Security Audit
 
-**Verdict:** APPROVED - LETS FUCKING GO
+APPROVED - LETS FUCKING GO
+
+## Audit Scope
+4 collectors with API key auth: FRED, Alpha Vantage, OpenCorporates, Etherscan.
 
 ## Security Checklist
 
-| Category | Status | Notes |
-|----------|--------|-------|
-| Secrets | PASS | No hardcoded credentials; hash computation uses stdlib only |
-| Auth/Authz | PASS | ACTIVE-only validation gates run creation; one-way SUPERSEDED transition |
-| Input Validation | PASS | State guards on supersession; contract_hash validated before run creation |
-| Data Privacy | PASS | No PII; hash-addressed contracts; truncated hashes in error messages |
-| API Security | N/A | No API endpoints in this sprint (sprint 3) |
-| Error Handling | PASS | ValueError with descriptive messages; no info disclosure |
-| Code Quality | PASS | Frozen dataclass, deterministic JSON, proper async patterns |
+### Secrets: PASS
+- All API keys from env vars only (ECHELON_*_API_KEY)
+- All receipts use safe_query/safe_url (key stripped)
+- Tests explicitly assert: `"test-key" not in str(receipt.request_parameters)`
+- No hardcoded credentials
 
-## Hash Chain Integrity
+### Auth/Authz: PASS
+- API keys sent via query parameter (correct per API docs)
+- Missing key returns CollectionResult(success=False), does NOT raise
 
-- `spec_hash` = SHA-256(canonical YAML fields) — deterministic
-- `contract_hash` = SHA-256(`spec_hash` + `:` + canonical checks JSON) — collision-resistant
-- Payload format prevents length-extension attacks via delimiter
-- `sort_keys=True` + `separators=(",",":")` ensures canonical representation
+### Input Validation: ADVISORY (non-blocking)
+- Request dict values (series_id, symbol, address, action) concatenated into URLs without urllib.parse.quote()
+- **Mitigating factors:**
+  1. Request dict is INTERNAL — built by CollectionRunner._build_request() from CollectionPlan, not user-facing
+  2. Python 3.7.2+ blocks CRLF in urllib.request.Request URLs (CVE-2019-9740, CVE-2019-9947)
+  3. Parameter pollution requires attacker control of oracle_config (internal system config)
+- **Recommendation:** Add urllib.parse.quote() in Batch 2 refactoring cycle (non-blocking for Batch 1)
 
-## Files Reviewed
+### Data Privacy: PASS
+- No PII collected or stored
 
-| File | Lines | Verdict |
-|------|-------|---------|
-| `backend/services/check_planner.py` | 137 | CLEAN |
-| `backend/services/contract_service.py` | 162 | CLEAN |
-| `backend/services/construct_adapter.py` | 291 | CLEAN (modifications only) |
-| `backend/tests/test_check_planner.py` | 154 | CLEAN |
-| `backend/tests/test_contract_service.py` | 126 | CLEAN |
-| `backend/tests/test_hash_invalidation.py` | 112 | CLEAN |
+### API Security: PASS
+- 30s timeout on all HTTP requests
+- Response size unbounded (.read()) — ADVISORY: add 10MB limit in Batch 2
+- All errors return CollectionResult(success=False), no exceptions leak
 
-## Observations (Informational — No Action Required)
+### Error Handling: PASS
+- HTTPError, URLError, OSError, ConnectionError all caught
+- Error messages contain HTTP codes/reasons only, no secrets
+- JSONDecodeError/UnicodeDecodeError caught in _build_success_result
 
-- `contract_service.py:99` uses string `"ACTIVE"` instead of enum value — SQLAlchemy handles coercion, but using `EvaluationContractStatus.ACTIVE` would be marginally safer. LOW severity, no security impact.
-- Lazy import at `construct_adapter.py:73` is appropriate for circular dependency avoidance.
+### Code Quality: PASS
+- Consistent patterns across all 4 collectors
+- Hash invariants enforced by BaseCollector.fetch() wrapper
 
-**18/18 sprint tests passing. 32/32 cumulative. No security findings.**
+## Findings Summary
+
+| Finding | Severity | Status |
+|---------|----------|--------|
+| API key in health_check() URL | LOW | Non-blocking (internal monitoring, not logged by collector) |
+| No urllib.parse.quote() on request params | LOW | Non-blocking (internal input, Python CRLF protection) |
+| Unbounded .read() | LOW | Non-blocking (known API response sizes, 30s timeout) |
+| Etherscan AND vs OR in status check | INFO | Non-blocking (works due to API consistency) |

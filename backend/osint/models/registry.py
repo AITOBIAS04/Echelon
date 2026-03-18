@@ -46,6 +46,13 @@ _VALID_SOURCE_GROUPS = frozenset([
     "demographic_economic",
     "nuclear_wmd",
     "protest_unrest",
+    # ── Cycle-026: OSINT Registry Expansion Batch 1 ──
+    "blockchain_data",
+    "geospatial",
+    "environmental",
+    "event_data",
+    # ── Cycle-026b: Domain Anchors Expansion ──
+    "research_evidence",
 ])
 
 _VALID_RESOLUTION_ROLES = frozenset([

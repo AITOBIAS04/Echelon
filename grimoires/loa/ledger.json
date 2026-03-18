@@ -905,8 +905,10 @@
     {
       "cycle_id": "cycle-025",
       "label": "WorldMonitor Intelligence Contract v2",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-17T00:00:00Z",
+      "archived": "2026-03-17T18:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-17-worldmonitor-intelligence-contract-v2",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -942,31 +944,115 @@
       ]
     },
     {
+      "cycle_id": "cycle-026",
+      "label": "OSINT Registry Expansion — Batch 1",
+      "status": "archived",
+      "created_at": "2026-03-17T19:00:00Z",
+      "archived": "2026-03-17T23:45:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-17-osint-registry-expansion-batch1",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 85,
+          "label": "Registry + Enum + Scaffold",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 86,
+          "label": "Financial + Corporate Collectors",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 87,
+          "label": "Open-Data Collectors",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 88,
+          "label": "Wiring + Counter-Signal + Integration",
+          "status": "completed",
+          "tasks": 4
+        }
+      ]
+    },
+    {
+      "cycle_id": "cycle-026a",
+      "label": "Construct Evidence Anchoring + R2 Ingest Foundation",
+      "status": "archived",
+      "created_at": "2026-03-17T23:50:00Z",
+      "archived": "2026-03-18T18:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-17-construct-evidence-anchoring-r2-ingest",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 89,
+          "label": "Asset Policy + Registry Schema",
+          "status": "completed",
+          "tasks": 3
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 90,
+          "label": "Benchmark Ingest Registry",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 91,
+          "label": "Standards Snapshot Registry",
+          "status": "completed",
+          "tasks": 3
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 92,
+          "label": "Construct Anchor Mapping",
+          "status": "completed",
+          "tasks": 5
+        }
+      ]
+    },
+    {
       "cycle_id": "cycle-037",
       "label": "Contract-Backed Verification Infrastructure",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-18T00:00:00Z",
+      "archived": "2026-03-18T18:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-18-contract-backed-verification",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
       "sprints": [
         {
           "local_id": "sprint-1",
-          "global_id": 85,
+          "global_id": 93,
           "label": "Foundation — Model, Migration, SpecLoader, PolicyNormalizer",
           "status": "completed",
           "tasks": 4
         },
         {
           "local_id": "sprint-2",
-          "global_id": 86,
+          "global_id": 94,
           "label": "CheckPlanner, ContractService, Adapter Integration",
           "status": "completed",
           "tasks": 4
         },
         {
           "local_id": "sprint-3",
-          "global_id": 87,
+          "global_id": 95,
           "label": "API Routes, Certificate Integration, Regression",
           "status": "completed",
           "tasks": 4
@@ -974,9 +1060,9 @@
       ]
     }
   ],
-  "active_cycle": "cycle-037",
+  "active_cycle": null,
   "active_bugfix": null,
-  "global_sprint_counter": 87,
+  "global_sprint_counter": 95,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }
