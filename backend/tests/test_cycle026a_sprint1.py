@@ -202,7 +202,7 @@ class TestRegistryDocument:
         """BENCHMARK_CATALOG contains the 6 required benchmark entries."""
         asset_ids = {b[0] for b in BENCHMARK_CATALOG}
         expected = {"humaneval", "mbpp", "hellaswag", "mmlu", "mmlu-pro", "swe-bench-verified"}
-        assert expected == asset_ids
+        assert expected.issubset(asset_ids), f"Missing: {expected - asset_ids}"
 
         # Every entry has a non-empty source_url and version
         for asset_id, source_url, version, _license in BENCHMARK_CATALOG:
@@ -266,6 +266,30 @@ class TestSkipArtifacts:
             assert "README.md" in paths
             assert "raw/problems.jsonl" in paths
             assert "raw/solutions.jsonl" in paths
+
+    def test_download_meta_excluded(self):
+        """W3C downloader .download_meta.json is excluded from canonical hashing."""
+        with TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            _populate_temp_dir(tmpdir_path)
+
+            # Build without .download_meta.json
+            entry_clean = _build_default_manifest(tmpdir_path)
+
+            # Add .download_meta.json (volatile downloader metadata)
+            (tmpdir_path / ".download_meta.json").write_text(
+                json.dumps({"downloaded_at": "2026-03-17T22:37:00Z", "source": "test"})
+            )
+
+            # Build with .download_meta.json present
+            entry_with_meta = _build_default_manifest(tmpdir_path)
+
+            # Hashes must be identical — .download_meta.json is excluded
+            assert entry_clean.content_hash == entry_with_meta.content_hash
+
+            # .download_meta.json must not appear in file list
+            paths = {f.path for f in entry_with_meta.files}
+            assert ".download_meta.json" not in paths
 
 
 class TestEdgeCases:

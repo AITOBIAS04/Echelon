@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Echelon OSINT Source Registry — Batch 1 Expansion",
-  "description": "Runtime registry: 3 WorldMonitor + 1 Companies House + 2 existing + 10 Batch 1 sources (Cycle-026). 16 total runtime sources.",
-  "version": "0.5.0",
+  "description": "Runtime registry: 3 WorldMonitor + 1 Companies House + 2 existing + 10 Batch 1 + 1 Cycle-026b sources. 17 total runtime sources.",
+  "version": "0.6.0",
   "generated_at": "2026-03-17T00:00:00Z",
   "sources": [
     {
@@ -440,6 +440,34 @@
       "legal_risk": "low",
       "cost_model": "free_limited",
       "rate_limit_notes": "Free API key. 1000 requests/month.",
+      "gap_policy_default": false,
+      "query_determinism": "pure_id_lookup",
+      "receipt_body_required": false,
+      "requires_legal_review": false,
+      "evidence_capture": {
+        "request_params": true,
+        "response_headers": true,
+        "payload_hash": true,
+        "timestamp_precision": "second"
+      },
+      "theatre_families": ["OSINT_COMPOSED_ORACLE"],
+      "collector_status": "scaffold"
+    },
+    {
+      "source_id": "semantic_scholar_api",
+      "source_name": "Semantic Scholar Academic Graph",
+      "source_group": "research_evidence",
+      "priority_bucket": "scoring_grade",
+      "resolution_role": "primary_evidence",
+      "independence_upstream_id": "semantic_scholar",
+      "receipt_mode_minimum": "http_transcript",
+      "world_monitor_domain": null,
+      "settlement_eligible": false,
+      "jurisdiction": "GLOBAL",
+      "replayability": "strong",
+      "legal_risk": "low",
+      "cost_model": "free_limited",
+      "rate_limit_notes": "Optional API key via x-api-key header. Unauthenticated: ~100 req/5min. Authenticated: higher limits.",
       "gap_policy_default": false,
       "query_determinism": "pure_id_lookup",
       "receipt_body_required": false,

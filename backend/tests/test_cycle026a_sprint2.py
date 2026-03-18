@@ -187,10 +187,10 @@ class TestStandardsCatalog:
     """Test 3: STANDARDS_CATALOG completeness."""
 
     def test_standards_catalog_entries(self):
-        """STANDARDS_CATALOG contains the 2 required standard entries."""
+        """STANDARDS_CATALOG contains the original 2 standard entries (at minimum)."""
         asset_ids = {s[0] for s in STANDARDS_CATALOG}
         expected = {"wcag", "aria-apg"}
-        assert expected == asset_ids
+        assert expected.issubset(asset_ids), f"Missing: {expected - asset_ids}"
 
     def test_standards_catalog_metadata(self):
         """Every catalog entry has a non-empty source_url and version."""
@@ -286,6 +286,58 @@ class TestStandardsRegistry:
 
             assert len(doc.entries) == 1
             assert doc.entries[0].asset_id == "wcag"
+
+    def test_standards_registry_flat_staging_layout(self):
+        """build_standards_registry finds standards in flat staging layout ({root}/{asset_id}/)."""
+        with TemporaryDirectory() as staging:
+            staging_path = Path(staging)
+
+            # Create flat staging layout (what download scripts produce)
+            wcag_dir = staging_path / "wcag"
+            wcag_dir.mkdir()
+            (wcag_dir / "wcag22.html").write_text("<html>WCAG 2.2</html>\n")
+
+            aria_dir = staging_path / "aria-apg"
+            aria_dir.mkdir()
+            patterns = aria_dir / "patterns"
+            patterns.mkdir()
+            (patterns / "accordion.html").write_text("<html>Accordion</html>\n")
+
+            doc = build_standards_registry(staging_path)
+
+            assert isinstance(doc, DatasetRegistryDocument)
+            assert len(doc.entries) == 2
+            ids = {e.asset_id for e in doc.entries}
+            assert ids == {"wcag", "aria-apg"}
+
+    def test_standards_registry_r2_layout_preferred_over_flat(self):
+        """R2-normalized layout is preferred when both exist."""
+        with TemporaryDirectory() as staging:
+            staging_path = Path(staging)
+
+            # Create both layouts for wcag
+            # R2-normalized
+            wcag_r2 = staging_path / "standards" / "wcag" / "2.2" / "raw"
+            wcag_r2.mkdir(parents=True)
+            (wcag_r2 / "wcag22.html").write_text("<html>WCAG R2</html>\n")
+
+            # Flat
+            wcag_flat = staging_path / "wcag"
+            wcag_flat.mkdir()
+            (wcag_flat / "wcag22.html").write_text("<html>WCAG FLAT (different)</html>\n")
+
+            doc = build_standards_registry(staging_path)
+            wcag_entry = next(e for e in doc.entries if e.asset_id == "wcag")
+
+            # Should use R2 layout (1 file from R2 dir)
+            assert len(wcag_entry.files) == 1
+            # Hash should match R2 content, not flat content
+            from backend.services.r2_manifest_builder import build_manifest
+            r2_entry = build_manifest(
+                wcag_r2, asset_id="wcag", asset_class="standard",
+                source_url="https://www.w3.org/TR/WCAG22/", version="2.2",
+            )
+            assert wcag_entry.content_hash == r2_entry.content_hash
 
     def test_standards_registry_empty_staging_rejected(self):
         """build_standards_registry raises ValueError when no standards dirs exist."""

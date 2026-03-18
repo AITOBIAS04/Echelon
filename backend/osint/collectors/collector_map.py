@@ -17,6 +17,7 @@ from backend.osint.collectors.fred import FREDCollector
 from backend.osint.collectors.openaq import OpenAQCollector
 from backend.osint.collectors.opencorporates import OpenCorporatesCollector
 from backend.osint.collectors.opensky import OpenSkyCollector
+from backend.osint.collectors.semantic_scholar import SemanticScholarCollector
 from backend.osint.collectors.usgs_earthquake import USGSEarthquakeCollector
 from backend.osint.collectors.worldmonitor import WorldMonitorCollector
 
@@ -49,5 +50,7 @@ def build_collector_map() -> dict[str, BaseCollector]:
         OpenAQCollector(),
         # ── Cycle-026 Batch 1: Counter-signal ──
         CalendarificCollector(),
+        # ── Cycle-026b: Research evidence ──
+        SemanticScholarCollector(),
     ]
     return {c.source_id(): c for c in collectors}

@@ -51,6 +51,8 @@ _VALID_SOURCE_GROUPS = frozenset([
     "geospatial",
     "environmental",
     "event_data",
+    # ── Cycle-026b: Domain Anchors Expansion ──
+    "research_evidence",
 ])
 
 _VALID_RESOLUTION_ROLES = frozenset([
