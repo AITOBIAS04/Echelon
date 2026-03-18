@@ -29,6 +29,7 @@ from backend.services.eval_asset_policy import reject_live_as_immutable
 # files that should never appear in an immutable R2 snapshot.
 SKIP_NAMES: frozenset[str] = frozenset({
     ".cache",
+    ".download_meta.json",
     ".gitattributes",
     ".huggingface",
     "__pycache__",
@@ -79,6 +80,12 @@ BENCHMARK_CATALOG: list[tuple[str, str, str, Optional[str]]] = [
         "v1.0",
         "MIT",
     ),
+    (
+        "arxiv-ml-metadata",
+        "https://info.arxiv.org/help/bulk_data.html",
+        "2026-03",
+        None,
+    ),
 ]
 
 
@@ -97,6 +104,30 @@ STANDARDS_CATALOG: list[tuple[str, str, str, Optional[str]]] = [
         "aria-apg",
         "https://www.w3.org/WAI/ARIA/apg/",
         "2024",
+        None,
+    ),
+    (
+        "react-docs",
+        "https://react.dev/reference",
+        "2026-03",
+        None,
+    ),
+    (
+        "tailwind-docs",
+        "https://tailwindcss.com/docs",
+        "2026-03",
+        None,
+    ),
+    (
+        "owasp-top10",
+        "https://owasp.org/www-project-top-ten/",
+        "2025",
+        None,
+    ),
+    (
+        "cwe-subset",
+        "https://cwe.mitre.org/top25/",
+        "2026-03",
         None,
     ),
 ]
@@ -292,6 +323,30 @@ def build_registry_document(
 
 # ── Standards Registry Builder ─────────────────────────────────────
 
+def _resolve_asset_dir(staging_root: Path, asset_id: str, version: str, *, asset_class: str = "standard") -> Optional[Path]:
+    """Locate a local asset directory, checking multiple layout conventions.
+
+    Tried in order:
+      1. R2-normalized: ``{class_plural}/{asset_id}/{version}/raw/``
+      2. Flat staging:  ``{asset_id}/``
+
+    Returns the first directory that exists, or ``None``.
+    """
+    class_plural = "standards" if asset_class == "standard" else "benchmarks"
+
+    # R2-normalized layout
+    r2_path = staging_root / class_plural / asset_id / version / "raw"
+    if r2_path.is_dir():
+        return r2_path
+
+    # Flat staging layout (download scripts produce this)
+    flat_path = staging_root / asset_id
+    if flat_path.is_dir():
+        return flat_path
+
+    return None
+
+
 def build_standards_registry(
     staging_root: Optional[Path] = None,
     *,
@@ -303,9 +358,10 @@ def build_standards_registry(
     standard whose local directory exists under ``staging_root``, and
     wraps the results in a registry document.
 
-    The expected directory layout under ``staging_root`` is::
+    Accepted directory layouts under ``staging_root``:
 
-        standards/{asset_id}/{version}/raw/
+    1. R2-normalized: ``standards/{asset_id}/{version}/raw/``
+    2. Flat staging:  ``{asset_id}/``
 
     Args:
         staging_root: Base directory containing downloaded standard assets.
@@ -325,8 +381,8 @@ def build_standards_registry(
     entries: list[DatasetRegistryEntry] = []
 
     for asset_id, source_url, version, asset_license in STANDARDS_CATALOG:
-        asset_dir = staging_root / "standards" / asset_id / version / "raw"
-        if not asset_dir.is_dir():
+        asset_dir = _resolve_asset_dir(staging_root, asset_id, version, asset_class="standard")
+        if asset_dir is None:
             continue
 
         entry = build_manifest(
@@ -343,7 +399,7 @@ def build_standards_registry(
         raise ValueError(
             "No standards could be built. Ensure at least one standard "
             "directory exists under the staging root at "
-            f"standards/{{asset_id}}/{{version}}/raw/."
+            f"standards/{{asset_id}}/{{version}}/raw/ or {{asset_id}}/."
         )
 
     return build_registry_document(entries, registry_version=registry_version)

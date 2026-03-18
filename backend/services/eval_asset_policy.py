@@ -28,6 +28,11 @@ SNAPSHOT_ASSETS: frozenset[str] = frozenset({
     "swe-bench-verified",
     "wcag",
     "aria-apg",
+    "react-docs",
+    "tailwind-docs",
+    "owasp-top10",
+    "cwe-subset",
+    "arxiv-ml-metadata",
 })
 
 LIVE_ONLY_ASSETS: frozenset[str] = frozenset({
@@ -36,6 +41,7 @@ LIVE_ONLY_ASSETS: frozenset[str] = frozenset({
     "un-sanctions",
     "gdelt",
     "global-fishing-watch",
+    "semantic-scholar",
 })
 
 
