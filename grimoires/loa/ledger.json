@@ -940,11 +940,43 @@
           "tasks": 4
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-037",
+      "label": "Contract-Backed Verification Infrastructure",
+      "status": "active",
+      "created_at": "2026-03-18T00:00:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-1",
+          "global_id": 85,
+          "label": "Foundation — Model, Migration, SpecLoader, PolicyNormalizer",
+          "status": "pending",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 86,
+          "label": "CheckPlanner, ContractService, Adapter Integration",
+          "status": "pending",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 87,
+          "label": "API Routes, Certificate Integration, Regression",
+          "status": "pending",
+          "tasks": 4
+        }
+      ]
     }
   ],
-  "active_cycle": "cycle-025",
+  "active_cycle": "cycle-037",
   "active_bugfix": null,
-  "global_sprint_counter": 84,
+  "global_sprint_counter": 87,
   "bugfix_cycles": [],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger."
 }

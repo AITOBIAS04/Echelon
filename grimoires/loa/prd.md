@@ -1,221 +1,184 @@
-# PRD — Cycle-025: WorldMonitor Intelligence Contract v2
+# PRD — Cycle 037: Contract-Backed Verification Infrastructure
 
-**Cycle:** cycle-025
-**Date:** 16 March 2026
-**Depends on:** Cycle-023 (Production Database Unification), Cycle-019 (Investigation Persistence)
-**Sprints:** 4 (0–3)
-**Builder:** Loa (backend only — Alexander handles frontend wiring after this cycle ships)
-**Planning source:** `obsidian_vault/Echelon Core Arch/cowork_context/worldmonitor_osint_expansion_draft.md`
+**Cycle:** 037
+**Date:** 2026-03-18
+**Status:** Draft
+**Previous:** Cycles 024 (Construct Verification V1), 026a-c (Evidence Anchoring + Domain Anchors)
 
 ---
 
 ## 1. Problem Statement
 
-### 1.1 WorldMonitor Has An Incomplete Contract
+### 1.1 Verification Is Currently "Score Some Outputs"
 
-The WorldMonitor intelligence pipeline has working bones — a live endpoint, a three-domain collector, and an API schema — but only 7 of a planned 14 MeasureType values exist. Three POST endpoints return HTTP 501 stubs referencing "Cycle-035." The contract cannot support the merged WorldMonitor/Investigations workspace that Alexander will wire after this cycle ships.
+Construct verification works as: register → run episodes → rubric score → PASS/FAIL. There is no canonical declaration of what a construct claims, what checks are planned vs. executed, or what exactly failed. Certificates are unauditable — a PASS tells you nothing about what was tested, and a FAIL gives no machine-readable remediation path.
 
-### 1.2 The OSINT Signals Route Is A Stub
+### 1.2 The Trust Gap
 
-`/api/v1/osint/signals` returns an empty list. There is no database table backing it. No collected signal persists. Without a signals table, neither the evidence panel nor the source layer toggles on the merged workspace have data to render.
+- No formal contract between construct declaration and verification checks
+- No distinction between planned checks and executed checks
+- No explicit refusal tracking (what a construct declares it will NOT do)
+- Vague domain claims pass through unchallenged
+- Certificate provenance doesn't include the spec or contract hash
+- PASS/FAIL binary — no DEFERRED state when some checks can't run
 
-### 1.3 Two Separate Signal Paths Exist — Only One Persists
+### 1.3 What 037 Fixes
 
-The backend has **two independent signal architectures** that must not be confused:
-
-| | Path 1: Registry-based OSINT | Path 2: Signal Detector (synthetic) |
-|---|---|---|
-| **Source of truth** | `sources.json` via RegistryLoader | In-memory SignalDetector + OSINTRegistry singleton |
-| **Evidence format** | EvidenceBundle + HTTPTranscriptReceipt (hash-verified) | Signal dataclass (raw_data dict, no receipts) |
-| **Persistence** | DB-backed (calibration certs, evidence items) | In-memory only (expires via expires_at) |
-| **Used by** | CollectionRunner, Paradox Engine, Theatre settlement, investigation evidence | WorldMonitor live endpoint (`GET /live`), convergence heatmap UI |
-| **Key files** | `backend/osint/` (registry, collectors, engine/) | `backend/core/signal_detector.py`, `backend/core/osint_registry.py` |
-
-**Cycle 025 builds on Path 1** (registry-based) for the new `osint_signals` table and read endpoints. Path 2 (synthetic) remains unchanged — the existing `GET /live` endpoint continues to serve synthetic signals for the globe UI until a future cycle migrates it to read from the persisted signals table.
-
-### 1.4 The Frontend Needs Two New Read Endpoints
-
-The merged workspace (design reference: `output/design_reference/echelon_worldmonitor_investigation_workspace_v1.html`) surfaces data the backend does not yet expose:
-
-| Frontend surface | Data needed | Current state |
-|---|---|---|
-| Operations panel — Feed Health | OSINT feeds online/total, signal latency, escalation queue depth | Does not exist |
-| Canvas toolbar — signal layers | Signals filterable by source_group (GDELT, AIS, ADS-B, Quakes) | Stub returns empty list |
-
-Note: The design reference shows a "Markets" tab in the bottom dock. However, **there is no Market model** in the database. Theatre markets are not persisted entities. The Markets tab is deferred until a Market model is created in a future cycle. Alexander should render this tab as an empty/deferred state.
-
-### 1.5 Convergence Scoring Is Conceptual, Not Computed
-
-The live endpoint aggregates signals from three domains but doesn't compute cross-domain convergence as a formal MeasureType. The merged workspace shows convergence as a first-class surface ("Cluster spotlight" with signal counts, "Certificate candidates" count). Formalising convergence as `CROSS_DOMAIN_CONVERGENCE` makes it flow through the evidence pipeline like any other measure.
+This cycle turns construct verification into contract-backed verification infrastructure. Every evaluation run is grounded in a declared, hashed contract. Every certificate says exactly what was planned, what was executed, and what's missing. The substrate is ready for later cycles to add multi-scorer judging and domain packs without redesigning the foundation.
 
 ---
 
 ## 2. Product Contracts
 
-### 2.1 Extend MeasureType Enum (7 → 14)
+### 2.1 EvaluationContract — Persisted, Hash-Addressed
 
-Add 7 new values to `backend/schemas/worldmonitor_api_contract.py`:
+New `evaluation_contracts` table. One ACTIVE contract per registration. Creating a new contract SUPERSEDES the previous one.
 
-| Value | Domain | Description |
-|---|---|---|
-| FORECAST_SCORE | INTELLIGENCE | Composite forecast confidence (0.0–1.0) for geopolitical scenarios |
-| FORECAST_WEIGHT | INTELLIGENCE | Weight assigned to this forecast in ensemble aggregation |
-| CORRIDOR_RISK | MARITIME | Risk score for a specific shipping corridor (strait, canal, route) |
-| SHIPPING_RATE_INDEX | MARITIME | Normalised freight rate index for a corridor or vessel class |
-| SUPPLY_CHAIN_SEVERITY | MARKET | Composite supply chain disruption severity (0.0–1.0) |
-| SANCTIONS_EXPOSURE | INTELLIGENCE | Entity-level sanctions exposure score |
-| CROSS_DOMAIN_CONVERGENCE | — (meta) | Score measuring signal convergence across 2+ domains |
+| Field | Type | Purpose |
+|-------|------|---------|
+| `id` | UUID PK | |
+| `construct_registration_id` | FK | Links to construct_registrations |
+| `spec_hash` | SHA-256 | Hash of normalized construct.yaml content |
+| `contract_hash` | SHA-256 | Hash of full contract including check plan |
+| `normalized_claims` | JSON | Parsed domain claims with vagueness flags |
+| `explicit_refusals` | JSON | Things the construct declares it will NOT do |
+| `planned_checks` | JSON | Deterministic check plan derived from claims |
+| `tier_cap` | nullable string | Max achievable tier if vague claims detected |
+| `status` | enum | ACTIVE / SUPERSEDED |
+| `created_at`, `updated_at` | timestamps | |
 
-Total after extension: **14 MeasureType values**.
+### 2.2 Issuance Semantics — READY / DEFERRED / REJECTED
 
-### 2.2 Add Nullable Fields to Response Schemas
+| State | Meaning | Condition |
+|-------|---------|-----------|
+| READY | All planned checks executed, verdict PASS | `executed == planned` and `verdict == PASS` |
+| DEFERRED | Some planned checks couldn't execute | `executed < planned` — missing dataset, dependency unavailable |
+| REJECTED | Verdict FAIL or critical check failed | `verdict == FAIL` or critical planned check failed |
 
-**CIIResponse additions:**
-- `forecast_score: float | None = None`
-- `forecast_weight: float | None = None`
-- `sanctions_exposure: float | None = None`
+DEFERRED certificates carry a machine-readable remediation payload:
 
-**MaritimeAnomalyResponse additions:**
-- `corridor: str | None = None` — corridor identifier (e.g., "strait_hormuz")
-- `corridor_risk: float | None = None`
-- `shipping_rate_index: float | None = None`
-
-**MarketSnapshotResponse additions:**
-- `supply_chain_severity: float | None = None`
-
-All new fields are nullable — existing consumers unaffected.
-
-### 2.3 Activate Three POST Endpoints
-
-The 501 stubs currently live in `backend/schemas/worldmonitor_api_contract.py` (lines 294–355). Move the route definitions to `backend/api/world_monitor_routes.py` (where the existing `GET /live` route lives) and replace the stub bodies with real implementations:
-
-| Endpoint | Request Body | Response | What It Does |
-|---|---|---|---|
-| `POST /api/v1/world-monitor/intelligence/cii` | `CIIRequest` | `EvidenceBundle[CIIResponse]` | Calls WorldMonitorCollector for INTELLIGENCE domain, generates HTTPTranscriptReceipt, returns evidence bundle |
-| `POST /api/v1/world-monitor/market/snapshot` | `MarketSnapshotRequest` | `EvidenceBundle[MarketSnapshotResponse]` | Same for MARKET domain |
-| `POST /api/v1/world-monitor/maritime/anomaly` | `MaritimeAnomalyRequest` | `EvidenceBundle[MaritimeAnomalyResponse]` | Same for MARITIME domain |
-
-Each follows the pattern: accept request → call collector → generate receipt with canonical hash → return response wrapped in EvidenceBundle.
-
-### 2.4 Convergence Scoring Service
-
-When signals from 2+ domains reference the same geographic region or entity within a time window, compute a `CROSS_DOMAIN_CONVERGENCE` measure. The live endpoint's convergence cell detection becomes a formal service:
-
-- **ConvergenceScorer** — accepts signal list, groups by geo/entity/time window, emits NormalisedMeasure with type=CROSS_DOMAIN_CONVERGENCE
-- Score flows through the evidence pipeline like any other measure
-- Convergence cells with score ≥ threshold surface as "Certificate candidates" on the workspace
-
-### 2.5 OSINT Signals Table + Route Activation
-
-**New table: `osint_signals`**
-
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID | PK |
-| source_id | VARCHAR(128) | FK reference to registry source |
-| source_group | VARCHAR(64) | Denormalised from source for query performance |
-| signal_type | VARCHAR(64) | MeasureType value or raw signal classification |
-| geo_region | VARCHAR(128) | Nullable — geographic region identifier |
-| entity_ref | VARCHAR(256) | Nullable — entity reference |
-| content_hash | VARCHAR(128) | SHA-256 of normalised signal content |
-| normalised_data | JSONB | Full normalised signal payload |
-| investigation_id | UUID | Nullable FK to investigations table |
-| collected_at | TIMESTAMP | When the signal was collected |
-| created_at | TIMESTAMP | Row insertion time |
-
-**Indexes:**
-- `(source_group, collected_at)` — layer filtering
-- `(investigation_id, collected_at)` — investigation-scoped queries
-- `(geo_region, collected_at)` — geographic clustering
-- `content_hash` — deduplication
-
-**Route activation:** Replace the empty-list stub at `GET /api/v1/osint/signals` with a query against the signals table. Supports query params:
-- `source_group` — filter by OSINT layer (e.g., `maritime_ais`, `aviation_adsb`, `geophysical_hazard`)
-- `investigation_id` — scope to a specific investigation
-- `since` — temporal filter (ISO timestamp)
-- `limit` / `offset` — pagination
-
-**Ingestion path:** The three POST endpoints (`/intelligence/cii`, `/market/snapshot`, `/maritime/anomaly`) write to the signals table via a shared `persist_signal` helper after each successful collection. The `GET /live` endpoint (Path 2) is not modified — it continues to serve synthetic in-memory signals independently.
-
-### 2.6 Two New Read Endpoints
-
-**`GET /api/v1/osint/health`**
-Returns OSINT feed health for the Operations panel:
 ```json
 {
-  "feeds_online": 6,
-  "feeds_total": 6,
-  "signal_latency_sec": 41,
-  "escalation_queue_depth": 0,
-  "replay_workers_active": 0
+  "status": "DEFERRED",
+  "reason": "checks_unavailable",
+  "missing_checks": [
+    {"check_id": "bench-humaneval", "reason": "dataset_not_available"},
+    {"check_id": "bench-swe-verified", "reason": "r2_manifest_missing"}
+  ],
+  "executed_count": 8,
+  "planned_count": 10,
+  "recommendation": "Upload missing datasets and re-run"
 }
 ```
-Computed from: source registry active count (RegistryLoader), last signal timestamp in osint_signals, count of ACTIVE investigations (no `escalated` column exists — use investigation count as proxy).
 
-**`GET /api/v1/osint/signals/summary`**
-Returns signal aggregates for the canvas toolbar:
+### 2.3 PolicyNormalizer — Accept + Downgrade
+
+Vague domain claims are accepted at registration but flagged. Tier cap limits the maximum achievable certificate tier:
+
+- Precise claims (e.g., "Design Systems", "Motion Design") → no tier cap
+- Vague claims (e.g., "security", "AI", "general") → tier capped at UNVERIFIED
+- Explicit refusals extracted from construct.yaml `refusals:` field and stored on contract
+
+### 2.4 Planned vs Executed — Certificate Transparency
+
+Every certificate gains `check_plan` section:
+
 ```json
 {
-  "total_signals": 0,
-  "by_source_group": {},
-  "counter_signals": 0,
-  "certificate_candidates": 0,
-  "convergence_cells": 0
+  "check_plan": {
+    "total_planned": 10,
+    "total_executed": 8,
+    "checks": [
+      {"id": "rubric-design-systems", "type": "RUBRIC", "status": "EXECUTED", "score": 0.82},
+      {"id": "bench-humaneval", "type": "BENCHMARK", "status": "NOT_EXECUTED", "reason": "dataset_not_available"}
+    ]
+  },
+  "contract_hash": "sha256:...",
+  "spec_hash": "sha256:..."
 }
 ```
-Computed from: osint_signals table counts, convergence scorer output, investigation readiness counts (investigations with status=CERTIFICATE_READY).
 
-**Investigation-scoped markets: DEFERRED.** There is no Market model in the database. Investigation.theatre_id is a plain indexed string (not FK), and Theatre has no markets table or relationship. The design reference's Markets tab requires a Market model to be created in a future cycle. This endpoint is out of scope for Cycle 025.
+### 2.5 Hash Invalidation Rules
 
-### 2.7 Migration
-
-**One Alembic migration: `c025_osint_signals`**
-- Creates `osint_signals` table with all columns and indexes listed in Section 2.5
-- No changes to existing tables
+- construct.yaml content changes → new `spec_hash` → existing contract SUPERSEDED
+- Check plan changes (new datasets available, new rubrics) → new `contract_hash`
+- Certificate references both hashes immutably — verifier checks if contract is still ACTIVE
 
 ---
 
 ## 3. What This Cycle Does NOT Do
 
-- **Does NOT register new OSINT sources.** Registry stays at 6 sources (v0.4.0). Batch 1 (10 new sources) is Cycle 026.
-- **Does NOT add source_group values.** `blockchain_data` and `corporate_registry` are Cycle 026 scope.
-- **Does NOT implement collectors.** Existing 3 WorldMonitor collectors are used. New collectors are Cycle 026.
-- **Does NOT touch frontend.** Alexander wires the merged workspace after this cycle ships.
-- **Does NOT implement WebSocket emissions for signal events.** Deferred — polling is sufficient for the read endpoints.
+- **No multi-scorer orchestration** (future cycle)
+- **No domain-specific security/pack logic** (future cycle)
+- **No frontend work**
+- **No R2 upload integration** (evidence anchoring pipeline from 026a-c is separate)
+- **No changes to ConstructScorer** (rubric scoring engine stays as-is)
+- **No changes to existing rubric definitions**
 
 ---
 
-## 4. Acceptance Criteria
+## 4. Existing Surface Being Extended
 
-1. `MeasureType` enum has 14 values (7 existing + 7 new)
-2. CII, Market, and Maritime response schemas include new nullable fields
-3. All three POST endpoints return 200 with valid EvidenceBundle (not 501)
-4. `osint_signals` table exists with correct schema and indexes
-5. `GET /api/v1/osint/signals` returns signals from the table, filterable by source_group, investigation_id, and since
-6. `GET /api/v1/osint/health` returns feed health stats
-7. `GET /api/v1/osint/signals/summary` returns signal aggregates
-8. ConvergenceScorer emits `CROSS_DOMAIN_CONVERGENCE` measures when 2+ domains converge
-9. Alembic migration `c025_osint_signals` applies cleanly on PostgreSQL
-10. Path 2 (synthetic SignalDetector) is untouched — `GET /api/v1/world-monitor/live` continues to work as before
-11. ≥25 new tests pass
-12. `npm run build` continues to pass (no frontend changes)
+| Component | Current | 037 Change |
+|-----------|---------|------------|
+| `ConstructRegistration` model | slug, version, skill_manifest, domain_claims | FK to evaluation_contracts |
+| `ConstructRegistry` service | Register, list, get, update_status | Trigger contract creation after registration |
+| `ConstructAdapter` service | Create runs, capture episodes, complete runs | Thread contract_hash into run config |
+| `ConstructScorer` service | Rubric scoring + verdict | **No change** |
+| `ConstructCertificateBuilder` | Build + persist certificates | Add check_plan, hashes, issuance status, remediation |
+| `construct_routes.py` | API endpoints | Add contract endpoints, update certificate response |
+| `eval_asset_policy.py` | Asset classification | Used by CheckPlanner to determine feasible benchmark checks |
+| `construct_anchor_mapper.py` | Maps dimensions to anchors | Used by CheckPlanner for anchor-based checks |
 
 ---
 
-## 5. Test Plan
+## 5. New Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `SpecLoader` | `backend/services/spec_loader.py` | Parse construct.yaml → normalized ConstructSpec dataclass |
+| `PolicyNormalizer` | `backend/services/policy_normalizer.py` | Validate claims, extract refusals, flag vagueness, compute tier_cap |
+| `CheckPlanner` | `backend/services/check_planner.py` | Contract + available assets → deterministic list of planned checks |
+| `ContractService` | `backend/services/contract_service.py` | CRUD for contracts, hash computation, supersession logic |
+| `EvaluationContract` model | `backend/database/models.py` | SQLAlchemy model |
+| Alembic migration | `c037_evaluation_contracts` | New table + FK on investigations |
+
+---
+
+## 6. Acceptance Criteria
+
+1. Every new evaluation run references an ACTIVE contract via `contract_hash`
+2. Every certificate includes `contract_hash`, `spec_hash`, and `check_plan` with planned-vs-executed status
+3. DEFERRED certificates include machine-readable remediation payload listing missing checks
+4. Vague domain claims produce tier-capped contracts (not registration failures)
+5. Explicit refusals are extracted from construct.yaml and stored on the contract
+6. Contract hash changes when spec changes → old contract SUPERSEDED, new one ACTIVE
+7. Runs against a SUPERSEDED contract are rejected (must create new contract first)
+8. All existing construct verification tests pass (regression)
+9. New tests cover: contract creation, check planning, READY/DEFERRED/REJECTED paths, hash invalidation, vague claim detection, refusal extraction
+
+---
+
+## 7. Test Plan
 
 | Area | Tests | Coverage |
-|---|---|---|
-| MeasureType enum | 2 | All 14 values present, string serialisation |
-| Response schema additions | 3 | Nullable fields serialise correctly, backward compat |
-| POST /intelligence/cii | 3 | Success, collector failure, invalid request |
-| POST /market/snapshot | 3 | Success, collector failure, invalid request |
-| POST /maritime/anomaly | 3 | Success, collector failure, invalid request |
-| ConvergenceScorer | 3 | Single domain (no convergence), two domains (convergence), empty input |
-| osint_signals table | 2 | Insert + query, content_hash dedup |
-| GET /osint/signals | 3 | Unfiltered, source_group filter, investigation_id filter |
-| GET /osint/health | 2 | All feeds healthy, degraded feed |
-| GET /osint/signals/summary | 2 | Empty state, populated state |
-| Path 2 regression | 1 | GET /live still returns synthetic signals unchanged |
-| Migration | 1 | Upgrade + downgrade |
-| **Total** | **~27** | |
+|------|-------|---------|
+| SpecLoader | 6 | Parse valid yaml, reject malformed, hash stability, refusals extraction |
+| PolicyNormalizer | 8 | Precise claims pass, vague claims flagged, tier cap computed, refusals normalized |
+| CheckPlanner | 8 | Deterministic plan from contract, benchmark availability check, anchor-based checks, missing dataset handling |
+| ContractService | 6 | Create, supersede, hash computation, FK integrity, duplicate prevention |
+| Certificate integration | 6 | READY/DEFERRED/REJECTED paths, remediation payload, check_plan in output |
+| Hash invalidation | 4 | Spec change → supersede, contract_hash change detection, run rejection on superseded |
+| Regression | 4 | Existing V1 registration+run+certificate flow unchanged |
+| **Total** | **~42** | |
+
+---
+
+## 8. Risks
+
+| Risk | Mitigation |
+|------|------------|
+| construct.yaml format varies across packs | SpecLoader validates against strict schema; reject malformed with clear errors |
+| CheckPlanner depends on R2 manifest availability | Graceful degradation → DEFERRED issuance, not crash |
+| Hash invalidation cascading | Only ACTIVE contracts affected; historical certificates immutably reference their contract_hash |
+| Vague claim detection false positives | Conservative — only flag known-vague terms (configurable allowlist) |

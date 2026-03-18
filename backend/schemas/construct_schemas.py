@@ -117,9 +117,94 @@ class CertificateResponse(BaseModel):
     routing_decision: str
     evidence_bundle_hash: str
     episode_count: int
+    # Contract-backed fields (cycle-037, nullable for pre-037 runs)
+    contract_hash: Optional[str] = None
+    spec_hash: Optional[str] = None
+    issuance_status: str = "READY"
+    check_plan: Optional["CheckPlanSchema"] = None
+    remediation: Optional["RemediationSchema"] = None
 
 
 class SojuPayloadResponse(BaseModel):
     """Certificate formatted for Soju's POST endpoint."""
     verification_tier: str
     certificate_json: dict
+
+
+# ── Contracts (Cycle 037) ──
+
+class CreateContractRequest(BaseModel):
+    """POST .../contract request body."""
+    yaml_content: str = Field(..., description="Raw construct.yaml content")
+
+
+class NormalizedClaimSchema(BaseModel):
+    """Classified domain claim."""
+    domain: str
+    original: str
+    is_vague: bool
+    matched_category: Optional[str] = None
+    vagueness_reason: Optional[str] = None
+
+
+class RefusalSchema(BaseModel):
+    """Explicit refusal declaration."""
+    scope: str
+    reason: str
+
+
+class PlannedCheckSchema(BaseModel):
+    """Planned evaluation check."""
+    check_id: str
+    check_type: str
+    domain: str
+    source: str
+    critical: bool
+    asset_id: Optional[str] = None
+    anchor_class: Optional[str] = None
+
+
+class ContractResponse(BaseModel):
+    """Contract response."""
+    id: str
+    construct_registration_id: str
+    spec_hash: str
+    contract_hash: str
+    normalized_claims: list[NormalizedClaimSchema]
+    explicit_refusals: list[RefusalSchema]
+    planned_checks: list[PlannedCheckSchema]
+    tier_cap: Optional[str] = None
+    status: str
+    created_at: Optional[datetime] = None
+
+
+class ContractListResponse(BaseModel):
+    """List of contracts."""
+    contracts: list[ContractResponse]
+    total: int
+
+
+class CheckPlanEntrySchema(BaseModel):
+    """Individual check in a check plan."""
+    id: str
+    type: str
+    status: str
+    score: Optional[float] = None
+    reason: Optional[str] = None
+
+
+class CheckPlanSchema(BaseModel):
+    """Planned-vs-executed check plan in certificate."""
+    total_planned: int
+    total_executed: int
+    checks: list[CheckPlanEntrySchema]
+
+
+class RemediationSchema(BaseModel):
+    """Machine-readable remediation payload for DEFERRED certificates."""
+    status: str
+    reason: str
+    missing_checks: list[dict]
+    executed_count: int
+    planned_count: int
+    recommendation: str

@@ -122,3 +122,11 @@
 | Sprint 1 | sprint-82 | COMPLETED | [reviewer.md](sprint-82/reviewer.md) | [engineer-feedback.md](sprint-82/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-82/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-83 | COMPLETED | [reviewer.md](sprint-83/reviewer.md) | [engineer-feedback.md](sprint-83/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-83/auditor-sprint-feedback.md) |
 | Sprint 3 | sprint-84 | COMPLETED | [reviewer.md](sprint-84/reviewer.md) | [engineer-feedback.md](sprint-84/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-84/auditor-sprint-feedback.md) |
+
+## Cycle-037: Contract-Backed Verification Infrastructure
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 1 | sprint-85 | IN_PROGRESS | [reviewer.md](sprint-85/reviewer.md) | — | — |
+| Sprint 2 | sprint-86 | PENDING | — | — | — |
+| Sprint 3 | sprint-87 | PENDING | — | — | — |
