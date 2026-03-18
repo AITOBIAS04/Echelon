@@ -130,6 +130,25 @@ STANDARDS_CATALOG: list[tuple[str, str, str, Optional[str]]] = [
         "2026-03",
         None,
     ),
+    # ── Cycle-026c: User Research + Journey Anchors ──
+    (
+        "user-research-methods",
+        "https://www.gov.uk/service-manual/user-research",
+        "2026-03",
+        "OGL-3.0",
+    ),
+    (
+        "journey-patterns",
+        "https://design-system.service.gov.uk/patterns/",
+        "2026-03",
+        "OGL-3.0",
+    ),
+    (
+        "recovery-guidance",
+        "https://design-system.service.gov.uk/patterns/validation/",
+        "2026-03",
+        "OGL-3.0",
+    ),
 ]
 
 

@@ -33,6 +33,10 @@ SNAPSHOT_ASSETS: frozenset[str] = frozenset({
     "owasp-top10",
     "cwe-subset",
     "arxiv-ml-metadata",
+    # ── Cycle-026c: User Research + Journey Anchors ──
+    "user-research-methods",
+    "journey-patterns",
+    "recovery-guidance",
 })
 
 LIVE_ONLY_ASSETS: frozenset[str] = frozenset({
