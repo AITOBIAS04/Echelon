@@ -238,3 +238,47 @@ class TestCollectorMapRegistration:
         from backend.osint.collectors.collector_map import build_collector_map
         cmap = build_collector_map()
         assert len(cmap) >= 15
+
+
+class TestRegistrySourceOfTruth:
+    """Test 8: semantic_scholar_api exists in sources.json and validates."""
+
+    def test_registry_loader_finds_semantic_scholar(self):
+        """RegistryLoader can resolve semantic_scholar_api from sources.json."""
+        from pathlib import Path
+        from backend.osint.models.registry import RegistryLoader
+
+        sources_path = Path(__file__).resolve().parents[1] / "osint" / "sources.json"
+        loader = RegistryLoader(str(sources_path))
+        source = loader.get_source("semantic_scholar_api")
+
+        assert source is not None
+        assert source.source_id == "semantic_scholar_api"
+        assert source.source_group == "research_evidence"
+        assert source.resolution_role == "primary_evidence"
+        assert source.independence_upstream_id == "semantic_scholar"
+        assert source.receipt_mode_minimum == "http_transcript"
+
+    def test_registry_validates_with_semantic_scholar(self):
+        """Full registry validation passes with research_evidence group."""
+        from pathlib import Path
+        from backend.osint.models.registry import RegistryLoader
+
+        sources_path = Path(__file__).resolve().parents[1] / "osint" / "sources.json"
+        loader = RegistryLoader(str(sources_path))
+        errors = loader.validate()
+        assert errors == [], f"Registry validation errors: {errors}"
+
+    def test_research_evidence_in_valid_groups(self):
+        """research_evidence is in _VALID_SOURCE_GROUPS."""
+        from backend.osint.models.registry import _VALID_SOURCE_GROUPS
+        assert "research_evidence" in _VALID_SOURCE_GROUPS
+
+    def test_sources_json_has_17_entries(self):
+        """sources.json now has 17 entries (16 original + semantic_scholar)."""
+        from pathlib import Path
+        from backend.osint.models.registry import RegistryLoader
+
+        sources_path = Path(__file__).resolve().parents[1] / "osint" / "sources.json"
+        loader = RegistryLoader(str(sources_path))
+        assert len(loader.sources) >= 17
