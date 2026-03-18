@@ -127,6 +127,6 @@
 
 | Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
 |--------|-----------|--------|----------|----------|---------|
-| Sprint 1 | sprint-85 | IN_PROGRESS | [reviewer.md](sprint-85/reviewer.md) | — | — |
+| Sprint 1 | sprint-85 | COMPLETED | [reviewer.md](sprint-85/reviewer.md) | [engineer-feedback.md](sprint-85/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-85/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-86 | PENDING | — | — | — |
 | Sprint 3 | sprint-87 | PENDING | — | — | — |

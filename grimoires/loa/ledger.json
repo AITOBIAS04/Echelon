@@ -954,7 +954,7 @@
           "local_id": "sprint-1",
           "global_id": 85,
           "label": "Foundation — Model, Migration, SpecLoader, PolicyNormalizer",
-          "status": "pending",
+          "status": "completed",
           "tasks": 4
         },
         {
