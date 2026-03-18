@@ -1,0 +1,333 @@
+"""Tests for Cycle 037b Sprint 3 — Route / Certificate Integration + Regression.
+
+Validates:
+- Full orchestration pipeline (filter → orchestrate → converge → outcome)
+- Certificate JSON enrichment with evaluator provenance
+- Final issuance status logic (DEFERRED preserved, BLOCKED for divergent)
+- Regression: existing construct path without orchestration
+"""
+
+import pytest
+
+from backend.schemas.evaluator_orchestration import (
+    EvaluatorOutcome,
+    EvaluatorScoreRecord,
+    RunConvergenceSummary,
+)
+from backend.services.construct_certificate_builder import (
+    ConstructCertificateBuilder,
+    ScorerOutput,
+)
+from backend.services.convergence_policy import (
+    build_orchestration_persistence,
+    compute_dimension_convergence,
+    compute_run_convergence,
+)
+from backend.services.evaluator_integration import (
+    compute_final_issuance_status,
+    enrich_certificate_json,
+    run_evaluator_orchestration,
+)
+from backend.services.residual_dimension_filter import ResidualDimension
+
+
+# ═══════════════════════════════════════════════════════════
+# Mock Scorers for Integration Tests
+# ═══════════════════════════════════════════════════════════
+
+
+class PassScorer:
+    def __init__(self, evaluator_id: str, score: float = 0.85):
+        self._evaluator_id = evaluator_id
+        self._score = score
+
+    @property
+    def evaluator_id(self) -> str:
+        return self._evaluator_id
+
+    async def score_dimensions(self, *, dimensions, episode_payload):
+        return [
+            EvaluatorScoreRecord(
+                evaluator_id=self._evaluator_id,
+                dimension=d.dimension,
+                verdict="PASS",
+                score=self._score,
+                rationale=f"{self._evaluator_id}: pass",
+            )
+            for d in dimensions
+        ]
+
+
+class SplitScorer:
+    """Returns FAIL for all dimensions — used to create divergence."""
+    def __init__(self, evaluator_id: str):
+        self._evaluator_id = evaluator_id
+
+    @property
+    def evaluator_id(self) -> str:
+        return self._evaluator_id
+
+    async def score_dimensions(self, *, dimensions, episode_payload):
+        return [
+            EvaluatorScoreRecord(
+                evaluator_id=self._evaluator_id,
+                dimension=d.dimension,
+                verdict="FAIL",
+                score=0.20,
+                rationale=f"{self._evaluator_id}: fail",
+            )
+            for d in dimensions
+        ]
+
+
+# ═══════════════════════════════════════════════════════════
+# Helpers
+# ═══════════════════════════════════════════════════════════
+
+
+def _check(check_id, check_type, domain, critical=False, **kwargs):
+    return {
+        "check_id": check_id,
+        "check_type": check_type,
+        "domain": domain,
+        "source": f"test:{check_id}",
+        "critical": critical,
+        **kwargs,
+    }
+
+
+TYPICAL_PLAN = [
+    _check("anchor:public_standard", "ANCHOR", "*", critical=True),
+    _check("anchor:deterministic_check", "ANCHOR", "*"),
+    _check("rubric:artisan:design_systems", "RUBRIC", "design_systems", critical=True),
+    _check("rubric:artisan:code_generation", "RUBRIC", "code_generation", critical=True),
+]
+
+EPISODE = {"construct_slug": "test-construct", "version": "1.0.0"}
+
+
+# ═══════════════════════════════════════════════════════════
+# Full Pipeline Integration Tests
+# ═══════════════════════════════════════════════════════════
+
+
+class TestFullPipeline:
+    @pytest.mark.asyncio
+    async def test_convergent_pipeline(self):
+        """3 scorers all PASS → eligible, no escalation."""
+        outcome = await run_evaluator_orchestration(
+            planned_checks=TYPICAL_PLAN,
+            executed_results={},
+            scorers=[PassScorer("a"), PassScorer("b"), PassScorer("c")],
+            episode_payload=EPISODE,
+            rubric_version="v1.0.0",
+        )
+        assert outcome is not None
+        assert outcome.issuance_eligible is True
+        assert outcome.block_reason is None
+        assert outcome.convergence_summary.converged_pass == 2
+        assert outcome.convergence_summary.divergent == 0
+        assert outcome.convergence_summary.escalation_required is False
+
+    @pytest.mark.asyncio
+    async def test_divergent_pipeline(self):
+        """2 PASS + 1 FAIL per dimension → still converged (2/3), but with LOWER."""
+        outcome = await run_evaluator_orchestration(
+            planned_checks=TYPICAL_PLAN,
+            executed_results={},
+            scorers=[PassScorer("a"), PassScorer("b"), SplitScorer("c")],
+            episode_payload=EPISODE,
+        )
+        assert outcome is not None
+        assert outcome.issuance_eligible is True
+        # 2/3 PASS → CONVERGED_PASS with LOWER confidence
+        assert outcome.convergence_summary.converged_pass == 2
+
+    @pytest.mark.asyncio
+    async def test_converged_fail_blocks_issuance(self):
+        """1 PASS + 2 FAIL → CONVERGED_FAIL (2/3 supermajority) → issuance blocked."""
+        outcome = await run_evaluator_orchestration(
+            planned_checks=TYPICAL_PLAN,
+            executed_results={},
+            scorers=[PassScorer("a"), SplitScorer("b"), SplitScorer("c")],
+            episode_payload=EPISODE,
+        )
+        assert outcome is not None
+        assert outcome.issuance_eligible is False
+        assert outcome.block_reason is not None
+        assert "blocked" in outcome.block_reason.lower()
+        # 2/3 FAIL → CONVERGED_FAIL, not DIVERGENT
+        assert outcome.convergence_summary.converged_fail == 2
+
+    @pytest.mark.asyncio
+    async def test_all_deterministic_returns_none(self):
+        """All checks are ANCHOR/BENCHMARK → no residuals → None outcome."""
+        all_deterministic = [
+            _check("anchor:public_standard", "ANCHOR", "*", critical=True),
+            _check("benchmark:humaneval", "BENCHMARK", "code_generation"),
+        ]
+        outcome = await run_evaluator_orchestration(
+            planned_checks=all_deterministic,
+            executed_results={"code_generation": 0.92},
+            scorers=[PassScorer("a")],
+            episode_payload=EPISODE,
+        )
+        assert outcome is None
+
+
+# ═══════════════════════════════════════════════════════════
+# Certificate Enrichment Tests
+# ═══════════════════════════════════════════════════════════
+
+
+class TestCertificateEnrichment:
+    def test_enriches_cert_json(self):
+        """Certificate JSON should include evaluator_orchestration block."""
+        records = [
+            EvaluatorScoreRecord(evaluator_id="a", dimension="design", verdict="PASS", score=0.85),
+            EvaluatorScoreRecord(evaluator_id="b", dimension="design", verdict="PASS", score=0.82),
+        ]
+        dim = compute_dimension_convergence("design", records)
+        summary = compute_run_convergence([dim], ["a", "b"], rubric_version="v1.0.0")
+        outcome = EvaluatorOutcome(
+            convergence_summary=summary,
+            evaluator_scores=records,
+            issuance_eligible=True,
+        )
+
+        cert_json = {"certificate_id": "CERT-C1234", "verdict": "PASS"}
+        enriched = enrich_certificate_json(cert_json, outcome, records, summary)
+
+        assert "evaluator_orchestration" in enriched
+        assert enriched["evaluator_issuance_eligible"] is True
+        assert "evaluator_block_reason" not in enriched
+        assert enriched["evaluator_orchestration"]["rubric_version"] == "v1.0.0"
+
+    def test_enrichment_includes_block_reason(self):
+        """Blocked outcome should include block_reason in enriched cert."""
+        records = [
+            EvaluatorScoreRecord(evaluator_id="a", dimension="design", verdict="PASS", score=0.85),
+            EvaluatorScoreRecord(evaluator_id="b", dimension="design", verdict="FAIL", score=0.30),
+        ]
+        dim = compute_dimension_convergence("design", records)
+        summary = compute_run_convergence([dim], ["a", "b"])
+        outcome = EvaluatorOutcome(
+            convergence_summary=summary,
+            evaluator_scores=records,
+            issuance_eligible=False,
+            block_reason="Critical dimensions divergent: design",
+        )
+
+        cert_json = {"certificate_id": "CERT-C5678"}
+        enriched = enrich_certificate_json(cert_json, outcome, records, summary)
+
+        assert enriched["evaluator_issuance_eligible"] is False
+        assert enriched["evaluator_block_reason"] == "Critical dimensions divergent: design"
+
+
+# ═══════════════════════════════════════════════════════════
+# Final Issuance Status Tests
+# ═══════════════════════════════════════════════════════════
+
+
+class TestFinalIssuanceStatus:
+    def test_rejected_stays_rejected(self):
+        """REJECTED base status is never overridden by evaluator outcome."""
+        outcome = EvaluatorOutcome(
+            convergence_summary=RunConvergenceSummary(evaluator_ids=[], total_dimensions=0),
+            issuance_eligible=True,
+        )
+        assert compute_final_issuance_status("REJECTED", outcome) == "REJECTED"
+
+    def test_deferred_stays_deferred(self):
+        """DEFERRED base status (missing coverage) is never overridden."""
+        outcome = EvaluatorOutcome(
+            convergence_summary=RunConvergenceSummary(evaluator_ids=[], total_dimensions=0),
+            issuance_eligible=True,
+        )
+        assert compute_final_issuance_status("DEFERRED", outcome) == "DEFERRED"
+
+    def test_ready_plus_eligible_stays_ready(self):
+        """READY + evaluator eligible → READY."""
+        outcome = EvaluatorOutcome(
+            convergence_summary=RunConvergenceSummary(evaluator_ids=["a", "b"], total_dimensions=2),
+            issuance_eligible=True,
+        )
+        assert compute_final_issuance_status("READY", outcome) == "READY"
+
+    def test_ready_plus_ineligible_becomes_blocked(self):
+        """READY + evaluator ineligible (divergent) → BLOCKED."""
+        outcome = EvaluatorOutcome(
+            convergence_summary=RunConvergenceSummary(evaluator_ids=["a", "b"], total_dimensions=2, divergent=2),
+            issuance_eligible=False,
+            block_reason="Critical dimensions divergent",
+        )
+        assert compute_final_issuance_status("READY", outcome) == "BLOCKED"
+
+    def test_ready_plus_no_outcome_stays_ready(self):
+        """READY + no evaluator outcome (all deterministic) → READY."""
+        assert compute_final_issuance_status("READY", None) == "READY"
+
+
+# ═══════════════════════════════════════════════════════════
+# Regression Tests — Old Construct Path
+# ═══════════════════════════════════════════════════════════
+
+
+class TestRegressionOldPath:
+    def test_certificate_builder_without_contract(self):
+        """Pre-037 path: certificate builder works without contract."""
+        builder = ConstructCertificateBuilder()
+        scorer_output = ScorerOutput(
+            composite_score=0.82,
+            domain_scores={"design_systems": 0.85, "code_generation": 0.80},
+            skill_coverage=1.0,
+            verdict="PASS",
+            tier="BACKTESTED",
+            routing_hint="ALLOWED",
+            episode_count=10,
+        )
+
+        # Mock registration and investigation
+        class MockReg:
+            slug = "test"
+            version = "1.0.0"
+            content_hash = "sha256:abc"
+            commitment_hash = "sha256:def"
+            test_prompts_hash = "sha256:ghi"
+            rubric_hash = "sha256:jkl"
+
+        class MockInv:
+            stop_config_json = {"run_number": 1}
+
+        cert = builder.build(MockReg(), MockInv(), scorer_output, "sha256:bundle")
+        assert cert.issuance_status == "READY"
+        assert cert.contract_hash is None
+        assert cert.check_plan is None
+
+    def test_issuance_status_pass_no_contract(self):
+        """Pre-037 path: PASS verdict with no contract → READY."""
+        status = ConstructCertificateBuilder.compute_issuance_status("PASS", None, None)
+        assert status == "READY"
+
+    def test_issuance_status_fail_is_rejected(self):
+        """Both old and new: FAIL verdict → REJECTED."""
+        status = ConstructCertificateBuilder.compute_issuance_status("FAIL", None, None)
+        assert status == "REJECTED"
+
+    def test_issuance_status_deferred_for_missing_checks(self):
+        """037 path: PASS but incomplete checks → DEFERRED."""
+        check_plan = {"total_planned": 5, "total_executed": 3, "checks": []}
+        status = ConstructCertificateBuilder.compute_issuance_status("PASS", check_plan, None)
+        assert status == "DEFERRED"
+
+    def test_issuance_status_deferred_for_tier_cap(self):
+        """037 path: PASS with tier_cap → DEFERRED."""
+        status = ConstructCertificateBuilder.compute_issuance_status("PASS", None, "BACKTESTED")
+        assert status == "DEFERRED"
+
+    def test_final_status_without_orchestration(self):
+        """037b: No evaluator outcome → base status unchanged."""
+        assert compute_final_issuance_status("READY", None) == "READY"
+        assert compute_final_issuance_status("DEFERRED", None) == "DEFERRED"
+        assert compute_final_issuance_status("REJECTED", None) == "REJECTED"
