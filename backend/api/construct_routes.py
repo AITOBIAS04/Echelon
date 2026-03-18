@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 
 from backend.database.models import (
     ConstructRegistration,
+    EvaluationContract,
     Investigation,
     InvestigationEvidenceItem,
     InvestigationCertificateRecord,
@@ -29,9 +30,19 @@ from backend.schemas.construct_schemas import (
     EpisodeDetail,
     RunDetailResponse,
     CertificateResponse,
+    CreateContractRequest,
+    ContractResponse,
+    ContractListResponse,
+    NormalizedClaimSchema,
+    RefusalSchema,
+    PlannedCheckSchema,
+    CheckPlanSchema,
+    CheckPlanEntrySchema,
+    RemediationSchema,
 )
 from backend.services.construct_registry import ConstructRegistry
 from backend.services.construct_adapter import ConstructAdapter
+from backend.services.contract_service import ContractService
 from backend.services.test_prompt_registry import TestPromptRegistry
 from backend.services.certificate_lifecycle_service import transition_to_ready
 
@@ -155,6 +166,131 @@ async def get_construct(
     )
 
 
+# ── Contracts (Cycle 037) ──
+
+
+@construct_router.post("/{slug}/{version}/contract", response_model=ContractResponse, status_code=201)
+async def create_contract(
+    slug: str,
+    version: str,
+    body: CreateContractRequest,
+    session: AsyncSession = Depends(get_db),
+):
+    """Create or refresh an evaluation contract from YAML content.
+
+    Idempotent: same spec_hash returns existing ACTIVE contract.
+    Different spec_hash supersedes existing ACTIVE and creates new.
+    """
+    registry = ConstructRegistry(session)
+    reg = await registry.get(slug, version)
+
+    if reg is None:
+        raise HTTPException(status_code=404, detail=f"Construct {slug}:{version} not found")
+
+    contract_svc = ContractService(session)
+
+    try:
+        contract = await contract_svc.create_contract(
+            registration_id=reg.id,
+            yaml_content=body.yaml_content,
+        )
+        await session.commit()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return _contract_to_response(contract)
+
+
+@construct_router.get("/{slug}/{version}/contract", response_model=ContractResponse)
+async def get_active_contract(
+    slug: str,
+    version: str,
+    session: AsyncSession = Depends(get_db),
+):
+    """Get the ACTIVE evaluation contract for a construct version."""
+    registry = ConstructRegistry(session)
+    reg = await registry.get(slug, version)
+
+    if reg is None:
+        raise HTTPException(status_code=404, detail=f"Construct {slug}:{version} not found")
+
+    contract_svc = ContractService(session)
+    contract = await contract_svc.get_active_contract(reg.id)
+
+    if contract is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No ACTIVE contract for {slug}:{version}. POST /{slug}/{version}/contract first.",
+        )
+
+    return _contract_to_response(contract)
+
+
+@construct_router.get("/{slug}/{version}/contracts", response_model=ContractListResponse)
+async def list_contracts(
+    slug: str,
+    version: str,
+    session: AsyncSession = Depends(get_db),
+):
+    """List all contracts for a construct version (ACTIVE + SUPERSEDED)."""
+    registry = ConstructRegistry(session)
+    reg = await registry.get(slug, version)
+
+    if reg is None:
+        raise HTTPException(status_code=404, detail=f"Construct {slug}:{version} not found")
+
+    contract_svc = ContractService(session)
+    contracts = await contract_svc.list_contracts(reg.id)
+
+    return ContractListResponse(
+        contracts=[_contract_to_response(c) for c in contracts],
+        total=len(contracts),
+    )
+
+
+def _contract_to_response(contract: EvaluationContract) -> ContractResponse:
+    """Convert EvaluationContract model to ContractResponse schema."""
+    claims = contract.normalized_claims or []
+    refusals = contract.explicit_refusals or []
+    checks = contract.planned_checks or []
+
+    return ContractResponse(
+        id=contract.id,
+        construct_registration_id=contract.construct_registration_id,
+        spec_hash=contract.spec_hash,
+        contract_hash=contract.contract_hash,
+        normalized_claims=[
+            NormalizedClaimSchema(
+                domain=c.get("domain", ""),
+                original=c.get("original", ""),
+                is_vague=c.get("is_vague", False),
+                matched_category=c.get("matched_category"),
+                vagueness_reason=c.get("vagueness_reason"),
+            )
+            for c in claims
+        ],
+        explicit_refusals=[
+            RefusalSchema(scope=r.get("scope", ""), reason=r.get("reason", ""))
+            for r in refusals
+        ],
+        planned_checks=[
+            PlannedCheckSchema(
+                check_id=ch.get("check_id", ""),
+                check_type=ch.get("check_type", ""),
+                domain=ch.get("domain", ""),
+                source=ch.get("source", ""),
+                critical=ch.get("critical", False),
+                asset_id=ch.get("asset_id"),
+                anchor_class=ch.get("anchor_class"),
+            )
+            for ch in checks
+        ],
+        tier_cap=contract.tier_cap,
+        status=contract.status if isinstance(contract.status, str) else contract.status.value,
+        created_at=getattr(contract, "created_at", None),
+    )
+
+
 # ── Runs ──
 
 
@@ -164,17 +300,34 @@ async def create_run(
     version: str,
     session: AsyncSession = Depends(get_db),
 ):
-    """Create a new evaluation run for a registered construct."""
+    """Create a new evaluation run for a registered construct.
+
+    Requires an ACTIVE contract (cycle-037+). Threads contract_hash
+    into the investigation for certificate pinning.
+    """
     registry = ConstructRegistry(session)
     reg = await registry.get(slug, version)
 
     if reg is None:
         raise HTTPException(status_code=404, detail=f"Construct {slug}:{version} not found")
 
+    # Fetch ACTIVE contract — required for cycle-037+
+    contract_svc = ContractService(session)
+    contract = await contract_svc.get_active_contract(reg.id)
+
+    if contract is None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"No ACTIVE contract for {slug}:{version}. "
+                f"POST /{slug}/{version}/contract first."
+            ),
+        )
+
     adapter = ConstructAdapter(session, _prompt_registry)
 
     try:
-        investigation = await adapter.create_run(reg)
+        investigation = await adapter.create_run(reg, contract_hash=contract.contract_hash)
         await session.commit()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -370,6 +523,35 @@ async def get_certificate(
         cert_record = cert_result.scalar_one_or_none()
         if cert_record is not None:
             cert_json = cert_record.certificate_json or {}
+
+            # Reconstruct check_plan schema if present
+            check_plan_schema = None
+            if "check_plan" in cert_json and cert_json["check_plan"] is not None:
+                cp = cert_json["check_plan"]
+                check_plan_schema = CheckPlanSchema(
+                    total_planned=cp.get("total_planned", 0),
+                    total_executed=cp.get("total_executed", 0),
+                    checks=[
+                        CheckPlanEntrySchema(
+                            id=c["id"], type=c["type"], status=c["status"],
+                            score=c.get("score"), reason=c.get("reason"),
+                        )
+                        for c in cp.get("checks", [])
+                    ],
+                )
+
+            remediation_schema = None
+            if "remediation" in cert_json and cert_json["remediation"] is not None:
+                rem = cert_json["remediation"]
+                remediation_schema = RemediationSchema(
+                    status=rem.get("status", ""),
+                    reason=rem.get("reason", ""),
+                    missing_checks=rem.get("missing_checks", []),
+                    executed_count=rem.get("executed_count", 0),
+                    planned_count=rem.get("planned_count", 0),
+                    recommendation=rem.get("recommendation", ""),
+                )
+
             return CertificateResponse(
                 certificate_id=cert_json.get("certificate_id", cert_record.id),
                 construct_slug=cert_json.get("construct_slug", slug),
@@ -382,6 +564,11 @@ async def get_certificate(
                 routing_decision=cert_record.routing_decision,
                 evidence_bundle_hash=cert_json.get("evidence_bundle_hash", ""),
                 episode_count=cert_json.get("episode_count", 0),
+                contract_hash=cert_json.get("contract_hash"),
+                spec_hash=cert_json.get("spec_hash"),
+                issuance_status=cert_json.get("issuance_status", "READY"),
+                check_plan=check_plan_schema,
+                remediation=remediation_schema,
             )
 
     raise HTTPException(
@@ -541,7 +728,13 @@ async def issue_certificate(
         episode_count=len(evidence_items),
     )
 
-    cert = cert_builder.build(reg, investigation, scorer_output, bundle_hash)
+    # Fetch contract for certificate enrichment (cycle-037+)
+    contract = None
+    if investigation.contract_hash is not None:
+        contract_svc = ContractService(session)
+        contract = await contract_svc.get_by_hash(investigation.contract_hash)
+
+    cert = cert_builder.build(reg, investigation, scorer_output, bundle_hash, contract=contract)
     cert_json = cert_builder.to_certificate_json(cert)
     routing_decision, routing_reason = cert_builder.compute_routing_decision(scorer_output)
 
@@ -571,6 +764,31 @@ async def issue_certificate(
 
     await session.commit()
 
+    # Build check_plan and remediation schemas for response
+    check_plan_schema = None
+    remediation_schema = None
+    if cert.check_plan is not None:
+        check_plan_schema = CheckPlanSchema(
+            total_planned=cert.check_plan["total_planned"],
+            total_executed=cert.check_plan["total_executed"],
+            checks=[
+                CheckPlanEntrySchema(
+                    id=c["id"], type=c["type"], status=c["status"],
+                    score=c.get("score"), reason=c.get("reason"),
+                )
+                for c in cert.check_plan["checks"]
+            ],
+        )
+    if cert.remediation is not None:
+        remediation_schema = RemediationSchema(
+            status=cert.remediation["status"],
+            reason=cert.remediation["reason"],
+            missing_checks=cert.remediation["missing_checks"],
+            executed_count=cert.remediation["executed_count"],
+            planned_count=cert.remediation["planned_count"],
+            recommendation=cert.remediation["recommendation"],
+        )
+
     return CertificateResponse(
         certificate_id=cert.certificate_id,
         construct_slug=slug,
@@ -583,4 +801,9 @@ async def issue_certificate(
         routing_decision=routing_decision,
         evidence_bundle_hash=bundle_hash,
         episode_count=len(evidence_items),
+        contract_hash=cert.contract_hash,
+        spec_hash=cert.spec_hash,
+        issuance_status=cert.issuance_status,
+        check_plan=check_plan_schema,
+        remediation=remediation_schema,
     )
