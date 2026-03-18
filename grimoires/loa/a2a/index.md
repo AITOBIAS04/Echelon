@@ -122,3 +122,29 @@
 | Sprint 1 | sprint-82 | COMPLETED | [reviewer.md](sprint-82/reviewer.md) | [engineer-feedback.md](sprint-82/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-82/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-83 | COMPLETED | [reviewer.md](sprint-83/reviewer.md) | [engineer-feedback.md](sprint-83/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-83/auditor-sprint-feedback.md) |
 | Sprint 3 | sprint-84 | COMPLETED | [reviewer.md](sprint-84/reviewer.md) | [engineer-feedback.md](sprint-84/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-84/auditor-sprint-feedback.md) |
+
+## Cycle-026: OSINT Registry Expansion — Batch 1
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 0 | sprint-85 | COMPLETED | -- | [engineer-feedback.md](sprint-85/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-85/auditor-sprint-feedback.md) |
+| Sprint 1 | sprint-86 | COMPLETED | -- | [engineer-feedback.md](sprint-86/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-86/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-87 | COMPLETED | -- | [engineer-feedback.md](sprint-87/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-87/auditor-sprint-feedback.md) |
+| Sprint 3 | sprint-88 | COMPLETED | -- | [engineer-feedback.md](sprint-88/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-88/auditor-sprint-feedback.md) |
+
+## Cycle-026a: Construct Evidence Anchoring + R2 Ingest Foundation
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 0 | sprint-89 | COMPLETED | [reviewer.md](sprint-89/reviewer.md) | [engineer-feedback.md](sprint-89/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-89/auditor-sprint-feedback.md) |
+| Sprint 1 | sprint-90 | COMPLETED | [reviewer.md](sprint-90/reviewer.md) | [engineer-feedback.md](sprint-90/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-90/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-91 | COMPLETED | [reviewer.md](sprint-91/reviewer.md) | [engineer-feedback.md](sprint-91/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-91/auditor-sprint-feedback.md) |
+| Sprint 3 | sprint-92 | COMPLETED | [reviewer.md](sprint-92/reviewer.md) | [engineer-feedback.md](sprint-92/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-92/auditor-sprint-feedback.md) |
+
+## Cycle-037: Contract-Backed Verification Infrastructure
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 1 | sprint-93 | COMPLETED | [reviewer.md](sprint-93/reviewer.md) | [engineer-feedback.md](sprint-93/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-93/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-94 | COMPLETED | [reviewer.md](sprint-94/reviewer.md) | [engineer-feedback.md](sprint-94/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-94/auditor-sprint-feedback.md) |
+| Sprint 3 | sprint-95 | COMPLETED | [reviewer.md](sprint-95/reviewer.md) | [engineer-feedback.md](sprint-95/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-95/auditor-sprint-feedback.md) |

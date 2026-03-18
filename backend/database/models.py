@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional, List
 from sqlalchemy import (
     String, Integer, Float, Boolean, DateTime, Text, JSON,
-    ForeignKey, Enum as SQLEnum, Index
+    ForeignKey, Enum as SQLEnum, Index, text
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -1131,6 +1131,9 @@ class Investigation(Base):
     # Construct verification run number (cycle-024)
     run_number: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
+    # Contract-backed verification (cycle-037)
+    contract_hash: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
     # Relationships
     evidence_items: Mapped[List["InvestigationEvidenceItem"]] = relationship(
         back_populates="investigation", order_by="InvestigationEvidenceItem.submitted_at"
@@ -1317,6 +1320,47 @@ class ConstructRegistration(Base):
 
     __table_args__ = (
         Index("uq_construct_slug_version", "slug", "version", unique=True),
+    )
+
+
+# ============================================
+# EVALUATION CONTRACT (Cycle 037)
+# ============================================
+
+class EvaluationContractStatus(str, enum.Enum):
+    ACTIVE = "ACTIVE"
+    SUPERSEDED = "SUPERSEDED"
+
+class EvaluationContract(Base):
+    """Hash-addressed evaluation contract linking registration to check plan."""
+    __tablename__ = "evaluation_contracts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_generate_uuid)
+    construct_registration_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("construct_registrations.id"), nullable=False
+    )
+    spec_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    contract_hash: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    normalized_claims: Mapped[dict] = mapped_column(JSON, nullable=False)
+    explicit_refusals: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    planned_checks: Mapped[list] = mapped_column(JSON, nullable=False)
+    tier_cap: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(32), default="ACTIVE",
+        comment="ACTIVE | SUPERSEDED"
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    __table_args__ = (
+        Index(
+            "uq_active_contract_per_registration",
+            "construct_registration_id",
+            unique=True,
+            postgresql_where=text("status = 'ACTIVE'"),
+        ),
     )
 
 

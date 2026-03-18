@@ -83,3 +83,10 @@ run_mode:
   defaults:
     max_cycles: 20
     timeout_hours: 8
+
+# =============================================================================
+# Beads Configuration
+# =============================================================================
+beads:
+  autonomous:
+    requires_beads: false

@@ -44,6 +44,12 @@ class ConstructCertificate:
     evidence_bundle_hash: str
     episode_count: int
     reproducibility_pins: dict
+    # Contract-backed fields (cycle-037+, None for pre-037 runs)
+    contract_hash: Optional[str] = None
+    spec_hash: Optional[str] = None
+    issuance_status: str = "READY"
+    check_plan: Optional[dict] = None
+    remediation: Optional[dict] = None
 
 
 class ConstructCertificateBuilder:
@@ -55,14 +61,40 @@ class ConstructCertificateBuilder:
         investigation,
         scorer_output: ScorerOutput,
         evidence_bundle_hash: str,
+        contract=None,
     ) -> ConstructCertificate:
         """Build a ConstructCertificate from registration, investigation, and scorer output.
 
         Certificate ID format: CERT-CXXXX (C prefix for construct certificates).
+
+        Args:
+            registration: ConstructRegistration row.
+            investigation: Investigation row.
+            scorer_output: Aggregated scorer output.
+            evidence_bundle_hash: Evidence bundle hash.
+            contract: Optional EvaluationContract (cycle-037+). When provided,
+                populates contract_hash, spec_hash, check_plan, and issuance_status.
         """
         cert_id = f"CERT-C{str(uuid4())[:4].upper()}"
 
         config = investigation.stop_config_json or {}
+
+        # Contract-backed fields (cycle-037+)
+        contract_hash = None
+        spec_hash = None
+        check_plan = None
+        issuance_status = "READY"
+        remediation = None
+
+        if contract is not None:
+            contract_hash = contract.contract_hash
+            spec_hash = contract.spec_hash
+            check_plan = self._build_check_plan(contract, scorer_output)
+            issuance_status = self.compute_issuance_status(
+                scorer_output.verdict, check_plan, contract.tier_cap
+            )
+            if issuance_status == "DEFERRED":
+                remediation = self._build_remediation(check_plan)
 
         cert = ConstructCertificate(
             certificate_id=cert_id,
@@ -83,12 +115,17 @@ class ConstructCertificateBuilder:
                 "rubric_hash": registration.rubric_hash,
                 "run_number": config.get("run_number", 0),
             },
+            contract_hash=contract_hash,
+            spec_hash=spec_hash,
+            issuance_status=issuance_status,
+            check_plan=check_plan,
+            remediation=remediation,
         )
 
         logger.info(
-            "Built certificate %s for %s:%s (verdict=%s, tier=%s)",
+            "Built certificate %s for %s:%s (verdict=%s, tier=%s, issuance=%s)",
             cert_id, registration.slug, registration.version,
-            scorer_output.verdict, scorer_output.tier,
+            scorer_output.verdict, scorer_output.tier, issuance_status,
         )
         return cert
 
@@ -96,8 +133,9 @@ class ConstructCertificateBuilder:
         """Convert ConstructCertificate to the certificate_json dict for persistence.
 
         This dict is stored in InvestigationCertificateRecord.certificate_json.
+        Contract-backed fields are included only when present (cycle-037+).
         """
-        return {
+        result = {
             "certificate_id": cert.certificate_id,
             "construct_slug": cert.construct_slug,
             "construct_version": cert.construct_version,
@@ -111,6 +149,109 @@ class ConstructCertificateBuilder:
             "evidence_bundle_hash": cert.evidence_bundle_hash,
             "episode_count": cert.episode_count,
             "reproducibility_pins": cert.reproducibility_pins,
+        }
+        # Contract-backed fields (cycle-037+)
+        if cert.contract_hash is not None:
+            result["contract_hash"] = cert.contract_hash
+            result["spec_hash"] = cert.spec_hash
+            result["issuance_status"] = cert.issuance_status
+            result["check_plan"] = cert.check_plan
+            if cert.remediation is not None:
+                result["remediation"] = cert.remediation
+        return result
+
+    @staticmethod
+    def compute_issuance_status(
+        verdict: str,
+        check_plan: Optional[dict],
+        tier_cap: Optional[str] = None,
+    ) -> str:
+        """Compute issuance status from verdict, check plan, and tier cap.
+
+        Returns:
+            READY: All checks executed and verdict is PASS.
+            DEFERRED: Some checks not executed but verdict is PASS.
+            REJECTED: Verdict is not PASS.
+        """
+        if verdict != "PASS":
+            return "REJECTED"
+
+        if tier_cap is not None:
+            return "DEFERRED"
+
+        if check_plan is not None:
+            executed = check_plan.get("total_executed", 0)
+            planned = check_plan.get("total_planned", 0)
+            if planned > 0 and executed < planned:
+                return "DEFERRED"
+
+        return "READY"
+
+    @staticmethod
+    def _build_check_plan(contract, scorer_output: ScorerOutput) -> dict:
+        """Build planned-vs-executed check plan from contract and scorer output.
+
+        Checks are marked EXECUTED if the scorer has a domain score for the check's
+        domain, NOT_EXECUTED otherwise.
+        """
+        planned_checks = contract.planned_checks or []
+        scored_domains = set(scorer_output.domain_scores.keys())
+
+        entries = []
+        executed_count = 0
+
+        for check in planned_checks:
+            check_domain = check.get("domain", "")
+            check_type = check.get("check_type", "")
+
+            # RUBRIC checks are EXECUTED if domain was scored
+            # ANCHOR checks are always EXECUTED (they're structural)
+            # BENCHMARK checks are EXECUTED if domain was scored
+            if check_type == "ANCHOR":
+                status = "EXECUTED"
+            elif check_domain in scored_domains:
+                status = "EXECUTED"
+            else:
+                status = "NOT_EXECUTED"
+
+            if status == "EXECUTED":
+                executed_count += 1
+
+            score = scorer_output.domain_scores.get(check_domain) if check_domain != "*" else None
+
+            entries.append({
+                "id": check.get("check_id", ""),
+                "type": check_type,
+                "status": status,
+                "score": score,
+                "reason": None if status == "EXECUTED" else "domain_not_scored",
+            })
+
+        return {
+            "total_planned": len(planned_checks),
+            "total_executed": executed_count,
+            "checks": entries,
+        }
+
+    @staticmethod
+    def _build_remediation(check_plan: dict) -> dict:
+        """Build remediation payload for DEFERRED certificates."""
+        missing = [
+            {"check_id": c["id"], "type": c["type"], "reason": c.get("reason", "not_executed")}
+            for c in check_plan.get("checks", [])
+            if c["status"] == "NOT_EXECUTED"
+        ]
+
+        planned = check_plan.get("total_planned", 0)
+        executed = check_plan.get("total_executed", 0)
+
+        return {
+            "status": "DEFERRED",
+            "reason": f"{len(missing)} of {planned} checks not executed",
+            "missing_checks": missing,
+            "executed_count": executed,
+            "planned_count": planned,
+            "recommendation": "Re-run with all required assets available to achieve READY status.",
         }
 
     def to_soju_payload(self, certificate_json: dict) -> dict:
