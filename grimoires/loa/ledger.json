@@ -968,7 +968,7 @@
           "local_id": "sprint-3",
           "global_id": 87,
           "label": "API Routes, Certificate Integration, Regression",
-          "status": "in_progress",
+          "status": "completed",
           "tasks": 4
         }
       ]
