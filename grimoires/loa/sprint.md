@@ -1,129 +1,113 @@
-# Sprint Plan — Cycle-026: OSINT Registry Expansion — Batch 1
+# Sprint Plan — Cycle-026a: Construct Evidence Anchoring + R2 Ingest Foundation
 
-**Cycle:** cycle-026
+**Cycle:** cycle-026a
 **Date:** 17 March 2026
 **Builder:** Loa
 **Sprints:** 4 (0–3)
 
 ---
 
-## Sprint 0 — Registry + Enum + Scaffold
+## Sprint 0 — Asset Policy + Registry Schema
 
-**Goal:** Expand the registry, add source_group values, scaffold collector files. No HTTP calls yet.
+**Goal:** define the classification and manifest model before any ingest work.
 
 ### Tasks
 
-1. ~~**Add 4 source_group values** to `_VALID_SOURCE_GROUPS` in `backend/osint/models/registry.py`~~ ✅
-   - Values: `blockchain_data`, `geospatial`, `environmental`, `event_data`
-   - Write 2 tests: all 37 values present, new values in frozenset
+1. **Create registry schema models**
+   - `DatasetRegistryEntry`
+   - `DatasetRegistryDocument`
+   - `RegistryFileEntry`
+   - Write 3 tests: valid entry, missing files, invalid hash prefix
 
-2. ~~**Add 10 entries to `sources.json`** — version bump to `0.5.0`~~ ✅
-   - Full field set per entry (matching existing entry schema)
-   - Write 2 tests: RegistryLoader loads 16 entries, `.validate()` returns no errors
+2. **Create construct anchor schema**
+   - `AnchorClass`, `AnchorReference`, `EvaluationDimensionAnchor`
+   - Write 2 tests: valid anchor mapping, weak anchor mapping
 
-3. ~~**Scaffold 10 collector files** in `backend/osint/collectors/`~~ ✅
-   - Each file: class skeleton extending BaseCollector
-   - `source_id()` returns correct string
-   - `_fetch()` raises NotImplementedError (placeholder)
-   - `health_check()` returns UNAVAILABLE (placeholder)
+3. **Implement asset classification policy**
+   - snapshot allowlist
+   - live-only denylist
+   - Write 3 tests: snapshot accepted, live accepted, mixed misuse rejected
 
-4. ~~**Create `build_collector_map()`** function (or extend existing registration point)~~ ✅
-   - Wire all 10 new collectors into CollectionRunner
-   - Write 1 test: all 10 source_ids registered in collector map
-
-**Exit:** 5 tests pass. Registry loads 16 sources. 10 collector files exist. `npm run build` passes.
+**Exit:** 8 tests pass. Schema and policy surface are stable.
 
 ---
 
-## Sprint 1 — Financial + Corporate Collectors (4 collectors)
+## Sprint 1 — Benchmark Ingest Registry
 
-**Goal:** Implement the 4 collectors with API key auth: FRED, Alpha Vantage, OpenCorporates, Etherscan.
+**Goal:** create manifest-ready benchmark entries for the initial construct verification pack.
 
 ### Tasks
 
-1. ~~**Implement FREDCollector** — `_fetch()` and `health_check()`~~ ✅
-   - GET `/fred/series/observations` with series_id, api_key query param
-   - Parse observations array, extract latest value
-   - Write 3 tests: success (mocked response), missing API key, invalid series_id
+1. **Add manifest builder service**
+   - compute per-file hashes
+   - compute top-level asset hash
+   - emit `manifest.json`
 
-2. ~~**Implement AlphaVantageCollector**~~ ✅
-   - GET with `function=TIME_SERIES_DAILY`, `symbol`, `apikey` query params
-   - Parse time series, extract latest close price
-   - Write 3 tests: success, rate limit (429 response), invalid symbol
+2. **Register benchmark assets**
+   - HumanEval
+   - MBPP
+   - HellaSwag
+   - MMLU
+   - MMLU-Pro
+   - SWE-bench Verified metadata/splits
 
-3. ~~**Implement OpenCorporatesCollector**~~ ✅
-   - GET `/companies/search` with `q`, `jurisdiction_code`, `api_token` query params
-   - Parse companies array, extract company metadata
-   - Write 3 tests: success, auth failure (403), empty result set
+3. **Create aggregate dataset registry document**
+   - `manifests/dataset_registry.json`
 
-4. ~~**Implement EtherscanCollector**~~ ✅
-   - GET with `module=account`, `action=txlist` or `action=balance`, `address`, `apikey`
-   - Parse result array, extract transaction data or balance
-   - Write 3 tests: success, invalid address, rate limit
+4. **Write tests**
+   - 4 tests: manifest generation, stable hash, aggregate registry shape, path layout
 
-**Exit:** 12 tests pass. All 4 collectors produce valid CollectionResult with mocked HTTP. `npm run build` passes.
+**Exit:** benchmark registry pipeline works locally against populated folders.
 
 ---
 
-## Sprint 2 — Science + Environment + Aviation Collectors (4 collectors)
+## Sprint 2 — Standards Snapshot Registry
 
-**Goal:** Implement the 4 no-auth collectors: CoinGecko, OpenSky, USGS Earthquake, UK Carbon Intensity.
+**Goal:** add standards snapshots as first-class anchor assets.
 
 ### Tasks
 
-1. ~~**Implement CoinGeckoCollector**~~ ✅
-   - GET `/simple/price` with `ids`, `vs_currencies` query params. No auth.
-   - Parse price map
-   - Write 2 tests: success, invalid coin_id
+1. **Add standards entries**
+   - WCAG 2.2
+   - ARIA APG
 
-2. ~~**Implement OpenSkyCollector**~~ ✅
-   - GET `/states/all` with `lamin`, `lamax`, `lomin`, `lomax` bounding box. No auth.
-   - Parse state vectors array
-   - Write 2 tests: success, empty state vector (no aircraft in box)
+2. **Create aggregate standards registry**
+   - `manifests/standards_registry.json`
 
-3. ~~**Implement USGSEarthquakeCollector**~~ ✅
-   - GET `/query` with `format=geojson`, `starttime`, `endtime`, `minmagnitude`. No auth.
-   - Parse GeoJSON features, extract epicentre as GeoPoint
-   - Write 2 tests: success, no events in window
+3. **Write tests**
+   - 2 tests: WCAG manifest, ARIA manifest
 
-4. ~~**Implement CarbonIntensityCollector**~~ ✅
-   - GET `/intensity/{from}/{to}` date range. No auth.
-   - Parse intensity data array
-   - Write 2 tests: success, degraded API (partial data)
-
-**Exit:** 8 tests pass. All 4 no-auth collectors produce valid CollectionResult. `npm run build` passes.
+**Exit:** standards have the same provenance contract as benchmarks.
 
 ---
 
-## Sprint 3 — Remaining Collectors + Integration
+## Sprint 3 — Construct Anchor Mapping
 
-**Goal:** Implement OpenAQ + Calendarific. Integration sweep. Regression.
+**Goal:** connect asset registries to construct verification semantics.
 
 ### Tasks
 
-1. ~~**Implement OpenAQCollector**~~ ✅
-   - GET `/v2/measurements` with `country`, `parameter`, `date_from`, `date_to`. Auth via `X-API-Key` header.
-   - Parse measurements array
-   - Write 2 tests: success, no measurements
+1. **Implement construct anchor mapper**
+   - map dimensions to one or more anchor references
+   - mark dimensions with no recognized anchor as `weakly_anchored`
 
-2. ~~**Implement CalendarificCollector**~~ ✅
-   - GET `/holidays` with `country`, `year`, `api_key` query param.
-   - Parse holidays array. resolution_role = "counter_signal"
-   - Write 2 tests: success (holidays returned), non-holiday date
+2. **Add initial mapping rules**
+   - deterministic code checks -> `deterministic_check`
+   - benchmark prompt families -> `benchmark_dataset`
+   - accessibility/UI compliance -> `public_standard`
+   - real-world factual expertise -> `live_external_evidence`
 
-3. ~~**Integration sweep**~~ ✅
-   - Verify CollectionRunner executes all 14 collectors (3 WM + 1 CH + 10 Batch 1) concurrently
-   - ~~Verify persist_signal writes from Batch 1 collectors to osint_signals table~~ (deferred — requires DB)
-   - ~~Verify GET /api/v1/osint/signals returns signals from new source_groups~~ (deferred — requires API server)
-   - Write 2 integration tests (collector_map count + CollectionRunner execution)
+3. **Optional utility script**
+   - `build_eval_asset_manifest.py`
 
-4. ~~**Path 2 regression test**~~ ✅
-   - Confirm no imports from Path 2 files in any Cycle 026 file
-   - Write 1 test
+4. **Write tests**
+   - 3 tests: fully anchored mapping, mixed mapping, weak-only mapping
 
-5. ~~**Final `npm run build` + full test run**~~ ✅
+5. **Final verification**
+   - `npm run build`
+   - full targeted test run
 
-**Exit:** All ~31 tests pass. All 10 collectors produce valid results. Registry validates. `npm run build` passes.
+**Exit:** anchor mapping works and weakly anchored criteria are explicit.
 
 ---
 
@@ -131,8 +115,9 @@
 
 | Sprint | Focus | Tests |
 |---|---|---|
-| 0 | Registry + enum + scaffold + wiring | 5 |
-| 1 | Financial + corporate collectors (FRED, AV, OC, Etherscan) | 12 |
-| 2 | Science + environment + aviation (CoinGecko, OpenSky, USGS, Carbon) | 8 |
-| 3 | Remaining (OpenAQ, Calendarific) + integration + regression | 6 |
-| **Total** | | **~31** |
+| 0 | Policy + schema | 8 |
+| 1 | Benchmark manifest pipeline | 4 |
+| 2 | Standards manifest pipeline | 2 |
+| 3 | Construct anchor mapping | 3 |
+| **Total** | | **~17** |
+

@@ -1,204 +1,192 @@
-# PRD — Cycle-025: WorldMonitor Intelligence Contract v2
+# PRD — Cycle-026a: Construct Evidence Anchoring + R2 Ingest Foundation
 
-**Cycle:** cycle-025
-**Date:** 16 March 2026
-**Depends on:** Cycle-023 (Production Database Unification), Cycle-019 (Investigation Persistence)
+**Cycle:** cycle-026a
+**Date:** 17 March 2026
+**Depends on:** Cycle-024 (Construct Verification V1), Cycle-025 (WorldMonitor Intelligence Contract v2)
 **Sprints:** 4 (0–3)
-**Builder:** Loa (backend only — Alexander handles frontend wiring after this cycle ships)
-**Planning source:** `obsidian_vault/Echelon Core Arch/cowork_context/worldmonitor_osint_expansion_draft.md`
+**Builder:** Loa (backend/infrastructure only)
+**Planning source:** Soju construct verification follow-up; external benchmark and standards anchoring
 
 ---
 
 ## 1. Problem Statement
 
-### 1.1 WorldMonitor Has An Incomplete Contract
+### 1.1 Construct Verification Still Leans Too Hard On AI-Scored Rubrics
 
-The WorldMonitor intelligence pipeline has working bones — a live endpoint, a three-domain collector, and an API schema — but only 7 of a planned 14 MeasureType values exist. Three POST endpoints return HTTP 501 stubs referencing "Cycle-035." The contract cannot support the merged WorldMonitor/Investigations workspace that Alexander will wire after this cycle ships.
+Cycle-024 proved that Echelon can run construct verification end-to-end. But the strongest criticism still stands: too much of the verdict rests on AI-generated scoring rather than deterministic or externally anchored checks.
 
-### 1.2 The OSINT Signals Route Is A Stub
+For a sceptical user, "Echelon evaluated the construct and said PASS" is not enough. The certificate needs a stronger answer to: **what external thing anchors this judgement?**
 
-`/api/v1/osint/signals` returns an empty list. There is no database table backing it. No collected signal persists. Without a signals table, neither the evidence panel nor the source layer toggles on the merged workspace have data to render.
+### 1.2 We Need A Stable Evidence Layer For Reproducible Evaluation
 
-### 1.3 Two Separate Signal Paths Exist — Only One Persists
+The right anchor set for construct verification is not "more generic live OSINT." It is a mix of:
 
-The backend has **two independent signal architectures** that must not be confused:
+- deterministic validators
+- benchmark/reference datasets
+- public standards/specifications
+- live external evidence sources when the construct claims real-world expertise
 
-| | Path 1: Registry-based OSINT | Path 2: Signal Detector (synthetic) |
-|---|---|---|
-| **Source of truth** | `sources.json` via RegistryLoader | In-memory SignalDetector + OSINTRegistry singleton |
-| **Evidence format** | EvidenceBundle + HTTPTranscriptReceipt (hash-verified) | Signal dataclass (raw_data dict, no receipts) |
-| **Persistence** | DB-backed (calibration certs, evidence items) | In-memory only (expires via expires_at) |
-| **Used by** | CollectionRunner, Paradox Engine, Theatre settlement, investigation evidence | WorldMonitor live endpoint (`GET /live`), convergence heatmap UI |
-| **Key files** | `backend/osint/` (registry, collectors, engine/) | `backend/core/signal_detector.py`, `backend/core/osint_registry.py` |
+Right now these inputs are scattered, implicit, or not versioned.
 
-**Cycle 025 builds on Path 1** (registry-based) for the new `osint_signals` table and read endpoints. Path 2 (synthetic) remains unchanged — the existing `GET /live` endpoint continues to serve synthetic signals for the globe UI until a future cycle migrates it to read from the persisted signals table.
+### 1.3 R2 Needs A Policy Before It Becomes A Dumping Ground
 
-### 1.4 The Frontend Needs Two New Read Endpoints
+We are already uploading large assets into Cloudflare R2. Without a policy layer, we risk mixing:
 
-The merged workspace (design reference: `output/design_reference/echelon_worldmonitor_investigation_workspace_v1.html`) surfaces data the backend does not yet expose:
+- immutable benchmark corpora
+- standards snapshots
+- live data feeds
+- one-off ad hoc files
 
-| Frontend surface | Data needed | Current state |
-|---|---|---|
-| Operations panel — Feed Health | OSINT feeds online/total, signal latency, escalation queue depth | Does not exist |
-| Canvas toolbar — signal layers | Signals filterable by source_group (GDELT, AIS, ADS-B, Quakes) | Stub returns empty list |
-
-Note: The design reference shows a "Markets" tab in the bottom dock. However, **there is no Market model** in the database. Theatre markets are not persisted entities. The Markets tab is deferred until a Market model is created in a future cycle. Alexander should render this tab as an empty/deferred state.
-
-### 1.5 Convergence Scoring Is Conceptual, Not Computed
-
-The live endpoint aggregates signals from three domains but doesn't compute cross-domain convergence as a formal MeasureType. The merged workspace shows convergence as a first-class surface ("Cluster spotlight" with signal counts, "Certificate candidates" count). Formalising convergence as `CROSS_DOMAIN_CONVERGENCE` makes it flow through the evidence pipeline like any other measure.
+That creates provenance ambiguity and makes later certificates harder to defend.
 
 ---
 
 ## 2. Product Contracts
 
-### 2.1 Extend MeasureType Enum (7 → 14)
+### 2.1 Two Anchor Classes
 
-Add 7 new values to `backend/schemas/worldmonitor_api_contract.py`:
+Cycle-026a introduces two explicit evidence-anchor classes:
 
-| Value | Domain | Description |
+**A. Snapshot assets in R2**
+- versioned or pinned datasets/specifications
+- treated as reproducible evaluation inputs
+- hashed and listed in registry manifests
+
+**B. Live external evidence sources**
+- freshness matters
+- should remain API/collector-driven
+- may have small cache artifacts, but are not treated as canonical static ground truth
+
+### 2.2 First Snapshot Pack For R2
+
+Load the following into R2 as the initial construct-evaluation anchor set:
+
+| Asset | Class | Why it belongs |
 |---|---|---|
-| FORECAST_SCORE | INTELLIGENCE | Composite forecast confidence (0.0–1.0) for geopolitical scenarios |
-| FORECAST_WEIGHT | INTELLIGENCE | Weight assigned to this forecast in ensemble aggregation |
-| CORRIDOR_RISK | MARITIME | Risk score for a specific shipping corridor (strait, canal, route) |
-| SHIPPING_RATE_INDEX | MARITIME | Normalised freight rate index for a corridor or vessel class |
-| SUPPLY_CHAIN_SEVERITY | MARKET | Composite supply chain disruption severity (0.0–1.0) |
-| SANCTIONS_EXPOSURE | INTELLIGENCE | Entity-level sanctions exposure score |
-| CROSS_DOMAIN_CONVERGENCE | — (meta) | Score measuring signal convergence across 2+ domains |
+| HumanEval | benchmark | deterministic coding benchmark |
+| MBPP | benchmark | code generation benchmark |
+| HellaSwag | benchmark | reasoning/common-sense reference set |
+| MMLU | benchmark | broad cognitive/domain benchmark |
+| MMLU-Pro | benchmark | harder benchmark for stronger constructs |
+| SWE-bench Verified metadata/splits | benchmark | software maintenance / repo-task reference |
+| WCAG 2.2 | standard | accessibility anchor for UI/frontend constructs |
+| ARIA APG | standard | interaction/accessibility pattern anchor |
 
-Total after extension: **14 MeasureType values**.
+### 2.3 Live Sources Stay Live
 
-### 2.2 Add Nullable Fields to Response Schemas
+These sources are recognized as valuable anchors for some verification workloads, but **must remain live collectors** rather than bucket-first truth snapshots:
 
-**CIIResponse additions:**
-- `forecast_score: float | None = None`
-- `forecast_weight: float | None = None`
-- `sanctions_exposure: float | None = None`
+| Source | Why live |
+|---|---|
+| SEC EDGAR | filing freshness matters |
+| OFAC sanctions | list changes over time |
+| UN sanctions | list changes over time |
+| GDELT | event stream freshness matters |
+| Global Fishing Watch | activity and time window matter |
 
-**MaritimeAnomalyResponse additions:**
-- `corridor: str | None = None` — corridor identifier (e.g., "strait_hormuz")
-- `corridor_risk: float | None = None`
-- `shipping_rate_index: float | None = None`
+### 2.4 R2 Layout Contract
 
-**MarketSnapshotResponse additions:**
-- `supply_chain_severity: float | None = None`
+Use a stable, versioned R2 layout:
 
-All new fields are nullable — existing consumers unaffected.
+```text
+r2://echelon-eval-assets/
+  benchmarks/
+    humaneval/{version}/
+    mbpp/{version}/
+    hellaswag/{version}/
+    mmlu/{version}/
+    mmlu-pro/{version}/
+    swe-bench-verified/{version}/
+  standards/
+    wcag/{version}/
+    aria-apg/{version}/
+  manifests/
+    dataset_registry.json
+    standards_registry.json
+```
 
-### 2.3 Activate Three POST Endpoints
+Each asset folder contains:
 
-The 501 stubs currently live in `backend/schemas/worldmonitor_api_contract.py` (lines 294–355). Move the route definitions to `backend/api/world_monitor_routes.py` (where the existing `GET /live` route lives) and replace the stub bodies with real implementations:
+```text
+{asset}/{version}/raw/
+{asset}/{version}/manifest.json
+{asset}/{version}/LICENSE
+```
 
-| Endpoint | Request Body | Response | What It Does |
-|---|---|---|---|
-| `POST /api/v1/world-monitor/intelligence/cii` | `CIIRequest` | `EvidenceBundle[CIIResponse]` | Calls WorldMonitorCollector for INTELLIGENCE domain, generates HTTPTranscriptReceipt, returns evidence bundle |
-| `POST /api/v1/world-monitor/market/snapshot` | `MarketSnapshotRequest` | `EvidenceBundle[MarketSnapshotResponse]` | Same for MARKET domain |
-| `POST /api/v1/world-monitor/maritime/anomaly` | `MaritimeAnomalyRequest` | `EvidenceBundle[MaritimeAnomalyResponse]` | Same for MARITIME domain |
+### 2.5 Local Staging Root Is Configurable
 
-Each follows the pattern: accept request → call collector → generate receipt with canonical hash → return response wrapped in EvidenceBundle.
+Cycle-026a must not hardcode a developer-specific absolute filesystem path.
 
-### 2.4 Convergence Scoring Service
+The implementation should support a configurable local staging root, for example:
 
-When signals from 2+ domains reference the same geographic region or entity within a time window, compute a `CROSS_DOMAIN_CONVERGENCE` measure. The live endpoint's convergence cell detection becomes a formal service:
+- env var: `ECHELON_EVAL_DATA_ROOT`
+- or equivalent config setting consumed by the manifest/ingest utilities
 
-- **ConvergenceScorer** — accepts signal list, groups by geo/entity/time window, emits NormalisedMeasure with type=CROSS_DOMAIN_CONVERGENCE
-- Score flows through the evidence pipeline like any other measure
-- Convergence cells with score ≥ threshold surface as "Certificate candidates" on the workspace
+Example operator path only:
 
-### 2.5 OSINT Signals Table + Route Activation
+```text
+/Users/tobiasharber/Developer/echelon-datasets/eval-benchmarks
+```
 
-**New table: `osint_signals`**
+This path is a valid local staging location, but it is **not** part of the product contract.
 
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID | PK |
-| source_id | VARCHAR(128) | FK reference to registry source |
-| source_group | VARCHAR(64) | Denormalised from source for query performance |
-| signal_type | VARCHAR(64) | MeasureType value or raw signal classification |
-| geo_region | VARCHAR(128) | Nullable — geographic region identifier |
-| entity_ref | VARCHAR(256) | Nullable — entity reference |
-| content_hash | VARCHAR(128) | SHA-256 of normalised signal content |
-| normalised_data | JSONB | Full normalised signal payload |
-| investigation_id | UUID | Nullable FK to investigations table |
-| collected_at | TIMESTAMP | When the signal was collected |
-| created_at | TIMESTAMP | Row insertion time |
+### 2.6 Dataset Registry Contract
 
-**Indexes:**
-- `(source_group, collected_at)` — layer filtering
-- `(investigation_id, collected_at)` — investigation-scoped queries
-- `(geo_region, collected_at)` — geographic clustering
-- `content_hash` — deduplication
+Every snapshot asset must have a machine-readable registry entry:
 
-**Route activation:** Replace the empty-list stub at `GET /api/v1/osint/signals` with a query against the signals table. Supports query params:
-- `source_group` — filter by OSINT layer (e.g., `maritime_ais`, `aviation_adsb`, `geophysical_hazard`)
-- `investigation_id` — scope to a specific investigation
-- `since` — temporal filter (ISO timestamp)
-- `limit` / `offset` — pagination
-
-**Ingestion path:** The three POST endpoints (`/intelligence/cii`, `/market/snapshot`, `/maritime/anomaly`) write to the signals table via a shared `persist_signal` helper after each successful collection. The `GET /live` endpoint (Path 2) is not modified — it continues to serve synthetic in-memory signals independently.
-
-### 2.6 Two New Read Endpoints
-
-**`GET /api/v1/osint/health`**
-Returns OSINT feed health for the Operations panel:
 ```json
 {
-  "feeds_online": 6,
-  "feeds_total": 6,
-  "signal_latency_sec": 41,
-  "escalation_queue_depth": 0,
-  "replay_workers_active": 0
+  "asset_id": "humaneval_v1",
+  "class": "benchmark",
+  "source_url": "https://github.com/openai/human-eval",
+  "version": "v1",
+  "license": "MIT",
+  "retrieved_at": "2026-03-17T12:00:00Z",
+  "content_hash": "sha256:...",
+  "files": [
+    {
+      "path": "raw/problem_file.jsonl",
+      "size_bytes": 12345,
+      "content_hash": "sha256:..."
+    }
+  ]
 }
 ```
-Computed from: source registry active count (RegistryLoader), last signal timestamp in osint_signals, count of ACTIVE investigations (no `escalated` column exists — use investigation count as proxy).
 
-**`GET /api/v1/osint/signals/summary`**
-Returns signal aggregates for the canvas toolbar:
-```json
-{
-  "total_signals": 0,
-  "by_source_group": {},
-  "counter_signals": 0,
-  "certificate_candidates": 0,
-  "convergence_cells": 0
-}
-```
-Computed from: osint_signals table counts, convergence scorer output, investigation readiness counts (investigations with status=CERTIFICATE_READY).
+### 2.7 Construct Anchor Mapping Contract
 
-**Investigation-scoped markets: DEFERRED.** There is no Market model in the database. Investigation.theatre_id is a plain indexed string (not FK), and Theatre has no markets table or relationship. The design reference's Markets tab requires a Market model to be created in a future cycle. This endpoint is out of scope for Cycle 025.
+Every construct evaluation dimension must declare at least one anchor type:
 
-### 2.7 Migration
+- `deterministic_check`
+- `benchmark_dataset`
+- `public_standard`
+- `live_external_evidence`
 
-**One Alembic migration: `c025_osint_signals`**
-- Creates `osint_signals` table with all columns and indexes listed in Section 2.5
-- No changes to existing tables
+If a scoring dimension maps to none of these, it is flagged as **weakly anchored** in the evaluation contract and the certificate provenance.
 
 ---
 
 ## 3. What This Cycle Does NOT Do
 
-- **Does NOT register new OSINT sources.** Registry stays at 6 sources (v0.4.0). Batch 1 (10 new sources) is Cycle 026.
-- **Does NOT add source_group values.** `blockchain_data` and `corporate_registry` are Cycle 026 scope.
-- **Does NOT implement collectors.** Existing 3 WorldMonitor collectors are used. New collectors are Cycle 026.
-- **Does NOT touch frontend.** Alexander wires the merged workspace after this cycle ships.
-- **Does NOT implement WebSocket emissions for signal events.** Deferred — polling is sufficient for the read endpoints.
+- **Does NOT replace live OSINT collectors with static bucket snapshots**
+- **Does NOT expand the osint_signals schema**
+- **Does NOT implement the next construct-spec ingestion cycle in full**
+- **Does NOT build frontend views**
+- **Does NOT ingest speculative large scientific datasets unless they are already in scope for active construct verification**
 
 ---
 
 ## 4. Acceptance Criteria
 
-1. `MeasureType` enum has 14 values (7 existing + 7 new)
-2. CII, Market, and Maritime response schemas include new nullable fields
-3. All three POST endpoints return 200 with valid EvidenceBundle (not 501)
-4. `osint_signals` table exists with correct schema and indexes
-5. `GET /api/v1/osint/signals` returns signals from the table, filterable by source_group, investigation_id, and since
-6. `GET /api/v1/osint/health` returns feed health stats
-7. `GET /api/v1/osint/signals/summary` returns signal aggregates
-8. ConvergenceScorer emits `CROSS_DOMAIN_CONVERGENCE` measures when 2+ domains converge
-9. Alembic migration `c025_osint_signals` applies cleanly on PostgreSQL
-10. Path 2 (synthetic SignalDetector) is untouched — `GET /api/v1/world-monitor/live` continues to work as before
-11. ≥25 new tests pass
-12. `npm run build` continues to pass (no frontend changes)
+1. R2 contains the first benchmark anchor pack
+2. R2 contains WCAG 2.2 and ARIA APG snapshots
+3. Each snapshot asset has a manifest with source URL, version, retrieval time, and content hash
+4. `dataset_registry.json` and `standards_registry.json` exist and validate
+5. Snapshot assets are clearly separated from live evidence sources
+6. Construct evaluation dimensions can declare anchor classes
+7. Weakly anchored dimensions are explicitly labeled
+8. No live source is misrepresented as immutable static ground truth
+9. `npm run build` still passes (no frontend changes expected)
 
 ---
 
@@ -206,16 +194,34 @@ Computed from: osint_signals table counts, convergence scorer output, investigat
 
 | Area | Tests | Coverage |
 |---|---|---|
-| MeasureType enum | 2 | All 14 values present, string serialisation |
-| Response schema additions | 3 | Nullable fields serialise correctly, backward compat |
-| POST /intelligence/cii | 3 | Success, collector failure, invalid request |
-| POST /market/snapshot | 3 | Success, collector failure, invalid request |
-| POST /maritime/anomaly | 3 | Success, collector failure, invalid request |
-| ConvergenceScorer | 3 | Single domain (no convergence), two domains (convergence), empty input |
-| osint_signals table | 2 | Insert + query, content_hash dedup |
-| GET /osint/signals | 3 | Unfiltered, source_group filter, investigation_id filter |
-| GET /osint/health | 2 | All feeds healthy, degraded feed |
-| GET /osint/signals/summary | 2 | Empty state, populated state |
-| Path 2 regression | 1 | GET /live still returns synthetic signals unchanged |
-| Migration | 1 | Upgrade + downgrade |
-| **Total** | **~27** | |
+| Registry manifest schema | 3 | valid entry, missing field, bad hash prefix |
+| R2 path policy | 2 | benchmark path, standards path |
+| Snapshot vs live classification | 3 | snapshot accepted, live accepted, invalid mixed class rejected |
+| Benchmark ingest manifests | 4 | HumanEval, MBPP, MMLU, SWE-bench metadata |
+| Standards ingest manifests | 2 | WCAG, ARIA APG |
+| Anchor mapping model | 4 | deterministic, benchmark, standard, weakly anchored |
+| Construct anchor policy | 3 | fully anchored contract, mixed contract, weak-only contract flagged |
+| **Total** | **~21** | |
+
+---
+
+## 6. Recommended Source URLs
+
+### Snapshot Into R2
+
+- HumanEval: `https://github.com/openai/human-eval`
+- MBPP: `https://github.com/google-research/google-research/tree/master/mbpp`
+- HellaSwag: `https://github.com/rowanz/hellaswag`
+- MMLU: `https://github.com/hendrycks/test`
+- MMLU-Pro: `https://github.com/TIGER-AI-Lab/MMLU-Pro`
+- SWE-bench: `https://github.com/SWE-bench/SWE-bench`
+- WCAG 2.2: `https://www.w3.org/TR/WCAG22/`
+- ARIA APG: `https://www.w3.org/WAI/ARIA/apg/`
+
+### Keep Live
+
+- SEC EDGAR: `https://www.sec.gov/edgar/sec-api-documentation`
+- OFAC: `https://ofac.treasury.gov/sdn-list-data-formats-data-schemas/tutorial-on-the-use-of-list-related-legacy-flat-files`
+- UN sanctions: `https://main.un.org/securitycouncil/en/content/un-sc-consolidated-list`
+- GDELT: `https://www.gdeltproject.org/data.html`
+- Global Fishing Watch: `https://globalfishingwatch.org/our-apis/documentation`

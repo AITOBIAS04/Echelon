@@ -1,433 +1,321 @@
-# SDD — Cycle-025: WorldMonitor Intelligence Contract v2
+# SDD — Cycle-026a: Construct Evidence Anchoring + R2 Ingest Foundation
 
-**Cycle:** cycle-025
-**Date:** 16 March 2026
+**Cycle:** cycle-026a
+**Date:** 17 March 2026
 **Builder:** Loa
 
 ---
 
 ## 1. Architecture Summary
 
-### 1.1 Two Signal Paths — Cycle 025 Builds On Path 1
+### 1.1 Goal
 
-The backend has two independent signal architectures:
+Add a reproducible evidence-anchor layer for construct verification:
 
-**Path 1 — Registry-based OSINT (this cycle extends):**
-`sources.json` → `RegistryLoader` → `CollectionRunner` → `BaseCollector` subclasses → `EvidenceBundle` + `HTTPTranscriptReceipt`. Persisted to DB. Used by Paradox Engine, Theatre settlement, investigation evidence. Key files: `backend/osint/` (models/, engine/, collectors/).
-
-**Path 2 — Synthetic Signal Detector (untouched):**
-`SignalDetector` → `OSINTRegistry` singleton → in-memory `Signal` list → `GET /api/v1/world-monitor/live`. Used for globe UI, convergence heatmap. Key files: `backend/core/signal_detector.py`, `backend/core/osint_registry.py`.
-
-**Cycle 025 does NOT modify Path 2.** The `GET /live` endpoint continues to serve synthetic signals. The new `osint_signals` table and read endpoints are Path 1 infrastructure. A future cycle may migrate Path 2 to read from the persisted table.
+```text
+external source -> snapshot/live classification -> manifest registry -> construct anchor mapping -> verification contract provenance
+```
 
 ### 1.2 Change Categories
 
-Cycle 025 makes **four categories of change** across one existing file group and one new table:
+1. **Asset registry layer** — machine-readable manifests for snapshot assets
+2. **R2 path policy** — stable bucket layout and file conventions
+3. **Local staging root policy** — configurable local asset root, no hardcoded operator path
+4. **Anchor mapping layer** — map evaluation dimensions to anchor classes
+5. **Policy enforcement** — flag weakly anchored verification dimensions
 
-1. **Schema extensions** — 7 new MeasureType enum values, nullable field additions to 3 response models
-2. **Route implementations** — 3 POST endpoints promoted from 501 stubs to live, 3 new GET endpoints (signals, health, summary)
-3. **New service** — ConvergenceScorer formalises cross-domain signal convergence as a MeasureType
-4. **New table** — `osint_signals` with Alembic migration
+No database migrations. No new API routes required for v1. This cycle establishes the storage contract and internal models first.
 
-No existing table schemas are modified. No existing service contracts change. All response schema additions are nullable — existing consumers see no difference.
+### 1.3 Snapshot vs Live Rule
 
-### 1.3 Investigation ↔ Theatre Relationship
+Use this rule consistently:
 
-Investigation stores `theatre_id` as a plain indexed string column (not a FK constraint). The relationship is many-to-one: many investigations can reference one theatre. There is **no Market model** in the database and **no `escalated` column** on Investigation. The health endpoint uses investigation count as escalation proxy.
+- snapshot into R2 if the asset is versioned/pinned and intended as reproducible evaluation input
+- keep live if the asset’s freshness is part of the truth claim
+
+Examples:
+
+- HumanEval -> snapshot
+- WCAG 2.2 -> snapshot
+- OFAC sanctions -> live
+- GDELT -> live
 
 ---
 
 ## 2. File-Level Changes
 
-### 2.1 Schema Extensions
+### 2.1 Asset Registry Models
 
-**File: `backend/schemas/worldmonitor_api_contract.py`**
+**New file:** `backend/schemas/eval_asset_registry.py`
+
+Add Pydantic models:
 
 ```python
-# Extend MeasureType enum (after DARK_FLEET_PROBABILITY, line 54)
-FORECAST_SCORE = "FORECAST_SCORE"
-FORECAST_WEIGHT = "FORECAST_WEIGHT"
-CORRIDOR_RISK = "CORRIDOR_RISK"
-SHIPPING_RATE_INDEX = "SHIPPING_RATE_INDEX"
-SUPPLY_CHAIN_SEVERITY = "SUPPLY_CHAIN_SEVERITY"
-SANCTIONS_EXPOSURE = "SANCTIONS_EXPOSURE"
-CROSS_DOMAIN_CONVERGENCE = "CROSS_DOMAIN_CONVERGENCE"
+class RegistryFileEntry(BaseModel):
+    path: str
+    size_bytes: int
+    content_hash: str
 
-# CIIResponse — add after existing fields
-forecast_score: float | None = None
-forecast_weight: float | None = None
-sanctions_exposure: float | None = None
 
-# MaritimeAnomalyResponse — add after existing fields
-corridor: str | None = None
-corridor_risk: float | None = None
-shipping_rate_index: float | None = None
+class DatasetRegistryEntry(BaseModel):
+    asset_id: str
+    asset_class: Literal["benchmark", "standard"]
+    source_url: str
+    version: str
+    license: str | None = None
+    retrieved_at: datetime
+    content_hash: str
+    files: list[RegistryFileEntry]
 
-# MarketSnapshotResponse — add after existing fields
-supply_chain_severity: float | None = None
+
+class DatasetRegistryDocument(BaseModel):
+    version: str
+    generated_at: datetime
+    entries: list[DatasetRegistryEntry]
 ```
 
-### 2.2 POST Endpoint Implementations
+Validation rules:
+- `content_hash` must begin with `sha256:`
+- `asset_id` must be stable and filesystem-safe
+- every entry must contain at least one file
 
-**File: `backend/api/world_monitor_routes.py`**
+### 2.2 Anchor Mapping Models
 
-The 501 stubs currently live in `backend/schemas/worldmonitor_api_contract.py` (lines 294–355). Move them to `world_monitor_routes.py` and replace with real implementations. Each follows the same pattern — instantiate a per-domain `WorldMonitorCollector`, call `collector.fetch()`, persist the result:
+**New file:** `backend/schemas/construct_anchor_schema.py`
+
+Add:
 
 ```python
-@router.post("/intelligence/cii", response_model=CIIResponse)
-async def post_cii(body: CIIRequest, theatre_id: str = Query(...), session: AsyncSession = Depends(get_db)):
-    # WorldMonitorCollector is per-domain — one instance per domain
-    collector = WorldMonitorCollector(domain=WMDomain.INTELLIGENCE)
+class AnchorClass(str, Enum):
+    DETERMINISTIC_CHECK = "deterministic_check"
+    BENCHMARK_DATASET = "benchmark_dataset"
+    PUBLIC_STANDARD = "public_standard"
+    LIVE_EXTERNAL_EVIDENCE = "live_external_evidence"
 
-    # Public API is collector.fetch() — wraps _fetch() with hash invariant enforcement
-    # fetch() accepts a request dict + theatre_id, returns CollectionResult
-    request_dict = {
-        "country_code": body.country_code,
-        "geo": body.geo.model_dump() if body.geo else None,
-        "evaluation_window_start": body.evaluation_window_start.isoformat(),
-        "evaluation_window_end": body.evaluation_window_end.isoformat(),
-    }
-    result: CollectionResult = await collector.fetch(request_dict, theatre_id=theatre_id)
 
-    if not result.success:
-        raise HTTPException(status_code=502, detail=result.error or "Collector failed")
+class AnchorReference(BaseModel):
+    anchor_class: AnchorClass
+    anchor_id: str
+    rationale: str
 
-    # Persist to osint_signals table via shared helper
-    # source_group comes from the bundle — the collector populates it
-    # via _DOMAIN_SOURCE_GROUPS (e.g., "alt_data_behavioural", not "intelligence")
-    signal = await persist_signal(
-        session=session,
-        result=result,
-        source_id=collector.source_id(),              # method, not property
-        source_group=result.bundle.source_group,      # registry value, e.g. "alt_data_behavioural"
-    )
-    await session.commit()
 
-    # CIIResponse wraps bundle: EvidenceBundle
-    # New nullable fields (forecast_score, etc.) extracted from bundle's
-    # normalised_event.measure.metadata dict where available
-    metadata = {}
-    if result.bundle and result.bundle.normalised_event.measure.metadata:
-        metadata = result.bundle.normalised_event.measure.metadata
-
-    return CIIResponse(
-        bundle=result.bundle,
-        upstream_sources_consulted=[collector.source_id()],
-        forecast_score=metadata.get("forecast_score"),
-        forecast_weight=metadata.get("forecast_weight"),
-        sanctions_exposure=metadata.get("sanctions_exposure"),
-    )
+class EvaluationDimensionAnchor(BaseModel):
+    dimension: str
+    anchors: list[AnchorReference]
+    weakly_anchored: bool = False
 ```
 
-**Key API facts for Loa (verified against source):**
+### 2.3 Asset Classification Policy
 
-*WorldMonitorCollector* (`backend/osint/collectors/worldmonitor.py`):
-- `WorldMonitorCollector(domain=WMDomain.X)` — per-domain instantiation
-- `collector.fetch(request: dict, theatre_id: str) -> CollectionResult` — public method (wraps `_fetch()` with hash invariant enforcement via `BaseCollector`)
-- `collector.source_id()` — method (not property), returns registry source_id string
-- Domain → source_group mapping (via `_DOMAIN_SOURCE_GROUPS`): INTELLIGENCE → `alt_data_behavioural`, MARKET → `market_data`, MARITIME → `maritime_ais`
-- Domain → source_id mapping (via `_DOMAIN_SOURCE_IDS`): INTELLIGENCE → `worldmonitor_cii`, MARKET → `worldmonitor_finance`, MARITIME → `worldmonitor_maritime`
+**New file:** `backend/services/eval_asset_policy.py`
 
-*CollectionResult* (`backend/osint/models/evidence.py`):
-- Fields: `source_id: str`, `bundle: EvidenceBundle | None`, `raw_payload: bytes`, `fetch_duration_ms: float`, `success: bool`, `error: str | None`, `retrieved_at: datetime | None`
+Responsibilities:
+- classify asset as `snapshot` or `live`
+- validate whether a candidate asset belongs in R2
+- reject attempts to treat live feeds as immutable ground truth
 
-*EvidenceBundle* (`backend/schemas/worldmonitor_api_contract.py`):
-- Fields: `bundle_id`, `source_id`, `source_group`, `resolution_role`, `evidence_timestamp`, `raw_payload_hash`, `receipt: HTTPTranscriptReceipt`, `normalised_event: NormalisedEvent`, `confirms_primary: bool | None`
-- **No `normalised_data` field** — normalised values live in `normalised_event.measure` (value, type, unit, metadata dict)
-
-*Request models* (no `theatre_id` on any — pass theatre_id as route query param):
-- `CIIRequest`: `country_code`, `geo: GeoPoint | None`, `evaluation_window_start`, `evaluation_window_end`
-- `MarketSnapshotRequest`: `asset_class`, `symbol`, `geo: GeoPoint | None`, `evaluation_window_start`, `evaluation_window_end`
-- `MaritimeAnomalyRequest`: `geo: GeoPoint`, `radius_nm`, `anomaly_types: list[str]`, `evaluation_window_start`, `evaluation_window_end`
-
-*Response models* (existing fields — new nullable fields added by this cycle):
-- `CIIResponse`: `domain="intelligence"`, `bundle: EvidenceBundle`, `upstream_sources_consulted: list[str]`
-- `MarketSnapshotResponse`: `domain="market"`, `bundle: EvidenceBundle`, `upstream_sources_consulted: list[str]`
-- `MaritimeAnomalyResponse`: `domain="maritime"`, `bundle: EvidenceBundle`, `anomaly_count: int`, `upstream_sources_consulted: list[str]`
-
-The `persist_signal` helper writes to the `osint_signals` table — shared by all three POST endpoints. It does NOT touch the `GET /live` endpoint (Path 2).
-
-### 2.3 New Table: `osint_signals`
-
-**File: `backend/database/models.py`** — add model
+Reference implementation:
 
 ```python
-class OsintSignal(Base):
-    __tablename__ = "osint_signals"
+SNAPSHOT_ASSETS = {
+    "humaneval",
+    "mbpp",
+    "hellaswag",
+    "mmlu",
+    "mmlu-pro",
+    "swe-bench-verified",
+    "wcag",
+    "aria-apg",
+}
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    source_id = Column(String(128), nullable=False, index=True)
-    source_group = Column(String(64), nullable=False)
-    signal_type = Column(String(64), nullable=False)
-    geo_region = Column(String(128), nullable=True)
-    entity_ref = Column(String(256), nullable=True)
-    content_hash = Column(String(128), nullable=False, index=True)
-    normalised_data = Column(JSON, nullable=False)
-    investigation_id = Column(String(36), ForeignKey("investigations.id"), nullable=True)
-    collected_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
+LIVE_ONLY_ASSETS = {
+    "sec-edgar",
+    "ofac",
+    "un-sanctions",
+    "gdelt",
+    "global-fishing-watch",
+}
+```
 
-    __table_args__ = (
-        Index("ix_osint_signals_source_group_collected", "source_group", "collected_at"),
-        Index("ix_osint_signals_investigation_collected", "investigation_id", "collected_at"),
-        Index("ix_osint_signals_geo_collected", "geo_region", "collected_at"),
+### 2.4 Registry Manifest Builder
+
+**New file:** `backend/services/r2_manifest_builder.py`
+
+Responsibilities:
+- compute per-file hashes
+- compute top-level asset hash
+- emit manifest JSON
+- enforce R2 path conventions
+
+Reference flow:
+
+```python
+def build_manifest(asset_root: Path, *, asset_id: str, asset_class: str, source_url: str, version: str) -> DatasetRegistryEntry:
+    files = []
+    for file in sorted(asset_root.rglob("*")):
+        if file.is_file():
+            digest = sha256_file(file)
+            files.append(
+                RegistryFileEntry(
+                    path=str(file.relative_to(asset_root)),
+                    size_bytes=file.stat().st_size,
+                    content_hash=f"sha256:{digest}",
+                )
+            )
+
+    top_hash = sha256_json([f.model_dump() for f in files])
+    return DatasetRegistryEntry(
+        asset_id=asset_id,
+        asset_class=asset_class,
+        source_url=source_url,
+        version=version,
+        retrieved_at=datetime.utcnow(),
+        content_hash=f"sha256:{top_hash}",
+        files=files,
     )
 ```
 
-**Migration: `alembic/versions/c025_osint_signals.py`**
-- `upgrade()`: CREATE TABLE osint_signals with all columns and composite indexes
-- `downgrade()`: DROP TABLE osint_signals
+### 2.5 Construct Anchor Mapper
 
-### 2.4 ConvergenceScorer Service
+**New file:** `backend/services/construct_anchor_mapper.py`
 
-**New file: `backend/services/convergence_scorer.py`**
+Responsibilities:
+- map construct evaluation dimensions to anchor references
+- mark dimensions with no accepted anchor as weakly anchored
 
-```python
-class ConvergenceScorer:
-    """Computes CROSS_DOMAIN_CONVERGENCE measures from multi-domain signal sets."""
+Initial rule set:
 
-    def __init__(self, time_window_minutes: int = 60, geo_radius_km: float = 100.0):
-        self.time_window = timedelta(minutes=time_window_minutes)
-        self.geo_radius = geo_radius_km
+- code compilation/lint/test -> `deterministic_check`
+- benchmark prompt family -> `benchmark_dataset`
+- accessibility/ui compliance -> `public_standard`
+- real-world factual expertise -> `live_external_evidence`
 
-    def score(self, signals: list[OsintSignal]) -> list[ConvergenceCell]:
-        """Group signals by geo/entity/time, emit convergence cells for 2+ domain groups."""
-        clusters = self._cluster_signals(signals)
-        cells = []
-        for cluster in clusters:
-            domains = {s.source_group for s in cluster}
-            if len(domains) >= 2:
-                score = len(domains) / len(self._all_domains())
-                cells.append(ConvergenceCell(
-                    signals=cluster,
-                    domains=domains,
-                    convergence_score=score,
-                    measure_type=MeasureType.CROSS_DOMAIN_CONVERGENCE,
-                ))
-        return cells
+### 2.6 R2 Layout Contract
 
-    def _cluster_signals(self, signals: list[OsintSignal]) -> list[list[OsintSignal]]:
-        """Cluster by (geo_region, time_window). Exact geo match for v1, upgrade to spatial later."""
-        ...
+No API needed for v1, but the service code should assume:
 
-    @staticmethod
-    def _all_domains() -> set[str]:
-        return {d.value for d in WMDomain}
+```text
+benchmarks/{asset}/{version}/raw/
+benchmarks/{asset}/{version}/manifest.json
+benchmarks/{asset}/{version}/LICENSE
+
+standards/{asset}/{version}/raw/
+standards/{asset}/{version}/manifest.json
+standards/{asset}/{version}/LICENSE
+
+manifests/dataset_registry.json
+manifests/standards_registry.json
 ```
 
-### 2.5 OSINT Signals Route
+### 2.7 Local Staging Root Contract
 
-**File: `backend/api/osint_routes.py`** — replace stub
+The implementation must support a configurable local staging root for downloaded assets.
 
-```python
-@osint_router.get("/signals", response_model=PaginatedSignalsResponse)
-async def get_signals(
-    source_group: str | None = None,
-    investigation_id: str | None = None,
-    since: datetime | None = None,
-    limit: int = Query(default=50, le=200),
-    offset: int = Query(default=0, ge=0),
-    session: AsyncSession = Depends(get_db),
-):
-    query = select(OsintSignal).order_by(OsintSignal.collected_at.desc())
-    if source_group:
-        query = query.where(OsintSignal.source_group == source_group)
-    if investigation_id:
-        query = query.where(OsintSignal.investigation_id == investigation_id)
-    if since:
-        query = query.where(OsintSignal.collected_at >= since)
-    query = query.offset(offset).limit(limit)
-    result = await session.execute(query)
-    return PaginatedSignalsResponse(signals=result.scalars().all(), limit=limit, offset=offset)
-```
-
-### 2.6 OSINT Health Endpoint
-
-**File: `backend/api/osint_routes.py`** — new route
+Suggested contract:
 
 ```python
-@osint_router.get("/health", response_model=OsintHealthResponse)
-async def get_osint_health(session: AsyncSession = Depends(get_db)):
-    # RegistryLoader takes a file path, returns instance with .sources dict
-    # RegistrySource has NO collector_status field — count total sources as feeds_total
-    # For feeds_online: probe each WM domain via WorldMonitorCollector.health_check()
-    # or use a simpler heuristic (e.g., count sources with recent signals)
-    loader = RegistryLoader(registry_path=REGISTRY_JSON_PATH)
-    feeds_total = len(loader.sources)
-
-    # Count "online" feeds: sources that have produced a signal in the last hour
-    cutoff = datetime.utcnow() - timedelta(hours=1)
-    recent_sources = await session.execute(
-        select(func.count(func.distinct(OsintSignal.source_id)))
-        .where(OsintSignal.collected_at >= cutoff)
-    )
-    feeds_online = recent_sources.scalar() or 0
-
-    # Compute signal latency from most recent signal
-    latest = await session.execute(
-        select(OsintSignal.collected_at)
-        .order_by(OsintSignal.collected_at.desc())
-        .limit(1)
-    )
-    row = latest.scalar_one_or_none()
-    latency_sec = (datetime.utcnow() - row).total_seconds() if row else None
-
-    # Escalation queue: ACTIVE investigations as proxy (no `escalated` column exists)
-    escalation_count = await session.execute(
-        select(func.count()).select_from(Investigation)
-        .where(Investigation.status == "ACTIVE")
-    )
-
-    return OsintHealthResponse(
-        feeds_online=feeds_online,
-        feeds_total=feeds_total,
-        signal_latency_sec=round(latency_sec) if latency_sec else None,
-        escalation_queue_depth=escalation_count.scalar(),
-        replay_workers_active=0,  # Placeholder until replay engine ships
-    )
+EVAL_DATA_ROOT = os.environ.get(
+    "ECHELON_EVAL_DATA_ROOT",
+    "/Users/tobiasharber/Developer/echelon-datasets/eval-benchmarks",  # operator example only
+)
 ```
 
-### 2.7 Signal Summary Endpoint
+Rules:
+- the absolute example path above is documentation only, not a required runtime constant
+- manifest builders and utility scripts should accept an explicit input path
+- tests must not assume a developer-specific home directory
+- path normalization should exclude transport/cache artifacts (for example `.cache`, `.gitattributes`) from canonical asset manifests unless explicitly promoted into `raw/`
 
-**File: `backend/api/osint_routes.py`** — new route
+### 2.8 Suggested Optional Utility Script
 
-```python
-@osint_router.get("/signals/summary", response_model=SignalSummaryResponse)
-async def get_signals_summary(session: AsyncSession = Depends(get_db)):
-    # Total signals
-    total = await session.execute(select(func.count()).select_from(OsintSignal))
+**Optional script:** `backend/scripts/build_eval_asset_manifest.py`
 
-    # Group by source_group
-    by_group = await session.execute(
-        select(OsintSignal.source_group, func.count())
-        .group_by(OsintSignal.source_group)
-    )
+Purpose:
+- generate one asset manifest from a local folder
+- update aggregate registry document
 
-    # Counter-signals: signals from counter_signal resolution_role sources
-    loader = RegistryLoader(registry_path=REGISTRY_JSON_PATH)
-    counter_sources = {
-        sid for sid, s in loader.sources.items()
-        if s.resolution_role == "counter_signal"
-    }
-    counter_count = await session.execute(
-        select(func.count()).select_from(OsintSignal)
-        .where(OsintSignal.source_id.in_(counter_sources))
-    ) if counter_sources else 0
-
-    # Certificate candidates: investigations in CERTIFICATE_READY
-    cert_candidates = await session.execute(
-        select(func.count()).select_from(Investigation)
-        .where(Investigation.status == "CERTIFICATE_READY")
-    )
-
-    return SignalSummaryResponse(
-        total_signals=total.scalar(),
-        by_source_group=dict(by_group.all()),
-        counter_signals=counter_count.scalar() if counter_sources else 0,
-        certificate_candidates=cert_candidates.scalar(),
-        convergence_cells=0,  # Populated once convergence scorer runs
-    )
-```
-
-### 2.8 Investigation-Scoped Markets — DEFERRED
-
-**Reason:** There is no `Market` model in the database. Theatre has no `investigation_id` FK (the relationship is reversed: Investigation stores `theatre_id`). The design reference shows a Markets tab, but the backend cannot serve investigation-scoped market data without first creating a Market persistence model. This is out of scope for Cycle 025. Alexander should render the Markets dock tab as a deferred/empty state.
+This is a convenience layer, not a hard runtime dependency.
 
 ---
 
-## 3. Response Schema Additions
+## 3. Policy Surface
 
-**New file: `backend/schemas/osint_schemas.py`**
+### 3.1 Accepted Snapshot Assets In This Cycle
 
-```python
-class OsintSignalResponse(BaseModel):
-    id: str
-    source_id: str
-    source_group: str
-    signal_type: str
-    geo_region: str | None
-    entity_ref: str | None
-    content_hash: str
-    normalised_data: dict
-    investigation_id: str | None
-    collected_at: datetime
+- HumanEval
+- MBPP
+- HellaSwag
+- MMLU
+- MMLU-Pro
+- SWE-bench Verified metadata/splits
+- WCAG 2.2
+- ARIA APG
 
-class PaginatedSignalsResponse(BaseModel):
-    signals: list[OsintSignalResponse]
-    limit: int
-    offset: int
+### 3.2 Explicit Live-Only Assets In This Cycle
 
-class OsintHealthResponse(BaseModel):
-    feeds_online: int
-    feeds_total: int
-    signal_latency_sec: int | None
-    escalation_queue_depth: int
-    replay_workers_active: int
+- SEC EDGAR
+- OFAC
+- UN sanctions
+- GDELT
+- Global Fishing Watch
 
-class SignalSummaryResponse(BaseModel):
-    total_signals: int
-    by_source_group: dict[str, int]
-    counter_signals: int
-    certificate_candidates: int
-    convergence_cells: int
+### 3.3 Weakly Anchored Rule
 
+If an evaluation dimension has:
+- no deterministic validator
+- no benchmark/reference dataset
+- no public standard
+- no live external evidence anchor
+
+then it must be emitted as:
+
+```json
+{
+  "dimension": "output_conformance",
+  "anchors": [],
+  "weakly_anchored": true
+}
 ```
+
+This does not block evaluation in v1, but it makes the limitation explicit.
 
 ---
 
 ## 4. Dependency Graph
 
+```text
+asset policy
+  -> manifest builder
+  -> aggregate registry documents
+  -> construct anchor mapper
+  -> construct verification provenance
 ```
-MeasureType enum extension (2.1)
-    └── Response schema additions (2.2) — uses new enum values
-    └── POST endpoint implementations (2.3) — returns new fields
-        └── persist_signal helper — writes to osint_signals table
 
-osint_signals table + migration (2.3)
-    └── GET /osint/signals (2.5) — reads from table
-    └── GET /osint/health (2.6) — reads latest signal timestamp
-    └── GET /osint/signals/summary (2.7) — aggregates from table
-    └── ConvergenceScorer (2.4) — reads signals, emits convergence measures
-    └── persist_signal — writes to table from POST endpoints only (Path 2 /live untouched)
-
-GET /investigations/:id/markets — DEFERRED (no Market model exists)
-```
+No dependency on frontend or DB migration work.
 
 ---
 
-## 5. Migration
-
-**Migration ID:** `c025_osint_signals`
-**Tables created:** 1 (`osint_signals`)
-**Tables modified:** 0
-**Columns added to existing tables:** 0
-
-The migration only creates the new signals table with its indexes. No existing schema is touched. Upgrade and downgrade are both single-operation (CREATE TABLE / DROP TABLE).
-
----
-
-## 6. Risk Assessment
+## 5. Risks
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| POST endpoints call external APIs — flaky in CI | Tests fail intermittently | Mock collector in tests, test the route → service → persist chain with fixture data |
-| ConvergenceScorer geo clustering is naive (exact string match) | Misses nearby-but-different regions | Acceptable for v1. Document that v2 upgrades to spatial indexing (PostGIS) |
-| Path 2 (synthetic SignalDetector) accidentally modified | Live endpoint breaks | Regression test: verify `GET /live` still returns synthetic signals unchanged. Do not import from or modify `backend/core/signal_detector.py` or `backend/core/osint_registry.py` |
-| No `escalated` column on Investigation | Health endpoint escalation count wrong | Use ACTIVE investigation count as escalation proxy. No column addition needed |
+| R2 becomes mixed with ad hoc files | provenance drift | enforce manifest + path policy |
+| live feeds treated as static truth | incorrect certificate claims | explicit live-only denylist |
+| anchor mapping too permissive | weak verification still looks strong | emit `weakly_anchored` flags |
+| dataset license ambiguity | operational/legal risk | store source URL and license field in manifest |
 
 ---
 
-## 7. Files Touched (Summary)
+## 6. Files Touched
 
 | File | Change |
 |---|---|
-| `backend/schemas/worldmonitor_api_contract.py` | +7 MeasureType values, +7 nullable fields across 3 response models |
-| `backend/api/world_monitor_routes.py` | Add 3 POST endpoint implementations (stubs currently in `worldmonitor_api_contract.py` — move route defs here) |
-| `backend/api/osint_routes.py` | Replace signals stub, add /health and /signals/summary |
-| `backend/database/models.py` | Add OsintSignal model |
-| `backend/services/convergence_scorer.py` | **New** — ConvergenceScorer |
-| `backend/schemas/osint_schemas.py` | **New** — signal, health, summary, markets response schemas |
-| `alembic/versions/c025_osint_signals.py` | **New** — migration |
-| `backend/core/signal_detector.py` | **UNTOUCHED** — Path 2, do not modify |
-| `backend/core/osint_registry.py` | **UNTOUCHED** — Path 2, do not modify |
-| `backend/tests/test_cycle025_*.py` | **New** — ~27 tests |
+| `backend/schemas/eval_asset_registry.py` | new registry schema models |
+| `backend/schemas/construct_anchor_schema.py` | new anchor mapping models |
+| `backend/services/eval_asset_policy.py` | snapshot/live classification |
+| `backend/services/r2_manifest_builder.py` | per-asset manifest builder |
+| `backend/services/construct_anchor_mapper.py` | map evaluation dimensions to anchors |
+| `backend/scripts/build_eval_asset_manifest.py` | optional manifest utility |
+| `backend/tests/test_eval_asset_policy.py` | policy tests |
+| `backend/tests/test_r2_manifest_builder.py` | manifest tests |
+| `backend/tests/test_construct_anchor_mapper.py` | anchor mapping tests |
