@@ -80,6 +80,28 @@ _MAPPING_RULES: list[tuple[list[str], AnchorClass, str, str]] = [
         "research_evidence",
         "Grounded in live Semantic Scholar citation and paper metadata",
     ),
+    # ── Cycle-026c: User Research + Journey Anchors ───────────────────
+    # User research methodology → public_standard (GOV.UK Service Manual)
+    (
+        ["user_research", "hypothesis", "interview", "survey", "usability", "evidence_discipline", "confidence_label"],
+        AnchorClass.PUBLIC_STANDARD,
+        "user_research_methods",
+        "Verification against GOV.UK Service Manual user research methodology",
+    ),
+    # Journey / flow patterns → public_standard (GOV.UK Design System patterns)
+    (
+        ["journey", "flow", "step_by_step", "task_list", "check_answers", "onboarding", "flow_extraction"],
+        AnchorClass.PUBLIC_STANDARD,
+        "journey_patterns",
+        "Verification against GOV.UK Design System journey and flow patterns",
+    ),
+    # Recovery / validation / error → public_standard (GOV.UK validation guidance)
+    (
+        ["recovery", "validation", "error_handling", "error_message", "gap_analysis", "recovery_reasoning"],
+        AnchorClass.PUBLIC_STANDARD,
+        "recovery_guidance",
+        "Verification against GOV.UK Design System validation and recovery guidance",
+    ),
 ]
 
 
