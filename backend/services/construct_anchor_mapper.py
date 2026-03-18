@@ -51,6 +51,35 @@ _MAPPING_RULES: list[tuple[list[str], AnchorClass, str, str]] = [
         "live_evidence_feed",
         "Grounded in live or regularly-updated external evidence sources",
     ),
+    # ── Cycle-026b: Domain anchor expansion ──────────────────────────
+    # Frontend / component quality → public_standard (React + Tailwind docs)
+    (
+        ["frontend", "react", "component", "tailwind", "css", "layout", "responsive", "ui_quality"],
+        AnchorClass.PUBLIC_STANDARD,
+        "frontend_standards",
+        "Verification against React and Tailwind CSS official documentation",
+    ),
+    # Security / vulnerability → public_standard (OWASP Top 10 + CWE)
+    (
+        ["security", "vulnerability", "owasp", "cwe", "injection", "xss", "csrf", "auth_bypass"],
+        AnchorClass.PUBLIC_STANDARD,
+        "security_standards",
+        "Verification against OWASP Top 10 and CWE weakness taxonomy",
+    ),
+    # Research / academic citation → benchmark_dataset (arXiv metadata)
+    (
+        ["research", "paper", "citation", "arxiv", "academic", "scholarly", "ml_method"],
+        AnchorClass.BENCHMARK_DATASET,
+        "research_metadata",
+        "Evaluation against versioned arXiv ML metadata snapshots",
+    ),
+    # Research / live citation evidence → live_external_evidence (Semantic Scholar)
+    (
+        ["research", "paper", "citation", "scholarly", "semantic_scholar"],
+        AnchorClass.LIVE_EXTERNAL_EVIDENCE,
+        "research_evidence",
+        "Grounded in live Semantic Scholar citation and paper metadata",
+    ),
 ]
 
 
