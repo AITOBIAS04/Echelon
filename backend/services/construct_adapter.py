@@ -52,12 +52,33 @@ class ConstructAdapter:
         self._db = db_session
         self._prompts = test_prompt_registry
 
-    async def create_run(self, registration: ConstructRegistration) -> Investigation:
+    async def create_run(
+        self,
+        registration: ConstructRegistration,
+        contract_hash: Optional[str] = None,
+    ) -> Investigation:
         """Create a new evaluation run (investigation) for a registered construct.
 
         Assigns sequential run_number per construct. Creates Investigation row
         with CONSTRUCT_VERIFICATION_V1 template and CONSTRUCT_EVALUATION stop condition.
+
+        Args:
+            registration: The construct registration to create a run for.
+            contract_hash: Optional contract hash (cycle-037+). If provided,
+                validates the contract is ACTIVE before creating the run.
+                Pre-037 callers omit this parameter for backward compat.
         """
+        # Validate contract if provided (cycle-037+)
+        if contract_hash is not None:
+            from backend.services.contract_service import ContractService
+            contract_svc = ContractService(self._db)
+            is_active = await contract_svc.validate_contract_active(contract_hash)
+            if not is_active:
+                raise ValueError(
+                    f"Contract hash '{contract_hash[:24]}...' is not ACTIVE or not found. "
+                    f"Cannot create run against a superseded or missing contract."
+                )
+
         construct_id = f"{registration.slug}:{registration.version}"
 
         # Assign sequential run_number
@@ -72,6 +93,17 @@ class ConstructAdapter:
         prompt_set = self._prompts.get_prompts(registration.slug, registration.version)
         committed_prompt_count = prompt_set.count if prompt_set else 0
 
+        stop_config = {
+            "construct_registration_id": registration.id,
+            "construct_slug": registration.slug,
+            "construct_version": registration.version,
+            "run_number": run_number,
+            "committed_prompt_count": committed_prompt_count,
+            "commitment_hash": registration.commitment_hash,
+        }
+        if contract_hash is not None:
+            stop_config["contract_hash"] = contract_hash
+
         investigation = Investigation(
             id=str(uuid4()),
             theatre_id="",
@@ -80,17 +112,11 @@ class ConstructAdapter:
             status="ACTIVE",
             template_id="CONSTRUCT_VERIFICATION_V1",
             stop_condition="CONSTRUCT_EVALUATION",
-            stop_config_json={
-                "construct_registration_id": registration.id,
-                "construct_slug": registration.slug,
-                "construct_version": registration.version,
-                "run_number": run_number,
-                "committed_prompt_count": committed_prompt_count,
-                "commitment_hash": registration.commitment_hash,
-            },
+            stop_config_json=stop_config,
             committed_sources_json=["construct_test_prompts"],
             domain_filters_json=registration.domain_claims,
             run_number=run_number,
+            contract_hash=contract_hash,
         )
 
         self._db.add(investigation)
