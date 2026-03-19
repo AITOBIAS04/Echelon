@@ -6,6 +6,15 @@ and provenance hardening.
 
 import pytest
 
+from backend.services.external_theatre_scan_adapter import (
+    ORACLE_TOLERANCE,
+    TEMPORAL_DRIFT_WINDOW,
+    _detect_oracle_inconsistency,
+    _detect_scope_overlap_gap,
+    _detect_settlement_divergence,
+    _detect_temporal_drift,
+    scan_candidates,
+)
 from backend.schemas.theatre_comparison_bundle import (
     ComparisonCandidateSet,
     ExecutedTheatreComparisonBundle,
@@ -184,3 +193,271 @@ class TestScanRequestResult:
         assert result.total_clean == 1
         assert result.outcomes[0].has_paradox is False
         assert result.outcomes[1].has_paradox is True
+
+
+# ===========================================================================
+# Sprint 1 — Classification Adapter + Detection Functions
+# ===========================================================================
+
+class TestScanCandidatesAPI:
+    """Task 1.1: scan_candidates() public API."""
+
+    def test_empty_candidates_returns_empty_result(self):
+        """Empty candidates input returns zero totals."""
+        request = ExternalTheatreScanRequest(candidates=[])
+        result = scan_candidates(request)
+        assert result.total_scanned == 0
+        assert result.total_clean == 0
+        assert result.total_with_findings == 0
+
+    def test_constants_match_real_scanner(self):
+        """Module constants match real scanner values."""
+        assert ORACLE_TOLERANCE == 0.1
+        assert TEMPORAL_DRIFT_WINDOW == 24.0
+
+
+class TestSettlementDivergence:
+    """Task 1.2: _detect_settlement_divergence()."""
+
+    def test_settlement_divergence_settled_vs_disputed(self):
+        """SETTLED vs DISPUTED produces MATERIAL finding."""
+        a = _make_bundle("tremor", settlement_state="SETTLED")
+        b = _make_bundle("corona", settlement_state="DISPUTED")
+        finding = _detect_settlement_divergence(a, b)
+        assert finding is not None
+        assert finding.paradox_type == "SETTLEMENT_DIVERGENCE"
+        assert finding.severity == "MATERIAL"
+
+    def test_settlement_divergence_same_state_no_paradox(self):
+        """Both SETTLED with same outcomes produces None."""
+        a = _make_bundle("tremor", settlement_state="SETTLED",
+                         settlement_outcomes={"primary": "YES"})
+        b = _make_bundle("corona", settlement_state="SETTLED",
+                         settlement_outcomes={"primary": "YES"})
+        finding = _detect_settlement_divergence(a, b)
+        assert finding is None
+
+    def test_settlement_divergence_pending_skipped(self):
+        """Either PENDING produces None."""
+        a = _make_bundle("tremor", settlement_state="PENDING")
+        b = _make_bundle("corona", settlement_state="SETTLED")
+        assert _detect_settlement_divergence(a, b) is None
+
+    def test_settlement_divergence_none_state_skipped(self):
+        """Either None state produces None."""
+        a = _make_bundle("tremor", settlement_state=None)
+        b = _make_bundle("corona", settlement_state="SETTLED")
+        assert _detect_settlement_divergence(a, b) is None
+
+    def test_settlement_divergence_outcome_values_differ(self):
+        """Both SETTLED but different resolution values produces MATERIAL."""
+        a = _make_bundle("tremor", settlement_state="SETTLED",
+                         settlement_outcomes={"eq-001": {"resolution": "YES"}})
+        b = _make_bundle("corona", settlement_state="SETTLED",
+                         settlement_outcomes={"eq-001": {"resolution": "NO"}})
+        finding = _detect_settlement_divergence(a, b)
+        assert finding is not None
+        assert finding.severity == "MATERIAL"
+        assert "eq-001" in finding.evidence["divergent_keys"]
+
+    def test_settlement_divergence_severity_always_material(self):
+        """Confirm severity is always MATERIAL."""
+        a = _make_bundle("tremor", settlement_state="SETTLED")
+        b = _make_bundle("corona", settlement_state="DISPUTED")
+        finding = _detect_settlement_divergence(a, b)
+        assert finding.severity == "MATERIAL"
+
+
+class TestOracleInconsistency:
+    """Task 1.3: _detect_oracle_inconsistency()."""
+
+    def test_oracle_delta_above_tolerance(self):
+        """Delta 0.25 (same source) produces MATERIAL."""
+        a = _make_bundle(
+            "tremor",
+            oracle_source_ids=["oracle-1"],
+            oracle_values={"oracle-1": {"value": 1.0, "is_provisional": False}},
+        )
+        b = _make_bundle(
+            "corona",
+            oracle_source_ids=["oracle-1"],
+            oracle_values={"oracle-1": {"value": 1.25, "is_provisional": False}},
+        )
+        finding = _detect_oracle_inconsistency(a, b)
+        assert finding is not None
+        assert finding.paradox_type == "ORACLE_INCONSISTENCY"
+        assert finding.severity == "MATERIAL"
+        assert finding.evidence["delta"] == 0.25
+        assert finding.evidence["same_source"] is True
+
+    def test_oracle_delta_below_tolerance_no_paradox(self):
+        """Delta 0.05 (same source) produces None."""
+        a = _make_bundle(
+            "tremor",
+            oracle_source_ids=["oracle-1"],
+            oracle_values={"oracle-1": {"value": 1.0, "is_provisional": False}},
+        )
+        b = _make_bundle(
+            "corona",
+            oracle_source_ids=["oracle-1"],
+            oracle_values={"oracle-1": {"value": 1.05, "is_provisional": False}},
+        )
+        finding = _detect_oracle_inconsistency(a, b)
+        assert finding is None
+
+    def test_oracle_delta_at_tolerance_no_paradox(self):
+        """Delta exactly 0.1 produces None (tolerance is <=, not <).
+
+        Uses 0.0 and 0.1 to avoid IEEE 754 precision issues at boundary
+        (abs(1.0 - 1.1) = 0.10000000000000009 due to floating point).
+        """
+        a = _make_bundle(
+            "tremor",
+            oracle_source_ids=["oracle-1"],
+            oracle_values={"oracle-1": {"value": 0.0, "is_provisional": False}},
+        )
+        b = _make_bundle(
+            "corona",
+            oracle_source_ids=["oracle-1"],
+            oracle_values={"oracle-1": {"value": 0.1, "is_provisional": False}},
+        )
+        finding = _detect_oracle_inconsistency(a, b)
+        assert finding is None
+
+    def test_oracle_cross_source_severity_watch(self):
+        """Delta 0.3 (different sources) produces WATCH."""
+        a = _make_bundle(
+            "tremor",
+            oracle_source_ids=["oracle-a"],
+            oracle_values={"oracle-a": {"value": 1.0, "is_provisional": False}},
+        )
+        b = _make_bundle(
+            "corona",
+            oracle_source_ids=["oracle-b"],
+            oracle_values={"oracle-b": {"value": 1.3, "is_provisional": False}},
+        )
+        finding = _detect_oracle_inconsistency(a, b)
+        assert finding is not None
+        assert finding.severity == "WATCH"
+        assert finding.evidence["same_source"] is False
+
+    def test_oracle_provisional_revision_info(self):
+        """Same source, one provisional produces INFO."""
+        a = _make_bundle(
+            "tremor",
+            oracle_source_ids=["oracle-1"],
+            oracle_values={"oracle-1": {"value": 1.0, "is_provisional": True}},
+        )
+        b = _make_bundle(
+            "corona",
+            oracle_source_ids=["oracle-1"],
+            oracle_values={"oracle-1": {"value": 1.0, "is_provisional": False}},
+        )
+        finding = _detect_oracle_inconsistency(a, b)
+        assert finding is not None
+        assert finding.severity == "INFO"
+
+    def test_oracle_no_shared_sources_no_values(self):
+        """No oracle_values in either bundle produces None."""
+        a = _make_bundle("tremor", oracle_source_ids=[], oracle_values={})
+        b = _make_bundle("corona", oracle_source_ids=[], oracle_values={})
+        finding = _detect_oracle_inconsistency(a, b)
+        assert finding is None
+
+
+class TestTemporalDrift:
+    """Task 1.4a: _detect_temporal_drift()."""
+
+    def test_temporal_drift_within_window_no_paradox(self):
+        """Delta 12h produces None."""
+        a = _make_bundle(
+            "tremor",
+            oracle_values={"src": {"value": 1.0, "queried_at": "2026-03-19T00:00:00Z"}},
+        )
+        b = _make_bundle(
+            "corona",
+            oracle_values={"src": {"value": 1.0, "queried_at": "2026-03-19T12:00:00Z"}},
+        )
+        assert _detect_temporal_drift(a, b) is None
+
+    def test_temporal_drift_beyond_window_info(self):
+        """Delta 30h produces INFO."""
+        a = _make_bundle(
+            "tremor",
+            oracle_values={"src": {"value": 1.0, "queried_at": "2026-03-19T00:00:00Z"}},
+        )
+        b = _make_bundle(
+            "corona",
+            oracle_values={"src": {"value": 1.0, "queried_at": "2026-03-20T06:00:00Z"}},
+        )
+        finding = _detect_temporal_drift(a, b)
+        assert finding is not None
+        assert finding.severity == "INFO"
+        assert finding.evidence["delta_hours"] == 30.0
+
+    def test_temporal_drift_beyond_double_window_watch(self):
+        """Delta 50h produces WATCH."""
+        a = _make_bundle(
+            "tremor",
+            oracle_values={"src": {"value": 1.0, "queried_at": "2026-03-19T00:00:00Z"}},
+        )
+        b = _make_bundle(
+            "corona",
+            oracle_values={"src": {"value": 1.0, "queried_at": "2026-03-21T02:00:00Z"}},
+        )
+        finding = _detect_temporal_drift(a, b)
+        assert finding is not None
+        assert finding.severity == "WATCH"
+        assert finding.evidence["delta_hours"] == 50.0
+
+
+class TestScopeOverlapGap:
+    """Task 1.4b: _detect_scope_overlap_gap()."""
+
+    def test_scope_overlap_missing_coverage(self):
+        """Bundle A has scope keys B lacks produces WATCH."""
+        a = _make_bundle(
+            "tremor",
+            scope_keys=[
+                TheatreScopeKey(scope_type="region", scope_value="us-equities"),
+                TheatreScopeKey(scope_type="region", scope_value="eu-equities"),
+            ],
+        )
+        b = _make_bundle(
+            "corona",
+            scope_keys=[
+                TheatreScopeKey(scope_type="region", scope_value="us-equities"),
+            ],
+        )
+        candidate = ComparisonCandidateSet(
+            candidate_type="overlap_scope",
+            bundle_a=a,
+            bundle_b=b,
+            matching_keys=["region:us-equities"],
+            match_strength="PARTIAL",
+        )
+        finding = _detect_scope_overlap_gap(a, b, candidate)
+        assert finding is not None
+        assert finding.paradox_type == "SCOPE_OVERLAP_GAP"
+        assert finding.severity == "WATCH"
+        assert "region:eu-equities" in finding.evidence["missing_from_b"]
+
+    def test_scope_overlap_full_coverage_no_paradox(self):
+        """Identical scope keys produces None."""
+        a = _make_bundle(
+            "tremor",
+            scope_keys=[TheatreScopeKey(scope_type="region", scope_value="us-equities")],
+        )
+        b = _make_bundle(
+            "corona",
+            scope_keys=[TheatreScopeKey(scope_type="region", scope_value="us-equities")],
+        )
+        candidate = ComparisonCandidateSet(
+            candidate_type="overlap_scope",
+            bundle_a=a,
+            bundle_b=b,
+            matching_keys=["region:us-equities"],
+            match_strength="EXACT",
+        )
+        finding = _detect_scope_overlap_gap(a, b, candidate)
+        assert finding is None
