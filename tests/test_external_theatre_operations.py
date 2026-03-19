@@ -1237,3 +1237,300 @@ class TestTremorCoronaReporting:
         assert corona.last_scanned_at is not None
         assert tremor.latest_summary != {}
         assert corona.latest_summary != {}
+
+
+# ===========================================================================
+# P1 Patch — Atomic Idempotence
+# ===========================================================================
+
+
+class TestAtomicIdempotence:
+    """P1-1: Atomic scheduler idempotence via claim_or_get_active_run."""
+
+    def test_store_claim_creates_new_run(self):
+        """claim_or_get_active_run creates a run when none exists."""
+        store = ExternalTheatreRegistryStore()
+        run, is_new = store.claim_or_get_active_run(
+            theatre_slugs=["a", "b"],
+            spec_hash="abc123",
+        )
+        assert is_new is True
+        assert run.status == RunStatus.IN_PROGRESS
+        assert set(run.theatre_slugs) == {"a", "b"}
+
+    def test_store_claim_returns_existing(self):
+        """claim_or_get_active_run returns existing active run."""
+        store = ExternalTheatreRegistryStore()
+        first, is_new_1 = store.claim_or_get_active_run(["a", "b"])
+        second, is_new_2 = store.claim_or_get_active_run(["a", "b"])
+
+        assert is_new_1 is True
+        assert is_new_2 is False
+        assert first.id == second.id
+
+    def test_store_claim_order_independent(self):
+        """claim_or_get_active_run uses set comparison for slug matching."""
+        store = ExternalTheatreRegistryStore()
+        first, _ = store.claim_or_get_active_run(["b", "a"])
+        second, is_new = store.claim_or_get_active_run(["a", "b"])
+
+        assert is_new is False
+        assert first.id == second.id
+
+    def test_store_claim_after_complete_allows_new(self):
+        """After completing a run, claim creates a fresh one."""
+        store = ExternalTheatreRegistryStore()
+        first, _ = store.claim_or_get_active_run(["a"])
+        store.complete_run(
+            first.id,
+            preparation_summary={},
+            scan_summary={},
+            result_counts=ExternalTheatreRunSummary(),
+        )
+        second, is_new = store.claim_or_get_active_run(["a"])
+        assert is_new is True
+        assert second.id != first.id
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=0),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+        side_effect=lambda req: _mock_prep_result(
+            [inp.construct_slug for inp in req.theatres]
+        ),
+    )
+    def test_trigger_uses_atomic_claim(self, _mock_prep, _mock_scan):
+        """trigger_run uses atomic claim — second call returns duplicate."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+
+        # First trigger: starts
+        run1, status1 = svc.trigger_run(
+            theatre_slugs=["a"],
+            construct_json_map={"a": _SIMPLE_CONSTRUCT_A},
+        )
+        assert status1 == "started"
+
+        # The run completed synchronously, so a second trigger is allowed
+        run2, status2 = svc.trigger_run(
+            theatre_slugs=["a"],
+            construct_json_map={"a": _SIMPLE_CONSTRUCT_A},
+        )
+        assert status2 == "started"
+        assert run2.id != run1.id
+
+    def test_sequential_duplicate_protection(self):
+        """Sequential callers: first claims, second gets duplicate."""
+        store = ExternalTheatreRegistryStore()
+
+        run1, is_new_1 = store.claim_or_get_active_run(["x", "y"])
+        run2, is_new_2 = store.claim_or_get_active_run(["x", "y"])
+        run3, is_new_3 = store.claim_or_get_active_run(["y", "x"])
+
+        assert is_new_1 is True
+        assert is_new_2 is False
+        assert is_new_3 is False
+        assert run1.id == run2.id == run3.id
+
+
+# ===========================================================================
+# P1 Patch — Per-Theatre Readiness Truth
+# ===========================================================================
+
+
+class TestPerTheatreReadiness:
+    """P1-2: Readiness must reflect this theatre's prep outcome, not batch."""
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=0),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+    )
+    def test_failed_prep_theatre_blocked_in_mixed_batch(self, mock_prep, _mock_scan):
+        """Theatre that failed prep in a mixed batch reports BLOCKED, not READY."""
+        # Mock: theatre "a" succeeds, theatre "b" fails prep
+        mock_prep.return_value = _mock_prep_result(
+            ["a"],  # Only "a" succeeds (has bundle)
+            candidate_count=1,
+            successful=1,
+        )
+        # Manually add "b" as failed entry
+        from backend.schemas.external_theatre_orchestration import TheatrePreparationEntry
+        mock_prep.return_value.theatres.append(
+            TheatrePreparationEntry(
+                construct_slug="b",
+                construct_version="0.1.0",
+                bundle=None,
+                error="parse failure: invalid construct.json",
+            )
+        )
+        mock_prep.return_value.total_theatres = 2
+        mock_prep.return_value.total_failed = 1
+
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.register_theatre(slug="b", version="0.1.0")
+
+        svc.execute_run(
+            _make_inputs(["a", "b"], {"a": _SIMPLE_CONSTRUCT_A, "b": _SIMPLE_CONSTRUCT_B}),
+        )
+
+        report_a = svc.get_status_report("a")
+        report_b = svc.get_status_report("b")
+
+        # Theatre "a" prepared successfully → READY
+        assert report_a.readiness == "READY"
+        assert report_a.latest_run_status == RunStatus.COMPLETED
+
+        # Theatre "b" failed prep → BLOCKED despite batch completing
+        assert report_b.readiness == "BLOCKED"
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=0),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+        side_effect=lambda req: _mock_prep_result(
+            [inp.construct_slug for inp in req.theatres]
+        ),
+    )
+    def test_per_theatre_summary_stored(self, _mock_prep, _mock_scan):
+        """latest_summary contains per-theatre prepared flag."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.execute_run(_make_inputs(["a"], {"a": _SIMPLE_CONSTRUCT_A}))
+
+        entry = svc._store.get_by_slug("a")
+        assert entry.latest_summary["prepared"] is True
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=0),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+    )
+    def test_per_theatre_error_stored(self, mock_prep, _mock_scan):
+        """latest_summary records error for failed prep theatre."""
+        mock_prep.return_value = _mock_prep_result([], candidate_count=0, successful=0)
+        from backend.schemas.external_theatre_orchestration import TheatrePreparationEntry
+        mock_prep.return_value.theatres = [
+            TheatrePreparationEntry(
+                construct_slug="a",
+                construct_version="0.1.0",
+                bundle=None,
+                error="JSON schema invalid",
+            )
+        ]
+        mock_prep.return_value.total_theatres = 1
+        mock_prep.return_value.total_failed = 1
+
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.execute_run(_make_inputs(["a"], {"a": _SIMPLE_CONSTRUCT_A}))
+
+        entry = svc._store.get_by_slug("a")
+        assert entry.latest_summary["prepared"] is False
+        assert entry.latest_summary["error"] is not None
+
+
+# ===========================================================================
+# P1 Patch — Contract Hash Provenance
+# ===========================================================================
+
+
+class TestContractHashProvenance:
+    """P1-3: contract_hash must be populated on run records."""
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=0),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+        side_effect=lambda req: _mock_prep_result(
+            [inp.construct_slug for inp in req.theatres]
+        ),
+    )
+    def test_execute_run_populates_contract_hash(self, _mock_prep, _mock_scan):
+        """execute_run sets contract_hash on the run record."""
+        svc = ExternalTheatreOperationsService()
+        inputs = _make_inputs(["a"], {"a": _SIMPLE_CONSTRUCT_A})
+        run = svc.execute_run(inputs, event_keys=["ev1"])
+
+        assert run.contract_hash is not None
+        assert len(run.contract_hash) == 16  # SHA256[:16]
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=0),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+        side_effect=lambda req: _mock_prep_result(
+            [inp.construct_slug for inp in req.theatres]
+        ),
+    )
+    def test_contract_hash_deterministic(self, _mock_prep, _mock_scan):
+        """Same inputs produce the same contract_hash."""
+        svc = ExternalTheatreOperationsService()
+        inputs = _make_inputs(["a"], {"a": _SIMPLE_CONSTRUCT_A})
+
+        run1 = svc.execute_run(inputs, event_keys=["ev1"])
+        run2 = svc.execute_run(inputs, event_keys=["ev1"])
+
+        assert run1.contract_hash == run2.contract_hash
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=0),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+        side_effect=lambda req: _mock_prep_result(
+            [inp.construct_slug for inp in req.theatres]
+        ),
+    )
+    def test_contract_hash_differs_with_different_inputs(self, _mock_prep, _mock_scan):
+        """Different inputs produce different contract_hash."""
+        svc = ExternalTheatreOperationsService()
+
+        run1 = svc.execute_run(
+            _make_inputs(["a"], {"a": _SIMPLE_CONSTRUCT_A}),
+            event_keys=["ev1"],
+        )
+        run2 = svc.execute_run(
+            _make_inputs(["a"], {"a": _SIMPLE_CONSTRUCT_B}),
+            event_keys=["ev1"],
+        )
+
+        assert run1.contract_hash != run2.contract_hash
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=0),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+        side_effect=lambda req: _mock_prep_result(
+            [inp.construct_slug for inp in req.theatres]
+        ),
+    )
+    def test_trigger_run_populates_contract_hash(self, _mock_prep, _mock_scan):
+        """trigger_run also populates contract_hash via atomic claim."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+
+        run, status = svc.trigger_run(
+            theatre_slugs=["a"],
+            construct_json_map={"a": _SIMPLE_CONSTRUCT_A},
+            event_keys=["ev1"],
+        )
+        assert status == "started"
+        assert run.contract_hash is not None
+        assert len(run.contract_hash) == 16

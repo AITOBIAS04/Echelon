@@ -151,6 +151,38 @@ class ExternalTheatreRegistryStore:
         logger.info("Created run %s for theatres: %s", run_id, theatre_slugs)
         return run.model_copy()
 
+    def claim_or_get_active_run(
+        self,
+        theatre_slugs: list[str],
+        spec_hash: Optional[str] = None,
+        contract_hash: Optional[str] = None,
+    ) -> tuple[ExternalTheatreRunRecord, bool]:
+        """Atomically claim a new run or return the existing active one.
+
+        Single-operation idempotence: checks for an existing IN_PROGRESS
+        run and creates a new one in one step. Returns (run, is_new) where
+        is_new=True if a fresh run was claimed, False if a duplicate was
+        returned.
+
+        This prevents the TOCTOU gap between has_active_run() and create_run().
+        """
+        slug_set = set(theatre_slugs)
+        for run in self._runs.values():
+            if run.status == RunStatus.IN_PROGRESS and set(run.theatre_slugs) == slug_set:
+                logger.info(
+                    "Atomic claim: returning existing run %s for %s",
+                    run.id, theatre_slugs,
+                )
+                return (run.model_copy(), False)
+
+        # No active run — create one
+        new_run = self.create_run(
+            theatre_slugs=theatre_slugs,
+            spec_hash=spec_hash,
+            contract_hash=contract_hash,
+        )
+        return (new_run, True)
+
     def complete_run(
         self,
         run_id: str,

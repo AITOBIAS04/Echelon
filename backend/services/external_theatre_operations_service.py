@@ -139,22 +139,32 @@ class ExternalTheatreOperationsService:
                 "Activate with store.activate() first."
             )
 
-        # Guard 2: Idempotence — check for active run with same theatre set
-        active_run_id = self._store.has_active_run(theatre_slugs)
-        if active_run_id is not None:
-            active_run = self._store.get_run(active_run_id)
-            logger.info(
-                "Duplicate run rejected: active run %s for %s",
-                active_run_id, theatre_slugs,
-            )
-            return (active_run, "duplicate")  # type: ignore[return-value]
-
-        # Guard 3: All slugs must have construct.json content
+        # Guard 2: All slugs must have construct.json content
         missing_json = [s for s in theatre_slugs if s not in construct_json_map]
         if missing_json:
             raise ValueError(
                 f"Missing construct.json for theatre(s): {missing_json}"
             )
+
+        # Guard 3: Atomic idempotence — claim-or-get in one store operation
+        spec_hashes = [
+            self._store.compute_spec_hash(construct_json_map[s])
+            for s in theatre_slugs
+        ]
+        combined_spec_hash = self._store.compute_spec_hash(
+            "|".join(sorted(spec_hashes))
+        )
+        contract_hash = self._compute_contract_hash(
+            theatre_slugs, construct_json_map, event_keys, scope_keys,
+        )
+
+        run, is_new = self._store.claim_or_get_active_run(
+            theatre_slugs=theatre_slugs,
+            spec_hash=combined_spec_hash,
+            contract_hash=contract_hash,
+        )
+        if not is_new:
+            return (run, "duplicate")
 
         # Build inputs and delegate to execute_run
         theatre_inputs = []
@@ -166,15 +176,16 @@ class ExternalTheatreOperationsService:
                 construct_json=construct_json_map[slug],
             ))
 
-        run = self.execute_run(
+        completed_run = self._execute_run_from_claimed(
+            run_id=run.id,
             theatre_inputs=theatre_inputs,
             event_keys=event_keys,
             scope_keys=scope_keys,
             certificate_id=certificate_id,
         )
 
-        status = "started" if run.status == RunStatus.COMPLETED else "failed"
-        return (run, status)
+        status = "started" if completed_run.status == RunStatus.COMPLETED else "failed"
+        return (completed_run, status)
 
     def trigger_all_active(
         self,
@@ -224,20 +235,14 @@ class ExternalTheatreOperationsService:
     ) -> ExternalTheatreRunRecord:
         """Execute a full preparation + scan run and persist results.
 
-        Steps:
-        1. Extract theatre slugs from inputs
-        2. Compute spec hashes from construct.json content
-        3. Create run record (IN_PROGRESS)
-        4. Call 038b orchestrator (prepare_external_theatres)
-        5. Call 038c scan adapter (scan_candidates) on resulting candidates
-        6. Build result summary and complete/fail the run record
-        7. Update registry entries with latest summary timestamps
+        Creates a fresh run record and executes. For scheduler-facing
+        idempotent execution, use trigger_run() instead.
 
         Returns the completed (or failed) run record.
         """
         theatre_slugs = [t.construct_slug for t in theatre_inputs]
 
-        # Compute spec hashes for change detection
+        # Compute hashes
         spec_hashes = [
             self._store.compute_spec_hash(t.construct_json)
             for t in theatre_inputs
@@ -245,13 +250,52 @@ class ExternalTheatreOperationsService:
         combined_spec_hash = self._store.compute_spec_hash(
             "|".join(sorted(spec_hashes))
         )
+        construct_json_map = {t.construct_slug: t.construct_json for t in theatre_inputs}
+        contract_hash = self._compute_contract_hash(
+            theatre_slugs, construct_json_map, event_keys, scope_keys,
+        )
 
         # Create run record
         run = self._store.create_run(
             theatre_slugs=theatre_slugs,
             spec_hash=combined_spec_hash,
+            contract_hash=contract_hash,
         )
 
+        return self._execute_run_core(
+            run_id=run.id,
+            theatre_inputs=theatre_inputs,
+            event_keys=event_keys,
+            scope_keys=scope_keys,
+            certificate_id=certificate_id,
+        )
+
+    def _execute_run_from_claimed(
+        self,
+        run_id: str,
+        theatre_inputs: list[ExternalTheatreInput],
+        event_keys: Optional[list[str]] = None,
+        scope_keys: Optional[list] = None,
+        certificate_id: Optional[str] = None,
+    ) -> ExternalTheatreRunRecord:
+        """Execute against an already-claimed run record (from trigger_run)."""
+        return self._execute_run_core(
+            run_id=run_id,
+            theatre_inputs=theatre_inputs,
+            event_keys=event_keys,
+            scope_keys=scope_keys,
+            certificate_id=certificate_id,
+        )
+
+    def _execute_run_core(
+        self,
+        run_id: str,
+        theatre_inputs: list[ExternalTheatreInput],
+        event_keys: Optional[list[str]] = None,
+        scope_keys: Optional[list] = None,
+        certificate_id: Optional[str] = None,
+    ) -> ExternalTheatreRunRecord:
+        """Core execution: 038b orchestration → 038c scan → persist results."""
         try:
             # Step 1: 038b orchestration
             prep_request = ExternalTheatrePreparationRequest(
@@ -292,19 +336,19 @@ class ExternalTheatreOperationsService:
                 }
 
             completed_run = self._store.complete_run(
-                run_id=run.id,
+                run_id=run_id,
                 preparation_summary=prep_summary,
                 scan_summary=scan_summary,
                 result_counts=result_counts,
                 feedback_snapshot=feedback_snapshot,
             )
 
-            # Step 4: Update registry entries with latest timestamps
+            # Step 4: Update registry entries with per-theatre outcomes
             self._update_registry_from_run(theatre_inputs, prep_result, scan_result)
 
             logger.info(
                 "Run %s completed: %d theatres, %d candidates, paradox=%s",
-                run.id,
+                run_id,
                 result_counts.total_theatres,
                 result_counts.candidate_count,
                 result_counts.has_paradox,
@@ -313,9 +357,9 @@ class ExternalTheatreOperationsService:
             return completed_run  # type: ignore[return-value]
 
         except Exception as exc:
-            logger.error("Run %s failed: %s", run.id, exc)
+            logger.error("Run %s failed: %s", run_id, exc)
             failed_run = self._store.fail_run(
-                run.id,
+                run_id,
                 error_summary={"error": str(exc)},
             )
             return failed_run  # type: ignore[return-value]
@@ -408,11 +452,13 @@ class ExternalTheatreOperationsService:
         entry: ExternalTheatreRegistryEntry,
         recent_runs: list[ExternalTheatreRunRecord],
     ) -> str:
-        """Derive builder-facing readiness state.
+        """Derive builder-facing readiness state from per-theatre truth.
 
-        - "READY": Active, last run COMPLETED with no paradox
-        - "DEGRADED": Active, last run COMPLETED with paradox findings
-        - "BLOCKED": Inactive, or last run FAILED, or no runs yet
+        Uses latest_summary.prepared (per-theatre) as primary signal:
+        - "BLOCKED": Inactive, no runs, last run FAILED/IN_PROGRESS,
+          or this theatre was not prepared in the latest run
+        - "DEGRADED": Active, prepared, last run COMPLETED with paradox
+        - "READY": Active, prepared, last run COMPLETED without paradox
         """
         if not entry.is_active:
             return "BLOCKED"
@@ -426,6 +472,11 @@ class ExternalTheatreOperationsService:
             return "BLOCKED"
 
         if latest.status == RunStatus.COMPLETED:
+            # Per-theatre truth: check if THIS theatre was prepared
+            summary = entry.latest_summary
+            if summary and summary.get("prepared") is False:
+                return "BLOCKED"
+
             if latest.result_counts.has_paradox:
                 return "DEGRADED"
             return "READY"
@@ -488,13 +539,40 @@ class ExternalTheatreOperationsService:
             })
         return snapshot
 
+    def _compute_contract_hash(
+        self,
+        theatre_slugs: list[str],
+        construct_json_map: dict[str, str],
+        event_keys: Optional[list[str]] = None,
+        scope_keys: Optional[list] = None,
+    ) -> str:
+        """Compute a deterministic run-level contract hash over evaluated inputs.
+
+        Combines sorted slug set + per-slug spec hashes + event/scope keys
+        into a single stable hash. Reuses store's canonical SHA-256 hashing.
+        """
+        parts = []
+        for slug in sorted(theatre_slugs):
+            json_content = construct_json_map.get(slug, "")
+            parts.append(f"{slug}:{self._store.compute_spec_hash(json_content)}")
+        if event_keys:
+            parts.append("events:" + ",".join(sorted(event_keys)))
+        if scope_keys:
+            parts.append("scopes:" + ",".join(sorted(str(k) for k in scope_keys)))
+        return self._store.compute_spec_hash("|".join(parts))
+
     def _update_registry_from_run(
         self,
         theatre_inputs: list[ExternalTheatreInput],
         prep_result: ExternalTheatrePreparationResult,
         scan_result: Optional[ExternalTheatreScanResult],
     ) -> None:
-        """Update registry entries with latest run timestamps and summary."""
+        """Update registry entries with per-theatre run outcomes.
+
+        Persists theatre-local truth in latest_summary so readiness
+        derivation reflects this specific theatre's preparation outcome,
+        not just the batch-level aggregate.
+        """
         from datetime import datetime
 
         now = datetime.utcnow()
@@ -504,23 +582,36 @@ class ExternalTheatreOperationsService:
             if entry is None:
                 continue
 
-            # Check if this theatre was successfully prepared
-            prepared = any(
-                t.construct_slug == theatre_input.construct_slug
-                and t.bundle is not None
-                for t in prep_result.theatres
-            )
+            slug = theatre_input.construct_slug
+
+            # Per-theatre: was this specific theatre successfully prepared?
+            theatre_entry = None
+            for t in prep_result.theatres:
+                if t.construct_slug == slug:
+                    theatre_entry = t
+                    break
+
+            prepared = theatre_entry is not None and theatre_entry.bundle is not None
+            had_error = theatre_entry is not None and theatre_entry.error is not None
 
             prepared_at = now if prepared else None
             scanned_at = now if scan_result is not None and prepared else None
 
+            # Per-theatre summary — local truth, not batch-level aggregates
             summary: dict = {
                 "prepared": prepared,
-                "candidate_count": len(prep_result.candidates),
+                "error": str(theatre_entry.error) if had_error else None,
             }
-            if scan_result is not None:
-                summary["total_scanned"] = scan_result.total_scanned
-                summary["has_paradox"] = scan_result.total_with_findings > 0
+            if scan_result is not None and prepared:
+                # Count findings involving this theatre specifically
+                theatre_findings = 0
+                for outcome in scan_result.outcomes:
+                    if slug in (outcome.construct_a_slug, outcome.construct_b_slug):
+                        theatre_findings += len(outcome.findings)
+                summary["theatre_findings"] = theatre_findings
+                summary["has_paradox"] = theatre_findings > 0
+            elif not prepared:
+                summary["has_paradox"] = None  # Unknown — not scanned
 
             self._store.update_latest_summary(
                 entry_id=entry.id,
