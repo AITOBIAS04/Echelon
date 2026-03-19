@@ -32,6 +32,14 @@ from backend.services.security_check_planner import (
 # Side-effect: importing security_policy_rules registers 10 precise security
 # domains into KNOWN_PRECISE_DOMAINS at import time (cycle 037c-fix P1).
 
+from backend.services.theatre_policy_rules import parse_construct_json
+from backend.services.theatre_check_planner import (
+    plan_theatre_checks,
+    merge_theatre_checks,
+)
+# Side-effect: importing theatre_policy_rules registers 10 precise theatre
+# domains into KNOWN_PRECISE_DOMAINS at import time (cycle 037d).
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,6 +55,7 @@ class ContractService:
         yaml_content: str,
         available_assets: Optional[dict] = None,
         corpus_skills: Optional[list[CorpusSkill]] = None,
+        construct_json: Optional[str] = None,
     ) -> EvaluationContract:
         """Create or refresh an evaluation contract from YAML content.
 
@@ -62,6 +71,10 @@ class ContractService:
             corpus_skills: Optional security corpus skills for security check
                 planning. When provided, security-specific checks (ATT&CK,
                 CWE/OWASP, tool invocation, etc.) are merged into the contract.
+            construct_json: Optional raw JSON string from theatre construct.json.
+                When provided and construct_class is "theatre", theatre-specific
+                checks (SETTLEMENT_ACCURACY, ORACLE_CONSISTENCY, etc.) are
+                merged into the contract.
 
         Returns:
             The ACTIVE EvaluationContract (new or existing).
@@ -93,6 +106,19 @@ class ContractService:
                 refs = extract_security_references(skill)
                 sec_checks = plan_security_checks(skill, refs)
                 planned = merge_security_checks(planned, sec_checks)
+
+        # 4c. Merge theatre-specific checks if construct_json provided
+        #     and construct_class is "theatre"
+        if construct_json and spec.construct_class == "theatre":
+            try:
+                theatre_meta = parse_construct_json(construct_json)
+                theatre_checks = plan_theatre_checks(spec.slug, theatre_meta)
+                planned = merge_theatre_checks(planned, theatre_checks)
+            except ValueError as e:
+                logger.warning(
+                    "Failed to parse construct.json for %s: %s",
+                    spec.slug, e,
+                )
 
         planned_dicts = checks_to_dicts(planned)
 

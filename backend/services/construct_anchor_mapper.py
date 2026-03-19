@@ -117,6 +117,35 @@ _MAPPING_RULES: list[tuple[list[str], AnchorClass, str, str]] = [
         "security_skill_corpus",
         "Verification against structured cybersecurity skill corpus with workflow verification",
     ),
+    # ── Cycle-037d: Theatre Construct Anchors ─────────────────────────────
+    # Settlement / oracle ground truth → live_external_evidence
+    (
+        ["settlement", "oracle", "ground_truth"],
+        AnchorClass.LIVE_EXTERNAL_EVIDENCE,
+        "theatre_oracle_settlement",
+        "Settlement accuracy verified against oracle ground truth data",
+    ),
+    # Brier / calibration / ECE → deterministic_check
+    (
+        ["brier", "calibration", "ece"],
+        AnchorClass.DETERMINISTIC_CHECK,
+        "theatre_calibration",
+        "Calibration metrics (Brier score, ECE) are arithmetically verifiable",
+    ),
+    # Position history / temporal analysis → deterministic_check
+    (
+        ["position_history", "temporal_analysis"],
+        AnchorClass.DETERMINISTIC_CHECK,
+        "theatre_state_machine",
+        "Theatre state transitions and position history are deterministically verifiable",
+    ),
+    # Named oracles (USGS, EMSC, SWPC, DONKI, NOAA, IRIS, GFZ) → live_external_evidence
+    (
+        ["usgs", "emsc", "swpc", "donki", "noaa", "iris_dmc", "gfz"],
+        AnchorClass.LIVE_EXTERNAL_EVIDENCE,
+        "theatre_named_oracle",
+        "Grounded in named public oracle data sources (USGS, EMSC, NOAA SWPC, NASA DONKI, GFZ)",
+    ),
 ]
 
 

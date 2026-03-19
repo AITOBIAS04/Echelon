@@ -141,6 +141,12 @@ class CreateContractRequest(BaseModel):
         description="Raw corpus file contents (frontmatter + markdown). "
         "Parsed into CorpusSkills for security check planning.",
     )
+    construct_json: Optional[str] = Field(
+        None,
+        description="Raw construct.json content from theatre constructs. "
+        "When provided and construct_class is 'theatre', theatre-specific "
+        "checks are merged into the contract.",
+    )
 
 
 class NormalizedClaimSchema(BaseModel):
