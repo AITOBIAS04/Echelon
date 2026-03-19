@@ -1257,7 +1257,7 @@
           "local_id": "sprint-3",
           "global_id": 115,
           "label": "038 Compatibility + E2E Regression",
-          "status": "pending",
+          "status": "completed",
           "tasks": 3
         }
       ]
