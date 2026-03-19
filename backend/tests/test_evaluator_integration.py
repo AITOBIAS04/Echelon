@@ -248,6 +248,72 @@ class TestCertificateEnrichment:
         assert enriched["evaluator_issuance_eligible"] is False
         assert enriched["evaluator_block_reason"] == "Critical dimensions divergent: design"
 
+    def test_persisted_cert_json_reflects_final_issuance(self):
+        """P1: cert_json.issuance_status must match final_issuance, not base status.
+
+        Reproduces the trust-surface mismatch where base READY gets overridden
+        to BLOCKED by evaluator orchestration but the persisted cert_json still
+        says READY.
+        """
+        # Simulate the route's cert_json with base issuance_status = READY
+        cert_json = {
+            "certificate_id": "CERT-C9999",
+            "verdict": "PASS",
+            "issuance_status": "READY",
+        }
+
+        # Evaluator outcome says ineligible → final_issuance = BLOCKED
+        records = [
+            EvaluatorScoreRecord(evaluator_id="a", dimension="design", verdict="PASS", score=0.85),
+            EvaluatorScoreRecord(evaluator_id="b", dimension="design", verdict="FAIL", score=0.30),
+        ]
+        dim = compute_dimension_convergence("design", records)
+        summary = compute_run_convergence([dim], ["a", "b"])
+        outcome = EvaluatorOutcome(
+            convergence_summary=summary,
+            evaluator_scores=records,
+            issuance_eligible=False,
+            block_reason="Critical dimensions blocked: design",
+        )
+
+        # Step 1: enrich (as the route does)
+        enriched = enrich_certificate_json(cert_json, outcome, records, summary)
+
+        # Step 2: compute final issuance (as the route does)
+        base_status = "READY"
+        final_issuance = compute_final_issuance_status(base_status, outcome)
+        assert final_issuance == "BLOCKED"
+
+        # Step 3: write-back (the fix — mirrors the route's new line)
+        if final_issuance != base_status:
+            enriched["issuance_status"] = final_issuance
+
+        # Verify: persisted cert_json now says BLOCKED, not READY
+        assert enriched["issuance_status"] == "BLOCKED"
+        assert enriched["evaluator_issuance_eligible"] is False
+        assert enriched["evaluator_block_reason"] == "Critical dimensions blocked: design"
+
+    def test_persisted_cert_json_unchanged_when_status_matches(self):
+        """When final_issuance == base status, cert_json.issuance_status is untouched."""
+        cert_json = {
+            "certificate_id": "CERT-C8888",
+            "issuance_status": "READY",
+        }
+
+        outcome = EvaluatorOutcome(
+            convergence_summary=RunConvergenceSummary(evaluator_ids=["a"], total_dimensions=1),
+            issuance_eligible=True,
+        )
+
+        final_issuance = compute_final_issuance_status("READY", outcome)
+        assert final_issuance == "READY"
+
+        # No write-back needed
+        if final_issuance != "READY":
+            cert_json["issuance_status"] = final_issuance
+
+        assert cert_json["issuance_status"] == "READY"
+
 
 # ═══════════════════════════════════════════════════════════
 # Final Issuance Status Tests

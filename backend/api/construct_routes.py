@@ -789,6 +789,10 @@ async def issue_certificate(
         cert.issuance_status, evaluator_outcome,
     )
 
+    # Align persisted cert_json with final status so stored provenance matches response
+    if final_issuance != cert.issuance_status:
+        cert_json["issuance_status"] = final_issuance
+
     # ── Persist via shared certificate lifecycle ──
     from uuid import uuid4
     cert_record = InvestigationCertificateRecord(
