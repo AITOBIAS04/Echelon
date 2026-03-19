@@ -2,6 +2,8 @@
 
 Sprint 0: Schemas + extraction contracts (7 tests).
 Sprint 1: Enriched fixture extraction (11 tests).
+Sprint 2: Orchestrator composition (8 tests).
+Sprint 3: 038 Scanner compatibility + builder feedback (8 tests).
 """
 
 import json
@@ -818,6 +820,409 @@ class TestOrchestratorComposition(unittest.TestCase):
         self.assertEqual(result.theatres, [])
         self.assertEqual(result.candidates, [])
         self.assertEqual(result.feedback, [])
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Sprint 3 — 038 Scanner Compatibility + Builder Feedback (8 tests)
+# ═══════════════════════════════════════════════════════════════════
+
+
+class TestScannerCompatibility(unittest.TestCase):
+    """Sprint 3: Prove orchestrated output is consumable by the 038 paradox scanner."""
+
+    def test_candidates_consumable_by_scanner_input(self):
+        """Candidate bundles have fields the 038 CrossTheatreParadoxScanner expects.
+
+        The scanner reads: construct_slug, settlement_state, execution_summary
+        (with checks), event_keys, scope_keys, settlement_outcomes, oracle_values.
+        Each ComparisonCandidateSet must have bundle_a and bundle_b with these fields.
+        """
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+                ExternalTheatreInput(
+                    construct_slug="corona",
+                    construct_version="0.1.0",
+                    construct_json=CORONA_CONSTRUCT_JSON,
+                ),
+            ],
+            event_keys=["geomagnetic_event_2026"],
+            scope_keys=[
+                TheatreScopeKey(scope_type="region", scope_value="global"),
+            ],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertGreaterEqual(len(result.candidates), 1)
+
+        for candidate in result.candidates:
+            self.assertIsInstance(candidate, ComparisonCandidateSet)
+            self.assertIn(candidate.candidate_type, ("same_event", "overlap_scope"))
+
+            for bundle in (candidate.bundle_a, candidate.bundle_b):
+                self.assertIsInstance(bundle, ExecutedTheatreComparisonBundle)
+
+                # Fields the 038 scanner pathway consumes
+                self.assertIsInstance(bundle.construct_slug, str)
+                self.assertTrue(len(bundle.construct_slug) > 0)
+                self.assertIsInstance(bundle.construct_version, str)
+
+                # Settlement state — scanner uses this for divergence detection
+                self.assertIn(bundle.settlement_state, ("SETTLED", "DISPUTED", "PENDING"))
+
+                # Execution summary — scanner uses check_summary for paradox evidence
+                self.assertIsNotNone(bundle.execution_summary)
+                self.assertIsInstance(bundle.execution_summary.checks, list)
+                self.assertGreater(bundle.execution_summary.executed_count, 0)
+
+                # Event keys — scanner matches bundles on shared events
+                self.assertIsInstance(bundle.event_keys, list)
+                self.assertGreater(len(bundle.event_keys), 0)
+
+                # Scope keys — scanner matches bundles on scope overlap
+                self.assertIsInstance(bundle.scope_keys, list)
+
+                # Settlement outcomes — scanner reads per-template outcomes
+                self.assertIsInstance(bundle.settlement_outcomes, dict)
+
+                # Oracle values — scanner reads per-source values
+                self.assertIsInstance(bundle.oracle_values, dict)
+
+                # Provenance refs — audit trail
+                self.assertIsInstance(bundle.provenance_refs, list)
+                self.assertGreater(len(bundle.provenance_refs), 0)
+
+    def test_disputed_bundle_from_enriched_fixtures(self):
+        """Enriched fixtures with failing templates -> DISPUTED settlement_state.
+
+        Because enriched extraction includes odd-indexed failing templates
+        (predicted != actual), the bundle's settlement_state must be DISPUTED
+        rather than SETTLED. This proves enriched extraction enables non-trivial
+        bundle states that the all-passing deterministic fixtures could never produce.
+        """
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+            ],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(result.total_successful, 1)
+        bundle = result.theatres[0].bundle
+        self.assertIsNotNone(bundle)
+
+        # TREMOR has 5 templates: indices 1 (aftershock_cascade) and 3 (depth_regime) fail.
+        # Any FAILED SETTLEMENT_ACCURACY check -> DISPUTED settlement_state.
+        self.assertEqual(bundle.settlement_state, "DISPUTED")
+
+        # Verify the settlement outcomes contain both matching and mismatched results
+        self.assertIn("magnitude_gate", bundle.settlement_outcomes)
+        self.assertIn("aftershock_cascade", bundle.settlement_outcomes)
+
+        # magnitude_gate (pass): predicted == actual
+        mg = bundle.settlement_outcomes["magnitude_gate"]
+        self.assertEqual(mg["predicted_outcome"], mg["actual_outcome"])
+
+        # aftershock_cascade (fail): predicted != actual
+        ac = bundle.settlement_outcomes["aftershock_cascade"]
+        self.assertNotEqual(ac["predicted_outcome"], ac["actual_outcome"])
+
+    def test_settled_vs_disputed_cross_comparison(self):
+        """TREMOR + CORONA cross-theatre with shared event_keys -> at least one candidate.
+
+        Both TREMOR and CORONA produce DISPUTED bundles (both have 5 templates
+        with odd-indexed failures). This exercises the cross-comparison path
+        that all-passing fixtures could never meaningfully reach, since shared
+        event_keys enable same_event matching.
+        """
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+                ExternalTheatreInput(
+                    construct_slug="corona",
+                    construct_version="0.1.0",
+                    construct_json=CORONA_CONSTRUCT_JSON,
+                ),
+            ],
+            event_keys=["shared_geomagnetic_event"],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(result.total_successful, 2)
+
+        # Both bundles should be DISPUTED (enriched fixtures have failing templates)
+        tremor_bundle = result.theatres[0].bundle
+        corona_bundle = result.theatres[1].bundle
+        self.assertIsNotNone(tremor_bundle)
+        self.assertIsNotNone(corona_bundle)
+        self.assertEqual(tremor_bundle.settlement_state, "DISPUTED")
+        self.assertEqual(corona_bundle.settlement_state, "DISPUTED")
+
+        # Shared event_keys -> same_event candidate generated
+        self.assertGreaterEqual(len(result.candidates), 1)
+        candidate = result.candidates[0]
+        self.assertEqual(candidate.candidate_type, "same_event")
+        self.assertIn("shared_geomagnetic_event", candidate.matching_keys)
+
+        # Both bundles in the candidate are different constructs
+        self.assertNotEqual(
+            candidate.bundle_a.construct_slug,
+            candidate.bundle_b.construct_slug,
+        )
+
+    def test_disputed_bundle_odd_index_fail_scanner_compatible(self):
+        """DISPUTED bundle path (odd-index fail fixtures) -> candidates still scanner-compatible.
+
+        Verifies that even with DISPUTED settlement state from failing odd-indexed
+        templates, the candidate shape remains fully consumable by the scanner:
+        all check summaries present, all evidence dict fields populated.
+        """
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+                ExternalTheatreInput(
+                    construct_slug="corona",
+                    construct_version="0.1.0",
+                    construct_json=CORONA_CONSTRUCT_JSON,
+                ),
+            ],
+            event_keys=["scanner_compat_event"],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertGreaterEqual(len(result.candidates), 1)
+
+        for candidate in result.candidates:
+            for bundle in (candidate.bundle_a, candidate.bundle_b):
+                # Execution summary checks are populated
+                summary = bundle.execution_summary
+                self.assertGreater(len(summary.checks), 0)
+
+                # Each check has the fields the scanner uses
+                for check in summary.checks:
+                    self.assertIsInstance(check.check_type, str)
+                    self.assertIn(check.status, ("PASSED", "FAILED", "SKIPPED"))
+                    self.assertIsInstance(check.is_critical, bool)
+                    self.assertIsInstance(check.evidence, dict)
+
+                # Settlement outcomes populated for SETTLEMENT_ACCURACY checks
+                settlement_checks = [
+                    c for c in summary.checks if c.check_type == "SETTLEMENT_ACCURACY"
+                ]
+                self.assertGreater(len(settlement_checks), 0)
+
+                # Has both PASSED and FAILED settlement checks (enriched extraction)
+                statuses = {c.status for c in settlement_checks}
+                self.assertIn("PASSED", statuses)
+                self.assertIn("FAILED", statuses)
+
+
+class TestBuilderFeedback(unittest.TestCase):
+    """Sprint 3: Builder feedback correctly distinguishes TREMOR vs CORONA metadata quality."""
+
+    def test_tremor_feedback_required_present(self):
+        """TREMOR feedback: all required items present, overall_readiness=READY."""
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+            ],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(len(result.feedback), 1)
+        feedback = result.feedback[0]
+        self.assertEqual(feedback.construct_slug, "tremor")
+        self.assertEqual(feedback.overall_readiness, "READY")
+
+        # All required items should have status="present"
+        for item in feedback.required_items:
+            self.assertEqual(item.category, "required")
+            self.assertEqual(item.status, "present",
+                             f"Required item '{item.field}' should be present, got '{item.status}'")
+
+        # TREMOR has verification_checks, settlement_tiers, brier_type — all optional present
+        optional_fields = {item.field: item.status for item in feedback.optional_items}
+        self.assertEqual(optional_fields.get("verification_checks"), "present")
+        self.assertEqual(optional_fields.get("settlement_tiers"), "present")
+        self.assertEqual(optional_fields.get("brier_type"), "present")
+
+    def test_corona_feedback_optional_missing(self):
+        """CORONA feedback: verification_checks and settlement_tiers missing -> DEGRADED."""
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="corona",
+                    construct_version="0.1.0",
+                    construct_json=CORONA_CONSTRUCT_JSON,
+                ),
+            ],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(len(result.feedback), 1)
+        feedback = result.feedback[0]
+        self.assertEqual(feedback.construct_slug, "corona")
+        self.assertEqual(feedback.overall_readiness, "DEGRADED")
+
+        # CORONA is missing verification_checks and settlement_tiers
+        optional_fields = {item.field: item.status for item in feedback.optional_items}
+        self.assertEqual(optional_fields.get("verification_checks"), "missing")
+        self.assertEqual(optional_fields.get("settlement_tiers"), "missing")
+
+        # CORONA templates don't declare brier_type
+        self.assertEqual(optional_fields.get("brier_type"), "missing")
+
+        # Required items still present (CORONA has templates and name)
+        for item in feedback.required_items:
+            self.assertEqual(item.status, "present",
+                             f"Required item '{item.field}' should be present for CORONA")
+
+    def test_tremor_feedback_extraction_summary(self):
+        """TREMOR feedback: extraction items list all fixture categories."""
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+            ],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(len(result.feedback), 1)
+        feedback = result.feedback[0]
+
+        # Extraction items should cover all fixture categories
+        extraction_fields = {item.field for item in feedback.extraction_items}
+        self.assertIn("settlement_fixtures", extraction_fields)
+        self.assertIn("oracle_fixtures", extraction_fields)
+        self.assertIn("calibration_fixture", extraction_fields)
+        self.assertIn("functional_fixtures", extraction_fields)
+        self.assertIn("failure_scenarios", extraction_fields)
+
+        # All extraction items should have category="extraction"
+        for item in feedback.extraction_items:
+            self.assertEqual(item.category, "extraction")
+
+        # Enriched items should have status="enriched"
+        enriched_items = [item for item in feedback.extraction_items if item.status == "enriched"]
+        self.assertGreater(len(enriched_items), 0)
+
+    def test_feedback_blocked_on_missing_templates(self):
+        """Construct with no templates -> BLOCKED readiness via _build_builder_feedback."""
+        meta = TheatreConstructMeta(
+            name="blocked_construct",
+            theatre_templates=[],
+            osint_sources=[],
+            verification_checks=[],
+            settlement_tiers=[],
+            has_brier_scoring=False,
+            has_cross_validation=False,
+            oracle_names=[],
+        )
+        extraction = ExtractionResult(
+            construct_slug="blocked",
+            success=False,
+            error="No theatre templates found",
+        )
+        report = _build_builder_feedback("blocked", meta, extraction)
+
+        self.assertEqual(report.overall_readiness, "BLOCKED")
+        self.assertEqual(report.construct_slug, "blocked")
+
+        # Required items should include a missing templates item
+        template_items = [i for i in report.required_items if i.field == "theatre_templates"]
+        self.assertEqual(len(template_items), 1)
+        self.assertEqual(template_items[0].status, "missing")
+
+    def test_end_to_end_tremor_corona_preparation(self):
+        """Full pipeline: TREMOR + CORONA with shared identity -> candidates + feedback + echo."""
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+                ExternalTheatreInput(
+                    construct_slug="corona",
+                    construct_version="0.1.0",
+                    construct_json=CORONA_CONSTRUCT_JSON,
+                ),
+            ],
+            event_keys=["geomagnetic_storm_2026"],
+            scope_keys=[
+                TheatreScopeKey(scope_type="region", scope_value="global"),
+                TheatreScopeKey(scope_type="entity", scope_value="noaa"),
+                TheatreScopeKey(scope_type="time_window", scope_value="2026-03"),
+            ],
+        )
+        result = prepare_external_theatres(request)
+
+        # Aggregate counts
+        self.assertEqual(result.total_theatres, 2)
+        self.assertEqual(result.total_successful, 2)
+        self.assertEqual(result.total_failed, 0)
+
+        # Candidates: at least 1 (same_event from shared event_keys)
+        self.assertGreaterEqual(len(result.candidates), 1)
+
+        # Feedback: one per theatre
+        self.assertEqual(len(result.feedback), 2)
+        feedback_slugs = {f.construct_slug for f in result.feedback}
+        self.assertIn("tremor", feedback_slugs)
+        self.assertIn("corona", feedback_slugs)
+
+        # TREMOR = READY, CORONA = DEGRADED
+        tremor_fb = [f for f in result.feedback if f.construct_slug == "tremor"][0]
+        corona_fb = [f for f in result.feedback if f.construct_slug == "corona"][0]
+        self.assertEqual(tremor_fb.overall_readiness, "READY")
+        self.assertEqual(corona_fb.overall_readiness, "DEGRADED")
+
+        # Event keys echo
+        self.assertEqual(result.event_keys_used, ["geomagnetic_storm_2026"])
+
+        # Scope keys echo
+        self.assertEqual(len(result.scope_keys_used), 3)
+        scope_types = {sk.scope_type for sk in result.scope_keys_used}
+        self.assertIn("region", scope_types)
+        self.assertIn("entity", scope_types)
+        self.assertIn("time_window", scope_types)
+
+        # Both bundles have shared event keys and scope keys threaded
+        for entry in result.theatres:
+            self.assertIsNotNone(entry.bundle)
+            self.assertIn("geomagnetic_storm_2026", entry.bundle.event_keys)
+            self.assertEqual(len(entry.bundle.scope_keys), 3)
+
+        # Both bundles are DISPUTED (enriched extraction includes failures)
+        for entry in result.theatres:
+            self.assertEqual(entry.bundle.settlement_state, "DISPUTED")
+
+        # Candidate has the shared event key
+        candidate = result.candidates[0]
+        self.assertIn("geomagnetic_storm_2026", candidate.matching_keys)
 
 
 if __name__ == "__main__":
