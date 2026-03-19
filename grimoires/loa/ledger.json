@@ -1103,8 +1103,10 @@
     {
       "cycle_id": "cycle-037c",
       "label": "Security + Domain Pack Verification",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-19T02:00:00Z",
+      "archived": "2026-03-19T12:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-19-security-domain-pack-verification",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -1140,7 +1142,7 @@
       ]
     }
   ],
-  "active_cycle": "cycle-037c",
+  "active_cycle": null,
   "active_bugfix": null,
   "global_sprint_counter": 103,
   "bugfix_cycles": [
