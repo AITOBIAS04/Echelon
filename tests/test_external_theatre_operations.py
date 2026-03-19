@@ -766,3 +766,208 @@ class TestTriggerAllActive:
         run, status = svc.trigger_all_active(construct_json_map={})
         assert run is None
         assert "missing_construct_json" in status
+
+
+# ===========================================================================
+# Sprint 3 — Reporting Surface
+# ===========================================================================
+
+
+def _make_inputs(slugs, construct_json_map):
+    """Build ExternalTheatreInput list from slugs + JSON map."""
+    return [
+        ExternalTheatreInput(
+            construct_slug=s,
+            construct_version="0.1.0",
+            construct_json=construct_json_map[s],
+        )
+        for s in slugs
+    ]
+
+
+class TestGetStatusReport:
+    """Task 3.1: Per-theatre status report composition."""
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=0),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+        side_effect=lambda req: _mock_prep_result(
+            [inp.construct_slug for inp in req.theatres]
+        ),
+    )
+    def test_status_report_after_successful_run(self, _mock_prep, _mock_scan):
+        """Status report includes registry state, latest run, and readiness."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.execute_run(_make_inputs(["a"], {"a": _SIMPLE_CONSTRUCT_A}))
+
+        report = svc.get_status_report("a")
+        assert report is not None
+        assert report.slug == "a"
+        assert report.version == "0.1.0"
+        assert report.status == RegistryStatus.ACTIVE
+        assert report.is_active is True
+        assert report.latest_run_status == RunStatus.COMPLETED
+        assert report.readiness == "READY"
+        assert report.latest_result_counts is not None
+        assert len(report.recent_runs) == 1
+
+    def test_status_report_nonexistent_theatre(self):
+        """Status report for nonexistent theatre returns None."""
+        svc = ExternalTheatreOperationsService()
+        report = svc.get_status_report("nonexistent")
+        assert report is None
+
+    def test_status_report_no_runs(self):
+        """Status report for registered theatre with no runs shows BLOCKED."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+
+        report = svc.get_status_report("a")
+        assert report is not None
+        assert report.slug == "a"
+        assert report.latest_run_status is None
+        assert report.latest_result_counts is None
+        assert report.readiness == "BLOCKED"
+        assert report.feedback_items == []
+        assert report.recent_runs == []
+
+
+class TestReadinessDerivation:
+    """Task 3.2: Readiness state machine — READY, DEGRADED, BLOCKED."""
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=0),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+        side_effect=lambda req: _mock_prep_result(
+            [inp.construct_slug for inp in req.theatres]
+        ),
+    )
+    def test_readiness_ready(self, _mock_prep, _mock_scan):
+        """Active theatre with completed run and no paradox → READY."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.execute_run(_make_inputs(["a"], {"a": _SIMPLE_CONSTRUCT_A}))
+
+        report = svc.get_status_report("a")
+        assert report.readiness == "READY"
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=1),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+        side_effect=lambda req: _mock_prep_result(
+            [inp.construct_slug for inp in req.theatres]
+        ),
+    )
+    def test_readiness_degraded(self, _mock_prep, _mock_scan):
+        """Active theatre with completed run and paradox findings → DEGRADED."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.execute_run(_make_inputs(["a"], {"a": _SIMPLE_CONSTRUCT_A}))
+
+        report = svc.get_status_report("a")
+        assert report.readiness == "DEGRADED"
+        assert report.latest_result_counts.has_paradox is True
+
+    def test_readiness_blocked_inactive(self):
+        """Inactive theatre → BLOCKED regardless of run history."""
+        svc = ExternalTheatreOperationsService()
+        entry = svc.register_theatre(slug="a", version="0.1.0")
+        svc.unregister_theatre(entry.id)
+
+        report = svc.get_status_report("a")
+        assert report.readiness == "BLOCKED"
+        assert report.is_active is False
+
+    def test_readiness_blocked_no_runs(self):
+        """Active theatre with no runs → BLOCKED."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+
+        report = svc.get_status_report("a")
+        assert report.readiness == "BLOCKED"
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+        side_effect=RuntimeError("prep failed"),
+    )
+    def test_readiness_blocked_failed_run(self, _mock_prep, _mock_scan):
+        """Active theatre with failed last run → BLOCKED."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.execute_run(_make_inputs(["a"], {"a": _SIMPLE_CONSTRUCT_A}))
+
+        report = svc.get_status_report("a")
+        assert report.readiness == "BLOCKED"
+        assert report.latest_run_status == RunStatus.FAILED
+
+
+class TestFeedbackRollup:
+    """Task 3.3: Feedback aggregation from recent completed runs."""
+
+    @patch(
+        "backend.services.external_theatre_operations_service.scan_candidates",
+        return_value=_mock_scan_result(total_scanned=1, with_findings=0),
+    )
+    @patch(
+        "backend.services.external_theatre_operations_service.prepare_external_theatres",
+        side_effect=lambda req: _mock_prep_result(
+            [inp.construct_slug for inp in req.theatres]
+        ),
+    )
+    def test_feedback_from_completed_run(self, _mock_prep, _mock_scan):
+        """Feedback rollup returns snapshot from most recent completed run."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.execute_run(_make_inputs(["a"], {"a": _SIMPLE_CONSTRUCT_A}))
+
+        report = svc.get_status_report("a")
+        # Feedback snapshot should be a list (may be empty if no feedback items)
+        assert isinstance(report.feedback_items, list)
+
+    def test_feedback_empty_no_runs(self):
+        """Feedback rollup returns empty list when no runs exist."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+
+        report = svc.get_status_report("a")
+        assert report.feedback_items == []
+
+
+class TestListStatusReports:
+    """Task 3.4: Bulk status reporting with active-only filtering."""
+
+    def test_list_active_only(self):
+        """list_status_reports(active_only=True) excludes inactive theatres."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        entry_b = svc.register_theatre(slug="b", version="0.1.0")
+        svc.unregister_theatre(entry_b.id)  # b is now inactive
+
+        reports = svc.list_status_reports(active_only=True)
+        assert len(reports) == 1
+        assert reports[0].slug == "a"
+
+    def test_list_all_includes_inactive(self):
+        """list_status_reports(active_only=False) includes inactive theatres."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        entry_b = svc.register_theatre(slug="b", version="0.1.0")
+        svc.unregister_theatre(entry_b.id)
+
+        reports = svc.list_status_reports(active_only=False)
+        assert len(reports) == 2
+        slugs = {r.slug for r in reports}
+        assert slugs == {"a", "b"}

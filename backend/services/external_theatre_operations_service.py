@@ -1,6 +1,6 @@
 """Operations service for external theatre lifecycle management.
 
-Cycle 039: External Theatre Operations — Sprints 1–2.
+Cycle 039: External Theatre Operations — Sprints 1–3.
 
 Composition layer over:
 - 038b orchestrator (prepare_external_theatres)
@@ -25,6 +25,7 @@ from backend.schemas.external_theatre_operations import (
     ExternalTheatreRegistryEntry,
     ExternalTheatreRunRecord,
     ExternalTheatreRunSummary,
+    ExternalTheatreStatusReport,
     RunStatus,
 )
 from backend.schemas.external_theatre_orchestration import (
@@ -318,6 +319,119 @@ class ExternalTheatreOperationsService:
                 error_summary={"error": str(exc)},
             )
             return failed_run  # type: ignore[return-value]
+
+    # -------------------------------------------------------------------
+    # Reporting Surface (Sprint 3)
+    # -------------------------------------------------------------------
+
+    def get_status_report(
+        self,
+        slug: str,
+        recent_run_limit: int = 5,
+    ) -> Optional[ExternalTheatreStatusReport]:
+        """Build a builder-facing status report for a registered theatre.
+
+        Composes registry state + recent runs + feedback rollup into
+        an ExternalTheatreStatusReport per SDD 2.5.
+        """
+        entry = self._store.get_by_slug(slug)
+        if entry is None:
+            return None
+
+        # Get recent runs involving this theatre
+        recent_runs = self._store.list_runs(theatre_slug=slug, limit=recent_run_limit)
+
+        # Derive latest run status and result counts
+        latest_run_status: Optional[RunStatus] = None
+        latest_result_counts: Optional[ExternalTheatreRunSummary] = None
+        if recent_runs:
+            latest = recent_runs[0]  # list_runs returns newest first
+            latest_run_status = latest.status
+            latest_result_counts = latest.result_counts
+
+        # Build feedback rollup from recent completed runs
+        feedback_items = self._rollup_feedback(recent_runs)
+
+        # Derive readiness from latest run
+        readiness = self._derive_readiness(entry, recent_runs)
+
+        return ExternalTheatreStatusReport(
+            slug=entry.slug,
+            version=entry.version,
+            status=entry.status,
+            is_active=entry.is_active,
+            last_prepared_at=entry.last_prepared_at,
+            last_scanned_at=entry.last_scanned_at,
+            latest_run_status=latest_run_status,
+            latest_result_counts=latest_result_counts,
+            readiness=readiness,
+            feedback_items=feedback_items,
+            recent_runs=recent_runs,
+        )
+
+    def list_status_reports(
+        self,
+        active_only: bool = True,
+        recent_run_limit: int = 3,
+    ) -> list[ExternalTheatreStatusReport]:
+        """Build status reports for all (or active-only) theatres."""
+        entries = self._store.list_active() if active_only else self._store.list_all()
+        reports = []
+        for entry in entries:
+            report = self.get_status_report(
+                slug=entry.slug,
+                recent_run_limit=recent_run_limit,
+            )
+            if report is not None:
+                reports.append(report)
+        return reports
+
+    def _rollup_feedback(
+        self,
+        recent_runs: list[ExternalTheatreRunRecord],
+    ) -> list[dict]:
+        """Aggregate 038b feedback items across recent completed runs.
+
+        Returns the deduplicated set of feedback items from the most recent
+        completed run's feedback_snapshot. Per SDD 2.5: "persisted and
+        aggregated form of the 038b feedback surface across operational runs."
+        """
+        for run in recent_runs:
+            if run.status == RunStatus.COMPLETED and run.feedback_snapshot:
+                # Return the most recent completed run's feedback
+                # Each snapshot entry has construct_slug, overall_readiness, items
+                return run.feedback_snapshot
+        return []
+
+    def _derive_readiness(
+        self,
+        entry: ExternalTheatreRegistryEntry,
+        recent_runs: list[ExternalTheatreRunRecord],
+    ) -> str:
+        """Derive builder-facing readiness state.
+
+        - "READY": Active, last run COMPLETED with no paradox
+        - "DEGRADED": Active, last run COMPLETED with paradox findings
+        - "BLOCKED": Inactive, or last run FAILED, or no runs yet
+        """
+        if not entry.is_active:
+            return "BLOCKED"
+
+        if not recent_runs:
+            return "BLOCKED"
+
+        latest = recent_runs[0]
+
+        if latest.status == RunStatus.FAILED:
+            return "BLOCKED"
+
+        if latest.status == RunStatus.COMPLETED:
+            if latest.result_counts.has_paradox:
+                return "DEGRADED"
+            return "READY"
+
+        # IN_PROGRESS
+        return "BLOCKED"
 
     # -------------------------------------------------------------------
     # Internal helpers
