@@ -24,30 +24,30 @@ The prediction market is the factory. The calibrated training data is the produc
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                           ECHELON PROTOCOL                                │
+│                           ECHELON PROTOCOL                               │
 ├──────────────────────────────────────────────────────────────────────────┤
-│                                                                            │
-│  OSINT Pipeline            Contract Substrate        Theatre Network      │
-│  ───────────────           ──────────────────        ───────────────      │
-│  14 collectors             Construct contracts       TREMOR (seismic)     │
-│  16 sources                Check planning            CORONA (space wx)    │
-│  Evidence anchoring        Multi-evaluator           Extensible domains   │
-│  R2 manifest pipeline      Certificate issuance      Brier settlement     │
-│                                                                            │
-│  Integrity Layer                         Verification Pipeline            │
-│  ───────────────                         ─────────────────────            │
-│  Cross-theatre paradox                   Theatre check runner             │
-│  Oracle divergence                       Settlement accuracy              │
-│  Scope overlap detection                 Oracle consistency               │
-│  Network-level referee                   Calibration validity             │
-│                                                                            │
-│  Agent Population                        RLMF Export Pipeline             │
-│  ────────────────                        ────────────────────             │
-│  6 archetypes                            Position histories               │
-│  Genome-driven behavior                  Brier scores                     │
-│  Hierarchical reasoning                  Calibration certificates         │
-│  On-chain wallets                        Training data export             │
-│                                                                            │
+│                                                                          │
+│  OSINT Pipeline            Contract Substrate        Theatre Network     │
+│  ───────────────           ──────────────────        ───────────────     │
+│  14 collectors             Construct contracts       TREMOR (seismic)    │
+│  16 sources                Check planning            CORONA (space wx)   │
+│  Evidence anchoring        Multi-evaluator           Extensible domains  │
+│  R2 manifest pipeline      Certificate issuance      Brier settlement    │
+│                                                                          │
+│  Integrity Layer                         Verification Pipeline           │
+│  ───────────────                         ─────────────────────           │
+│  Cross-theatre paradox                   Theatre check runner            │
+│  Oracle divergence                       Settlement accuracy             │
+│  Scope overlap detection                 Oracle consistency              │
+│  Network-level referee                   Calibration validity            │
+│                                                                          │
+│  Agent Population                        RLMF Export Pipeline            │
+│  ────────────────                        ────────────────────            │
+│  6 archetypes                            Position histories              │
+│  Genome-driven behavior                  Brier scores                    │
+│  Hierarchical reasoning                  Calibration certificates        │
+│  On-chain wallets                        Training data export            │
+│                                                                          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
