@@ -712,3 +712,97 @@ class TestProvenancePreservation:
         assert finding.construct_b_slug == "corona"
         assert finding.evidence  # non-empty
         assert "construct_a_settlement_state" in finding.evidence
+
+
+# ===========================================================================
+# Sprint 3 — Provenance Hardening + Regression
+# ===========================================================================
+
+class TestEvidenceDetailAssertions:
+    """Task 3.1: Evidence detail assertions."""
+
+    def test_settlement_evidence_keys(self):
+        """Settlement divergence evidence contains all specified keys."""
+        a = _make_bundle("tremor", settlement_state="SETTLED",
+                         settlement_outcomes={"k1": {"resolution": "YES"}})
+        b = _make_bundle("corona", settlement_state="DISPUTED",
+                         settlement_outcomes={"k1": {"resolution": "NO"}})
+        finding = _detect_settlement_divergence(a, b)
+        assert finding is not None
+        expected_keys = {
+            "construct_a_settlement_state",
+            "construct_b_settlement_state",
+            "construct_a_outcomes",
+            "construct_b_outcomes",
+            "divergent_keys",
+        }
+        assert expected_keys <= set(finding.evidence.keys())
+        assert finding.evidence["construct_a_settlement_state"] == "SETTLED"
+        assert finding.evidence["construct_b_settlement_state"] == "DISPUTED"
+
+    def test_oracle_evidence_keys(self):
+        """Oracle inconsistency evidence contains all specified keys + correct tolerance."""
+        a = _make_bundle(
+            "tremor",
+            oracle_source_ids=["oracle-1"],
+            oracle_values={"oracle-1": {"value": 1.0, "is_provisional": False}},
+        )
+        b = _make_bundle(
+            "corona",
+            oracle_source_ids=["oracle-1"],
+            oracle_values={"oracle-1": {"value": 1.5, "is_provisional": False}},
+        )
+        finding = _detect_oracle_inconsistency(a, b)
+        assert finding is not None
+        expected_keys = {
+            "source_a", "source_b", "delta", "tolerance",
+            "same_source", "value_a", "value_b",
+            "is_provisional_a", "is_provisional_b",
+        }
+        assert expected_keys <= set(finding.evidence.keys())
+        assert finding.evidence["tolerance"] == 0.1
+        assert isinstance(finding.evidence["delta"], (int, float))
+
+    def test_temporal_drift_evidence_keys(self):
+        """Temporal drift evidence contains all specified keys + correct window."""
+        a = _make_bundle(
+            "tremor",
+            oracle_values={"src": {"value": 1.0, "queried_at": "2026-03-19T00:00:00Z"}},
+        )
+        b = _make_bundle(
+            "corona",
+            oracle_values={"src": {"value": 1.0, "queried_at": "2026-03-20T06:00:00Z"}},
+        )
+        finding = _detect_temporal_drift(a, b)
+        assert finding is not None
+        expected_keys = {"delta_hours", "window_hours", "time_a", "time_b"}
+        assert expected_keys <= set(finding.evidence.keys())
+        assert finding.evidence["window_hours"] == 24.0
+        assert isinstance(finding.evidence["delta_hours"], (int, float))
+
+
+class TestRegression038:
+    """Task 3.2: Regression against 038a/038b surfaces."""
+
+    def test_existing_038a_bundle_builder_unchanged(self):
+        """Import build_comparison_bundle and verify callable."""
+        from backend.services.theatre_comparison_bundle_builder import (
+            build_comparison_bundle,
+        )
+        assert callable(build_comparison_bundle)
+
+    def test_existing_038a_candidate_generator_unchanged(self):
+        """Import generate_candidates and verify callable."""
+        from backend.services.theatre_comparison_candidates import (
+            generate_candidates,
+        )
+        assert callable(generate_candidates)
+
+    def test_038c_adapter_imports_cleanly(self):
+        """038c adapter module imports without errors and is callable."""
+        from backend.services.external_theatre_scan_adapter import scan_candidates
+        assert callable(scan_candidates)
+        # Verify it works with empty input (no side effects)
+        request = ExternalTheatreScanRequest(candidates=[])
+        result = scan_candidates(request)
+        assert result.total_scanned == 0
