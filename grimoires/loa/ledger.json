@@ -37,7 +37,7 @@
     },
     {
       "cycle_id": "cycle-002",
-      "label": "OSINT Pipeline — Live Collection & Evidence Bundles",
+      "label": "OSINT Pipeline \u2014 Live Collection & Evidence Bundles",
       "status": "archived",
       "created_at": "2026-03-01T00:00:00Z",
       "archived": "2026-03-01T21:00:00Z",
@@ -138,7 +138,7 @@
     },
     {
       "cycle_id": "cycle-007",
-      "label": "Two-Rail Deterministic Theatres — Unified Pipeline",
+      "label": "Two-Rail Deterministic Theatres \u2014 Unified Pipeline",
       "status": "archived",
       "created_at": "2026-03-01T00:00:00Z",
       "archived": "2026-03-01T23:59:00Z",
@@ -186,7 +186,7 @@
     },
     {
       "cycle_id": "cycle-009",
-      "label": "MCP Server v1.0 — Status Tool, Calibrate Tool, HTTP Transport",
+      "label": "MCP Server v1.0 \u2014 Status Tool, Calibrate Tool, HTTP Transport",
       "status": "archived",
       "created_at": "2026-03-02T00:00:00Z",
       "archived": "2026-03-02T11:10:00Z",
@@ -275,7 +275,7 @@
     },
     {
       "cycle_id": "cycle-011",
-      "label": "WorldMonitor OSINT Integration — Live Evidence Pipeline + Convergence Signals",
+      "label": "WorldMonitor OSINT Integration \u2014 Live Evidence Pipeline + Convergence Signals",
       "status": "archived",
       "created_at": "2026-03-03T00:00:00Z",
       "archived": "2026-03-03T12:00:00Z",
@@ -329,7 +329,7 @@
     },
     {
       "cycle_id": "cycle-013",
-      "label": "Agent Runtime — Four-Tier Hierarchical Intelligence",
+      "label": "Agent Runtime \u2014 Four-Tier Hierarchical Intelligence",
       "status": "archived",
       "archived": "2026-03-03T23:00:00Z",
       "archive_path": "grimoires/loa/archive/2026-03-03-agent-runtime-four-tier-intelligence",
@@ -382,7 +382,7 @@
     },
     {
       "cycle_id": "cycle-014",
-      "label": "Bounded Inquiry Markets — Canonical Taxonomy + Market Wiring",
+      "label": "Bounded Inquiry Markets \u2014 Canonical Taxonomy + Market Wiring",
       "status": "archived",
       "created_at": "2026-03-04T00:00:00Z",
       "archived": "2026-03-04T12:00:00Z",
@@ -755,7 +755,7 @@
         {
           "local_id": "sprint-0",
           "global_id": 66,
-          "label": "Foundation — Migration + Domain Filter Enforcement",
+          "label": "Foundation \u2014 Migration + Domain Filter Enforcement",
           "status": "completed",
           "tasks": 5
         },
@@ -945,7 +945,7 @@
     },
     {
       "cycle_id": "cycle-026",
-      "label": "OSINT Registry Expansion — Batch 1",
+      "label": "OSINT Registry Expansion \u2014 Batch 1",
       "status": "archived",
       "created_at": "2026-03-17T19:00:00Z",
       "archived": "2026-03-17T23:45:00Z",
@@ -1039,7 +1039,7 @@
         {
           "local_id": "sprint-1",
           "global_id": 93,
-          "label": "Foundation — Model, Migration, SpecLoader, PolicyNormalizer",
+          "label": "Foundation \u2014 Model, Migration, SpecLoader, PolicyNormalizer",
           "status": "completed",
           "tasks": 4
         },
@@ -1155,7 +1155,7 @@
         {
           "local_id": "sprint-0",
           "global_id": 104,
-          "label": "Foundation — Construct Class + Theatre Domains",
+          "label": "Foundation \u2014 Construct Class + Theatre Domains",
           "status": "completed",
           "tasks": 4
         },
@@ -1222,9 +1222,48 @@
           "tasks": 4
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-038a",
+      "label": "Theatre Execution Fixtures For Cross-Theatre Paradox",
+      "status": "active",
+      "created_at": "2026-03-19T11:21:47Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 112,
+          "label": "Schemas + Fixture Factories",
+          "status": "completed",
+          "tasks": 3
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 113,
+          "label": "Bundle Builder",
+          "status": "completed",
+          "tasks": 3
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 114,
+          "label": "Candidate Sets",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 115,
+          "label": "038 Compatibility + E2E Regression",
+          "status": "completed",
+          "tasks": 3
+        }
+      ]
     }
   ],
-  "active_cycle": null,
+  "active_cycle": "cycle-038a",
   "active_bugfix": null,
   "global_sprint_counter": 111,
   "bugfix_cycles": [

@@ -148,3 +148,12 @@
 | Sprint 1 | sprint-93 | COMPLETED | [reviewer.md](sprint-93/reviewer.md) | [engineer-feedback.md](sprint-93/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-93/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-94 | COMPLETED | [reviewer.md](sprint-94/reviewer.md) | [engineer-feedback.md](sprint-94/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-94/auditor-sprint-feedback.md) |
 | Sprint 3 | sprint-95 | COMPLETED | [reviewer.md](sprint-95/reviewer.md) | [engineer-feedback.md](sprint-95/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-95/auditor-sprint-feedback.md) |
+
+## Cycle-038a: Theatre Execution Fixtures For Cross-Theatre Paradox
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 0 | sprint-112 | COMPLETED | [reviewer.md](sprint-112/reviewer.md) | [engineer-feedback.md](sprint-112/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-112/auditor-sprint-feedback.md) |
+| Sprint 1 | sprint-113 | COMPLETED | [reviewer.md](sprint-113/reviewer.md) | [engineer-feedback.md](sprint-113/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-113/auditor-sprint-feedback.md) |
+| Sprint 2 | sprint-114 | COMPLETED | [reviewer.md](sprint-114/reviewer.md) | [engineer-feedback.md](sprint-114/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-114/auditor-sprint-feedback.md) |
+| Sprint 3 | sprint-115 | COMPLETED | [reviewer.md](sprint-115/reviewer.md) | [engineer-feedback.md](sprint-115/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-115/auditor-sprint-feedback.md) |
