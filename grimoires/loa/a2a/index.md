@@ -163,3 +163,4 @@
 | Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
 |--------|-----------|--------|----------|----------|---------|
 | Sprint 0 | sprint-116 | COMPLETED | [reviewer.md](sprint-116/reviewer.md) | -- | -- |
+| Sprint 1 | sprint-117 | COMPLETED | [reviewer.md](sprint-117/reviewer.md) | -- | -- |
