@@ -1387,7 +1387,7 @@
           "local_id": "sprint-4",
           "global_id": 128,
           "label": "TREMOR + CORONA Operational Regression",
-          "status": "in_progress",
+          "status": "completed",
           "tasks": 4
         }
       ]
