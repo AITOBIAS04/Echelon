@@ -2,6 +2,8 @@
 
 Wraps InvestigationCertificateBuilder, injects construct-specific fields,
 persists to InvestigationCertificateRecord, and produces Soju-compatible payloads.
+
+Cycle 037e: Theatre execution results integrated into check plan projection.
 """
 
 import hashlib
@@ -62,6 +64,7 @@ class ConstructCertificateBuilder:
         scorer_output: ScorerOutput,
         evidence_bundle_hash: str,
         contract=None,
+        theatre_execution=None,
     ) -> ConstructCertificate:
         """Build a ConstructCertificate from registration, investigation, and scorer output.
 
@@ -74,6 +77,8 @@ class ConstructCertificateBuilder:
             evidence_bundle_hash: Evidence bundle hash.
             contract: Optional EvaluationContract (cycle-037+). When provided,
                 populates contract_hash, spec_hash, check_plan, and issuance_status.
+            theatre_execution: Optional TheatreExecutionResult (cycle-037e+).
+                When provided, theatre check results are merged into the check plan.
         """
         cert_id = f"CERT-C{str(uuid4())[:4].upper()}"
 
@@ -89,7 +94,9 @@ class ConstructCertificateBuilder:
         if contract is not None:
             contract_hash = contract.contract_hash
             spec_hash = contract.spec_hash
-            check_plan = self._build_check_plan(contract, scorer_output)
+            check_plan = self._build_check_plan(
+                contract, scorer_output, theatre_execution=theatre_execution,
+            )
             issuance_status = self.compute_issuance_status(
                 scorer_output.verdict, check_plan, contract.tier_cap
             )
@@ -169,12 +176,20 @@ class ConstructCertificateBuilder:
         """Compute issuance status from verdict, check plan, and tier cap.
 
         Returns:
-            READY: All checks executed and verdict is PASS.
+            READY: All checks executed, no theatre failures, verdict is PASS.
             DEFERRED: Some checks not executed but verdict is PASS.
-            REJECTED: Verdict is not PASS.
+            REJECTED: Verdict is not PASS, or deterministic theatre check failed.
         """
         if verdict != "PASS":
             return "REJECTED"
+
+        # Cycle 037e: Deterministic theatre failures override soft-scorer PASS.
+        # A FAILED settlement or oracle check is definitive — the construct
+        # produced an incorrect result that soft scoring cannot override.
+        if check_plan is not None:
+            theatre_failures = check_plan.get("theatre_failures", 0)
+            if theatre_failures > 0:
+                return "REJECTED"
 
         if tier_cap is not None:
             return "DEFERRED"
@@ -188,21 +203,70 @@ class ConstructCertificateBuilder:
         return "READY"
 
     @staticmethod
-    def _build_check_plan(contract, scorer_output: ScorerOutput) -> dict:
-        """Build planned-vs-executed check plan from contract and scorer output.
+    def _build_check_plan(
+        contract,
+        scorer_output: ScorerOutput,
+        theatre_execution=None,
+    ) -> dict:
+        """Build planned-vs-executed check plan from contract, scorer, and theatre results.
 
-        Checks are marked EXECUTED if the scorer has a domain score for the check's
-        domain, NOT_EXECUTED otherwise.
+        Checks are marked EXECUTED if:
+        - ANCHOR: always EXECUTED (structural)
+        - RUBRIC/BENCHMARK: EXECUTED if scorer has domain score
+        - Theatre types: EXECUTED/PASSED/FAILED/SKIPPED per theatre runner results
+
+        Cycle 037e: Theatre execution results override NOT_EXECUTED for theatre checks.
         """
         planned_checks = contract.planned_checks or []
         scored_domains = set(scorer_output.domain_scores.keys())
 
+        # Build lookup from theatre execution results (cycle-037e)
+        theatre_results_by_id: dict[str, dict] = {}
+        if theatre_execution is not None:
+            for r in theatre_execution.check_results:
+                theatre_results_by_id[r.check_id] = {
+                    "status": r.status,
+                    "evidence": r.evidence,
+                    "reason": r.reason,
+                }
+
+        theatre_check_types = {
+            "SETTLEMENT_ACCURACY", "ORACLE_CONSISTENCY",
+            "CALIBRATION_VALIDITY", "FUNCTIONAL_CORRECTNESS",
+        }
+
         entries = []
         executed_count = 0
+        theatre_failure_count = 0
 
         for check in planned_checks:
+            check_id = check.get("check_id", "")
             check_domain = check.get("domain", "")
             check_type = check.get("check_type", "")
+
+            # Theatre checks: use theatre runner results if available
+            if check_type in theatre_check_types and check_id in theatre_results_by_id:
+                tr = theatre_results_by_id[check_id]
+                theatre_status = tr["status"]  # PASSED | FAILED | SKIPPED
+                # Map theatre status to check plan status
+                if theatre_status in ("PASSED", "FAILED"):
+                    status = "EXECUTED"
+                    executed_count += 1
+                    if theatre_status == "FAILED":
+                        theatre_failure_count += 1
+                else:
+                    status = "SKIPPED"
+
+                entries.append({
+                    "id": check_id,
+                    "type": check_type,
+                    "status": status,
+                    "score": None,
+                    "reason": tr.get("reason"),
+                    "theatre_status": theatre_status,
+                    "theatre_evidence": tr.get("evidence"),
+                })
+                continue
 
             # RUBRIC checks are EXECUTED if domain was scored
             # ANCHOR checks are always EXECUTED (they're structural)
@@ -220,7 +284,7 @@ class ConstructCertificateBuilder:
             score = scorer_output.domain_scores.get(check_domain) if check_domain != "*" else None
 
             entries.append({
-                "id": check.get("check_id", ""),
+                "id": check_id,
                 "type": check_type,
                 "status": status,
                 "score": score,
@@ -230,6 +294,7 @@ class ConstructCertificateBuilder:
         return {
             "total_planned": len(planned_checks),
             "total_executed": executed_count,
+            "theatre_failures": theatre_failure_count,
             "checks": entries,
         }
 

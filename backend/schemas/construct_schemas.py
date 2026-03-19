@@ -202,12 +202,15 @@ class CheckPlanEntrySchema(BaseModel):
     status: str
     score: Optional[float] = None
     reason: Optional[str] = None
+    theatre_status: Optional[str] = None
+    theatre_evidence: Optional[dict] = None
 
 
 class CheckPlanSchema(BaseModel):
     """Planned-vs-executed check plan in certificate."""
     total_planned: int
     total_executed: int
+    theatre_failures: int = 0
     checks: list[CheckPlanEntrySchema]
 
 

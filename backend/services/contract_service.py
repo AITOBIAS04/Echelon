@@ -152,6 +152,9 @@ class ContractService:
             ],
             explicit_refusals=norm_result.explicit_refusals,
             planned_checks=planned_dicts,
+            construct_json_text=construct_json if (
+                construct_json and spec.construct_class == "theatre"
+            ) else None,
             tier_cap=norm_result.tier_cap,
             status="ACTIVE",
         )

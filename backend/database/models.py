@@ -1346,6 +1346,11 @@ class EvaluationContract(Base):
     normalized_claims: Mapped[dict] = mapped_column(JSON, nullable=False)
     explicit_refusals: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     planned_checks: Mapped[list] = mapped_column(JSON, nullable=False)
+    construct_json_text: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        comment="Raw construct.json for theatre constructs (cycle-037e). "
+        "Null for non-theatre constructs.",
+    )
     tier_cap: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     status: Mapped[str] = mapped_column(
         String(32), default="ACTIVE",

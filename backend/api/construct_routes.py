@@ -556,10 +556,13 @@ async def get_certificate(
                 check_plan_schema = CheckPlanSchema(
                     total_planned=cp.get("total_planned", 0),
                     total_executed=cp.get("total_executed", 0),
+                    theatre_failures=cp.get("theatre_failures", 0),
                     checks=[
                         CheckPlanEntrySchema(
                             id=c["id"], type=c["type"], status=c["status"],
                             score=c.get("score"), reason=c.get("reason"),
+                            theatre_status=c.get("theatre_status"),
+                            theatre_evidence=c.get("theatre_evidence"),
                         )
                         for c in cp.get("checks", [])
                     ],
@@ -759,7 +762,26 @@ async def issue_certificate(
         contract_svc = ContractService(session)
         contract = await contract_svc.get_by_hash(investigation.contract_hash)
 
-    cert = cert_builder.build(reg, investigation, scorer_output, bundle_hash, contract=contract)
+    # ── Cycle-037e: Execute theatre checks if contract has construct_json ──
+    theatre_execution = None
+    if contract is not None and contract.construct_json_text:
+        from backend.services.theatre_check_runner import execute_theatre_checks
+        from backend.services.theatre_fixture_loader import load_fixture
+
+        fixture = load_fixture(
+            construct_slug=slug,
+            construct_version=version,
+            construct_json=contract.construct_json_text,
+        )
+        theatre_execution = execute_theatre_checks(
+            planned_checks=contract.planned_checks or [],
+            fixture=fixture,
+        )
+
+    cert = cert_builder.build(
+        reg, investigation, scorer_output, bundle_hash,
+        contract=contract, theatre_execution=theatre_execution,
+    )
     cert_json = cert_builder.to_certificate_json(cert)
     routing_decision, routing_reason = cert_builder.compute_routing_decision(scorer_output)
 
@@ -804,6 +826,14 @@ async def issue_certificate(
     if final_issuance != cert.issuance_status:
         cert_json["issuance_status"] = final_issuance
 
+    # ── Cycle-037e: Gate routing on final issuance status ──
+    # routing_decision was computed from soft scorer output alone.
+    # If final issuance is REJECTED or BLOCKED (theatre failure, evaluator
+    # divergence, etc.), routing must not remain ALLOWED.
+    if final_issuance in ("REJECTED", "BLOCKED"):
+        routing_decision = "REVIEW_REQUIRED"
+        routing_reason = "certificate_rejected"
+
     # ── Persist via shared certificate lifecycle ──
     from uuid import uuid4
     cert_record = InvestigationCertificateRecord(
@@ -838,10 +868,13 @@ async def issue_certificate(
         check_plan_schema = CheckPlanSchema(
             total_planned=cert.check_plan["total_planned"],
             total_executed=cert.check_plan["total_executed"],
+            theatre_failures=cert.check_plan.get("theatre_failures", 0),
             checks=[
                 CheckPlanEntrySchema(
                     id=c["id"], type=c["type"], status=c["status"],
                     score=c.get("score"), reason=c.get("reason"),
+                    theatre_status=c.get("theatre_status"),
+                    theatre_evidence=c.get("theatre_evidence"),
                 )
                 for c in cert.check_plan["checks"]
             ],
