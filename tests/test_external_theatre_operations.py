@@ -4,8 +4,10 @@ Covers registry schemas, run record schemas, in-memory store operations,
 operations service, trigger/scheduling, reporting, and TREMOR+CORONA regression.
 """
 
+import json
 import pytest
 from datetime import datetime, timedelta
+from unittest.mock import patch, MagicMock
 
 from backend.schemas.external_theatre_operations import (
     ExternalTheatreRegistryEntry,
@@ -15,8 +17,27 @@ from backend.schemas.external_theatre_operations import (
     RegistryStatus,
     RunStatus,
 )
+from backend.schemas.external_theatre_orchestration import (
+    BuilderFeedbackItem,
+    BuilderFeedbackReport,
+    ExternalTheatreInput,
+    ExternalTheatrePreparationRequest,
+    ExternalTheatrePreparationResult,
+    TheatrePreparationEntry,
+)
+from backend.schemas.external_theatre_scan import (
+    CandidateScanOutcome,
+    ExternalTheatreScanResult,
+)
 from backend.services.external_theatre_registry_store import (
     ExternalTheatreRegistryStore,
+)
+from backend.schemas.theatre_comparison_bundle import (
+    ComparisonCandidateSet,
+    ExecutedTheatreComparisonBundle,
+)
+from backend.services.external_theatre_operations_service import (
+    ExternalTheatreOperationsService,
 )
 
 
@@ -271,3 +292,303 @@ class TestRegistryStore:
         in_progress = store.list_runs(status=RunStatus.IN_PROGRESS)
         assert len(in_progress) == 1
         assert in_progress[0].id == r2.id
+
+
+# ===========================================================================
+# Sprint 1 — Operations Service
+# ===========================================================================
+
+# Minimal construct.json payloads for service tests
+_SIMPLE_CONSTRUCT_A = json.dumps({"name": "THEATRE-A", "theatre_templates": [{"id": "t1"}]})
+_SIMPLE_CONSTRUCT_B = json.dumps({"name": "THEATRE-B", "theatre_templates": [{"id": "t2"}]})
+
+
+def _make_bundle(slug):
+    """Build a minimal ExecutedTheatreComparisonBundle for testing."""
+    return ExecutedTheatreComparisonBundle(
+        construct_slug=slug,
+        construct_version="0.1.0",
+    )
+
+
+def _mock_prep_result(slugs, candidate_count=1, successful=None, failed=0):
+    """Build a mock ExternalTheatrePreparationResult."""
+    if successful is None:
+        successful = len(slugs)
+    theatres = [
+        TheatrePreparationEntry(
+            construct_slug=s,
+            construct_version="0.1.0",
+            bundle=_make_bundle(s) if i < successful else None,
+            error="failed" if i >= successful else None,
+        )
+        for i, s in enumerate(slugs)
+    ]
+    # Build real candidates pairing first two successful bundles
+    candidates = []
+    successful_slugs = slugs[:successful]
+    for _ in range(candidate_count):
+        if len(successful_slugs) >= 2:
+            candidates.append(ComparisonCandidateSet(
+                bundle_a=_make_bundle(successful_slugs[0]),
+                bundle_b=_make_bundle(successful_slugs[1]),
+                candidate_type="same_event",
+                match_strength="EXACT",
+                matching_keys=["shared-key"],
+            ))
+        elif len(successful_slugs) == 1:
+            candidates.append(ComparisonCandidateSet(
+                bundle_a=_make_bundle(successful_slugs[0]),
+                bundle_b=_make_bundle(successful_slugs[0]),
+                candidate_type="same_event",
+                match_strength="EXACT",
+                matching_keys=["shared-key"],
+            ))
+    feedback = [
+        BuilderFeedbackReport(
+            construct_slug=s,
+            required_items=[
+                BuilderFeedbackItem(
+                    category="required", field="templates",
+                    status="present", message="ok",
+                ),
+            ],
+            optional_items=[],
+            extraction_items=[],
+            overall_readiness="READY",
+        )
+        for s in slugs[:successful]
+    ]
+    return ExternalTheatrePreparationResult(
+        theatres=theatres,
+        candidates=candidates,
+        feedback=feedback,
+        total_theatres=len(slugs),
+        total_successful=successful,
+        total_failed=failed,
+    )
+
+
+def _mock_scan_result(total_scanned=1, with_findings=0):
+    """Build a mock ExternalTheatreScanResult."""
+    return ExternalTheatreScanResult(
+        outcomes=[],
+        total_scanned=total_scanned,
+        total_with_findings=with_findings,
+        total_clean=total_scanned - with_findings,
+    )
+
+
+class TestOperationsServiceRegistry:
+    """Task 1.1–1.2: Operations service register/unregister."""
+
+    def test_register_theatre(self):
+        """Register a theatre through the service layer."""
+        svc = ExternalTheatreOperationsService()
+        entry = svc.register_theatre(
+            slug="tremor", version="0.1.0", repo_path="/repos/tremor",
+        )
+        assert entry.slug == "tremor"
+        assert entry.is_active is True
+
+        # Should be retrievable from store
+        found = svc.store.get_by_slug("tremor")
+        assert found is not None
+        assert found.version == "0.1.0"
+
+    def test_unregister_theatre(self):
+        """Unregister (deactivate) a theatre through the service layer."""
+        svc = ExternalTheatreOperationsService()
+        entry = svc.register_theatre(slug="corona", version="0.2.0")
+
+        result = svc.unregister_theatre(entry.id)
+        assert result is not None
+        assert result.is_active is False
+        assert result.status == RegistryStatus.INACTIVE
+
+    def test_unregister_nonexistent(self):
+        """Unregistering a nonexistent theatre returns None."""
+        svc = ExternalTheatreOperationsService()
+        result = svc.unregister_theatre("fake-id")
+        assert result is None
+
+
+class TestOperationsServiceRun:
+    """Task 1.3–1.4: Operations service run execution and persistence."""
+
+    @patch("backend.services.external_theatre_operations_service.scan_candidates")
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_execute_run_success(self, mock_prep, mock_scan):
+        """Successful run creates COMPLETED record with result counts."""
+        mock_prep.return_value = _mock_prep_result(["a", "b"], candidate_count=1)
+        mock_scan.return_value = _mock_scan_result(total_scanned=1, with_findings=0)
+
+        svc = ExternalTheatreOperationsService()
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="a", construct_version="0.1.0",
+                construct_json=_SIMPLE_CONSTRUCT_A,
+            ),
+            ExternalTheatreInput(
+                construct_slug="b", construct_version="0.1.0",
+                construct_json=_SIMPLE_CONSTRUCT_B,
+            ),
+        ]
+
+        run = svc.execute_run(inputs)
+        assert run.status == RunStatus.COMPLETED
+        assert run.completed_at is not None
+        assert run.result_counts.total_theatres == 2
+        assert run.result_counts.total_successful == 2
+        assert run.result_counts.candidate_count == 1
+        assert run.result_counts.total_scanned == 1
+        assert run.result_counts.has_paradox is False
+        assert run.spec_hash is not None
+
+    @patch("backend.services.external_theatre_operations_service.scan_candidates")
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_execute_run_with_paradox(self, mock_prep, mock_scan):
+        """Run with paradox findings records has_paradox=True."""
+        mock_prep.return_value = _mock_prep_result(["a", "b"], candidate_count=1)
+        mock_scan.return_value = _mock_scan_result(total_scanned=1, with_findings=1)
+
+        svc = ExternalTheatreOperationsService()
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="a", construct_version="0.1.0",
+                construct_json=_SIMPLE_CONSTRUCT_A,
+            ),
+            ExternalTheatreInput(
+                construct_slug="b", construct_version="0.1.0",
+                construct_json=_SIMPLE_CONSTRUCT_B,
+            ),
+        ]
+
+        run = svc.execute_run(inputs)
+        assert run.status == RunStatus.COMPLETED
+        assert run.result_counts.has_paradox is True
+        assert run.result_counts.total_with_findings == 1
+
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_execute_run_no_candidates_skips_scan(self, mock_prep):
+        """When orchestrator produces no candidates, scan is skipped."""
+        mock_prep.return_value = _mock_prep_result(["a"], candidate_count=0, successful=1)
+
+        svc = ExternalTheatreOperationsService()
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="a", construct_version="0.1.0",
+                construct_json=_SIMPLE_CONSTRUCT_A,
+            ),
+        ]
+
+        run = svc.execute_run(inputs)
+        assert run.status == RunStatus.COMPLETED
+        assert run.result_counts.total_scanned == 0
+        assert run.result_counts.has_paradox is False
+        assert run.scan_summary == {}
+
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_execute_run_failure(self, mock_prep):
+        """When orchestrator throws, run is marked FAILED."""
+        mock_prep.side_effect = RuntimeError("orchestration boom")
+
+        svc = ExternalTheatreOperationsService()
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="a", construct_version="0.1.0",
+                construct_json=_SIMPLE_CONSTRUCT_A,
+            ),
+        ]
+
+        run = svc.execute_run(inputs)
+        assert run.status == RunStatus.FAILED
+        assert "orchestration boom" in run.preparation_summary.get("error", "")
+
+    @patch("backend.services.external_theatre_operations_service.scan_candidates")
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_execute_run_persists_spec_hash(self, mock_prep, mock_scan):
+        """Run record contains a deterministic spec_hash."""
+        mock_prep.return_value = _mock_prep_result(["a"], candidate_count=0, successful=1)
+
+        svc = ExternalTheatreOperationsService()
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="a", construct_version="0.1.0",
+                construct_json=_SIMPLE_CONSTRUCT_A,
+            ),
+        ]
+
+        run1 = svc.execute_run(inputs)
+        run2 = svc.execute_run(inputs)
+        # Same input → same spec hash
+        assert run1.spec_hash == run2.spec_hash
+        assert run1.spec_hash is not None
+
+    @patch("backend.services.external_theatre_operations_service.scan_candidates")
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_execute_run_persists_feedback_snapshot(self, mock_prep, mock_scan):
+        """Run record captures builder feedback from 038b."""
+        mock_prep.return_value = _mock_prep_result(["a"], candidate_count=1, successful=1)
+        mock_scan.return_value = _mock_scan_result(total_scanned=1)
+
+        svc = ExternalTheatreOperationsService()
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="a", construct_version="0.1.0",
+                construct_json=_SIMPLE_CONSTRUCT_A,
+            ),
+        ]
+
+        run = svc.execute_run(inputs)
+        assert run.status == RunStatus.COMPLETED
+        assert len(run.feedback_snapshot) == 1
+        assert run.feedback_snapshot[0]["construct_slug"] == "a"
+        assert run.feedback_snapshot[0]["overall_readiness"] == "READY"
+        assert len(run.feedback_snapshot[0]["items"]) >= 1
+
+    @patch("backend.services.external_theatre_operations_service.scan_candidates")
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_execute_run_updates_registry(self, mock_prep, mock_scan):
+        """After a successful run, registry entry timestamps are updated."""
+        mock_prep.return_value = _mock_prep_result(["theatre-x"], candidate_count=1)
+        mock_scan.return_value = _mock_scan_result(total_scanned=1)
+
+        svc = ExternalTheatreOperationsService()
+        # Register the theatre first
+        svc.register_theatre(slug="theatre-x", version="0.1.0")
+
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="theatre-x", construct_version="0.1.0",
+                construct_json=_SIMPLE_CONSTRUCT_A,
+            ),
+        ]
+
+        svc.execute_run(inputs)
+
+        entry = svc.store.get_by_slug("theatre-x")
+        assert entry is not None
+        assert entry.last_prepared_at is not None
+        assert entry.last_scanned_at is not None
+        assert entry.latest_summary.get("prepared") is True
+
+    @patch("backend.services.external_theatre_operations_service.scan_candidates")
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_run_record_stored_in_store(self, mock_prep, mock_scan):
+        """Completed run is retrievable from the store."""
+        mock_prep.return_value = _mock_prep_result(["a"], candidate_count=0, successful=1)
+
+        svc = ExternalTheatreOperationsService()
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="a", construct_version="0.1.0",
+                construct_json=_SIMPLE_CONSTRUCT_A,
+            ),
+        ]
+
+        run = svc.execute_run(inputs)
+        fetched = svc.store.get_run(run.id)
+        assert fetched is not None
+        assert fetched.status == RunStatus.COMPLETED
+        assert fetched.theatre_slugs == ["a"]
