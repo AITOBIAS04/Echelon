@@ -1345,11 +1345,57 @@
       ],
       "archived": "2026-03-19T16:32:48Z",
       "archive_path": "grimoires/loa/archive/2026-03-19-orchestrated-scanner-handoff"
+    },
+    {
+      "cycle_id": "cycle-039",
+      "label": "External Theatre Operations",
+      "status": "active",
+      "created_at": "2026-03-19T16:51:07Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 124,
+          "label": "Registry Models + Schemas",
+          "status": "planned",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 125,
+          "label": "Operations Service",
+          "status": "planned",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 126,
+          "label": "Trigger / Scheduling Surface",
+          "status": "planned",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 127,
+          "label": "Reporting Surface",
+          "status": "planned",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-4",
+          "global_id": 128,
+          "label": "TREMOR + CORONA Operational Regression",
+          "status": "planned",
+          "tasks": 4
+        }
+      ]
     }
   ],
-  "active_cycle": null,
+  "active_cycle": "cycle-039",
   "active_bugfix": null,
-  "global_sprint_counter": 123,
+  "global_sprint_counter": 128,
   "bugfix_cycles": [
     {
       "bug_id": "20260318-d289ed",
@@ -1373,5 +1419,5 @@
     }
   ],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger.",
-  "next_global_sprint_id": 124
+  "next_global_sprint_id": 129
 }
