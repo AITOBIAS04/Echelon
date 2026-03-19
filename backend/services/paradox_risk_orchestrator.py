@@ -57,6 +57,12 @@ def is_material_delta(
     if (old_cs == 0 and new_cs > 0) or (old_cs > 0 and new_cs == 0):
         return True
 
+    # cross_theatre_exposure change
+    old_cte = old_factors.get("cross_theatre_exposure", 0)
+    new_cte = new_factors.get("cross_theatre_exposure", 0)
+    if old_cte != new_cte:
+        return True
+
     return False
 
 
@@ -102,6 +108,31 @@ def _resolve_factor(
     return old_factors.get(key, fallback)
 
 
+async def compute_cross_theatre_exposure(db, theatre_id: str) -> int:
+    """Count OPEN MATERIAL+ cross-theatre paradoxes affecting a theatre."""
+    from sqlalchemy import select, or_
+    from backend.database.models import (
+        CrossTheatreParadox,
+        CrossTheatreParadoxSeverity,
+        CrossTheatreParadoxStatus,
+    )
+
+    result = await db.execute(
+        select(CrossTheatreParadox).where(
+            or_(
+                CrossTheatreParadox.theatre_a_id == theatre_id,
+                CrossTheatreParadox.theatre_b_id == theatre_id,
+            ),
+            CrossTheatreParadox.resolution_status == CrossTheatreParadoxStatus.OPEN,
+            CrossTheatreParadox.severity.in_([
+                CrossTheatreParadoxSeverity.MATERIAL,
+                CrossTheatreParadoxSeverity.CRITICAL,
+            ]),
+        )
+    )
+    return len(list(result.scalars().all()))
+
+
 async def trigger_recompute(
     db,
     theatre_id: str,
@@ -112,6 +143,7 @@ async def trigger_recompute(
     has_active_paradox: Optional[bool] = None,
     material_counter_signals: Optional[int] = None,
     evidence_freshness_hours: Optional[float] = None,
+    cross_theatre_exposure: Optional[int] = None,
     inquiry_class: str = "COUNTERFACTUAL",
     emit_ws: bool = False,
 ) -> Optional[ParadoxRiskAssessment]:
@@ -149,6 +181,14 @@ async def trigger_recompute(
             db, theatre_id
         )
 
+    # Cross-theatre exposure: use caller override if provided, otherwise compute
+    if cross_theatre_exposure is not None:
+        resolved_cross_theatre_exposure = cross_theatre_exposure
+    else:
+        resolved_cross_theatre_exposure = await compute_cross_theatre_exposure(
+            db, theatre_id
+        )
+
     assessment = evaluate(
         logic_gap=resolved_logic_gap,
         stability=resolved_stability,
@@ -157,6 +197,23 @@ async def trigger_recompute(
         evidence_freshness_hours=resolved_evidence_freshness_hours,
         inquiry_class=inquiry_class,
     )
+
+    # Add cross_theatre_exposure to factors
+    assessment.factors["cross_theatre_exposure"] = resolved_cross_theatre_exposure
+
+    # Apply cross-theatre exposure floor
+    if resolved_cross_theatre_exposure >= 3 and assessment.level == "LOW":
+        assessment = ParadoxRiskAssessment(
+            level="HIGH",
+            factors=assessment.factors,
+            explanation=assessment.explanation + "; Cross-theatre exposure >= 3",
+        )
+    elif resolved_cross_theatre_exposure >= 1 and assessment.level == "LOW":
+        assessment = ParadoxRiskAssessment(
+            level="WATCH",
+            factors=assessment.factors,
+            explanation=assessment.explanation + "; Cross-theatre exposure >= 1",
+        )
 
     persist_risk_to_theatre(theatre, assessment)
 

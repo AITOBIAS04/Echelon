@@ -51,6 +51,8 @@ class WingFlapType(str, enum.Enum):
     FORK_SPAWN = "FORK_SPAWN"          # Fork created from anchor
     STOP_CONDITION = "STOP_CONDITION"  # Investigation stop condition met
     CERTIFICATE = "CERTIFICATE"        # Verification certificate issued
+    # --- 038 Cross-Theatre Paradox additions ---
+    CROSS_THEATRE_PARADOX = "CROSS_THEATRE_PARADOX"  # Cross-theatre coherence failure
 
 
 class FlapDirection(str, enum.Enum):
@@ -1390,4 +1392,171 @@ class OsintSignal(Base):
         Index("ix_osint_signals_source_group_collected", "source_group", "collected_at"),
         Index("ix_osint_signals_investigation_collected", "investigation_id", "collected_at"),
         Index("ix_osint_signals_geo_collected", "geo_region", "collected_at"),
+    )
+
+
+# ============================================
+# CROSS-THEATRE PARADOX DETECTION (Cycle 038)
+# ============================================
+
+class CrossTheatreParadoxStatus(str, enum.Enum):
+    OPEN = "OPEN"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
+    RESOLVED = "RESOLVED"
+    DISMISSED = "DISMISSED"
+
+class CrossTheatreParadoxType(str, enum.Enum):
+    SETTLEMENT_DIVERGENCE = "SETTLEMENT_DIVERGENCE"
+    ORACLE_INCONSISTENCY = "ORACLE_INCONSISTENCY"
+    SCOPE_OVERLAP_GAP = "SCOPE_OVERLAP_GAP"
+    TEMPORAL_DRIFT = "TEMPORAL_DRIFT"
+
+class CrossTheatreParadoxSeverity(str, enum.Enum):
+    INFO = "INFO"
+    WATCH = "WATCH"
+    MATERIAL = "MATERIAL"
+    CRITICAL = "CRITICAL"
+
+
+class FactAnchor(Base):
+    """Real-world event or observation that one or more theatres may reference."""
+    __tablename__ = "fact_anchors"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    anchor_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    external_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    external_source: Mapped[str] = mapped_column(String(100), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    location_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    metadata_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    links: Mapped[List["FactAnchorLink"]] = relationship(back_populates="fact_anchor")
+
+    __table_args__ = (
+        Index("ix_fact_anchors_external", "external_source", "external_id", unique=True),
+        Index("ix_fact_anchors_type_time", "anchor_type", "occurred_at"),
+    )
+
+
+class FactAnchorLink(Base):
+    """Links a theatre's settlement/evidence to a FactAnchor."""
+    __tablename__ = "fact_anchor_links"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    fact_anchor_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("fact_anchors.id"), nullable=False, index=True
+    )
+    theatre_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), nullable=False, index=True
+    )
+    link_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    link_confidence: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    linked_entity_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    linked_entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    fact_anchor: Mapped["FactAnchor"] = relationship(back_populates="links")
+
+    __table_args__ = (
+        Index("ix_fact_anchor_links_anchor_theatre", "fact_anchor_id", "theatre_id"),
+    )
+
+
+class CoherenceGroup(Base):
+    """Declares that a set of theatres should produce consistent outputs."""
+    __tablename__ = "coherence_groups"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+    group_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    policy_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    members: Mapped[List["CoherenceGroupMember"]] = relationship(back_populates="group")
+
+
+class CoherenceGroupMember(Base):
+    """Links a theatre to a CoherenceGroup with a role."""
+    __tablename__ = "coherence_group_members"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    coherence_group_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("coherence_groups.id"), nullable=False
+    )
+    theatre_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(30), nullable=False, default="primary")
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    group: Mapped["CoherenceGroup"] = relationship(back_populates="members")
+
+    __table_args__ = (
+        Index("ix_coherence_members_group", "coherence_group_id"),
+        Index("ix_coherence_members_theatre", "theatre_id"),
+    )
+
+
+class CrossTheatreParadox(Base):
+    """Network-level coherence failure between two theatres on a shared FactAnchor."""
+    __tablename__ = "cross_theatre_paradoxes"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    fact_anchor_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("fact_anchors.id"), nullable=False, index=True
+    )
+    coherence_group_id: Mapped[Optional[str]] = mapped_column(
+        String(50), ForeignKey("coherence_groups.id"), nullable=True
+    )
+    paradox_type: Mapped[CrossTheatreParadoxType] = mapped_column(
+        SQLEnum(CrossTheatreParadoxType), nullable=False
+    )
+    severity: Mapped[CrossTheatreParadoxSeverity] = mapped_column(
+        SQLEnum(CrossTheatreParadoxSeverity), nullable=False
+    )
+    theatre_a_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), nullable=False
+    )
+    theatre_b_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), nullable=False
+    )
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    resolution_status: Mapped[CrossTheatreParadoxStatus] = mapped_column(
+        SQLEnum(CrossTheatreParadoxStatus), default=CrossTheatreParadoxStatus.OPEN
+    )
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_cross_paradox_anchor", "fact_anchor_id"),
+        Index("ix_cross_paradox_theatres", "theatre_a_id", "theatre_b_id"),
+        Index("ix_cross_paradox_status", "resolution_status"),
+        Index("ix_cross_paradox_severity", "severity"),
+    )
+
+
+class OracleResponse(Base):
+    """Oracle source response recorded at theatre settlement time."""
+    __tablename__ = "oracle_responses"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True, default=_generate_uuid)
+    theatre_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), nullable=False, index=True
+    )
+    source: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    event_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    value_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    queried_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    is_provisional: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_oracle_responses_source_event", "source", "event_id"),
+        Index("ix_oracle_responses_theatre", "theatre_id"),
     )

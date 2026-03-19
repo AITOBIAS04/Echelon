@@ -1,151 +1,211 @@
-# PRD — Cycle-037d: Theatre Construct Verification
+# PRD — Cycle-038: Cross-Theatre Paradox Detection
 
-**Cycle:** cycle-037d
+**Cycle:** cycle-038
 **Date:** 19 March 2026
-**Depends on:** Cycle-037 (contract substrate), Cycle-037b (multi-evaluator), Cycle-037c (domain packs + security checks)
+**Depends on:** Cycle-037d (theatre construct verification), Cycle-020 (ParadoxRiskOrchestrator), Cycle-010b (Paradox Engine)
 **Sprints:** 4 (0-3)
 **Builder:** Loa (backend only)
-**Planning source:** context_037d.md, TREMOR construct analysis, CORONA construct analysis, codebase validation
+**Planning source:** context_038.md, codebase analysis of paradox engine, theatre model, evidence pipeline
 
-> Sources: context_037d.md, TREMOR BUTTERFREEZONE.md, CORONA BUTTERFREEZONE.md, codebase analysis of spec_loader.py, check_planner.py, construct_anchor_mapper.py, models.py
+> Sources: context_038.md, backend/engines/paradox.py, backend/services/paradox_risk_orchestrator.py, backend/database/models.py (Theatre, Paradox, WingFlap, Investigation)
 
 ---
 
 ## 1. Problem Statement
 
-### 1.1 The Contract System Assumes Every Construct Is A Skill
+### 1.1 The Paradox Engine Is Theatre-Local
 
-`ConstructSpec` has no `construct_class` field (spec_loader.py:13-22). The `skill_manifest` field and all check families (RUBRIC, BENCHMARK, ANCHOR) are designed for constructs that produce text or code outputs. Theatre constructs — which ingest live data, run prediction markets, settle against external oracles, and export calibration artifacts — are a fundamentally different verification target.
+The current Paradox Engine (`backend/engines/paradox.py`) scans for logic gaps within a single theatre. The ParadoxRiskOrchestrator (`backend/services/paradox_risk_orchestrator.py`) computes risk per-theatre and emits `PARADOX_RISK_CHANGED` via WebSocket on materiality — but each theatre is an island. There is no mechanism to detect when two independently-operated theatres contradict each other about the same real-world event.
 
-### 1.2 Theatre Constructs Are Often Easier To Verify
+### 1.2 External Theatres Create Network-Level Integrity Requirements
 
-Theatre constructs like TREMOR and CORONA are unusually well-suited to deterministic verification:
+With TREMOR (seismic) and CORONA (space weather) now verifiable via the 037d construct pipeline, Echelon has multiple independent theatre operators observing overlapping real-world domains. When TREMOR settles a magnitude-6.2 quake at a location and a second seismic theatre settles a conflicting magnitude for the same event, that is not a local logic gap — it is a network-level coherence failure that affects the credibility of every certificate downstream.
 
-- settlement accuracy is recomputable (binary outcomes against public oracles)
-- Brier scores are recomputable (pure arithmetic over position history)
-- oracle consistency is recomputable (cross-source comparison)
-- confidence discounting is often a pure function
+### 1.3 Same-Event Linking Is The Foundation
 
-This means theatre-construct certificates can become the **highest-credibility certificate class** because the full evaluation chain can be deterministic and externally anchored.
+Cross-theatre paradox detection requires knowing when two theatres are observing the same real-world event. This is not trivial: different theatres may use different event identifiers, different temporal windows, and different oracle sources for the same underlying phenomenon. The linking quality determines the quality of every coherence signal built on top of it.
 
-### 1.3 TREMOR And CORONA Prove The Pattern
+### 1.4 The Strategic Shift
 
-Two external theatre constructs now exist:
-
-- **TREMOR** (seismic) — 5 theatre types, USGS/EMSC oracles, 48 tests, Brier-scored RLMF certificates
-- **CORONA** (space weather) — 5 theatre types, NOAA SWPC/NASA DONKI oracles, 60 tests, same certificate schema
-
-Both share identical architectural patterns: oracle polling, evidence bundles, theatre-scoped prediction markets, RLMF export. They demonstrate that theatre constructs need their own verification families — not rubric scoring, but settlement and calibration correctness.
-
-### 1.4 The Goal Is Not "Hardcode Theatre Checks Everywhere"
-
-Cycle 037d follows the same design principle as 037c: it is a **construct-class layer** on top of the general substrate. The base contract pipeline (037) remains untouched. Theatre-specific check families are additive, selected when `construct_class == "theatre"`.
+The Paradox Engine becomes not just a theatre-local logic-gap detector but the **network referee across external verification environments**. This includes cross-domain overlaps: seismic activity in a region with no corresponding volcanic anomaly in an overlapping zone. The value is not domain expertise — it is that the engine can see when two independent specialists with overlapping scope diverge in a way worth escalation.
 
 ---
 
 ## 2. Product Contracts
 
-### 2.1 Construct Class Differentiation
+### 2.1 Fact Anchors
 
-Add a `construct_class` field to `ConstructSpec` and `ConstructRegistration`:
+A **FactAnchor** represents a real-world event or observation that one or more theatres may reference. It is the linking primitive.
 
-Recommended classes:
-- `skill` — code/text output constructs (current default)
-- `theatre` — live data ingestion, prediction markets, oracle-settled constructs
-- `bridge` — reserved for future cross-construct orchestration
-
-When `construct_class` is absent or unrecognized, default to `skill` to preserve backward compatibility with all existing constructs.
-
-### 2.2 Theatre-Oriented Check Families
-
-New check types for theatre constructs, selected when `construct_class == "theatre"`:
-
-| Check Type | What It Verifies | Anchor Class |
+| Field | Type | Description |
 |---|---|---|
-| `SETTLEMENT_ACCURACY` | Binary/multi-class outcomes match oracle ground truth | `LIVE_EXTERNAL_EVIDENCE` |
-| `ORACLE_CONSISTENCY` | Cross-source oracle agreement within tolerance | `LIVE_EXTERNAL_EVIDENCE` |
-| `CALIBRATION_VALIDITY` | Brier scores, calibration buckets, ECE are arithmetically consistent | `DETERMINISTIC_CHECK` |
-| `FUNCTIONAL_CORRECTNESS` | Theatre template logic produces correct state transitions | `DETERMINISTIC_CHECK` |
+| `id` | UUID | Primary key |
+| `anchor_type` | str | Event taxonomy (e.g., `seismic_event`, `solar_flare`, `corporate_filing`) |
+| `external_id` | str | Canonical external identifier (e.g., USGS event ID `us6000abcd`) |
+| `external_source` | str | Authoritative source (e.g., `usgs_neic`, `noaa_swpc`) |
+| `occurred_at` | datetime | When the real-world event occurred |
+| `location_json` | JSON | Optional geospatial/domain-specific location data |
+| `metadata_json` | JSON | Source-specific metadata (magnitude, depth, flare class, etc.) |
+| `created_at` | datetime | When the anchor was first recorded |
 
-These checks are **stronger than rubric-based evaluation** because they resolve against arithmetic and public data, not subjective scoring.
+**FactAnchorLink** connects a theatre's settlement or evidence to a FactAnchor:
 
-### 2.3 Theatre Check Planner
+| Field | Type | Description |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `fact_anchor_id` | FK → FactAnchor | The real-world event |
+| `theatre_id` | FK → Theatre | The theatre referencing this event |
+| `link_type` | str | `settlement`, `evidence`, `oracle_query` |
+| `link_confidence` | float | 0.0–1.0, how confident the match is |
+| `linked_entity_id` | str | Polymorphic FK to the theatre-side record |
+| `linked_entity_type` | str | `theatre_outcome`, `evidence_item`, `oracle_response` |
+| `created_at` | datetime | When the link was established |
 
-Add `backend/services/theatre_check_planner.py` following the pattern of `security_check_planner.py`:
+Design rules:
+- A FactAnchor can be linked to multiple theatres (many-to-many via FactAnchorLink)
+- Links can be established retroactively when new evidence arrives
+- `link_confidence` enables soft matching (e.g., USGS automatic vs reviewed event IDs for the same quake)
 
-- `plan_theatre_checks(spec, construct_json)` — generates theatre-specific `PlannedCheck` entries
-- `merge_theatre_checks(base_checks, theatre_checks)` — merges with base checks, preserving sort order and deduplication
+### 2.2 Coherence Groups
 
-The caller-side merge pattern from 037c is preserved: `contract_service.py` calls the theatre planner and merges, the base planner is not modified.
+A **CoherenceGroup** declares that a set of theatres should produce consistent outputs for overlapping observations. This is the structural declaration that enables cross-theatre comparison.
 
-### 2.4 Construct JSON Ingestion
+| Field | Type | Description |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `name` | str | Human-readable label (e.g., `seismic-pacific-ring`) |
+| `group_type` | str | `domain_overlap`, `oracle_shared`, `geographic_overlap` |
+| `policy_json` | JSON | Coherence thresholds and comparison rules |
+| `created_at` | datetime | When the group was defined |
 
-TREMOR and CORONA both ship a `construct.json` (or `spec/construct.json`) that declares:
+**CoherenceGroupMember** links theatres to groups:
 
-- theatre templates with resolution rules
-- OSINT source definitions
-- verification checks with oracle references
-- settlement tiers
+| Field | Type | Description |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `coherence_group_id` | FK → CoherenceGroup | The group |
+| `theatre_id` | FK → Theatre | The member theatre |
+| `role` | str | `primary`, `cross_validation`, `observer` |
+| `joined_at` | datetime | When the theatre joined the group |
 
-Add an optional `construct_json` parameter to the contract pipeline (parallel to `corpus_skills` from 037c) that the theatre check planner can consume.
+Design rules:
+- A theatre can belong to multiple coherence groups
+- Groups can span domains (seismic + volcanic for geographic overlap)
+- `policy_json` declares tolerance thresholds per comparison dimension
 
-### 2.5 Theatre Anchor Mapping Rules
+### 2.3 Cross-Theatre Paradox Records
 
-Extend `construct_anchor_mapper.py` with theatre-specific mapping rules:
+A **CrossTheatreParadox** is the output when the engine detects a network-level coherence failure. It is distinct from the existing per-theatre Paradox model.
 
-| Dimension Keywords | Anchor Class |
-|---|---|
-| `settlement`, `oracle`, `ground_truth` | `LIVE_EXTERNAL_EVIDENCE` |
-| `brier`, `calibration`, `ece` | `DETERMINISTIC_CHECK` |
-| `position_history`, `temporal_analysis` | `DETERMINISTIC_CHECK` |
-| `usgs`, `emsc`, `swpc`, `donki`, `noaa` | `LIVE_EXTERNAL_EVIDENCE` |
+| Field | Type | Description |
+|---|---|---|
+| `id` | UUID | Primary key |
+| `fact_anchor_id` | FK → FactAnchor | The real-world event at the center |
+| `coherence_group_id` | FK → CoherenceGroup (nullable) | Group context, if applicable |
+| `paradox_type` | str | `settlement_divergence`, `oracle_inconsistency`, `scope_overlap_gap`, `temporal_drift` |
+| `severity` | str | `INFO`, `WATCH`, `MATERIAL`, `CRITICAL` |
+| `theatre_a_id` | FK → Theatre | First theatre |
+| `theatre_b_id` | FK → Theatre | Second theatre |
+| `description` | str | Human-readable explanation |
+| `evidence_json` | JSON | Structured divergence evidence (values, sources, timestamps) |
+| `resolution_status` | str | `OPEN`, `ACKNOWLEDGED`, `RESOLVED`, `DISMISSED` |
+| `resolved_at` | datetime (nullable) | When resolved |
+| `created_at` | datetime | When detected |
 
-### 2.6 Theatre Precise Domains
+Design rules:
+- A CrossTheatreParadox always references exactly two theatres and (usually) one FactAnchor
+- Provisional oracle revision (e.g., USGS automatic → reviewed) is `INFO` severity, not `MATERIAL` — per context_038.md rule
+- Resolution preserves provenance: **why** the theatres disagreed, not just that they did
 
-Register theatre-specific precise domains in `KNOWN_PRECISE_DOMAINS` following the pattern of `security_policy_rules.py`:
+### 2.4 Cross-Theatre Paradox Scanner
 
-- `seismic_intelligence`
-- `space_weather`
-- `oracle_verification`
-- `settlement_verification`
-- `calibration_analysis`
+Add `backend/services/cross_theatre_paradox_scanner.py`:
 
-This prevents `normalize()` from classifying theatre-oriented domain claims as vague.
+```
+class CrossTheatreParadoxScanner:
+    """Detects coherence failures across theatres sharing FactAnchors."""
 
-### 2.7 TREMOR As First Fixture
+    async def scan_fact_anchor(anchor_id) → list[CrossTheatreParadox]
+    async def scan_coherence_group(group_id) → list[CrossTheatreParadox]
+    async def evaluate_settlement_divergence(anchor, links) → Optional[CrossTheatreParadox]
+    async def evaluate_oracle_inconsistency(anchor, links) → Optional[CrossTheatreParadox]
+    async def evaluate_scope_overlap(group, anchors) → list[CrossTheatreParadox]
+```
 
-TREMOR is the first theatre-construct fixture:
+Detection patterns:
 
-- 5 theatre templates → check planning should detect and plan for each
-- USGS + EMSC oracles → oracle consistency checks
-- Brier-scored certificates → calibration validity checks
-- Binary/multi-class settlements → settlement accuracy checks
+| Pattern | Trigger | Severity Logic |
+|---|---|---|
+| Settlement divergence | Two theatres settle opposite outcomes for same FactAnchor | MATERIAL if both ACTIVE, WATCH if one superseded |
+| Oracle inconsistency | Same oracle source returns different values to different theatres for same event | MATERIAL if delta > threshold, INFO if within tolerance |
+| Scope overlap gap | Coherence group expects correlated events but one theatre has no corresponding anchor | WATCH (absence is suspicious, not contradictory) |
+| Temporal drift | Same event settled at significantly different times across theatres | INFO unless delta > settlement window |
 
-CORONA is the second fixture (same pattern, different domain).
+### 2.5 Oracle Consistency Monitor
+
+Add `backend/services/oracle_consistency_monitor.py`:
+
+```
+class OracleConsistencyMonitor:
+    """Tracks oracle source responses across theatres for consistency."""
+
+    async def record_oracle_response(theatre_id, source, event_id, value, timestamp)
+    async def check_consistency(source, event_id) → ConsistencyResult
+    async def get_divergence_history(source, window) → list[DivergenceRecord]
+```
+
+This service tracks when different theatres query the same oracle source for the same event and records whether the responses agree. It feeds directly into the CrossTheatreParadoxScanner's oracle inconsistency detection.
+
+### 2.6 Integration with Existing Paradox Infrastructure
+
+The cross-theatre scanner extends — does not replace — existing infrastructure:
+
+- **ParadoxRiskOrchestrator** continues to compute per-theatre risk. It gains a new input: `cross_theatre_exposure` derived from open CrossTheatreParadox records affecting the theatre
+- **WingFlap** gains a new type: `CROSS_THEATRE_PARADOX` to audit cross-theatre events
+- **WebSocket** emission: `CROSS_THEATRE_PARADOX_DETECTED` event on new MATERIAL or CRITICAL findings
+- **Material-delta gating** preserved: only emit on severity change, not on every scan
+
+### 2.7 TREMOR As First Domain Fixture
+
+TREMOR seismic events are the first domain fixture because they have:
+- Excellent public ground truth (USGS reviewed catalog)
+- High event cadence (multiple M4+ events per day globally)
+- Machine-readable feeds (FDSN web services)
+- Clear oracle divergence cases (USGS automatic vs reviewed, USGS vs EMSC)
+
+The test suite uses TREMOR-style events to validate:
+- FactAnchor creation from USGS event IDs
+- Cross-linking when two theatres observe the same quake
+- Settlement divergence detection when magnitude classifications differ
+- Oracle consistency between USGS and EMSC for the same event
 
 ---
 
 ## 3. What This Cycle Does NOT Do
 
-- **Does NOT modify the base contract pipeline** (037 substrate stays untouched)
-- **Does NOT add theatre runtime logic** (the constructs run independently; this is verification only)
-- **Does NOT add cross-theatre paradox detection** (that is Cycle 038)
-- **Does NOT require database migrations** (construct_class can be derived from construct.json or stored as a JSON field on existing models)
-- **Does NOT make theatre-class mandatory** (absent class defaults to skill)
+- **Does NOT modify the per-theatre Paradox Engine** (theatre-local logic gap scanning stays untouched)
+- **Does NOT add real-time oracle polling** (oracle responses are recorded when theatres settle, not polled proactively)
+- **Does NOT implement automated resolution** (cross-theatre paradoxes are detected and recorded; resolution is human-initiated or future-cycle)
+- **Does NOT add settlement cascade logic** (when one theatre's paradox invalidates another's settlement — that is a separate concern)
+- **Does NOT require external theatre runtime changes** (TREMOR/CORONA do not need modification; linking happens on Echelon's side)
 
 ---
 
 ## 4. Acceptance Criteria
 
-1. `ConstructSpec` supports an optional `construct_class` field; absent defaults to `"skill"`
-2. `plan_theatre_checks()` generates 4 theatre-specific check types from a construct.json
-3. `merge_theatre_checks()` combines theatre checks with base checks, preserving sort/dedup
-4. `contract_service.create_contract()` accepts optional `construct_json` and routes to theatre check planner when `construct_class == "theatre"`
-5. Theatre anchor mapping rules added (settlement, oracle, calibration, USGS/EMSC/SWPC keywords)
-6. Theatre precise domains registered, `normalize()` classifies them as precise
-7. TREMOR fixture produces SETTLEMENT_ACCURACY + ORACLE_CONSISTENCY + CALIBRATION_VALIDITY checks
-8. All existing 037/037b/037c tests pass unchanged (zero regression)
-9. >= 28 new tests
+1. `FactAnchor` and `FactAnchorLink` models created with Alembic migration
+2. `CoherenceGroup` and `CoherenceGroupMember` models created with Alembic migration
+3. `CrossTheatreParadox` model created with Alembic migration
+4. `CrossTheatreParadoxScanner` detects settlement divergence across two theatres sharing a FactAnchor
+5. `CrossTheatreParadoxScanner` detects oracle inconsistency for same-source same-event queries
+6. `OracleConsistencyMonitor` records and compares oracle responses across theatres
+7. Provisional oracle revision (automatic → reviewed) classified as INFO, not MATERIAL
+8. WingFlap records `CROSS_THEATRE_PARADOX` events
+9. WebSocket emits `CROSS_THEATRE_PARADOX_DETECTED` on MATERIAL findings (material-delta gated)
+10. ParadoxRiskOrchestrator incorporates cross_theatre_exposure in per-theatre risk
+11. TREMOR-based test fixtures validate all detection patterns
+12. All existing paradox/theatre/contract tests pass unchanged (zero regression)
+13. >= 30 new tests
 
 ---
 
@@ -153,33 +213,34 @@ CORONA is the second fixture (same pattern, different domain).
 
 | Area | Tests | Coverage |
 |---|---|---|
-| Construct class parsing | 4 | theatre, skill, absent/default, unknown |
-| Theatre check planner | 6 | 4 check types, sort order, determinism |
-| Theatre check merging | 4 | merge with base, dedup, sort, no theatre without class |
-| Theatre anchor mapping | 4 | settlement → LIVE_EXTERNAL, brier → DETERMINISTIC, USGS keyword, unrecognized |
-| Theatre domain registration | 4 | precise classification, vague fallback, normalize integration |
-| TREMOR fixture | 4 | all 4 check types from TREMOR construct.json |
-| CORONA fixture | 2 | same pattern, different domain claims |
-| Regression | 4 | skill constructs unchanged, security checks still work, hash determinism |
-| **Total** | **~32** | |
+| FactAnchor CRUD | 4 | create, link, multi-theatre link, confidence filtering |
+| CoherenceGroup management | 4 | create group, add members, multi-group membership, policy validation |
+| Settlement divergence detection | 5 | same anchor opposite outcomes, same outcome no paradox, superseded theatre dampening, severity classification, provenance capture |
+| Oracle inconsistency detection | 4 | same source different values, within tolerance no paradox, cross-source comparison, temporal window |
+| Scope overlap gap detection | 3 | expected correlated anchor missing, both present no gap, cross-domain overlap |
+| Oracle consistency monitor | 4 | record response, check consistency, divergence history, stale response handling |
+| Cross-theatre risk integration | 3 | exposure feeds into orchestrator, material-delta gating, WingFlap audit |
+| WebSocket emission | 2 | MATERIAL triggers emission, INFO does not |
+| TREMOR fixture | 4 | USGS anchor creation, two-theatre linking, magnitude divergence, USGS vs EMSC consistency |
+| Regression | 3 | per-theatre paradox unchanged, contract pipeline unaffected, evidence freshness unaffected |
+| **Total** | **~36** | |
 
 ---
 
 ## 6. Dependency Chain
 
 ```
-037  (contract substrate)
- ├── 037b (multi-evaluator orchestration)
- ├── 037c (domain packs + security checks)
- │    └── 037c-fix (import registration + API corpus wiring)
- └── 037d (theatre construct verification) ← THIS CYCLE
-      └── 038 (cross-theatre paradox detection)
+010b (Paradox Engine + Logic Gap)
+ └── 020 (ParadoxRiskOrchestrator + PARADOX_RISK_CHANGED WebSocket)
+      └── 037d (Theatre Construct Verification)
+           └── 038 (Cross-Theatre Paradox Detection) ← THIS CYCLE
+                └── 039 (Settlement Cascade + Automated Resolution) [future]
 ```
 
 ---
 
 ## 7. Why This Matters
 
-Theatre constructs are the first Echelon construct class where every claim can be verified deterministically against public oracles. If 037d ships cleanly, Echelon can issue a **higher-credibility certificate class** for theatre operators than for any skill-based construct — because the evaluation chain is fully recomputable.
+When TREMOR settles a magnitude-6.2 quake and a second seismic theatre settles magnitude-5.8 for the same event, that contradiction is invisible today. Every certificate issued by both theatres carries an undetected coherence risk. This cycle makes that contradiction explicit, recorded, and auditable.
 
-That positions theatre-construct certificates as the trust anchor for the broader network, and sets up Cycle 038's cross-theatre paradox detection with verified theatre records to compare.
+The Paradox Engine evolves from "does this theatre contradict itself?" to "does this theatre contradict the network?" That is the shift from local correctness to network integrity — and it is what makes Echelon's multi-theatre architecture trustworthy at scale.

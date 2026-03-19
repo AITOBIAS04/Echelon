@@ -593,6 +593,43 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
+# Include Cross-Theatre Paradox Detection routes (Cycle-038)
+try:
+    from backend.api.fact_anchor_routes import router as fact_anchor_router
+    app.include_router(fact_anchor_router)
+    print("✅ FactAnchor router included")
+except Exception as e:
+    print(f"❌ Failed to include FactAnchor router: {e}")
+    import traceback
+    traceback.print_exc()
+
+try:
+    from backend.api.coherence_group_routes import router as coherence_group_router
+    app.include_router(coherence_group_router)
+    print("✅ CoherenceGroup router included")
+except Exception as e:
+    print(f"❌ Failed to include CoherenceGroup router: {e}")
+    import traceback
+    traceback.print_exc()
+
+try:
+    from backend.api.cross_theatre_paradox_routes import router as cross_paradox_router
+    app.include_router(cross_paradox_router)
+    print("✅ CrossTheatreParadox router included")
+except Exception as e:
+    print(f"❌ Failed to include CrossTheatreParadox router: {e}")
+    import traceback
+    traceback.print_exc()
+
+try:
+    from backend.api.oracle_consistency_routes import router as oracle_consistency_router
+    app.include_router(oracle_consistency_router)
+    print("✅ OracleConsistency router included")
+except Exception as e:
+    print(f"❌ Failed to include OracleConsistency router: {e}")
+    import traceback
+    traceback.print_exc()
+
 # --- API ENDPOINTS ---
 
 # --- HEALTH CHECK ENDPOINT ---

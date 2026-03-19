@@ -313,6 +313,33 @@ class ConnectionManager:
         }
         await self.broadcast_global("INVESTIGATION_STATUS_CHANGED", payload)
 
+    async def broadcast_cross_theatre_paradox(
+        self,
+        paradox_id: str,
+        paradox_type: str,
+        severity: str,
+        theatre_a_id: str,
+        theatre_b_id: str,
+        fact_anchor_id: str,
+        description: str,
+    ) -> None:
+        """Broadcast CROSS_THEATRE_PARADOX_DETECTED to both theatre channels."""
+        data = {
+            "paradox_id": paradox_id,
+            "paradox_type": paradox_type,
+            "severity": severity,
+            "theatre_a_id": theatre_a_id,
+            "theatre_b_id": theatre_b_id,
+            "fact_anchor_id": fact_anchor_id,
+            "description": description,
+        }
+        await self.broadcast_to_channel(
+            f"theatre:{theatre_a_id}", "CROSS_THEATRE_PARADOX_DETECTED", data
+        )
+        await self.broadcast_to_channel(
+            f"theatre:{theatre_b_id}", "CROSS_THEATRE_PARADOX_DETECTED", data
+        )
+
     async def send_position_update(self, user_id: str, position: dict):
         """Send position update to specific user."""
         await self.send_to_user(user_id, "POSITION_UPDATE", position)
