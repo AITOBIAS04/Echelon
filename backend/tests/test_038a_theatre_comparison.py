@@ -239,3 +239,162 @@ class TestCoronaBundleBuilder:
         tremor_fixture = make_tremor_fixture_input()
         tremor_bundle = build_comparison_bundle(tremor_result, tremor_fixture)
         assert tremor_bundle.confidence_signals == {}
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Sprint 2 — Same-Event Candidates (3 tests)
+# ═══════════════════════════════════════════════════════════════════
+
+from backend.services.theatre_comparison_candidates import generate_candidates
+
+
+class TestSameEventCandidates:
+    """Verify same-event candidate generation."""
+
+    def test_shared_event_keys_produce_candidate(self):
+        """TREMOR and CORONA share one event key → same_event candidate."""
+        tremor = make_tremor_bundle()
+        corona = make_corona_bundle()
+        candidates = generate_candidates([tremor, corona])
+
+        same_event = [c for c in candidates if c.candidate_type == "same_event"]
+        assert len(same_event) == 1
+        assert SHARED_EVENT_KEY in same_event[0].matching_keys
+        assert same_event[0].bundle_a.construct_slug == "tremor"
+        assert same_event[0].bundle_b.construct_slug == "corona"
+
+    def test_no_shared_event_keys_no_same_event_candidate(self):
+        """Bundles with disjoint event keys produce no same-event candidate."""
+        bundle_a = make_tremor_bundle().model_copy(
+            update={"event_keys": ["event-a-only"]},
+        )
+        bundle_b = make_corona_bundle().model_copy(
+            update={"event_keys": ["event-b-only"]},
+        )
+        candidates = generate_candidates([bundle_a, bundle_b])
+        same_event = [c for c in candidates if c.candidate_type == "same_event"]
+        assert len(same_event) == 0
+
+    def test_match_strength_exact_vs_partial(self):
+        """EXACT when all events shared, PARTIAL when subset."""
+        # PARTIAL: TREMOR has extra event key not in CORONA
+        tremor = make_tremor_bundle()  # event_keys: [SHARED, "btc-futures-q1-2026"]
+        corona = make_corona_bundle()  # event_keys: [SHARED]
+        candidates = generate_candidates([tremor, corona])
+        same_event = [c for c in candidates if c.candidate_type == "same_event"]
+        assert same_event[0].match_strength == "PARTIAL"
+
+        # EXACT: both bundles have identical event keys
+        bundle_a = make_tremor_bundle().model_copy(
+            update={"event_keys": [SHARED_EVENT_KEY]},
+        )
+        bundle_b = make_corona_bundle().model_copy(
+            update={"event_keys": [SHARED_EVENT_KEY]},
+        )
+        candidates = generate_candidates([bundle_a, bundle_b])
+        same_event = [c for c in candidates if c.candidate_type == "same_event"]
+        assert same_event[0].match_strength == "EXACT"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Sprint 2 — Overlap-Scope Candidates (3 tests)
+# ═══════════════════════════════════════════════════════════════════
+
+class TestOverlapScopeCandidates:
+    """Verify overlap-scope candidate generation."""
+
+    def test_shared_scope_keys_produce_candidate(self):
+        """Bundles with shared scope keys and no shared events → overlap_scope."""
+        # Remove event keys to prevent same-event match
+        bundle_a = make_tremor_bundle().model_copy(
+            update={"event_keys": []},
+        )
+        bundle_b = make_corona_bundle().model_copy(
+            update={"event_keys": []},
+        )
+        candidates = generate_candidates([bundle_a, bundle_b])
+
+        overlap = [c for c in candidates if c.candidate_type == "overlap_scope"]
+        assert len(overlap) == 1
+        assert SHARED_SCOPE_KEY.key() in overlap[0].matching_keys
+
+    def test_partial_overlap_classification(self):
+        """Shared < total scope keys → PARTIAL or WEAK based on ratio."""
+        # 1 shared out of 3 total unique scopes → ratio = 1/3 ≤ 50% → WEAK
+        bundle_a = make_tremor_bundle().model_copy(
+            update={
+                "event_keys": [],
+                "scope_keys": [
+                    SHARED_SCOPE_KEY,
+                    TheatreScopeKey(scope_type="entity", scope_value="btc-usd"),
+                ],
+            },
+        )
+        bundle_b = make_corona_bundle().model_copy(
+            update={
+                "event_keys": [],
+                "scope_keys": [
+                    SHARED_SCOPE_KEY,
+                    TheatreScopeKey(scope_type="entity", scope_value="covid-variant-x"),
+                ],
+            },
+        )
+        candidates = generate_candidates([bundle_a, bundle_b])
+        overlap = [c for c in candidates if c.candidate_type == "overlap_scope"]
+        assert len(overlap) == 1
+        # 1 shared (region:us-equities) out of 3 unique → WEAK
+        assert overlap[0].match_strength == "WEAK"
+
+    def test_scope_key_normalization_case_mismatch(self):
+        """Case-mismatched scope keys still match after normalization (SDD §4.4)."""
+        bundle_a = make_tremor_bundle().model_copy(
+            update={
+                "event_keys": [],
+                "scope_keys": [TheatreScopeKey(scope_type="Region", scope_value="US_Equities")],
+            },
+        )
+        bundle_b = make_corona_bundle().model_copy(
+            update={
+                "event_keys": [],
+                "scope_keys": [TheatreScopeKey(scope_type="region", scope_value="us-equities")],
+            },
+        )
+        candidates = generate_candidates([bundle_a, bundle_b])
+        overlap = [c for c in candidates if c.candidate_type == "overlap_scope"]
+        assert len(overlap) == 1
+        assert overlap[0].match_strength == "EXACT"
+        assert "region:us-equities" in overlap[0].matching_keys
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Sprint 2 — No-Match Behavior (2 tests)
+# ═══════════════════════════════════════════════════════════════════
+
+class TestNoMatchBehavior:
+    """Verify no candidates emitted when bundles don't overlap."""
+
+    def test_zero_overlap_no_candidates(self):
+        """Bundles with no shared events or scopes produce no candidates."""
+        bundle_a = make_tremor_bundle().model_copy(
+            update={
+                "event_keys": ["event-a-only"],
+                "scope_keys": [TheatreScopeKey(scope_type="region", scope_value="asia")],
+            },
+        )
+        bundle_b = make_corona_bundle().model_copy(
+            update={
+                "event_keys": ["event-b-only"],
+                "scope_keys": [TheatreScopeKey(scope_type="region", scope_value="europe")],
+            },
+        )
+        candidates = generate_candidates([bundle_a, bundle_b])
+        assert len(candidates) == 0
+
+    def test_same_construct_pair_skipped(self):
+        """Two bundles with the same construct_slug are never compared."""
+        tremor_1 = make_tremor_bundle()
+        tremor_2 = make_tremor_bundle().model_copy(
+            update={"certificate_id": "cert-tremor-002"},
+        )
+        candidates = generate_candidates([tremor_1, tremor_2])
+        assert len(candidates) == 0
