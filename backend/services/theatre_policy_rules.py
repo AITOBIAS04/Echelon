@@ -156,6 +156,12 @@ def parse_construct_json(raw_json: str) -> TheatreConstructMeta:
     # Settlement tiers: TREMOR only (echelon.settlement_tiers)
     settlement_tiers = echelon.get("settlement_tiers", [])
 
+    # Validate: theatre construct.json must contain at least one template
+    if not templates:
+        raise ValueError(
+            "construct.json must contain at least one theatre_templates entry"
+        )
+
     # Derived: has_brier_scoring
     has_brier_from_templates = any(t.brier_type is not None for t in templates)
     rlmf_exports = rlmf.get("exports", [])

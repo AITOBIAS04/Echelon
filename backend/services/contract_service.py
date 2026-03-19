@@ -2,10 +2,12 @@
 
 Cycle 037: Contract-Backed Verification Infrastructure.
 Cycle 037c-fix: Security domain registration + security check integration.
+Cycle 037d-fix: Idempotence uses contract_hash (not spec_hash); invalid
+    construct_json raises ValueError instead of silent downgrade.
 
 Orchestrates: SpecLoader → PolicyNormalizer → CheckPlanner → persist.
 Enforces one ACTIVE contract per registration via supersession.
-Idempotent: same spec_hash on ACTIVE contract returns existing (no duplicate).
+Idempotent: same contract_hash on ACTIVE contract returns existing (no duplicate).
 """
 
 import logging
@@ -60,9 +62,14 @@ class ContractService:
         """Create or refresh an evaluation contract from YAML content.
 
         Pipeline: parse YAML → normalize claims → plan checks → merge
-        security checks → persist.
-        Idempotent: if ACTIVE contract has same spec_hash, returns existing.
-        Supersedes: if ACTIVE contract has different spec_hash, supersedes it.
+        security checks → merge theatre checks → compute contract_hash →
+        idempotence check → persist.
+
+        Idempotent: if ACTIVE contract has same contract_hash, returns
+        existing. This covers changes in YAML, construct_json, and corpus
+        skills — any input that affects the planned checks.
+        Supersedes: if ACTIVE contract has different contract_hash, supersedes
+        it and creates a new one.
 
         Args:
             registration_id: FK to construct_registrations.id.
@@ -78,52 +85,54 @@ class ContractService:
 
         Returns:
             The ACTIVE EvaluationContract (new or existing).
+
+        Raises:
+            ValueError: If construct_json is provided for a theatre construct
+                but cannot be parsed. Callers should surface this as a client
+                error rather than silently downgrading.
         """
         # 1. Parse and hash
         spec = load_spec(yaml_content)
 
-        # 2. Check for existing ACTIVE contract
-        existing = await self.get_active_contract(registration_id)
-        if existing is not None:
-            if existing.spec_hash == spec.spec_hash:
-                logger.info(
-                    "Idempotent: ACTIVE contract %s already has spec_hash %s",
-                    existing.id, spec.spec_hash[:24],
-                )
-                return existing
-            # Different spec_hash → supersede
-            await self.supersede(existing.id)
-
-        # 3. Normalize claims
+        # 2. Normalize claims
         norm_result = normalize(spec)
 
-        # 4. Plan checks
+        # 3. Plan checks
         planned = plan_checks(spec.slug, norm_result, available_assets)
 
-        # 4b. Merge security-specific checks if corpus skills provided
+        # 3b. Merge security-specific checks if corpus skills provided
         if corpus_skills:
             for skill in corpus_skills:
                 refs = extract_security_references(skill)
                 sec_checks = plan_security_checks(skill, refs)
                 planned = merge_security_checks(planned, sec_checks)
 
-        # 4c. Merge theatre-specific checks if construct_json provided
-        #     and construct_class is "theatre"
+        # 3c. Merge theatre-specific checks if construct_json provided
+        #     and construct_class is "theatre".
+        #     Invalid construct_json raises ValueError — callers must not
+        #     silently downgrade a theatre contract to one without theatre
+        #     checks.
         if construct_json and spec.construct_class == "theatre":
-            try:
-                theatre_meta = parse_construct_json(construct_json)
-                theatre_checks = plan_theatre_checks(spec.slug, theatre_meta)
-                planned = merge_theatre_checks(planned, theatre_checks)
-            except ValueError as e:
-                logger.warning(
-                    "Failed to parse construct.json for %s: %s",
-                    spec.slug, e,
+            theatre_meta = parse_construct_json(construct_json)
+            theatre_checks = plan_theatre_checks(spec.slug, theatre_meta)
+            planned = merge_theatre_checks(planned, theatre_checks)
+
+        # 4. Compute contract hash (covers spec_hash + all planned checks)
+        contract_hash = compute_contract_hash(spec.spec_hash, planned)
+
+        # 5. Idempotence / supersession check against contract_hash
+        existing = await self.get_active_contract(registration_id)
+        if existing is not None:
+            if existing.contract_hash == contract_hash:
+                logger.info(
+                    "Idempotent: ACTIVE contract %s already has contract_hash %s",
+                    existing.id, contract_hash[:24],
                 )
+                return existing
+            # Different contract_hash → supersede
+            await self.supersede(existing.id)
 
         planned_dicts = checks_to_dicts(planned)
-
-        # 5. Compute contract hash
-        contract_hash = compute_contract_hash(spec.spec_hash, planned)
 
         # 6. Persist
         contract = EvaluationContract(

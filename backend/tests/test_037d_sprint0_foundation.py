@@ -219,16 +219,12 @@ class TestParseConstructJson(unittest.TestCase):
             self.parse("not json {{{")
         self.assertIn("Invalid JSON", str(ctx.exception))
 
-    def test_minimal_fixture(self):
-        """Minimal construct.json with only required fields produces valid meta."""
+    def test_minimal_fixture_without_templates_raises(self):
+        """construct.json without theatre_templates raises ValueError (037d-fix P2)."""
         minimal = json.dumps({"name": "minimal"})
-        meta = self.parse(minimal)
-        self.assertEqual(meta.name, "minimal")
-        self.assertEqual(len(meta.theatre_templates), 0)
-        self.assertEqual(len(meta.osint_sources), 0)
-        self.assertFalse(meta.has_brier_scoring)
-        self.assertFalse(meta.has_cross_validation)
-        self.assertEqual(meta.oracle_names, [])
+        with self.assertRaises(ValueError) as ctx:
+            self.parse(minimal)
+        self.assertIn("theatre_templates", str(ctx.exception))
 
 
 if __name__ == "__main__":
