@@ -42,6 +42,16 @@ def _order_theatres(theatre_a_id: str, theatre_b_id: str) -> tuple[str, str]:
     return theatre_b_id, theatre_a_id
 
 
+def _link_provenance(link_a, link_b) -> dict:
+    """Snapshot link-quality provenance for paradox evidence_json."""
+    return {
+        "link_a_confidence": getattr(link_a, "link_confidence", None),
+        "link_a_type": getattr(link_a, "link_type", None),
+        "link_b_confidence": getattr(link_b, "link_confidence", None),
+        "link_b_type": getattr(link_b, "link_type", None),
+    }
+
+
 class CrossTheatreParadoxScanner:
     """Detects coherence failures across theatres sharing FactAnchors."""
 
@@ -203,6 +213,7 @@ class CrossTheatreParadoxScanner:
             "anchor_type": anchor.anchor_type,
             "external_source": anchor.external_source,
             "external_id": anchor.external_id,
+            **_link_provenance(link_a, link_b),
         }
 
         return await self._create_paradox(
@@ -256,6 +267,7 @@ class CrossTheatreParadoxScanner:
                 "theatre_a_provisional": resp_a.is_provisional,
                 "theatre_b_provisional": resp_b.is_provisional,
                 "revision_lifecycle": True,
+                **_link_provenance(link_a, link_b),
             }
             return await self._create_paradox(
                 anchor_id=anchor.id,
@@ -297,6 +309,7 @@ class CrossTheatreParadoxScanner:
             "delta": delta,
             "tolerance": tolerance,
             "same_source": same_source,
+            **_link_provenance(link_a, link_b),
         }
 
         return await self._create_paradox(
@@ -353,6 +366,7 @@ class CrossTheatreParadoxScanner:
             "window_hours": window,
             "time_a": time_a.isoformat() if time_a else None,
             "time_b": time_b.isoformat() if time_b else None,
+            **_link_provenance(link_a, link_b),
         }
 
         return await self._create_paradox(
@@ -390,7 +404,8 @@ class CrossTheatreParadoxScanner:
                 FactAnchorLink.theatre_id.in_(member_theatre_ids),
             )
         )
-        linked_theatres = {link.theatre_id for link in link_result.scalars().all()}
+        links = list(link_result.scalars().all())
+        linked_theatres = {link.theatre_id for link in links}
         missing = set(member_theatre_ids) - linked_theatres
 
         if not missing:
@@ -418,12 +433,22 @@ class CrossTheatreParadoxScanner:
             f"{anchor.external_source}:{anchor.external_id}"
         )
 
+        # Build link provenance from present links
+        present_link_provenance = {
+            link.theatre_id: {
+                "confidence": getattr(link, "link_confidence", None),
+                "link_type": getattr(link, "link_type", None),
+            }
+            for link in links
+        }
+
         evidence = {
             "group_id": group.id,
             "group_name": group.name,
             "missing_theatres": missing_list,
             "present_theatres": present_list,
             "anchor_type": anchor.anchor_type,
+            "present_link_provenance": present_link_provenance,
         }
 
         return await self._create_paradox(

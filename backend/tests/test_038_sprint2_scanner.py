@@ -177,6 +177,12 @@ class TestSettlementDivergence(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result.paradox_type, CrossTheatreParadoxType.SETTLEMENT_DIVERGENCE)
         self.assertEqual(result.severity, CrossTheatreParadoxSeverity.MATERIAL)
+        # P2 fix: link provenance snapshotted in evidence
+        self.assertIn("link_a_confidence", result.evidence_json)
+        self.assertIn("link_b_confidence", result.evidence_json)
+        self.assertIn("link_a_type", result.evidence_json)
+        self.assertEqual(result.evidence_json["link_a_confidence"], 1.0)
+        self.assertEqual(result.evidence_json["link_a_type"], "settlement")
 
     def test_skips_same_outcomes(self):
         from backend.services.cross_theatre_paradox_scanner import CrossTheatreParadoxScanner
@@ -268,6 +274,9 @@ class TestOracleInconsistency(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result.paradox_type, CrossTheatreParadoxType.ORACLE_INCONSISTENCY)
         self.assertEqual(result.severity, CrossTheatreParadoxSeverity.MATERIAL)
+        # P2 fix: link provenance snapshotted
+        self.assertIn("link_a_confidence", result.evidence_json)
+        self.assertIn("link_b_confidence", result.evidence_json)
 
     def test_cross_source_is_watch(self):
         from backend.services.cross_theatre_paradox_scanner import CrossTheatreParadoxScanner
