@@ -1,152 +1,162 @@
-# PRD — Cycle-037b: Multi-Evaluator Orchestration + Residual Scoring
+# PRD — Cycle-037c: Security + Domain Pack Verification
 
-**Cycle:** cycle-037b
-**Date:** 18 March 2026
-**Depends on:** Cycle-037 (Construct Contract Verification V1)
+**Cycle:** cycle-037c
+**Date:** 19 March 2026
+**Depends on:** Cycle-037 (contract substrate), Cycle-037b (multi-evaluator orchestration), Cycles 026a–026c (anchor packs)
 **Sprints:** 4 (0–3)
 **Builder:** Loa (backend only)
-**Planning source:** Follow-on to contract-backed construct verification; scorer orchestration and convergence handling
+**Planning source:** domain-pack expansion, security construct support, frontmatter-aware corpora support
+
+> Sources: context_037c.md, prd_037c.md, sdd_037c.md, sprint_037c.md, codebase validation
 
 ---
 
 ## 1. Problem Statement
 
-### 1.1 Cycle 037 Creates The Contract, But Not The Full Judging System
+### 1.1 The Substrate Exists, But Domain Packs Are Still Generic
 
-Cycle 037 establishes `EvaluationContract`, policy normalization, deterministic requirement planning, issuance states, remediation payloads, and provenance integration. That is the substrate. It does not yet solve how residual non-deterministic claims should be evaluated once deterministic checks have run.
+After 037 and 037b, Echelon can compile a contract and evaluate it with deterministic-first plus residual convergence. What it still lacks is deep domain support for high-value construct families — especially security constructs.
 
-### 1.2 A Single LLM Scorer Is Still Too Soft For High-Trust Issuance
+### 1.2 Security Is The Best First Domain Pack
 
-Constructs will always have some claims that are not mechanically testable:
+Security constructs are unusually well-suited to contract-backed verification because:
 
-- methodology adherence
-- synthesis quality
-- completeness of analysis
-- domain-reasoning quality
+- many claims are mechanically testable
+- published taxonomies and standards exist (OWASP Top 10, CWE, MITRE ATT&CK)
+- the Anthropic cybersecurity skills corpus provides structured frontmatter, workflows, references, and verification sections
+- the anchor mapper (`construct_anchor_mapper.py`) already maps security keywords to `PUBLIC_STANDARD`
 
-If those claims are scored by one model, the certificate still depends too heavily on a single model’s opinion. The next trust layer is evaluator orchestration: multiple independent scorers, convergence tracking, disagreement handling, and clear issuance policy based on scorer alignment.
+### 1.3 The Goal Is Not "Hardcode Security Everywhere"
 
-### 1.3 DEFERRED Needs To Mean “Coverage Missing,” Not “Score Felt Weird”
+Cycle 037c must remain a domain-pack layer on top of the general substrate:
 
-Cycle 037 already defines `DEFERRED` as an issuance-readiness state caused by incomplete verification coverage. Cycle 037b should preserve that semantics. Borderline or divergent rubric outcomes should not overload the same state. They need a separate operational path: converged, divergent, or escalated.
+- frontmatter-aware corpus ingestion (new — `spec_loader.py` only handles pure YAML today)
+- security-specific deterministic check families
+- corpus-specific policy normalization with precise security domains
+- richer anchor mapping for security frameworks
+
+That keeps 037 general and makes 037c additive.
 
 ---
 
 ## 2. Product Contracts
 
-### 2.1 Residual Rubric Execution Happens Only After Deterministic Checks
+### 2.1 Domain Pack Loader
 
-Cycle 037b must treat rubric scoring as the residual layer:
+Add a generic domain-pack loader that can:
 
-1. contract compiles
-2. deterministic checks execute where supported
-3. only the remaining rubric dimensions go to evaluator orchestration
+- ingest frontmatter-aware corpora (YAML frontmatter + Markdown body)
+- parse references and verification sections from Markdown
+- expose normalized domain-pack metadata for downstream consumers
+- handle frontmatter stripping before delegating to `spec_loader.load()` where applicable
 
-Scorers must never be asked to judge dimensions already covered by deterministic results.
+> Codebase note: `spec_loader.py` (76 lines) expects pure YAML. The domain pack loader must handle frontmatter extraction itself.
 
-### 2.2 Evaluator Orchestration V1
+### 2.2 Security Policy Rules — Precise Domain Promotion
 
-Add a multi-evaluator orchestration layer with these primitives:
+The policy normalizer (`policy_normalizer.py`, 130 lines) currently lists "security" in `KNOWN_VAGUE_TERMS`, which tier-caps any security construct to UNVERIFIED. Cycle 037c resolves this by:
 
-- evaluator registry/config
-- per-dimension scoring requests
-- per-evaluator score records
-- convergence summary
-- disagreement / escalation outcome
+- Adding specific security domains to `KNOWN_PRECISE_DOMAINS`:
+  - `vulnerability_analysis`
+  - `attack_surface_mapping`
+  - `threat_modeling`
+  - `secure_code_review`
+  - `incident_response`
+  - `cryptographic_implementation`
+  - `access_control_design`
+  - `network_security`
+  - `penetration_testing`
+  - `compliance_auditing`
 
-Minimum V1 evaluator count: **3 independent scorers**
+- Broad "security" remains vague (guardrail preserved)
+- Security policy rules map framework references (ATT&CK, CWE, OWASP) to anchored claims
+- Workflows with verification sections generate deterministic requirements where possible
+- Unsupported broad security claims stay downgraded or rejected
 
-The implementation should not hardcode vendor-specific model logic into certificate issuance; it should use a pluggable scorer interface.
+### 2.3 Security Deterministic Check Families
 
-### 2.3 Convergence Semantics
+Five new `check_type` values extending the 037 contract model via `check_planner.py`:
 
-For each rubric dimension:
+| check_type | What It Validates | Anchor Class |
+|---|---|---|
+| `attack_technique_mapping` | Claims map to valid ATT&CK technique IDs | PUBLIC_STANDARD |
+| `tool_invocation_correctness` | Security tool usage matches documented syntax | DETERMINISTIC_CHECK |
+| `standards_compliance` | Claims reference valid OWASP/CWE/NIST entries | PUBLIC_STANDARD |
+| `dependency_vulnerability_check` | Dependency scanning claims are verifiable | DETERMINISTIC_CHECK |
+| `secret_leak_check` | Secret detection claims are testable | DETERMINISTIC_CHECK |
 
-- `CONVERGED_PASS`
-- `CONVERGED_FAIL`
-- `DIVERGENT`
-- `SKIPPED`
+These extend the existing extensible `check_type` model without changing its schema. `PlannedCheck.check_type` is already a free string field.
 
-For a whole run:
+### 2.4 External Anchors
 
-- issue-ready if required residual dimensions converge
-- non-issuable if required residual dimensions are divergent beyond policy threshold
-- remediation payload should explain which dimensions diverged and why
+Extend the anchor mapper (`construct_anchor_mapper.py`, 173 lines) with security-specific dimension mappings:
 
-### 2.4 Borderline Scores Are Not DEFERRED
+- ATT&CK technique references → `PUBLIC_STANDARD` with `anchor_id: attack_framework`
+- OWASP/CWE references → `PUBLIC_STANDARD` with `anchor_id: security_standards`
+- Corpus skill references → `PUBLIC_STANDARD` with `anchor_id: security_skill_corpus`
 
-Cycle 037b must keep the state model clean:
+Security claims without a valid anchor should remain weak or rejected by policy.
 
-- `DEFERRED` remains about missing/insufficient check coverage from 037
-- borderline or split evaluator results become `DIVERGENT` / `ESCALATED`
+### 2.5 Corpus Compatibility Target
 
-This preserves the distinction between:
+Primary compatibility target for domain pack loader:
 
-- “we could not complete the required checks”
-- “the scorers disagree on the result”
-
-### 2.5 Scorer Provenance
-
-Construct runs and certificates must persist:
-
-- evaluator IDs used
-- rubric version
-- per-evaluator raw outputs
-- per-evaluator per-dimension scores
-- convergence summaries
-- escalation flags
-
-This is required for reproducibility and auditability.
-
-### 2.6 Policy Thresholds
-
-Cycle 037b must define V1 convergence thresholds. Suggested defaults:
-
-- 3/3 agreement on required dimensions → converged
-- 2/3 agreement → converged but flagged as lower confidence only if policy explicitly allows it
-- 1/3 or fully split → divergent
-
-The exact threshold should be stored in policy/rubric metadata, not hardcoded in route logic.
+- YAML frontmatter (skill metadata, references, verification sections)
+- Markdown workflow body
+- References section (framework IDs, tool names)
+- Verification section (testable assertions)
 
 ---
 
 ## 3. What This Cycle Does NOT Do
 
-- **Does NOT redesign the Cycle 037 contract schema.** It consumes `EvaluationContract`.
-- **Does NOT add new domain packs.** Security/domain-specific logic belongs in 037c.
-- **Does NOT replace deterministic checks.** It only scores the residual non-deterministic dimensions.
-- **Does NOT create a human appeals workflow yet.** It can emit escalation flags, but not a full review product.
+- **Does NOT rebuild the 037 contract substrate.** Additive only.
+- **Does NOT replace the 037b scorer orchestration layer.** Consumes it.
+- **Does NOT attempt every domain at once.** Security is the first serious domain pack.
+- **Does NOT create live API endpoints for domain pack management.** Service-layer only.
 
 ---
 
-## 4. Acceptance Criteria
+## 4. Codebase-Grounded Integration Points
 
-1. Residual rubric dimensions are separated from deterministic dimensions before scoring
-2. The scorer orchestration layer can run 3 independent evaluators over the same dimension set
-3. Per-evaluator outputs and per-dimension scores are persisted
-4. Convergence summaries are persisted and exposed in run/certificate provenance
-5. Divergent outcomes are represented separately from Cycle 037 `DEFERRED`
-6. Certificate issuance requires convergence on required residual dimensions
-7. Existing construct routes continue to work with the new orchestration layer
-8. ≥25 new tests pass
+> Corrected from pre-staged context using codebase validation.
+
+| Service | Actual File | Lines | Integration |
+|---|---|---|---|
+| Spec loader | `backend/services/spec_loader.py` | 76 | Domain pack loader wraps this for frontmatter stripping |
+| Policy normalizer | `backend/services/policy_normalizer.py` | 130 | Add precise security domains to `KNOWN_PRECISE_DOMAINS` |
+| Check planner | `backend/services/check_planner.py` | 136 | Security check planner wraps/extends for new check families |
+| Anchor mapper | `backend/services/construct_anchor_mapper.py` | 173 | Add security-specific `_MAPPING_RULES` entries |
+| Rubric registry | `backend/data/construct_rubrics/__init__.py` | — | Future: security rubric scorers (not this cycle) |
 
 ---
 
-## 5. Test Plan
+## 5. Acceptance Criteria
+
+1. Frontmatter-aware corpora can be ingested as domain-pack sources (YAML frontmatter + Markdown body)
+2. Security-specific deterministic check families are supported by the planner (5 new check_types)
+3. ATT&CK / OWASP / CWE anchors can be attached to security claims
+4. At least one security corpus fixture compiles into a valid contract
+5. Precise security domains pass policy normalization without tier-capping
+6. Broad "security" claims remain vague (guardrail preserved)
+7. Existing 037/037b paths are unaffected (regression)
+8. ≥20 new tests pass
+
+---
+
+## 6. Test Plan
 
 | Area | Tests | Coverage |
 |---|---|---|
-| Scorer interface | 3 | pluggable scorer adapters |
-| Residual-dimension filtering | 3 | deterministic dimensions removed before scoring |
-| Multi-evaluator execution | 4 | 3 scorers invoked, results captured |
-| Convergence rules | 5 | 3/3, 2/3, 1/3, split, skipped |
-| Divergence handling | 3 | divergent run outcome, escalation flag |
-| Provenance persistence | 4 | raw scorer output, summaries, rubric version |
-| Regression | 4 | existing construct path still works |
-| **Total** | **~26** | |
+| Frontmatter corpus ingestion | 5 | parse skill frontmatter + body + references + verification |
+| Security policy normalization | 5 | precise domains pass, vague "security" stays capped, reference mapping |
+| Security deterministic planning | 5 | ATT&CK, tool invocation, standards compliance, dependency, secret leak |
+| Anchor mapping | 3 | OWASP/CWE/ATT&CK attachment, missing anchor rejection |
+| Regression | 4 | core 037/037b paths unaffected |
+| **Total** | **~22** | |
 
 ---
 
-## 6. Why This Matters
+## 7. Why This Matters
 
-Cycle 037 makes construct verification contract-backed. Cycle 037b makes the non-deterministic part of that contract evaluation defensible. It is the layer that turns “an LLM scored this” into “independent evaluators converged on this residual judgement, and here is the trace.”
+Cycle 037c is the first proof that the contract substrate can handle a real domain pack, not just generic construct prose. Security is the best first candidate because it has the strongest combination of structured corpora, deterministic checks, and public standards. If this works, every other domain pack follows the same pattern.
