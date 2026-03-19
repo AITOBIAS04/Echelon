@@ -1226,8 +1226,10 @@
     {
       "cycle_id": "cycle-038a",
       "label": "Theatre Execution Fixtures For Cross-Theatre Paradox",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-19T11:21:47Z",
+      "archived": "2026-03-19T23:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-19-theatre-execution-fixtures-complete",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -1261,11 +1263,91 @@
           "tasks": 3
         }
       ]
+    },
+    {
+      "cycle_id": "cycle-038b",
+      "label": "External Theatre Orchestration",
+      "status": "archived",
+      "created_at": "2026-03-19T23:00:00Z",
+      "archived": "2026-03-20T01:00:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-19-external-theatre-orchestration",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 116,
+          "label": "Schemas + Extraction Contracts",
+          "status": "completed",
+          "tasks": 2
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 117,
+          "label": "Enriched Fixture Extraction",
+          "status": "completed",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 118,
+          "label": "Orchestrator Composition",
+          "status": "completed",
+          "tasks": 2
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 119,
+          "label": "038 Scanner Compatibility + Builder Feedback",
+          "status": "completed",
+          "tasks": 2
+        }
+      ]
+    },
+    {
+      "cycle_id": "cycle-038c",
+      "label": "Orchestrated Scanner Handoff",
+      "status": "active",
+      "created_at": "2026-03-20T01:15:00Z",
+      "prd": "grimoires/loa/prd.md",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprint_plan": "grimoires/loa/sprint.md",
+      "sprints": [
+        {
+          "local_id": "sprint-0",
+          "global_id": 120,
+          "label": "Scan Result Schemas",
+          "status": "planned",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-1",
+          "global_id": 121,
+          "label": "Classification Adapter + Detection Functions",
+          "status": "planned",
+          "tasks": 4
+        },
+        {
+          "local_id": "sprint-2",
+          "global_id": 122,
+          "label": "End-to-End Paths",
+          "status": "planned",
+          "tasks": 5
+        },
+        {
+          "local_id": "sprint-3",
+          "global_id": 123,
+          "label": "Provenance Hardening + Regression",
+          "status": "planned",
+          "tasks": 2
+        }
+      ]
     }
   ],
-  "active_cycle": "cycle-038a",
+  "active_cycle": "cycle-038c",
   "active_bugfix": null,
-  "global_sprint_counter": 111,
+  "global_sprint_counter": 123,
   "bugfix_cycles": [
     {
       "bug_id": "20260318-d289ed",
@@ -1289,5 +1371,5 @@
     }
   ],
   "note_cycle_006": "Cycle-006 (First Live OSINT-Settled Certificate) was completed informally via /run sprint-1 --local with global sprint-11. Not registered in ledger.",
-  "next_global_sprint_id": 112
+  "next_global_sprint_id": 124
 }
