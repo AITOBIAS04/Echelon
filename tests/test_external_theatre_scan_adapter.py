@@ -461,3 +461,254 @@ class TestScopeOverlapGap:
         )
         finding = _detect_scope_overlap_gap(a, b, candidate)
         assert finding is None
+
+
+# ===========================================================================
+# Sprint 2 — End-to-End Paths
+# ===========================================================================
+
+class TestEndToEndTremor:
+    """Task 2.1: TREMOR end-to-end scan."""
+
+    def test_e2e_tremor_scan(self):
+        """TREMOR bundles through adapter; settlement divergence detected."""
+        bundle_pass = ExecutedTheatreComparisonBundle(
+            construct_slug="tremor",
+            construct_version="1.0.0",
+            event_keys=["eq-market-001"],
+            scope_keys=[TheatreScopeKey(scope_type="event", scope_value="eq-market-001")],
+            settlement_state="SETTLED",
+            settlement_outcomes={"eq-market-001": {"resolution": "YES"}},
+            oracle_values={"chainlink-btc": {"value": 68000.0, "is_provisional": False}},
+            oracle_source_ids=["chainlink-btc"],
+            execution_summary=TheatreExecutionSummary(
+                executed_count=5, passed_count=5, failed_count=0, skipped_count=0,
+            ),
+        )
+        bundle_fail = ExecutedTheatreComparisonBundle(
+            construct_slug="tremor",
+            construct_version="1.0.0",
+            event_keys=["eq-market-001"],
+            scope_keys=[TheatreScopeKey(scope_type="event", scope_value="eq-market-001")],
+            settlement_state="DISPUTED",
+            settlement_outcomes={"eq-market-001": {"resolution": "NO"}},
+            oracle_values={"chainlink-btc": {"value": 68000.0, "is_provisional": False}},
+            oracle_source_ids=["chainlink-btc"],
+            execution_summary=TheatreExecutionSummary(
+                executed_count=5, passed_count=3, failed_count=2, skipped_count=0,
+            ),
+        )
+        candidate = ComparisonCandidateSet(
+            candidate_type="same_event",
+            bundle_a=bundle_pass,
+            bundle_b=bundle_fail,
+            matching_keys=["eq-market-001"],
+            match_strength="EXACT",
+        )
+        request = ExternalTheatreScanRequest(candidates=[candidate])
+        result = scan_candidates(request)
+
+        assert result.total_scanned >= 1
+        assert result.outcomes[0].construct_a_slug == "tremor"
+        assert result.outcomes[0].has_paradox is True
+        finding_types = [f.paradox_type for f in result.outcomes[0].findings]
+        assert "SETTLEMENT_DIVERGENCE" in finding_types
+
+
+class TestEndToEndCorona:
+    """Task 2.2: CORONA end-to-end scan (no-paradox path)."""
+
+    def test_e2e_corona_scan(self):
+        """CORONA aligned bundles produce explicit no-paradox."""
+        bundle_a = ExecutedTheatreComparisonBundle(
+            construct_slug="corona",
+            construct_version="2.1.0",
+            event_keys=["pandemic-risk-2026-q1"],
+            scope_keys=[TheatreScopeKey(scope_type="region", scope_value="global")],
+            settlement_state="SETTLED",
+            settlement_outcomes={"pandemic-risk-2026-q1": {"resolution": "LOW"}},
+            oracle_values={"who-data": {"value": 0.12, "is_provisional": False}},
+            oracle_source_ids=["who-data"],
+            execution_summary=TheatreExecutionSummary(
+                executed_count=4, passed_count=4, failed_count=0, skipped_count=0,
+            ),
+        )
+        bundle_b = ExecutedTheatreComparisonBundle(
+            construct_slug="corona",
+            construct_version="2.1.0",
+            event_keys=["pandemic-risk-2026-q1"],
+            scope_keys=[TheatreScopeKey(scope_type="region", scope_value="global")],
+            settlement_state="SETTLED",
+            settlement_outcomes={"pandemic-risk-2026-q1": {"resolution": "LOW"}},
+            oracle_values={"who-data": {"value": 0.13, "is_provisional": False}},
+            oracle_source_ids=["who-data"],
+            execution_summary=TheatreExecutionSummary(
+                executed_count=4, passed_count=4, failed_count=0, skipped_count=0,
+            ),
+        )
+        candidate = ComparisonCandidateSet(
+            candidate_type="same_event",
+            bundle_a=bundle_a,
+            bundle_b=bundle_b,
+            matching_keys=["pandemic-risk-2026-q1"],
+            match_strength="EXACT",
+        )
+        request = ExternalTheatreScanRequest(candidates=[candidate])
+        result = scan_candidates(request)
+
+        assert result.total_scanned == 1
+        assert result.total_clean == 1
+        assert result.total_with_findings == 0
+        outcome = result.outcomes[0]
+        assert outcome.has_paradox is False
+        assert outcome.findings == []
+        assert outcome.scanned is True
+
+
+class TestEndToEndCrossTheatre:
+    """Task 2.3: TREMOR + CORONA cross-theatre scan."""
+
+    def test_e2e_tremor_corona_cross_theatre(self):
+        """TREMOR + CORONA candidates produce both settlement and oracle findings."""
+        tremor_bundle = ExecutedTheatreComparisonBundle(
+            construct_slug="tremor",
+            construct_version="1.0.0",
+            event_keys=["cross-market-001"],
+            scope_keys=[TheatreScopeKey(scope_type="event", scope_value="cross-market-001")],
+            settlement_state="SETTLED",
+            settlement_outcomes={"cross-market-001": {"resolution": "YES"}},
+            oracle_values={"shared-oracle": {"value": 1.0, "is_provisional": False}},
+            oracle_source_ids=["shared-oracle"],
+        )
+        corona_bundle = ExecutedTheatreComparisonBundle(
+            construct_slug="corona",
+            construct_version="2.1.0",
+            event_keys=["cross-market-001"],
+            scope_keys=[TheatreScopeKey(scope_type="event", scope_value="cross-market-001")],
+            settlement_state="DISPUTED",
+            settlement_outcomes={"cross-market-001": {"resolution": "NO"}},
+            oracle_values={"shared-oracle": {"value": 1.3, "is_provisional": False}},
+            oracle_source_ids=["shared-oracle"],
+        )
+        candidate = ComparisonCandidateSet(
+            candidate_type="same_event",
+            bundle_a=tremor_bundle,
+            bundle_b=corona_bundle,
+            matching_keys=["cross-market-001"],
+            match_strength="EXACT",
+        )
+        request = ExternalTheatreScanRequest(candidates=[candidate])
+        result = scan_candidates(request)
+
+        outcome = result.outcomes[0]
+        assert outcome.has_paradox is True
+        assert outcome.construct_a_slug == "tremor"
+        assert outcome.construct_b_slug == "corona"
+        finding_types = [f.paradox_type for f in outcome.findings]
+        assert "SETTLEMENT_DIVERGENCE" in finding_types
+        assert "ORACLE_INCONSISTENCY" in finding_types
+
+
+class TestNoParadoxExplicit:
+    """Task 2.4: No-paradox explicit results."""
+
+    def test_aligned_bundles_produce_empty_findings(self):
+        """Two aligned bundles produce explicit no-paradox outcome."""
+        candidate = _make_candidate(
+            slug_a="tremor",
+            slug_b="corona",
+            settlement_state="SETTLED",
+            settlement_outcomes={"primary": "YES"},
+            oracle_values={"btc-usd": 68000.0},
+        )
+        request = ExternalTheatreScanRequest(candidates=[candidate])
+        result = scan_candidates(request)
+        outcome = result.outcomes[0]
+        assert outcome.has_paradox is False
+        assert outcome.findings == []
+        assert outcome.scanned is True
+
+    def test_scan_result_total_clean_accurate(self):
+        """Result with mixed outcomes has accurate totals."""
+        # 1 divergent candidate + 2 aligned candidates
+        divergent = _make_candidate(
+            slug_a="tremor", slug_b="corona",
+            settlement_state="DISPUTED",
+        )
+        aligned_1 = _make_candidate(
+            slug_a="alpha", slug_b="beta",
+            settlement_state="SETTLED",
+            settlement_outcomes={"primary": "YES"},
+            oracle_values={"btc-usd": 68000.0},
+        )
+        aligned_2 = _make_candidate(
+            slug_a="gamma", slug_b="delta",
+            settlement_state="SETTLED",
+            settlement_outcomes={"primary": "YES"},
+            oracle_values={"btc-usd": 68000.0},
+        )
+        request = ExternalTheatreScanRequest(
+            candidates=[divergent, aligned_1, aligned_2],
+        )
+        result = scan_candidates(request)
+        assert result.total_scanned == 3
+        assert result.total_with_findings == 1
+        assert result.total_clean == 2
+
+    def test_no_candidates_produces_empty_result(self):
+        """Empty candidates list produces empty result."""
+        request = ExternalTheatreScanRequest(candidates=[])
+        result = scan_candidates(request)
+        assert result.total_scanned == 0
+        assert result.outcomes == []
+
+
+class TestProvenancePreservation:
+    """Task 2.5: Provenance preservation end-to-end."""
+
+    def test_e2e_provenance_preservation(self):
+        """Scan results carry construct slugs, match keys, and evidence."""
+        tremor = ExecutedTheatreComparisonBundle(
+            construct_slug="tremor",
+            construct_version="1.0.0",
+            event_keys=["prov-event-001"],
+            scope_keys=[],
+            settlement_state="SETTLED",
+            settlement_outcomes={"prov-event-001": {"resolution": "YES"}},
+            oracle_values={},
+            oracle_source_ids=[],
+        )
+        corona = ExecutedTheatreComparisonBundle(
+            construct_slug="corona",
+            construct_version="2.1.0",
+            event_keys=["prov-event-001"],
+            scope_keys=[],
+            settlement_state="DISPUTED",
+            settlement_outcomes={"prov-event-001": {"resolution": "NO"}},
+            oracle_values={},
+            oracle_source_ids=[],
+        )
+        candidate = ComparisonCandidateSet(
+            candidate_type="same_event",
+            bundle_a=tremor,
+            bundle_b=corona,
+            matching_keys=["prov-event-001"],
+            match_strength="EXACT",
+        )
+        request = ExternalTheatreScanRequest(candidates=[candidate])
+        result = scan_candidates(request)
+
+        outcome = result.outcomes[0]
+        # Outcome provenance
+        assert outcome.construct_a_slug == "tremor"
+        assert outcome.construct_b_slug == "corona"
+        assert outcome.candidate_type == "same_event"
+        assert outcome.matching_keys == ["prov-event-001"]
+
+        # Finding provenance
+        assert len(outcome.findings) >= 1
+        finding = outcome.findings[0]
+        assert finding.construct_a_slug == "tremor"
+        assert finding.construct_b_slug == "corona"
+        assert finding.evidence  # non-empty
+        assert "construct_a_settlement_state" in finding.evidence
