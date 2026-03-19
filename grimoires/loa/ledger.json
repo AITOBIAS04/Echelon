@@ -1380,14 +1380,14 @@
           "local_id": "sprint-3",
           "global_id": 127,
           "label": "Reporting Surface",
-          "status": "planned",
+          "status": "completed",
           "tasks": 4
         },
         {
           "local_id": "sprint-4",
           "global_id": 128,
           "label": "TREMOR + CORONA Operational Regression",
-          "status": "planned",
+          "status": "in_progress",
           "tasks": 4
         }
       ]

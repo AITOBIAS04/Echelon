@@ -971,3 +971,269 @@ class TestListStatusReports:
         assert len(reports) == 2
         slugs = {r.slug for r in reports}
         assert slugs == {"a", "b"}
+
+
+# ===========================================================================
+# Sprint 4 — TREMOR + CORONA Operational Regression
+# ===========================================================================
+
+# Realistic construct.json payloads reused from test_external_theatre_scan_adapter.
+_TREMOR_CONSTRUCT_JSON = json.dumps({
+    "name": "TREMOR-EQ-USWEST",
+    "echelon": {
+        "theatre_templates": [
+            {
+                "id": "eq-magnitude-binary",
+                "name": "EQ Magnitude Binary",
+                "resolution": "binary",
+                "oracle": "USGS reviewed catalog",
+                "brier_type": "binary",
+            },
+            {
+                "id": "eq-region-multi",
+                "name": "EQ Region Multi",
+                "resolution": "multi_class",
+                "oracle": "USGS ShakeMap",
+            },
+        ],
+        "osint_sources": [
+            {"id": "usgs-primary", "name": "USGS Primary", "role": "primary"},
+            {"id": "usgs-cross", "name": "USGS Cross Val", "role": "cross_validation"},
+        ],
+        "verification_checks": [
+            {"check": "magnitude_threshold", "ground_truth": "USGS", "description": "Mag >= 4.5"},
+        ],
+        "settlement_tiers": [
+            {"tier": 1, "label": "Primary settlement"},
+        ],
+    },
+    "rlmf": {"exports": ["brier_score"]},
+})
+
+_CORONA_CONSTRUCT_JSON = json.dumps({
+    "name": "CORONA-SOLAR-XCLASS",
+    "theatre_templates": [
+        {
+            "id": "xray-flux-binary",
+            "name": "X-Ray Flux Binary",
+            "type": "binary",
+            "resolution": "GOES X-ray + DONKI FLR",
+        },
+        {
+            "id": "cme-arrival-multi",
+            "name": "CME Arrival Multi",
+            "type": "multi_class",
+            "resolution": "DONKI CME catalog",
+        },
+    ],
+    "data_sources": [
+        {"name": "GOES Primary", "role": "primary"},
+        {"name": "DONKI Cross", "role": "cross_validation"},
+    ],
+})
+
+
+class TestTremorCoronaRegistration:
+    """Task 4.1: Register TREMOR and CORONA as managed external theatres."""
+
+    def test_register_tremor_and_corona(self):
+        """Both theatres register successfully and appear active."""
+        svc = ExternalTheatreOperationsService()
+        tremor = svc.register_theatre(slug="tremor-eq-uswest", version="0.1.0")
+        corona = svc.register_theatre(slug="corona-solar-xclass", version="0.1.0")
+
+        assert tremor.is_active is True
+        assert corona.is_active is True
+        assert tremor.slug == "tremor-eq-uswest"
+        assert corona.slug == "corona-solar-xclass"
+
+        # Both show in active list
+        active = svc._store.list_active()
+        slugs = {e.slug for e in active}
+        assert slugs == {"tremor-eq-uswest", "corona-solar-xclass"}
+
+    def test_register_creates_unique_entries(self):
+        """Each registration creates a distinct entry with unique ID."""
+        svc = ExternalTheatreOperationsService()
+        tremor = svc.register_theatre(slug="tremor-eq-uswest", version="0.1.0")
+        corona = svc.register_theatre(slug="corona-solar-xclass", version="0.1.0")
+
+        assert tremor.id != corona.id
+        assert tremor.slug != corona.slug
+
+
+class TestTremorCoronaRun:
+    """Task 4.2: Run persisted orchestration + scan cycles with real payloads."""
+
+    def test_execute_run_with_real_constructs(self):
+        """Full operations run with TREMOR+CORONA produces completed run record."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="tremor-eq-uswest", version="0.1.0")
+        svc.register_theatre(slug="corona-solar-xclass", version="0.1.0")
+
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="tremor-eq-uswest",
+                construct_version="0.1.0",
+                construct_json=_TREMOR_CONSTRUCT_JSON,
+            ),
+            ExternalTheatreInput(
+                construct_slug="corona-solar-xclass",
+                construct_version="0.1.0",
+                construct_json=_CORONA_CONSTRUCT_JSON,
+            ),
+        ]
+        run = svc.execute_run(inputs, event_keys=["shared-event-2026-03"])
+
+        assert run.status == RunStatus.COMPLETED
+        assert run.result_counts is not None
+        assert run.result_counts.total_theatres == 2
+        assert run.result_counts.total_successful == 2
+        assert run.result_counts.total_failed == 0
+        assert run.result_counts.candidate_count >= 1
+
+    def test_run_persists_in_store(self):
+        """Completed run is retrievable from the in-memory store."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="tremor-eq-uswest", version="0.1.0")
+        svc.register_theatre(slug="corona-solar-xclass", version="0.1.0")
+
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="tremor-eq-uswest",
+                construct_version="0.1.0",
+                construct_json=_TREMOR_CONSTRUCT_JSON,
+            ),
+            ExternalTheatreInput(
+                construct_slug="corona-solar-xclass",
+                construct_version="0.1.0",
+                construct_json=_CORONA_CONSTRUCT_JSON,
+            ),
+        ]
+        run = svc.execute_run(inputs, event_keys=["shared-event-2026-03"])
+
+        # Verify stored in store
+        stored = svc._store.get_run(run.id)
+        assert stored is not None
+        assert stored.status == RunStatus.COMPLETED
+        assert stored.id == run.id
+
+
+class TestTremorCoronaSummaries:
+    """Task 4.3: Verify stored no-paradox/paradox summaries."""
+
+    def test_scan_summary_structure(self):
+        """Run scan summary has correct structure from real 038b→038c handoff."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="tremor-eq-uswest", version="0.1.0")
+        svc.register_theatre(slug="corona-solar-xclass", version="0.1.0")
+
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="tremor-eq-uswest",
+                construct_version="0.1.0",
+                construct_json=_TREMOR_CONSTRUCT_JSON,
+            ),
+            ExternalTheatreInput(
+                construct_slug="corona-solar-xclass",
+                construct_version="0.1.0",
+                construct_json=_CORONA_CONSTRUCT_JSON,
+            ),
+        ]
+        run = svc.execute_run(inputs, event_keys=["shared-event-2026-03"])
+
+        # Scan summary fields present
+        assert run.scan_summary is not None
+        assert "total_scanned" in run.scan_summary
+        assert "total_with_findings" in run.scan_summary
+        assert "total_clean" in run.scan_summary
+        # total_scanned must equal candidate_count
+        assert run.scan_summary["total_scanned"] == run.result_counts.candidate_count
+
+    def test_has_paradox_reflects_scan_findings(self):
+        """has_paradox in result_counts is True iff scan found findings."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="tremor-eq-uswest", version="0.1.0")
+        svc.register_theatre(slug="corona-solar-xclass", version="0.1.0")
+
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="tremor-eq-uswest",
+                construct_version="0.1.0",
+                construct_json=_TREMOR_CONSTRUCT_JSON,
+            ),
+            ExternalTheatreInput(
+                construct_slug="corona-solar-xclass",
+                construct_version="0.1.0",
+                construct_json=_CORONA_CONSTRUCT_JSON,
+            ),
+        ]
+        run = svc.execute_run(inputs, event_keys=["shared-event-2026-03"])
+
+        # has_paradox == (total_with_findings > 0)
+        expected = run.scan_summary["total_with_findings"] > 0
+        assert run.result_counts.has_paradox == expected
+
+
+class TestTremorCoronaReporting:
+    """Task 4.4: Reporting regression — readiness derivation with real data."""
+
+    def test_status_reports_after_run(self):
+        """Both theatres have status reports with correct readiness after run."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="tremor-eq-uswest", version="0.1.0")
+        svc.register_theatre(slug="corona-solar-xclass", version="0.1.0")
+
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="tremor-eq-uswest",
+                construct_version="0.1.0",
+                construct_json=_TREMOR_CONSTRUCT_JSON,
+            ),
+            ExternalTheatreInput(
+                construct_slug="corona-solar-xclass",
+                construct_version="0.1.0",
+                construct_json=_CORONA_CONSTRUCT_JSON,
+            ),
+        ]
+        svc.execute_run(inputs, event_keys=["shared-event-2026-03"])
+
+        reports = svc.list_status_reports(active_only=True)
+        assert len(reports) == 2
+
+        for report in reports:
+            assert report.is_active is True
+            assert report.latest_run_status == RunStatus.COMPLETED
+            # Readiness must be READY or DEGRADED (not BLOCKED, since run completed)
+            assert report.readiness in ("READY", "DEGRADED")
+            assert len(report.recent_runs) == 1
+
+    def test_registry_updated_after_run(self):
+        """Registry entries have updated timestamps after run."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="tremor-eq-uswest", version="0.1.0")
+        svc.register_theatre(slug="corona-solar-xclass", version="0.1.0")
+
+        inputs = [
+            ExternalTheatreInput(
+                construct_slug="tremor-eq-uswest",
+                construct_version="0.1.0",
+                construct_json=_TREMOR_CONSTRUCT_JSON,
+            ),
+            ExternalTheatreInput(
+                construct_slug="corona-solar-xclass",
+                construct_version="0.1.0",
+                construct_json=_CORONA_CONSTRUCT_JSON,
+            ),
+        ]
+        svc.execute_run(inputs, event_keys=["shared-event-2026-03"])
+
+        tremor = svc._store.get_by_slug("tremor-eq-uswest")
+        corona = svc._store.get_by_slug("corona-solar-xclass")
+
+        assert tremor.last_prepared_at is not None
+        assert tremor.last_scanned_at is not None
+        assert corona.last_prepared_at is not None
+        assert corona.last_scanned_at is not None
+        assert tremor.latest_summary != {}
+        assert corona.latest_summary != {}
