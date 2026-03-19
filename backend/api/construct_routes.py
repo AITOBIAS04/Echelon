@@ -43,6 +43,7 @@ from backend.schemas.construct_schemas import (
 from backend.services.construct_registry import ConstructRegistry
 from backend.services.construct_adapter import ConstructAdapter
 from backend.services.contract_service import ContractService
+from backend.services.domain_pack_loader import load_corpus_skill
 from backend.services.test_prompt_registry import TestPromptRegistry
 from backend.services.certificate_lifecycle_service import transition_to_ready
 
@@ -203,10 +204,19 @@ async def create_contract(
 
     contract_svc = ContractService(session)
 
+    # Parse optional corpus contents into CorpusSkill objects (cycle 037c-fix P2)
+    corpus_skills = None
+    if body.corpus_contents:
+        try:
+            corpus_skills = [load_corpus_skill(c) for c in body.corpus_contents]
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=f"Invalid corpus content: {e}")
+
     try:
         contract = await contract_svc.create_contract(
             registration_id=reg.id,
             yaml_content=body.yaml_content,
+            corpus_skills=corpus_skills,
         )
         await session.commit()
     except ValueError as e:

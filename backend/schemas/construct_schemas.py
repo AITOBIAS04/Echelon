@@ -136,6 +136,11 @@ class SojuPayloadResponse(BaseModel):
 class CreateContractRequest(BaseModel):
     """POST .../contract request body."""
     yaml_content: str = Field(..., description="Raw construct.yaml content")
+    corpus_contents: Optional[list[str]] = Field(
+        None,
+        description="Raw corpus file contents (frontmatter + markdown). "
+        "Parsed into CorpusSkills for security check planning.",
+    )
 
 
 class NormalizedClaimSchema(BaseModel):

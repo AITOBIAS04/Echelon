@@ -1,6 +1,7 @@
 """ContractService — CRUD for EvaluationContracts with supersession logic.
 
 Cycle 037: Contract-Backed Verification Infrastructure.
+Cycle 037c-fix: Security domain registration + security check integration.
 
 Orchestrates: SpecLoader → PolicyNormalizer → CheckPlanner → persist.
 Enforces one ACTIVE contract per registration via supersession.
@@ -22,6 +23,14 @@ from backend.services.check_planner import (
     checks_to_dicts,
     compute_contract_hash,
 )
+from backend.services.domain_pack_loader import CorpusSkill
+from backend.services.security_policy_rules import extract_security_references
+from backend.services.security_check_planner import (
+    plan_security_checks,
+    merge_security_checks,
+)
+# Side-effect: importing security_policy_rules registers 10 precise security
+# domains into KNOWN_PRECISE_DOMAINS at import time (cycle 037c-fix P1).
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +46,12 @@ class ContractService:
         registration_id: str,
         yaml_content: str,
         available_assets: Optional[dict] = None,
+        corpus_skills: Optional[list[CorpusSkill]] = None,
     ) -> EvaluationContract:
         """Create or refresh an evaluation contract from YAML content.
 
-        Pipeline: parse YAML → normalize claims → plan checks → persist.
+        Pipeline: parse YAML → normalize claims → plan checks → merge
+        security checks → persist.
         Idempotent: if ACTIVE contract has same spec_hash, returns existing.
         Supersedes: if ACTIVE contract has different spec_hash, supersedes it.
 
@@ -48,6 +59,9 @@ class ContractService:
             registration_id: FK to construct_registrations.id.
             yaml_content: Raw construct.yaml content.
             available_assets: Optional benchmark/anchor assets for CheckPlanner.
+            corpus_skills: Optional security corpus skills for security check
+                planning. When provided, security-specific checks (ATT&CK,
+                CWE/OWASP, tool invocation, etc.) are merged into the contract.
 
         Returns:
             The ACTIVE EvaluationContract (new or existing).
@@ -72,6 +86,14 @@ class ContractService:
 
         # 4. Plan checks
         planned = plan_checks(spec.slug, norm_result, available_assets)
+
+        # 4b. Merge security-specific checks if corpus skills provided
+        if corpus_skills:
+            for skill in corpus_skills:
+                refs = extract_security_references(skill)
+                sec_checks = plan_security_checks(skill, refs)
+                planned = merge_security_checks(planned, sec_checks)
+
         planned_dicts = checks_to_dicts(planned)
 
         # 5. Compute contract hash
