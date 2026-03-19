@@ -4,6 +4,8 @@ Covers scan result schemas, classification adapter, end-to-end paths,
 and provenance hardening.
 """
 
+import json
+
 import pytest
 
 from backend.services.external_theatre_scan_adapter import (
@@ -806,3 +808,200 @@ class TestRegression038:
         request = ExternalTheatreScanRequest(candidates=[])
         result = scan_candidates(request)
         assert result.total_scanned == 0
+
+
+# ===========================================================================
+# Sprint 3+ — Real 038b→038c Integration (P1 Codex finding)
+# ===========================================================================
+
+# Two realistic construct.json payloads — TREMOR (echelon-nested) and CORONA (root-level).
+# Both have cross-validation sources so the pipeline produces oracle checks,
+# and both share event_keys so candidate generation pairs them as same_event.
+_TREMOR_CONSTRUCT_JSON = json.dumps({
+    "name": "TREMOR-EQ-USWEST",
+    "echelon": {
+        "theatre_templates": [
+            {
+                "id": "eq-magnitude-binary",
+                "name": "EQ Magnitude Binary",
+                "resolution": "binary",
+                "oracle": "USGS reviewed catalog",
+                "brier_type": "binary",
+            },
+            {
+                "id": "eq-region-multi",
+                "name": "EQ Region Multi",
+                "resolution": "multi_class",
+                "oracle": "USGS ShakeMap",
+            },
+        ],
+        "osint_sources": [
+            {"id": "usgs-primary", "name": "USGS Primary", "role": "primary"},
+            {"id": "usgs-cross", "name": "USGS Cross Val", "role": "cross_validation"},
+        ],
+        "verification_checks": [
+            {"check": "magnitude_threshold", "ground_truth": "USGS", "description": "Mag ≥ 4.5"},
+        ],
+        "settlement_tiers": [
+            {"tier": 1, "label": "Primary settlement"},
+        ],
+    },
+    "rlmf": {"exports": ["brier_score"]},
+})
+
+_CORONA_CONSTRUCT_JSON = json.dumps({
+    "name": "CORONA-SOLAR-XCLASS",
+    "theatre_templates": [
+        {
+            "id": "xray-flux-binary",
+            "name": "X-Ray Flux Binary",
+            "type": "binary",
+            "resolution": "GOES X-ray + DONKI FLR",
+        },
+        {
+            "id": "cme-arrival-multi",
+            "name": "CME Arrival Multi",
+            "type": "multi_class",
+            "resolution": "DONKI CME catalog",
+        },
+    ],
+    "data_sources": [
+        {"name": "GOES Primary", "role": "primary"},
+        {"name": "DONKI Cross", "role": "cross_validation"},
+    ],
+})
+
+
+class TestIntegration038bTo038c:
+    """P1 Codex finding: prove the real 038b→038c runtime handoff.
+
+    These tests call prepare_external_theatres() with realistic construct.json
+    payloads and feed the resulting candidates into scan_candidates(). No
+    hand-constructed bundles — the entire pipeline is exercised end-to-end.
+    """
+
+    def _run_orchestrator(self, event_keys=None, scope_keys=None):
+        """Run the full orchestrator with TREMOR + CORONA constructs."""
+        from backend.services.external_theatre_orchestrator import (
+            prepare_external_theatres,
+        )
+        from backend.schemas.external_theatre_orchestration import (
+            ExternalTheatreInput,
+            ExternalTheatrePreparationRequest,
+        )
+
+        theatres = [
+            ExternalTheatreInput(
+                construct_slug="tremor-eq-uswest",
+                construct_version="0.1.0",
+                construct_json=_TREMOR_CONSTRUCT_JSON,
+            ),
+            ExternalTheatreInput(
+                construct_slug="corona-solar-xclass",
+                construct_version="0.1.0",
+                construct_json=_CORONA_CONSTRUCT_JSON,
+            ),
+        ]
+        request = ExternalTheatrePreparationRequest(
+            theatres=theatres,
+            event_keys=event_keys or ["shared-event-2026-03"],
+            scope_keys=scope_keys or [
+                TheatreScopeKey(scope_type="region", scope_value="us-west"),
+            ],
+            certificate_id="cert-integration-test",
+        )
+        return prepare_external_theatres(request)
+
+    def test_orchestrator_produces_successful_bundles(self):
+        """Both theatres should parse, extract, execute, and bundle."""
+        prep = self._run_orchestrator()
+
+        assert prep.total_theatres == 2
+        assert prep.total_successful == 2, (
+            f"Expected 2 successful, got {prep.total_successful}. "
+            f"Failures: {[e.error for e in prep.theatres if e.error]}"
+        )
+        assert prep.total_failed == 0
+
+    def test_orchestrator_generates_candidates(self):
+        """Two distinct-slug bundles should produce ≥1 candidate."""
+        prep = self._run_orchestrator()
+
+        assert len(prep.candidates) >= 1, (
+            "Expected candidates from two successful bundles"
+        )
+        # Candidate should pair TREMOR and CORONA
+        c = prep.candidates[0]
+        slugs = {c.bundle_a.construct_slug, c.bundle_b.construct_slug}
+        assert "tremor-eq-uswest" in slugs
+        assert "corona-solar-xclass" in slugs
+
+    def test_full_handoff_scan_produces_result(self):
+        """End-to-end: orchestrator output feeds directly into scan adapter."""
+        prep = self._run_orchestrator()
+
+        # Build scan request from orchestrator output — the actual handoff
+        scan_request = ExternalTheatreScanRequest(
+            candidates=prep.candidates,
+            event_keys=prep.event_keys_used,
+            scope_keys=prep.scope_keys_used,
+        )
+        scan_result = scan_candidates(scan_request)
+
+        # Structural integrity
+        assert scan_result.total_scanned == len(prep.candidates)
+        assert scan_result.total_scanned >= 1
+        assert scan_result.total_with_findings + scan_result.total_clean == scan_result.total_scanned
+
+        # Every outcome must have correct slug provenance from the real bundles
+        for outcome in scan_result.outcomes:
+            assert outcome.construct_a_slug in {"tremor-eq-uswest", "corona-solar-xclass"}
+            assert outcome.construct_b_slug in {"tremor-eq-uswest", "corona-solar-xclass"}
+            assert outcome.scanned is True
+            assert outcome.candidate_type in {"same_event", "overlap_scope"}
+
+    def test_handoff_findings_have_valid_structure(self):
+        """Any findings from the real handoff must have valid paradox types and severity."""
+        prep = self._run_orchestrator()
+        scan_request = ExternalTheatreScanRequest(
+            candidates=prep.candidates,
+            event_keys=prep.event_keys_used,
+            scope_keys=prep.scope_keys_used,
+        )
+        scan_result = scan_candidates(scan_request)
+
+        valid_types = {
+            "SETTLEMENT_DIVERGENCE", "ORACLE_INCONSISTENCY",
+            "TEMPORAL_DRIFT", "SCOPE_OVERLAP_GAP",
+        }
+        valid_severities = {"INFO", "WATCH", "MATERIAL", "CRITICAL"}
+
+        for outcome in scan_result.outcomes:
+            for finding in outcome.findings:
+                assert finding.paradox_type in valid_types, (
+                    f"Unknown type: {finding.paradox_type}"
+                )
+                assert finding.severity in valid_severities, (
+                    f"Unknown severity: {finding.severity}"
+                )
+                assert finding.evidence, "Finding must have non-empty evidence"
+                assert finding.construct_a_slug, "Finding must trace construct_a"
+                assert finding.construct_b_slug, "Finding must trace construct_b"
+
+    def test_handoff_bundles_carry_certificate_id(self):
+        """Certificate ID from request must propagate through bundles."""
+        prep = self._run_orchestrator()
+
+        for candidate in prep.candidates:
+            assert candidate.bundle_a.certificate_id == "cert-integration-test"
+            assert candidate.bundle_b.certificate_id == "cert-integration-test"
+
+    def test_handoff_with_shared_event_keys_produces_same_event_candidate(self):
+        """Shared event keys should produce same_event candidates."""
+        prep = self._run_orchestrator(event_keys=["shared-eq-event"])
+
+        same_event = [c for c in prep.candidates if c.candidate_type == "same_event"]
+        assert len(same_event) >= 1, (
+            f"Expected same_event candidate. Types: "
+            f"{[c.candidate_type for c in prep.candidates]}"
+        )
