@@ -217,6 +217,7 @@ async def create_contract(
             registration_id=reg.id,
             yaml_content=body.yaml_content,
             corpus_skills=corpus_skills,
+            construct_json=body.construct_json,
         )
         await session.commit()
     except ValueError as e:

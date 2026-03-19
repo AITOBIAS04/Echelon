@@ -151,8 +151,8 @@ class TestOriginalAnchorRulesRegression:
         assert original_anchor_ids.issubset(current_anchor_ids)
 
     def test_total_rules_count(self):
-        """_MAPPING_RULES has exactly 13 entries (11 original + 2 new)."""
-        assert len(_MAPPING_RULES) == 13
+        """_MAPPING_RULES has exactly 17 entries (11 original + 2 security + 4 theatre)."""
+        assert len(_MAPPING_RULES) == 17
 
 
 # ── Test: full integration path ─────────────────────────────────────

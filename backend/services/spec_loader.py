@@ -20,6 +20,7 @@ class ConstructSpec:
     skill_manifest: list[dict]
     raw_yaml: str
     spec_hash: str
+    construct_class: str = "skill"  # "skill" | "theatre" | "bridge"
 
 
 def compute_spec_hash(yaml_content: str) -> str:
@@ -63,6 +64,10 @@ def load(yaml_content: str) -> ConstructSpec:
     if not isinstance(refusals, list):
         refusals = []
 
+    # construct_class: default "skill" for backward compatibility
+    raw_class = parsed.get("construct_class", "skill")
+    construct_class = str(raw_class) if raw_class in ("skill", "theatre", "bridge") else "skill"
+
     spec_hash = compute_spec_hash(yaml_content)
 
     return ConstructSpec(
@@ -73,4 +78,5 @@ def load(yaml_content: str) -> ConstructSpec:
         skill_manifest=skill_manifest,
         raw_yaml=yaml_content,
         spec_hash=spec_hash,
+        construct_class=construct_class,
     )
