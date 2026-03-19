@@ -157,3 +157,9 @@
 | Sprint 1 | sprint-113 | COMPLETED | [reviewer.md](sprint-113/reviewer.md) | [engineer-feedback.md](sprint-113/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-113/auditor-sprint-feedback.md) |
 | Sprint 2 | sprint-114 | COMPLETED | [reviewer.md](sprint-114/reviewer.md) | [engineer-feedback.md](sprint-114/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-114/auditor-sprint-feedback.md) |
 | Sprint 3 | sprint-115 | COMPLETED | [reviewer.md](sprint-115/reviewer.md) | [engineer-feedback.md](sprint-115/engineer-feedback.md) | [auditor-sprint-feedback.md](sprint-115/auditor-sprint-feedback.md) |
+
+## Cycle-038b: External Theatre Orchestration
+
+| Sprint | Global ID | Status | Reviewer | Engineer | Auditor |
+|--------|-----------|--------|----------|----------|---------|
+| Sprint 0 | sprint-116 | COMPLETED | [reviewer.md](sprint-116/reviewer.md) | -- | -- |
