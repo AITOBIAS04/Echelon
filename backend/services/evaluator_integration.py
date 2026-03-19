@@ -13,6 +13,7 @@ import logging
 from typing import Optional
 
 from backend.schemas.evaluator_orchestration import (
+    DimensionConvergence,
     EvaluatorOutcome,
     EvaluatorScoreRecord,
     RunConvergenceSummary,
@@ -76,11 +77,31 @@ async def run_evaluator_orchestration(
     )
 
     # Step 3: Compute per-dimension convergence
+    # Ensure every residual dimension has a convergence entry, even if scorers
+    # omitted it. Missing dimensions get SKIPPED so they participate in blocking.
     grouped = orchestrator.group_by_dimension(records)
-    dimension_results = [
-        compute_dimension_convergence(dim, dim_records)
-        for dim, dim_records in grouped.items()
-    ]
+    dimension_results = []
+    for rd in residuals:
+        dim_records = grouped.get(rd.dimension)
+        if dim_records:
+            dimension_results.append(
+                compute_dimension_convergence(rd.dimension, dim_records)
+            )
+        else:
+            # Scorers returned nothing for this dimension — treat as SKIPPED
+            logger.warning(
+                "No scorer records for residual dimension %s — marking SKIPPED",
+                rd.dimension,
+            )
+            dimension_results.append(
+                DimensionConvergence(
+                    dimension=rd.dimension,
+                    outcome="SKIPPED",
+                    evaluator_ids=orchestrator.evaluator_ids,
+                    verdicts=[],
+                    scores=[],
+                )
+            )
 
     # Step 4: Run-level summary
     summary = compute_run_convergence(
@@ -90,8 +111,8 @@ async def run_evaluator_orchestration(
     )
 
     # Step 5: Determine issuance eligibility
-    # Eligible if no critical dimensions are DIVERGENT or CONVERGED_FAIL
-    _blocking_outcomes = {"DIVERGENT", "CONVERGED_FAIL"}
+    # Eligible if no critical dimensions are DIVERGENT, CONVERGED_FAIL, or SKIPPED
+    _blocking_outcomes = {"DIVERGENT", "CONVERGED_FAIL", "SKIPPED"}
     critical_dims = {rd.dimension for rd in residuals if rd.critical}
     blocked_dims = [
         dr.dimension

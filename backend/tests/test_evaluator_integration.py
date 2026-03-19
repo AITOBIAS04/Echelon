@@ -80,6 +80,30 @@ class SplitScorer:
         ]
 
 
+class PartialScorer:
+    """Scores only dimensions matching a whitelist — omits the rest."""
+    def __init__(self, evaluator_id: str, only_dimensions: set[str]):
+        self._evaluator_id = evaluator_id
+        self._only = only_dimensions
+
+    @property
+    def evaluator_id(self) -> str:
+        return self._evaluator_id
+
+    async def score_dimensions(self, *, dimensions, episode_payload):
+        return [
+            EvaluatorScoreRecord(
+                evaluator_id=self._evaluator_id,
+                dimension=d.dimension,
+                verdict="PASS",
+                score=0.85,
+                rationale=f"{self._evaluator_id}: pass",
+            )
+            for d in dimensions
+            if d.dimension in self._only
+        ]
+
+
 # ═══════════════════════════════════════════════════════════
 # Helpers
 # ═══════════════════════════════════════════════════════════
@@ -331,3 +355,80 @@ class TestRegressionOldPath:
         assert compute_final_issuance_status("READY", None) == "READY"
         assert compute_final_issuance_status("DEFERRED", None) == "DEFERRED"
         assert compute_final_issuance_status("REJECTED", None) == "REJECTED"
+
+
+# ═══════════════════════════════════════════════════════════
+# P1 Fix: Missing Dimension → SKIPPED Coverage
+# ═══════════════════════════════════════════════════════════
+
+
+class TestMissingDimensionSkipped:
+    """P1: Scorers that omit critical dimensions must trigger SKIPPED → blocked."""
+
+    @pytest.mark.asyncio
+    async def test_omitted_critical_dimension_blocks_issuance(self):
+        """All scorers omit a critical dimension → SKIPPED → issuance blocked."""
+        # All 3 scorers only score design_systems, omitting code_generation
+        scorers = [
+            PartialScorer("a", {"design_systems"}),
+            PartialScorer("b", {"design_systems"}),
+            PartialScorer("c", {"design_systems"}),
+        ]
+        outcome = await run_evaluator_orchestration(
+            planned_checks=TYPICAL_PLAN,
+            executed_results={},
+            scorers=scorers,
+            episode_payload=EPISODE,
+        )
+        assert outcome is not None
+        assert outcome.issuance_eligible is False
+        assert outcome.block_reason is not None
+        assert "code_generation" in outcome.block_reason
+        # Both dimensions should be in the summary
+        assert outcome.convergence_summary.total_dimensions == 2
+
+    @pytest.mark.asyncio
+    async def test_omitted_noncritical_dimension_stays_eligible(self):
+        """Omitted non-critical dimension → SKIPPED but doesn't block."""
+        # Plan with one critical rubric + one non-critical rubric
+        plan = [
+            _check("anchor:public_standard", "ANCHOR", "*", critical=True),
+            _check("rubric:design", "RUBRIC", "design_systems", critical=True),
+            _check("rubric:docs", "RUBRIC", "documentation", critical=False),
+        ]
+        # Scorers only score design_systems, omit documentation
+        scorers = [
+            PartialScorer("a", {"design_systems"}),
+            PartialScorer("b", {"design_systems"}),
+            PartialScorer("c", {"design_systems"}),
+        ]
+        outcome = await run_evaluator_orchestration(
+            planned_checks=plan,
+            executed_results={},
+            scorers=scorers,
+            episode_payload=EPISODE,
+        )
+        assert outcome is not None
+        # Non-critical SKIPPED doesn't block
+        assert outcome.issuance_eligible is True
+        assert outcome.block_reason is None
+        # Both dimensions are tracked
+        assert outcome.convergence_summary.total_dimensions == 2
+
+    @pytest.mark.asyncio
+    async def test_all_dimensions_covered_no_skipped(self):
+        """When all scorers cover all dimensions, no SKIPPED entries appear."""
+        scorers = [PassScorer("a"), PassScorer("b"), PassScorer("c")]
+        outcome = await run_evaluator_orchestration(
+            planned_checks=TYPICAL_PLAN,
+            executed_results={},
+            scorers=scorers,
+            episode_payload=EPISODE,
+        )
+        assert outcome is not None
+        assert outcome.issuance_eligible is True
+        # No SKIPPED in the summary
+        assert outcome.convergence_summary.skipped == 0
+        assert outcome.convergence_summary.total_dimensions == 2
+
+
