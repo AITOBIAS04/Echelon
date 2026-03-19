@@ -598,5 +598,227 @@ class TestExtractionEdgeCases(unittest.TestCase):
         self.assertTrue(fixture.functional_fixtures["only_template"]["transform_valid"])
 
 
+# ═══════════════════════════════════════════════════════════════════
+# Sprint 2 — Orchestrator Composition (8 tests)
+# ═══════════════════════════════════════════════════════════════════
+
+from backend.services.external_theatre_orchestrator import (
+    prepare_external_theatres,
+    _build_builder_feedback,
+)
+
+
+class TestOrchestratorComposition(unittest.TestCase):
+    """Sprint 2: Orchestrator composition tests (8 tests)."""
+
+    def test_orchestrator_single_theatre(self):
+        """Single TREMOR input -> 1 bundle, 0 candidates (need 2+ for cross-comparison)."""
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+            ],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(result.total_theatres, 1)
+        self.assertEqual(result.total_successful, 1)
+        self.assertEqual(result.total_failed, 0)
+        self.assertIsNotNone(result.theatres[0].bundle)
+        self.assertEqual(result.theatres[0].bundle.construct_slug, "tremor")
+        # Need 2+ bundles for cross-comparison candidates
+        self.assertEqual(result.candidates, [])
+
+    def test_orchestrator_paired_theatres(self):
+        """TREMOR + CORONA with shared event_keys and scope_keys -> 2 bundles, 1+ candidates."""
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+                ExternalTheatreInput(
+                    construct_slug="corona",
+                    construct_version="0.1.0",
+                    construct_json=CORONA_CONSTRUCT_JSON,
+                ),
+            ],
+            event_keys=["earthquake_2026_01"],
+            scope_keys=[
+                TheatreScopeKey(scope_type="region", scope_value="pacific_ring"),
+            ],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(result.total_theatres, 2)
+        self.assertEqual(result.total_successful, 2)
+        self.assertEqual(result.total_failed, 0)
+        self.assertGreaterEqual(len(result.candidates), 1)
+        # Both bundles should be present
+        slugs = [t.bundle.construct_slug for t in result.theatres if t.bundle]
+        self.assertIn("tremor", slugs)
+        self.assertIn("corona", slugs)
+
+    def test_orchestrator_shared_identity_threading(self):
+        """Shared event_keys flow through to bundles and result echo."""
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+                ExternalTheatreInput(
+                    construct_slug="corona",
+                    construct_version="0.1.0",
+                    construct_json=CORONA_CONSTRUCT_JSON,
+                ),
+            ],
+            event_keys=["eq_7.2"],
+        )
+        result = prepare_external_theatres(request)
+
+        # Echo in result
+        self.assertEqual(result.event_keys_used, ["eq_7.2"])
+
+        # Verify bundles contain the shared event keys
+        for entry in result.theatres:
+            self.assertIsNotNone(entry.bundle)
+            self.assertIn("eq_7.2", entry.bundle.event_keys)
+
+    def test_orchestrator_no_keys_fallback(self):
+        """Empty keys -> template-ID fallback in bundles (None passed to builder)."""
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+                ExternalTheatreInput(
+                    construct_slug="corona",
+                    construct_version="0.1.0",
+                    construct_json=CORONA_CONSTRUCT_JSON,
+                ),
+            ],
+            event_keys=[],
+            scope_keys=[],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(result.total_successful, 2)
+
+        # With no shared keys, bundles get template-ID fallback keys
+        tremor_bundle = result.theatres[0].bundle
+        corona_bundle = result.theatres[1].bundle
+        self.assertIsNotNone(tremor_bundle)
+        self.assertIsNotNone(corona_bundle)
+
+        # TREMOR template IDs should be in event_keys (fallback)
+        for tid in ["aftershock_cascade", "depth_regime", "magnitude_gate",
+                     "oracle_divergence", "swarm_watch"]:
+            self.assertIn(tid, tremor_bundle.event_keys)
+
+        # CORONA template IDs should be in event_keys (fallback)
+        for tid in ["T1", "T2", "T3", "T4", "T5"]:
+            self.assertIn(tid, corona_bundle.event_keys)
+
+        # No shared event keys -> no same_event candidates
+        # Scope keys also empty -> no overlap_scope candidates
+        self.assertEqual(result.candidates, [])
+
+    def test_orchestrator_error_propagation(self):
+        """One invalid theatre + one valid -> 1 bundle, error on first."""
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="invalid",
+                    construct_version="0.0.1",
+                    construct_json="{bad",
+                ),
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+            ],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(result.total_theatres, 2)
+        self.assertEqual(result.total_successful, 1)
+        self.assertEqual(result.total_failed, 1)
+
+        # First entry: error
+        self.assertIsNotNone(result.theatres[0].error)
+        self.assertIsNone(result.theatres[0].bundle)
+
+        # Second entry: success
+        self.assertIsNone(result.theatres[1].error)
+        self.assertIsNotNone(result.theatres[1].bundle)
+        self.assertEqual(result.theatres[1].bundle.construct_slug, "tremor")
+
+    def test_orchestrator_all_failures(self):
+        """Both theatres have invalid JSON -> total_failed=2, candidates=[], total_successful=0."""
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="bad1",
+                    construct_version="0.0.1",
+                    construct_json="{invalid json 1",
+                ),
+                ExternalTheatreInput(
+                    construct_slug="bad2",
+                    construct_version="0.0.1",
+                    construct_json="{invalid json 2",
+                ),
+            ],
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(result.total_theatres, 2)
+        self.assertEqual(result.total_successful, 0)
+        self.assertEqual(result.total_failed, 2)
+        self.assertEqual(result.candidates, [])
+
+        # Both entries have errors
+        self.assertIsNotNone(result.theatres[0].error)
+        self.assertIsNotNone(result.theatres[1].error)
+
+    def test_orchestrator_certificate_id_threading(self):
+        """certificate_id flows to bundles."""
+        request = ExternalTheatrePreparationRequest(
+            theatres=[
+                ExternalTheatreInput(
+                    construct_slug="tremor",
+                    construct_version="0.1.0",
+                    construct_json=TREMOR_CONSTRUCT_JSON,
+                ),
+            ],
+            certificate_id="cert-abc",
+        )
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(result.total_successful, 1)
+        self.assertIsNotNone(result.theatres[0].bundle)
+        self.assertEqual(result.theatres[0].bundle.certificate_id, "cert-abc")
+
+    def test_orchestrator_empty_request(self):
+        """Empty theatres list -> result with total_theatres=0, empty everything."""
+        request = ExternalTheatrePreparationRequest(theatres=[])
+        result = prepare_external_theatres(request)
+
+        self.assertEqual(result.total_theatres, 0)
+        self.assertEqual(result.total_successful, 0)
+        self.assertEqual(result.total_failed, 0)
+        self.assertEqual(result.theatres, [])
+        self.assertEqual(result.candidates, [])
+        self.assertEqual(result.feedback, [])
+
+
 if __name__ == "__main__":
     unittest.main()
