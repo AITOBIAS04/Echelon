@@ -56,6 +56,20 @@ construct_router = APIRouter(
 # Singleton prompt registry (loaded once)
 _prompt_registry = TestPromptRegistry()
 
+# Scorer adapter registry (cycle-037b). Register ResidualScorer implementations
+# here to enable multi-evaluator orchestration in the certification endpoint.
+_scorer_registry: list = []
+
+
+def register_scorer(scorer) -> None:
+    """Register a ResidualScorer adapter for multi-evaluator orchestration."""
+    _scorer_registry.append(scorer)
+
+
+def _get_registered_scorers() -> list:
+    """Return currently registered scorer adapters."""
+    return list(_scorer_registry)
+
 
 # ── Helper ──
 
@@ -738,6 +752,47 @@ async def issue_certificate(
     cert_json = cert_builder.to_certificate_json(cert)
     routing_decision, routing_reason = cert_builder.compute_routing_decision(scorer_output)
 
+    # ── Cycle-037b: Multi-evaluator orchestration over residual dimensions ──
+    from backend.services.evaluator_integration import (
+        compute_final_issuance_status,
+        enrich_certificate_json,
+        run_evaluator_orchestration,
+    )
+    from backend.services.evaluator_orchestrator import ResidualScorer
+
+    evaluator_outcome = None
+    if contract is not None and contract.planned_checks:
+        # Collect registered scorer adapters (empty until adapters are registered)
+        scorers: list[ResidualScorer] = _get_registered_scorers()
+        if scorers:
+            evaluator_outcome = await run_evaluator_orchestration(
+                planned_checks=contract.planned_checks,
+                executed_results=domain_scores,
+                scorers=scorers,
+                episode_payload={
+                    "construct_slug": slug,
+                    "version": version,
+                    "run_number": investigation.run_number,
+                },
+                rubric_version=getattr(reg, "rubric_hash", None),
+            )
+            if evaluator_outcome is not None:
+                cert_json = enrich_certificate_json(
+                    cert_json,
+                    evaluator_outcome,
+                    evaluator_outcome.evaluator_scores,
+                    evaluator_outcome.convergence_summary,
+                )
+
+    # Apply final issuance status combining base (037) + evaluator (037b)
+    final_issuance = compute_final_issuance_status(
+        cert.issuance_status, evaluator_outcome,
+    )
+
+    # Align persisted cert_json with final status so stored provenance matches response
+    if final_issuance != cert.issuance_status:
+        cert_json["issuance_status"] = final_issuance
+
     # ── Persist via shared certificate lifecycle ──
     from uuid import uuid4
     cert_record = InvestigationCertificateRecord(
@@ -755,11 +810,12 @@ async def issue_certificate(
     # Only READY certificates enter the shared lifecycle (batch anchor flow).
     # DEFERRED certs are persisted but await remediation before transitioning.
     # REJECTED certs are persisted for audit trail but never transition.
-    if cert.issuance_status == "READY":
+    # BLOCKED (037b divergent) persisted but never transition.
+    if final_issuance == "READY":
         await transition_to_ready(session, cert_record, investigation)
         new_status = "CERTIFIED" if verdict == "PASS" else "FAILED"
         await registry.update_status(reg.id, new_status)
-    elif cert.issuance_status == "REJECTED":
+    elif final_issuance in ("REJECTED", "BLOCKED"):
         await registry.update_status(reg.id, "FAILED")
 
     await session.commit()
@@ -803,7 +859,7 @@ async def issue_certificate(
         episode_count=len(evidence_items),
         contract_hash=cert.contract_hash,
         spec_hash=cert.spec_hash,
-        issuance_status=cert.issuance_status,
+        issuance_status=final_issuance,
         check_plan=check_plan_schema,
         remediation=remediation_schema,
     )
