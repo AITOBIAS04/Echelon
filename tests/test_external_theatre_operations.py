@@ -592,3 +592,177 @@ class TestOperationsServiceRun:
         assert fetched is not None
         assert fetched.status == RunStatus.COMPLETED
         assert fetched.theatre_slugs == ["a"]
+
+
+# ===========================================================================
+# Sprint 2 — Trigger / Scheduling Surface
+# ===========================================================================
+
+class TestTriggerRun:
+    """Task 2.1–2.2: Trigger method with scheduler-facing signature."""
+
+    @patch("backend.services.external_theatre_operations_service.scan_candidates")
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_trigger_run_success(self, mock_prep, mock_scan):
+        """trigger_run invokes execute_run for registered active theatres."""
+        mock_prep.return_value = _mock_prep_result(["a", "b"], candidate_count=1)
+        mock_scan.return_value = _mock_scan_result(total_scanned=1)
+
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.register_theatre(slug="b", version="0.1.0")
+
+        run, status = svc.trigger_run(
+            theatre_slugs=["a", "b"],
+            construct_json_map={"a": _SIMPLE_CONSTRUCT_A, "b": _SIMPLE_CONSTRUCT_B},
+        )
+        assert status == "started"
+        assert run.status == RunStatus.COMPLETED
+
+    def test_trigger_run_unregistered_theatre(self):
+        """trigger_run rejects unregistered theatres."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+
+        with pytest.raises(ValueError, match="Unregistered"):
+            svc.trigger_run(
+                theatre_slugs=["a", "unknown"],
+                construct_json_map={"a": _SIMPLE_CONSTRUCT_A, "unknown": "{}"},
+            )
+
+    def test_trigger_run_inactive_theatre(self):
+        """trigger_run rejects inactive theatres."""
+        svc = ExternalTheatreOperationsService()
+        entry = svc.register_theatre(slug="a", version="0.1.0")
+        svc.unregister_theatre(entry.id)
+
+        with pytest.raises(ValueError, match="Inactive"):
+            svc.trigger_run(
+                theatre_slugs=["a"],
+                construct_json_map={"a": _SIMPLE_CONSTRUCT_A},
+            )
+
+    def test_trigger_run_missing_construct_json(self):
+        """trigger_run rejects when construct.json is missing from map."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+
+        with pytest.raises(ValueError, match="Missing construct.json"):
+            svc.trigger_run(
+                theatre_slugs=["a"],
+                construct_json_map={},
+            )
+
+
+class TestTriggerIdempotence:
+    """Task 2.3: Idempotence and active-state enforcement."""
+
+    @patch("backend.services.external_theatre_operations_service.scan_candidates")
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_duplicate_run_returns_active(self, mock_prep, mock_scan):
+        """Second trigger for same set returns the active run, not a duplicate."""
+        # Make execute_run leave the run IN_PROGRESS by not calling it,
+        # instead manually create an active run via the store.
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.register_theatre(slug="b", version="0.1.0")
+
+        # Simulate an in-progress run
+        active_run = svc.store.create_run(theatre_slugs=["a", "b"])
+
+        run, status = svc.trigger_run(
+            theatre_slugs=["a", "b"],
+            construct_json_map={"a": _SIMPLE_CONSTRUCT_A, "b": _SIMPLE_CONSTRUCT_B},
+        )
+        assert status == "duplicate"
+        assert run.id == active_run.id
+        # execute_run should NOT have been called
+        mock_prep.assert_not_called()
+
+    @patch("backend.services.external_theatre_operations_service.scan_candidates")
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_completed_run_allows_new_trigger(self, mock_prep, mock_scan):
+        """After a run completes, same set can be triggered again."""
+        mock_prep.return_value = _mock_prep_result(["a"], candidate_count=0, successful=1)
+
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+
+        # Create and complete a run
+        old_run = svc.store.create_run(theatre_slugs=["a"])
+        svc.store.complete_run(
+            old_run.id,
+            preparation_summary={},
+            scan_summary={},
+            result_counts=ExternalTheatreRunSummary(),
+        )
+
+        # Should allow new trigger
+        run, status = svc.trigger_run(
+            theatre_slugs=["a"],
+            construct_json_map={"a": _SIMPLE_CONSTRUCT_A},
+        )
+        assert status == "started"
+        assert run.id != old_run.id
+
+    @patch("backend.services.external_theatre_operations_service.scan_candidates")
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_idempotence_order_independent(self, mock_prep, mock_scan):
+        """Idempotence check treats ["a","b"] same as ["b","a"]."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.register_theatre(slug="b", version="0.1.0")
+
+        # Active run for ["a", "b"]
+        active_run = svc.store.create_run(theatre_slugs=["a", "b"])
+
+        # Trigger with reversed order
+        run, status = svc.trigger_run(
+            theatre_slugs=["b", "a"],
+            construct_json_map={"a": _SIMPLE_CONSTRUCT_A, "b": _SIMPLE_CONSTRUCT_B},
+        )
+        assert status == "duplicate"
+        assert run.id == active_run.id
+
+
+class TestTriggerAllActive:
+    """Task 2.2: Trigger all active theatres convenience method."""
+
+    @patch("backend.services.external_theatre_operations_service.scan_candidates")
+    @patch("backend.services.external_theatre_operations_service.prepare_external_theatres")
+    def test_trigger_all_active_success(self, mock_prep, mock_scan):
+        """trigger_all_active runs all active theatres."""
+        mock_prep.return_value = _mock_prep_result(["a", "b"], candidate_count=1)
+        mock_scan.return_value = _mock_scan_result(total_scanned=1)
+
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+        svc.register_theatre(slug="b", version="0.1.0")
+        entry_c = svc.register_theatre(slug="c", version="0.1.0")
+        svc.unregister_theatre(entry_c.id)  # c is inactive
+
+        run, status = svc.trigger_all_active(
+            construct_json_map={
+                "a": _SIMPLE_CONSTRUCT_A,
+                "b": _SIMPLE_CONSTRUCT_B,
+            },
+        )
+        assert status == "started"
+        assert run is not None
+        assert run.status == RunStatus.COMPLETED
+
+    def test_trigger_all_active_no_theatres(self):
+        """trigger_all_active returns None when no active theatres."""
+        svc = ExternalTheatreOperationsService()
+        run, status = svc.trigger_all_active(construct_json_map={})
+        assert run is None
+        assert status == "no_active_theatres"
+
+    def test_trigger_all_active_missing_json(self):
+        """trigger_all_active returns error when construct.json missing."""
+        svc = ExternalTheatreOperationsService()
+        svc.register_theatre(slug="a", version="0.1.0")
+
+        run, status = svc.trigger_all_active(construct_json_map={})
+        assert run is None
+        assert "missing_construct_json" in status

@@ -1,6 +1,6 @@
 """Operations service for external theatre lifecycle management.
 
-Cycle 039: External Theatre Operations — Sprint 1.
+Cycle 039: External Theatre Operations — Sprints 1–2.
 
 Composition layer over:
 - 038b orchestrator (prepare_external_theatres)
@@ -86,6 +86,129 @@ class ExternalTheatreOperationsService:
     def unregister_theatre(self, entry_id: str) -> Optional[ExternalTheatreRegistryEntry]:
         """Deactivate an external theatre (soft delete)."""
         return self._store.deactivate(entry_id)
+
+    # -------------------------------------------------------------------
+    # Trigger / Scheduling Surface (Sprint 2)
+    # -------------------------------------------------------------------
+
+    def trigger_run(
+        self,
+        theatre_slugs: list[str],
+        construct_json_map: dict[str, str],
+        event_keys: Optional[list[str]] = None,
+        scope_keys: Optional[list] = None,
+        certificate_id: Optional[str] = None,
+    ) -> tuple[ExternalTheatreRunRecord, str]:
+        """Stable scheduler-facing entry point for triggering a run.
+
+        This is the canonical invocation surface for cron jobs, scheduler
+        hooks, or manual operator triggers. It enforces:
+        1. All theatre slugs must be registered and active
+        2. No duplicate IN_PROGRESS run for the same theatre set (idempotence)
+
+        Args:
+            theatre_slugs: List of registered theatre slugs to scan.
+            construct_json_map: Mapping of slug → raw construct.json content.
+            event_keys: Optional shared event keys for candidate generation.
+            scope_keys: Optional scope keys for candidate generation.
+            certificate_id: Optional certificate context.
+
+        Returns:
+            Tuple of (run_record, status_message).
+            Status is one of: "started", "duplicate", "rejected".
+        """
+        # Guard 1: Check all theatres are registered and active
+        inactive_slugs = []
+        missing_slugs = []
+        for slug in theatre_slugs:
+            entry = self._store.get_by_slug(slug)
+            if entry is None:
+                missing_slugs.append(slug)
+            elif not entry.is_active:
+                inactive_slugs.append(slug)
+
+        if missing_slugs:
+            raise ValueError(
+                f"Unregistered theatre(s): {missing_slugs}. "
+                "Register with register_theatre() first."
+            )
+        if inactive_slugs:
+            raise ValueError(
+                f"Inactive theatre(s): {inactive_slugs}. "
+                "Activate with store.activate() first."
+            )
+
+        # Guard 2: Idempotence — check for active run with same theatre set
+        active_run_id = self._store.has_active_run(theatre_slugs)
+        if active_run_id is not None:
+            active_run = self._store.get_run(active_run_id)
+            logger.info(
+                "Duplicate run rejected: active run %s for %s",
+                active_run_id, theatre_slugs,
+            )
+            return (active_run, "duplicate")  # type: ignore[return-value]
+
+        # Guard 3: All slugs must have construct.json content
+        missing_json = [s for s in theatre_slugs if s not in construct_json_map]
+        if missing_json:
+            raise ValueError(
+                f"Missing construct.json for theatre(s): {missing_json}"
+            )
+
+        # Build inputs and delegate to execute_run
+        theatre_inputs = []
+        for slug in theatre_slugs:
+            entry = self._store.get_by_slug(slug)
+            theatre_inputs.append(ExternalTheatreInput(
+                construct_slug=slug,
+                construct_version=entry.version,  # type: ignore[union-attr]
+                construct_json=construct_json_map[slug],
+            ))
+
+        run = self.execute_run(
+            theatre_inputs=theatre_inputs,
+            event_keys=event_keys,
+            scope_keys=scope_keys,
+            certificate_id=certificate_id,
+        )
+
+        status = "started" if run.status == RunStatus.COMPLETED else "failed"
+        return (run, status)
+
+    def trigger_all_active(
+        self,
+        construct_json_map: dict[str, str],
+        event_keys: Optional[list[str]] = None,
+        scope_keys: Optional[list] = None,
+        certificate_id: Optional[str] = None,
+    ) -> tuple[Optional[ExternalTheatreRunRecord], str]:
+        """Trigger a run for all currently active theatres.
+
+        Convenience method for scheduled jobs that scan the full active set.
+        Returns (None, "no_active_theatres") if no active theatres exist.
+        """
+        active = self._store.list_active()
+        if not active:
+            return (None, "no_active_theatres")
+
+        slugs = [e.slug for e in active]
+
+        # Filter construct_json_map to only active slugs with available content
+        missing = [s for s in slugs if s not in construct_json_map]
+        if missing:
+            logger.warning(
+                "Skipping trigger_all_active: missing construct.json for %s",
+                missing,
+            )
+            return (None, f"missing_construct_json:{','.join(missing)}")
+
+        return self.trigger_run(
+            theatre_slugs=slugs,
+            construct_json_map=construct_json_map,
+            event_keys=event_keys,
+            scope_keys=scope_keys,
+            certificate_id=certificate_id,
+        )
 
     # -------------------------------------------------------------------
     # Run execution
