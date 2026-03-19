@@ -506,59 +506,85 @@ class TestShapeCompatibility:
 class TestEndToEndTremorCorona:
     """Full path: execution results → bundles → candidates → 038 shapes."""
 
-    def test_full_path_execution_to_038_shapes(self):
-        """Complete pipeline from execution results through to 038 shapes."""
-        # Step 1: Build bundles from execution results
+    def test_builder_without_shared_keys_produces_no_candidates(self):
+        """Builder output with default template-ID event keys cannot match.
+
+        Template IDs are construct-specific (tmpl-eq-001 vs tmpl-pandemic-001),
+        so builder output without caller-provided shared keys produces no
+        cross-theatre candidates. This documents the gap that event_keys/
+        scope_keys parameters exist to close.
+        """
+        tremor_bundle = build_comparison_bundle(
+            make_tremor_execution_result(),
+            make_tremor_fixture_input(),
+        )
+        corona_bundle = build_comparison_bundle(
+            make_corona_execution_result(),
+            make_corona_fixture_input(),
+        )
+
+        # Template IDs are construct-specific — no overlap
+        assert set(tremor_bundle.event_keys) & set(corona_bundle.event_keys) == set()
+        assert tremor_bundle.scope_keys == []
+        assert corona_bundle.scope_keys == []
+
+        candidates = generate_candidates([tremor_bundle, corona_bundle])
+        assert len(candidates) == 0
+
+    def test_builder_with_shared_event_keys_produces_candidates(self):
+        """Builder output with caller-provided shared event keys produces
+        same-event candidates — the real runtime path."""
+        shared_event = SHARED_EVENT_KEY
+
         tremor_bundle = build_comparison_bundle(
             make_tremor_execution_result(),
             make_tremor_fixture_input(),
             certificate_id="cert-e2e-tremor",
+            event_keys=[shared_event],
         )
         corona_bundle = build_comparison_bundle(
             make_corona_execution_result(),
             make_corona_fixture_input(),
             certificate_id="cert-e2e-corona",
+            event_keys=[shared_event],
         )
 
-        # Step 2: Both bundles share the event key from fixture factories
-        # (settlement fixture template IDs serve as event keys)
-        # TREMOR events: tmpl-eq-001, tmpl-eq-002
-        # CORONA events: tmpl-pandemic-001
-        # These are disjoint — no same-event match from builder alone
-        assert len(tremor_bundle.event_keys) == 2
-        assert len(corona_bundle.event_keys) == 1
+        # Both bundles now share the real-world event key
+        assert tremor_bundle.event_keys == [shared_event]
+        assert corona_bundle.event_keys == [shared_event]
 
-        # Step 3: Verify execution summary integrity through the full path
-        assert tremor_bundle.execution_summary.executed_count == 3
-        assert corona_bundle.execution_summary.executed_count == 3
+        # Execution summary integrity preserved through the full path
         assert tremor_bundle.settlement_state == "DISPUTED"
         assert corona_bundle.settlement_state == "SETTLED"
+        assert tremor_bundle.execution_summary.executed_count == 3
 
-    def test_tremor_corona_same_event_candidate_exists(self):
-        """Pre-built fixtures with shared event key produce same-event candidate."""
-        # Pre-built bundles have SHARED_EVENT_KEY in their event_keys
-        tremor = make_tremor_bundle()
-        corona = make_corona_bundle()
+        candidates = generate_candidates([tremor_bundle, corona_bundle])
+        assert len(candidates) == 1
+        assert candidates[0].candidate_type == "same_event"
+        assert candidates[0].match_strength == "EXACT"
+        assert shared_event in candidates[0].matching_keys
 
-        assert SHARED_EVENT_KEY in tremor.event_keys
-        assert SHARED_EVENT_KEY in corona.event_keys
+    def test_builder_with_shared_scope_keys_produces_candidates(self):
+        """Builder output with caller-provided scope keys produces
+        overlap-scope candidates — the real runtime path."""
+        shared_scope = SHARED_SCOPE_KEY
 
-        candidates = generate_candidates([tremor, corona])
-        same_event = [c for c in candidates if c.candidate_type == "same_event"]
+        tremor_bundle = build_comparison_bundle(
+            make_tremor_execution_result(),
+            make_tremor_fixture_input(),
+            scope_keys=[shared_scope],
+        )
+        corona_bundle = build_comparison_bundle(
+            make_corona_execution_result(),
+            make_corona_fixture_input(),
+            scope_keys=[shared_scope],
+        )
 
-        assert len(same_event) == 1
-        assert SHARED_EVENT_KEY in same_event[0].matching_keys
-        # TREMOR has extra event → PARTIAL match
-        assert same_event[0].match_strength == "PARTIAL"
+        # Template IDs still construct-specific → no same-event match
+        assert set(tremor_bundle.event_keys) & set(corona_bundle.event_keys) == set()
 
-    def test_overlap_scope_candidate_exists(self):
-        """Pre-built fixtures with shared scope key produce overlap candidate
-        when event keys are cleared."""
-        tremor = make_tremor_bundle().model_copy(update={"event_keys": []})
-        corona = make_corona_bundle().model_copy(update={"event_keys": []})
-
-        candidates = generate_candidates([tremor, corona])
-        overlap = [c for c in candidates if c.candidate_type == "overlap_scope"]
-
-        assert len(overlap) == 1
-        assert SHARED_SCOPE_KEY.key() in overlap[0].matching_keys
+        # But scope keys match → overlap-scope candidate
+        candidates = generate_candidates([tremor_bundle, corona_bundle])
+        assert len(candidates) == 1
+        assert candidates[0].candidate_type == "overlap_scope"
+        assert shared_scope.key() in candidates[0].matching_keys

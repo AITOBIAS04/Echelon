@@ -26,6 +26,8 @@ def build_comparison_bundle(
     execution_result: TheatreExecutionResult,
     fixture_input: TheatreFixtureInput,
     certificate_id: Optional[str] = None,
+    event_keys: Optional[list[str]] = None,
+    scope_keys: Optional[list[TheatreScopeKey]] = None,
 ) -> ExecutedTheatreComparisonBundle:
     """Transform 037e execution result into normalized comparison bundle.
 
@@ -33,13 +35,22 @@ def build_comparison_bundle(
     1. Identity from execution_result / fixture_input
     2. Template IDs from fixture settlement + functional keys
     3. Oracle source IDs from fixture oracle keys
-    4. Event keys derived from settlement template IDs
-    5. Scope keys extracted when present in evidence
+    4. Event keys — caller-provided shared event identifiers, with
+       template IDs as fallback (template IDs are construct-specific
+       and won't match across theatres)
+    5. Scope keys — caller-provided or extracted from evidence
     6. Settlement state from check results
     7. Settlement outcomes from SETTLEMENT_ACCURACY evidence
     8. Oracle values from ORACLE_CONSISTENCY evidence
     9. Execution summary projected from TheatreExecutionResult
     10. Confidence signals from CALIBRATION_VALIDITY evidence
+
+    Args:
+        event_keys: Shared real-world event identifiers that are consistent
+            across theatre constructs. When not provided, falls back to
+            settlement template IDs (which are construct-specific).
+        scope_keys: Shared scope identifiers (region, entity, time window).
+            When not provided, attempts extraction from evidence metadata.
     """
     # 1. Identity
     slug = execution_result.construct_slug
@@ -54,11 +65,17 @@ def build_comparison_bundle(
     # 3. Oracle source IDs
     oracle_source_ids = sorted(fixture_input.oracle_fixtures.keys())
 
-    # 4. Event keys — each settlement template represents one event
-    event_keys = sorted(fixture_input.settlement_fixtures.keys())
+    # 4. Event keys — prefer caller-provided shared keys over template IDs
+    resolved_event_keys = (
+        sorted(event_keys) if event_keys is not None
+        else sorted(fixture_input.settlement_fixtures.keys())
+    )
 
-    # 5. Scope keys — extract from evidence where present
-    scope_keys = _extract_scope_keys(execution_result)
+    # 5. Scope keys — prefer caller-provided over evidence extraction
+    resolved_scope_keys = (
+        scope_keys if scope_keys is not None
+        else _extract_scope_keys(execution_result)
+    )
 
     # 6. Settlement state
     settlement_state = _derive_settlement_state(execution_result)
@@ -84,8 +101,8 @@ def build_comparison_bundle(
         certificate_id=certificate_id,
         template_ids=template_ids,
         oracle_source_ids=oracle_source_ids,
-        event_keys=event_keys,
-        scope_keys=scope_keys,
+        event_keys=resolved_event_keys,
+        scope_keys=resolved_scope_keys,
         settlement_state=settlement_state,
         settlement_outcomes=settlement_outcomes,
         oracle_values=oracle_values,
