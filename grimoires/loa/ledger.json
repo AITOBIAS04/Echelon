@@ -1185,8 +1185,10 @@
     {
       "cycle_id": "cycle-038",
       "label": "Cross-Theatre Paradox Detection",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-19T22:30:00Z",
+      "archived": "2026-03-20T02:30:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-19-cross-theatre-paradox-detection",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -1222,7 +1224,7 @@
       ]
     }
   ],
-  "active_cycle": "cycle-038",
+  "active_cycle": null,
   "active_bugfix": null,
   "global_sprint_counter": 111,
   "bugfix_cycles": [
