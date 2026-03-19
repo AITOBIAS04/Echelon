@@ -1,835 +1,852 @@
-# SDD — Cycle-037d: Theatre Construct Verification
+# SDD — Cycle-038: Cross-Theatre Paradox Detection
 
-**Cycle:** cycle-037d
+**Cycle:** cycle-038
 **Date:** 19 March 2026
-**Depends on:** Cycle-037 (contract substrate), Cycle-037b (multi-evaluator), Cycle-037c (domain packs + security checks)
-**Sprints:** 4 (0-3)
+**Depends on:** Cycle-037d (theatre construct verification), Cycle-020 (ParadoxRiskOrchestrator), Cycle-010b (Paradox Engine)
+**PRD:** `grimoires/loa/prd.md`
 **Builder:** Loa (backend only)
 
-> Sources: prd.md, context_037d.md, TREMOR construct.json, CORONA construct.json, codebase validation
+---
+
+## 1. Executive Summary
+
+Cycle 038 extends the Paradox Engine from theatre-local logic gap scanning to network-level coherence detection. It introduces FactAnchors (real-world event linking), CoherenceGroups (theatre grouping), and CrossTheatreParadox records (network-level divergence). A new CrossTheatreParadoxScanner detects four paradox patterns: settlement divergence, oracle inconsistency, scope overlap gaps, and temporal drift. An OracleConsistencyMonitor tracks oracle responses across theatres. Integration with existing infrastructure is additive: ParadoxRiskOrchestrator gains a `cross_theatre_exposure` factor, WingFlap gains a new type, and WebSocket emission is material-delta gated.
+
+**New tables:** 6 (fact_anchors, fact_anchor_links, coherence_groups, coherence_group_members, cross_theatre_paradoxes, oracle_responses)
+**New services:** 4
+**Modified services:** 2 (ParadoxRiskOrchestrator, ConnectionManager)
+**New API routes:** ~10
+**Migration:** c038_cross_theatre_paradox
 
 ---
 
-## 1. Architecture Summary
+## 2. System Architecture
 
-Cycle 037d adds a construct-class layer for theatre constructs on top of the 037 substrate. The pattern mirrors 037c (security checks) exactly: a new planner produces domain-specific `PlannedCheck` entries, and the caller (`contract_service.py`) merges them after `plan_checks()`.
+### 2.1 Component Diagram
 
 ```
-construct.yaml (ConstructSpec)
-    |
-spec_loader.load()                      <-- adds construct_class field
-    |
-policy_normalizer.normalize()           <-- theatre domains now in KNOWN_PRECISE_DOMAINS
-    |
-check_planner.plan_checks()             <-- base checks (RUBRIC, BENCHMARK, ANCHOR)
-    |                                       unchanged
-    +-- security_check_planner ------------ merge security checks (037c, unchanged)
-    |
-    +-- theatre_check_planner  ------------ merge theatre checks (037d) <-- NEW
-         ^
-    construct.json (theatre_templates, osint_sources, verification_checks, settlement_tiers)
-         ^
-    theatre_policy_rules (domain registration + construct.json parsing)
-         |
-contract_service.create_contract()      <-- caller-side merge, same as corpus_skills
-    |
-037b residual judging (unchanged)
+                    ┌─────────────────────────┐
+                    │    Theatre Routes API    │
+                    │ /api/v1/theatres/        │
+                    └──────────┬──────────────┘
+                               │
+                    ┌──────────▼──────────────┐
+                    │  Existing Theatre Stack  │
+                    │  (unchanged)             │
+                    └──────────┬──────────────┘
+                               │ settlement events
+                    ┌──────────▼──────────────┐
+                    │   FactAnchorService      │──→ fact_anchors
+                    │   (link events to world) │──→ fact_anchor_links
+                    └──────────┬──────────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                 │
+   ┌──────────▼─────┐  ┌──────▼───────┐  ┌─────▼──────────────┐
+   │ OracleConsist-  │  │ Coherence    │  │ CrossTheatre       │
+   │ encyMonitor     │  │ GroupService │  │ ParadoxScanner     │
+   │ (track oracles) │  │ (manage      │  │ (detect patterns)  │
+   └──────────┬──────┘  │  groups)     │  └──────┬─────────────┘
+              │         └──────────────┘         │
+              │                                  │
+              └──────────────┬───────────────────┘
+                             │ cross_theatre_exposure
+                  ┌──────────▼──────────────┐
+                  │ ParadoxRiskOrchestrator  │
+                  │ (per-theatre risk +      │
+                  │  network exposure)       │
+                  └──────────┬──────────────┘
+                             │ material delta
+                  ┌──────────▼──────────────┐
+                  │   WebSocket Manager     │
+                  │   CROSS_THEATRE_PARADOX_ │
+                  │   DETECTED event        │
+                  └─────────────────────────┘
 ```
 
-Key principle: **the base pipeline (check_planner.py, policy_normalizer.py core logic) is not modified.** Theatre checks are additive, selected when the construct's `construct_class == "theatre"`.
+### 2.2 Data Flow
+
+1. Theatre settles an outcome → caller creates/links a FactAnchor via FactAnchorService
+2. FactAnchorService detects multiple theatre links on same anchor → triggers CrossTheatreParadoxScanner
+3. Scanner evaluates 4 detection patterns → creates CrossTheatreParadox records
+4. Scanner feeds `cross_theatre_exposure` count into ParadoxRiskOrchestrator for affected theatres
+5. Orchestrator recomputes per-theatre risk with new factor → emits WebSocket if material
 
 ---
 
-## 2. File-Level Design
+## 3. Data Architecture
 
-### 2.1 Modified: `backend/services/spec_loader.py`
+### 3.1 New Models
 
-**Sprint:** 0
-**Purpose:** Add optional `construct_class` field to `ConstructSpec` dataclass.
+All models in `backend/database/models.py`. Migration: `c038_cross_theatre_paradox`.
 
-Current `ConstructSpec` (lines 13-22):
-
-```python
-@dataclass(frozen=True)
-class ConstructSpec:
-    slug: str
-    version: str
-    domain_claims: list[str]
-    refusals: list[dict]
-    skill_manifest: list[dict]
-    raw_yaml: str
-    spec_hash: str
-```
-
-New `ConstructSpec`:
+#### FactAnchor
 
 ```python
-@dataclass(frozen=True)
-class ConstructSpec:
-    slug: str
-    version: str
-    domain_claims: list[str]
-    refusals: list[dict]
-    skill_manifest: list[dict]
-    raw_yaml: str
-    spec_hash: str
-    construct_class: str = "skill"  # "skill" | "theatre" | "bridge"
-```
+class FactAnchor(Base):
+    __tablename__ = "fact_anchors"
 
-**Change to `load()` function** (lines 32-76): After parsing optional `refusals` (line 62-64), read optional `construct_class`:
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    anchor_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    external_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    external_source: Mapped[str] = mapped_column(String(100), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    location_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    metadata_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-```python
-    # construct_class: default "skill" for backward compatibility
-    raw_class = parsed.get("construct_class", "skill")
-    construct_class = str(raw_class) if raw_class in ("skill", "theatre", "bridge") else "skill"
-```
+    # Relationships
+    links: Mapped[list["FactAnchorLink"]] = relationship(back_populates="fact_anchor")
 
-And include it in the return statement (after line 68):
-
-```python
-    return ConstructSpec(
-        slug=str(slug),
-        version=str(version),
-        domain_claims=[str(c) for c in domain_claims],
-        refusals=refusals,
-        skill_manifest=skill_manifest,
-        raw_yaml=yaml_content,
-        spec_hash=spec_hash,
-        construct_class=construct_class,
+    # Indexes
+    __table_args__ = (
+        Index("ix_fact_anchors_external", "external_source", "external_id", unique=True),
+        Index("ix_fact_anchors_type_time", "anchor_type", "occurred_at"),
     )
 ```
 
-**Backward compatibility:** `construct_class` defaults to `"skill"`. Every existing YAML without the field parses identically. The `spec_hash` computation (line 25-29) does not change shape -- it hashes the raw YAML content, so the hash only changes if the YAML content changes. The `skill_manifest` validation (`must be a non-empty list`, line 58-59) remains -- theatre constructs must still declare their skills/commands in `skill_manifest`, which matches TREMOR's `skills` array and CORONA's `skills` array.
+**Design decisions:**
+- `(external_source, external_id)` is unique — same USGS event cannot be duplicated
+- `anchor_type` indexed for domain-scoped queries (e.g., all seismic events)
+- `location_json` is domain-specific (lat/lon/depth for seismic, HPC region for solar)
+- `metadata_json` stores source-specific values (magnitude, flare class, Kp index)
 
----
-
-### 2.2 New: `backend/services/theatre_policy_rules.py`
-
-**Sprint:** 1
-**Purpose:** Register theatre-specific precise domains into `KNOWN_PRECISE_DOMAINS`. Parse `construct.json` from external theatre constructs (TREMOR, CORONA) into structured metadata for the theatre check planner.
-
-Follows the exact pattern of `security_policy_rules.py` (lines 1-118).
-
-#### Theatre Precise Domains
-
-10 specific theatre domains to be added to `KNOWN_PRECISE_DOMAINS`:
+#### FactAnchorLink
 
 ```python
-THEATRE_PRECISE_DOMAINS: set[str] = {
-    "seismic_intelligence",
-    "space_weather",
-    "oracle_verification",
-    "settlement_verification",
-    "calibration_analysis",
-    "prediction_markets",
-    "evidence_bundles",
-    "ground_truth_export",
-    "rlmf_export",
-    "theatre_management",
-}
-```
-
-#### Registration Pattern
-
-Identical to `security_policy_rules.py` lines 37-48:
-
-```python
-def register_theatre_domains() -> int:
-    """Register theatre-specific precise domains with the policy normalizer.
-
-    Mutates policy_normalizer.KNOWN_PRECISE_DOMAINS by adding theatre domains.
-    Returns count of newly added domains (for logging/testing).
-    """
-    before = len(KNOWN_PRECISE_DOMAINS)
-    KNOWN_PRECISE_DOMAINS.update(THEATRE_PRECISE_DOMAINS)
-    return len(KNOWN_PRECISE_DOMAINS) - before
-```
-
-Import-time registration (same pattern as `security_policy_rules.py` line 118):
-
-```python
-# Register theatre domains at import time so they are available
-# to the policy normalizer immediately.
-_REGISTERED_COUNT = register_theatre_domains()
-```
-
-#### construct.json Data Models
-
-Four frozen dataclasses for parsed theatre metadata:
-
-```python
-@dataclass(frozen=True)
-class TheatreTemplate:
-    """A single theatre template from construct.json."""
-    id: str
-    name: str
-    resolution: str          # "binary" | "multi_bucket" | "multi_class"
-    oracle: str              # oracle name or resolution method
-    brier_type: Optional[str] = None  # "binary" | "multi_class"
-
-@dataclass(frozen=True)
-class OsintSource:
-    """An OSINT data source from construct.json."""
-    id: str
-    name: str
-    role: str                # "primary" | "cross_validation"
-
-@dataclass(frozen=True)
-class VerificationCheck:
-    """A declared verification check from construct.json."""
-    check: str
-    ground_truth: str
-    description: str
-
-@dataclass(frozen=True)
-class TheatreConstructMeta:
-    """Parsed metadata from a theatre construct.json."""
-    name: str
-    theatre_templates: list[TheatreTemplate]
-    osint_sources: list[OsintSource]
-    verification_checks: list[VerificationCheck]
-    settlement_tiers: list[dict]
-    has_brier_scoring: bool
-    has_cross_validation: bool
-    oracle_names: list[str]
-```
-
-#### construct.json Parser
-
-The parser must handle both TREMOR and CORONA naming conventions.
-
-**TREMOR** (`/Users/tobiasharber/Developer/tremor/spec/construct.json`) nests theatre data under `echelon`:
-
-- `echelon.theatre_templates` -- array of 5 templates, each with `id`, `name`, `resolution` (resolution type), `oracle` (oracle name), `brier_type`
-- `echelon.osint_sources` -- array of 3 sources, each with `id`, `name`, `role` (primary or cross_validation)
-- `echelon.verification_checks` -- array of 5 checks, each with `check`, `ground_truth`, `description`
-- `echelon.settlement_tiers` -- array of 3 tiers with `tier`, `name`, `condition`, `evidence_class`, `brier_discount`
-
-**CORONA** (`/Users/tobiasharber/Developer/corona/construct.json`) uses root-level fields:
-
-- `theatre_templates` -- array of 5 templates at root, each with `id`, `name`, `type` (maps to resolution), `resolution` (maps to oracle)
-- `data_sources` -- array of 3 sources (not `osint_sources`), each with `name`, `url`, `auth`, `feeds`
-- `rlmf.exports` -- array including `"brier_score"`, `"calibration_bucket"` -- proves Brier scoring
-- No `verification_checks` or `settlement_tiers` at root or under `echelon`
-
-The parser uses fallback chains:
-
-| Concept | TREMOR path | CORONA path | Fallback |
-|---------|-------------|-------------|----------|
-| Theatre templates | `echelon.theatre_templates` | `theatre_templates` | empty list |
-| OSINT sources | `echelon.osint_sources` | `data_sources` | empty list |
-| Resolution type | `[].resolution` | `[].type` | `"binary"` |
-| Oracle reference | `[].oracle` | `[].resolution` | `""` |
-| Brier type | `[].brier_type` | inferred from `rlmf.exports` | `None` |
-| Source ID | `[].id` | derived from `[].name` lowercase | `""` |
-| Source role | `[].role` | default `"primary"` | `"primary"` |
-| Verification checks | `echelon.verification_checks` | absent | empty list |
-| Settlement tiers | `echelon.settlement_tiers` | absent | empty list |
-
-```python
-def parse_construct_json(raw_json: str) -> TheatreConstructMeta:
-    """Parse a theatre construct.json into structured metadata.
-
-    Handles both TREMOR-style (echelon.* nested) and CORONA-style
-    (root-level) construct.json layouts.
-
-    Raises ValueError on invalid JSON.
-    """
-```
-
-Derived booleans:
-- `has_brier_scoring`: True if any template has `brier_type` set, OR if `rlmf.exports` contains `"brier_score"`
-- `has_cross_validation`: True if any source has `role == "cross_validation"`
-- `oracle_names`: deduplicated set of oracle strings from all templates
-
----
-
-### 2.3 New: `backend/services/theatre_check_planner.py`
-
-**Sprint:** 2
-**Purpose:** Generate 4 theatre-specific `PlannedCheck` types from a `TheatreConstructMeta`, and merge them with base checks.
-
-Follows the exact pattern of `security_check_planner.py` (lines 1-154).
-
-#### Theatre Check Types
-
-4 new `check_type` values with anchor class mappings:
-
-```python
-THEATRE_CHECK_TYPES: dict[str, str] = {
-    "SETTLEMENT_ACCURACY": "LIVE_EXTERNAL_EVIDENCE",
-    "ORACLE_CONSISTENCY": "LIVE_EXTERNAL_EVIDENCE",
-    "CALIBRATION_VALIDITY": "DETERMINISTIC_CHECK",
-    "FUNCTIONAL_CORRECTNESS": "DETERMINISTIC_CHECK",
-}
-```
-
-| check_type | What It Validates | Anchor Class | Critical |
-|---|---|---|---|
-| `SETTLEMENT_ACCURACY` | Binary/multi-class outcomes match oracle ground truth | LIVE_EXTERNAL_EVIDENCE | True |
-| `ORACLE_CONSISTENCY` | Cross-source oracle agreement within tolerance | LIVE_EXTERNAL_EVIDENCE | True |
-| `CALIBRATION_VALIDITY` | Brier scores, calibration buckets, ECE are arithmetically consistent | DETERMINISTIC_CHECK | False |
-| `FUNCTIONAL_CORRECTNESS` | Theatre template logic produces correct state transitions | DETERMINISTIC_CHECK | False |
-
-#### plan_theatre_checks()
-
-```python
-def plan_theatre_checks(
-    spec_slug: str,
-    meta: TheatreConstructMeta,
-) -> list[PlannedCheck]:
-    """Generate theatre-specific PlannedCheck entries from construct metadata.
-
-    Args:
-        spec_slug: Construct slug for check ID namespacing.
-        meta: Parsed TheatreConstructMeta from construct.json.
-
-    Returns:
-        Sorted list of PlannedCheck entries compatible with
-        check_planner.plan_checks() output format.
-    """
-```
-
-Check generation rules:
-
-1. **SETTLEMENT_ACCURACY** -- One check per theatre template. Each template has a resolution rule and an oracle reference.
-
-```python
-    checks: list[PlannedCheck] = []
-    seen_ids: set[str] = set()
-
-    # 1. SETTLEMENT_ACCURACY -- one per theatre template
-    for template in meta.theatre_templates:
-        check_id = f"theatre:settlement_accuracy:{template.id}"
-        if check_id not in seen_ids:
-            seen_ids.add(check_id)
-            checks.append(PlannedCheck(
-                check_id=check_id,
-                check_type="SETTLEMENT_ACCURACY",
-                domain=f"theatre:{template.id}",
-                source=f"theatre_template:{template.id}:oracle:{template.oracle}",
-                critical=True,
-                anchor_class="LIVE_EXTERNAL_EVIDENCE",
-            ))
-```
-
-2. **ORACLE_CONSISTENCY** -- One check per cross-validation OSINT source. Only generated when `meta.has_cross_validation` is True.
-
-```python
-    # 2. ORACLE_CONSISTENCY -- one per cross-validation source
-    if meta.has_cross_validation:
-        cross_val = [s for s in meta.osint_sources if s.role == "cross_validation"]
-        for source in cross_val:
-            check_id = f"theatre:oracle_consistency:{source.id}"
-            if check_id not in seen_ids:
-                seen_ids.add(check_id)
-                checks.append(PlannedCheck(
-                    check_id=check_id,
-                    check_type="ORACLE_CONSISTENCY",
-                    domain=f"oracle:{source.id}",
-                    source=f"osint_source:{source.id}:role:cross_validation",
-                    critical=True,
-                    anchor_class="LIVE_EXTERNAL_EVIDENCE",
-                ))
-```
-
-3. **CALIBRATION_VALIDITY** -- One check, generated when `meta.has_brier_scoring` is True.
-
-```python
-    # 3. CALIBRATION_VALIDITY -- single check if Brier scoring present
-    if meta.has_brier_scoring:
-        check_id = f"theatre:calibration_validity:{spec_slug}"
-        if check_id not in seen_ids:
-            seen_ids.add(check_id)
-            checks.append(PlannedCheck(
-                check_id=check_id,
-                check_type="CALIBRATION_VALIDITY",
-                domain=f"calibration:{spec_slug}",
-                source=f"brier_scoring:{spec_slug}",
-                critical=False,
-                anchor_class="DETERMINISTIC_CHECK",
-            ))
-```
-
-4. **FUNCTIONAL_CORRECTNESS** -- One check per theatre template.
-
-```python
-    # 4. FUNCTIONAL_CORRECTNESS -- one per theatre template
-    for template in meta.theatre_templates:
-        check_id = f"theatre:functional_correctness:{template.id}"
-        if check_id not in seen_ids:
-            seen_ids.add(check_id)
-            checks.append(PlannedCheck(
-                check_id=check_id,
-                check_type="FUNCTIONAL_CORRECTNESS",
-                domain=f"theatre:{template.id}",
-                source=f"theatre_template:{template.id}:state_machine",
-                critical=False,
-                anchor_class="DETERMINISTIC_CHECK",
-            ))
-
-    # Sort for determinism: (check_type, domain, check_id)
-    checks.sort(key=lambda c: (c.check_type, c.domain, c.check_id))
-    return checks
-```
-
-**check_id format:** `theatre:{check_type_lower}:{entity_id}`
-
-Examples from TREMOR fixture:
-
-| check_id | check_type | domain | source |
-|---|---|---|---|
-| `theatre:settlement_accuracy:magnitude_gate` | SETTLEMENT_ACCURACY | `theatre:magnitude_gate` | `theatre_template:magnitude_gate:oracle:USGS reviewed catalog` |
-| `theatre:settlement_accuracy:aftershock_cascade` | SETTLEMENT_ACCURACY | `theatre:aftershock_cascade` | `theatre_template:aftershock_cascade:oracle:USGS reviewed catalog` |
-| `theatre:oracle_consistency:emsc` | ORACLE_CONSISTENCY | `oracle:emsc` | `osint_source:emsc:role:cross_validation` |
-| `theatre:oracle_consistency:iris_dmc` | ORACLE_CONSISTENCY | `oracle:iris_dmc` | `osint_source:iris_dmc:role:cross_validation` |
-| `theatre:calibration_validity:tremor` | CALIBRATION_VALIDITY | `calibration:tremor` | `brier_scoring:tremor` |
-| `theatre:functional_correctness:magnitude_gate` | FUNCTIONAL_CORRECTNESS | `theatre:magnitude_gate` | `theatre_template:magnitude_gate:state_machine` |
-
-**Expected check counts from fixtures:**
-
-| Construct | SETTLEMENT_ACCURACY | ORACLE_CONSISTENCY | CALIBRATION_VALIDITY | FUNCTIONAL_CORRECTNESS | Total |
-|---|---|---|---|---|---|
-| TREMOR | 5 (5 templates) | 2 (EMSC + IRIS) | 1 (Brier scoring) | 5 (5 templates) | 13 |
-| CORONA | 5 (5 templates) | 2 (DONKI + GFZ) | 1 (RLMF Brier) | 5 (5 templates) | 13 |
-
-#### merge_theatre_checks()
-
-Identical pattern to `security_check_planner.merge_security_checks()` (lines 125-154):
-
-```python
-def merge_theatre_checks(
-    base_checks: list[PlannedCheck],
-    theatre_checks: list[PlannedCheck],
-) -> list[PlannedCheck]:
-    """Merge base 037 checks with theatre-specific checks.
-
-    Deduplicates by check_id. Preserves sort order: (check_type, domain, check_id).
-
-    Args:
-        base_checks: Output from check_planner.plan_checks() (possibly
-            already merged with security checks).
-        theatre_checks: Output from plan_theatre_checks().
-
-    Returns:
-        Merged, deduplicated, sorted list of PlannedCheck entries.
-    """
-    seen: set[str] = set()
-    merged: list[PlannedCheck] = []
-
-    for check in base_checks:
-        if check.check_id not in seen:
-            seen.add(check.check_id)
-            merged.append(check)
-
-    for check in theatre_checks:
-        if check.check_id not in seen:
-            seen.add(check.check_id)
-            merged.append(check)
-
-    merged.sort(key=lambda c: (c.check_type, c.domain, c.check_id))
-    return merged
-```
-
----
-
-### 2.4 Modified: `backend/services/contract_service.py`
-
-**Sprint:** 2
-**Purpose:** Add `construct_json` parameter and wire theatre check planning.
-
-**New imports** (after existing imports at line 31):
-
-```python
-from backend.services.theatre_policy_rules import parse_construct_json
-from backend.services.theatre_check_planner import (
-    plan_theatre_checks,
-    merge_theatre_checks,
-)
-# Side-effect: importing theatre_policy_rules registers 10 precise theatre
-# domains into KNOWN_PRECISE_DOMAINS at import time (cycle 037d).
-```
-
-**Signature change** to `create_contract()` (lines 44-50). Add `construct_json` parameter:
-
-```python
-    async def create_contract(
-        self,
-        registration_id: str,
-        yaml_content: str,
-        available_assets: Optional[dict] = None,
-        corpus_skills: Optional[list[CorpusSkill]] = None,
-        construct_json: Optional[str] = None,
-    ) -> EvaluationContract:
-```
-
-Docstring addition for `construct_json`:
-
-```
-            construct_json: Optional raw JSON string from theatre construct.json.
-                When provided and construct_class is "theatre", theatre-specific
-                checks (SETTLEMENT_ACCURACY, ORACLE_CONSISTENCY, etc.) are
-                merged into the contract.
-```
-
-**New merge step** -- inserted after the security check merge block (after line 95), before `planned_dicts = checks_to_dicts(planned)` (line 97):
-
-```python
-        # 4c. Merge theatre-specific checks if construct_json provided
-        #     and construct_class is "theatre"
-        if construct_json and spec.construct_class == "theatre":
-            try:
-                theatre_meta = parse_construct_json(construct_json)
-                theatre_checks = plan_theatre_checks(spec.slug, theatre_meta)
-                planned = merge_theatre_checks(planned, theatre_checks)
-            except ValueError as e:
-                logger.warning(
-                    "Failed to parse construct.json for %s: %s",
-                    spec.slug, e,
-                )
-```
-
-The guard `spec.construct_class == "theatre"` ensures that passing `construct_json` for a skill construct does nothing. The `try/except` ensures malformed construct.json does not crash the pipeline -- it logs and continues with base checks only.
-
----
-
-### 2.5 Modified: `backend/schemas/construct_schemas.py`
-
-**Sprint:** 2
-**Purpose:** Add `construct_json` field to `CreateContractRequest`.
-
-Current `CreateContractRequest` (lines 136-143):
-
-```python
-class CreateContractRequest(BaseModel):
-    """POST .../contract request body."""
-    yaml_content: str = Field(..., description="Raw construct.yaml content")
-    corpus_contents: Optional[list[str]] = Field(
-        None,
-        description="Raw corpus file contents (frontmatter + markdown). "
-        "Parsed into CorpusSkills for security check planning.",
+class FactAnchorLink(Base):
+    __tablename__ = "fact_anchor_links"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    fact_anchor_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("fact_anchors.id"), nullable=False, index=True
+    )
+    theatre_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), nullable=False, index=True
+    )
+    link_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    link_confidence: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    linked_entity_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    linked_entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    fact_anchor: Mapped["FactAnchor"] = relationship(back_populates="links")
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_fact_anchor_links_anchor_theatre", "fact_anchor_id", "theatre_id"),
     )
 ```
 
-Add after `corpus_contents`:
+**Design decisions:**
+- `link_type` is one of: `settlement`, `evidence`, `oracle_query`
+- `link_confidence` enables soft matching (0.8 for USGS automatic → reviewed reconciliation)
+- Polymorphic reference via `linked_entity_id` + `linked_entity_type` avoids per-entity FK proliferation
+- Composite index on `(fact_anchor_id, theatre_id)` for cross-theatre lookups
+
+#### CoherenceGroup
 
 ```python
-    construct_json: Optional[str] = Field(
-        None,
-        description="Raw construct.json content from theatre constructs. "
-        "Parsed for theatre check planning when construct_class is 'theatre'.",
-    )
+class CoherenceGroup(Base):
+    __tablename__ = "coherence_groups"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+    group_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    policy_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    members: Mapped[list["CoherenceGroupMember"]] = relationship(back_populates="group")
 ```
 
----
-
-### 2.6 Modified: `backend/api/construct_routes.py`
-
-**Sprint:** 2
-**Purpose:** Pass `construct_json` from request body through to `contract_service.create_contract()`.
-
-Current code in `create_contract` route handler (lines 215-220):
-
-```python
-        contract = await contract_svc.create_contract(
-            registration_id=reg.id,
-            yaml_content=body.yaml_content,
-            corpus_skills=corpus_skills,
-        )
-```
-
-New code:
-
-```python
-        contract = await contract_svc.create_contract(
-            registration_id=reg.id,
-            yaml_content=body.yaml_content,
-            corpus_skills=corpus_skills,
-            construct_json=body.construct_json,
-        )
-```
-
-This is a single keyword addition. No other route changes needed -- the response schema already handles arbitrary `check_type` strings via `PlannedCheckSchema.check_type: str` (line 163).
-
----
-
-### 2.7 Modified: `backend/services/construct_anchor_mapper.py`
-
-**Sprint:** 2
-**Purpose:** Add 4 theatre-specific mapping rules to `_MAPPING_RULES` list.
-
-New rules appended after the existing Cycle-037c block (after line 119):
-
-```python
-    # -- Cycle-037d: Theatre Construct Verification Anchors ----------------
-    # Settlement / oracle ground truth -> live_external_evidence
-    (
-        ["settlement", "oracle", "ground_truth", "settlement_accuracy"],
-        AnchorClass.LIVE_EXTERNAL_EVIDENCE,
-        "theatre_oracle_settlement",
-        "Verification against external oracle ground truth for theatre settlement",
-    ),
-    # Calibration / Brier scoring -> deterministic_check
-    (
-        ["brier", "calibration", "ece", "calibration_validity"],
-        AnchorClass.DETERMINISTIC_CHECK,
-        "theatre_calibration",
-        "Deterministic verification of Brier score and calibration bucket arithmetic",
-    ),
-    # Position history / temporal analysis -> deterministic_check
-    (
-        ["position_history", "temporal_analysis", "functional_correctness"],
-        AnchorClass.DETERMINISTIC_CHECK,
-        "theatre_state_machine",
-        "Deterministic verification of theatre template state transitions and position history",
-    ),
-    # Named oracle keywords -> live_external_evidence
-    (
-        ["usgs", "emsc", "swpc", "donki", "noaa", "iris_dmc", "gfz"],
-        AnchorClass.LIVE_EXTERNAL_EVIDENCE,
-        "theatre_named_oracle",
-        "Grounded in named public OSINT oracle feeds (USGS, EMSC, NOAA SWPC, NASA DONKI)",
-    ),
-```
-
-These 4 rules add 4 new anchor IDs: `theatre_oracle_settlement`, `theatre_calibration`, `theatre_state_machine`, `theatre_named_oracle`.
-
-No API change. `map_dimension_anchors()` and `map_contract_anchors()` are unchanged -- they iterate `_MAPPING_RULES` dynamically.
-
----
-
-## 3. Data Models
-
-### 3.1 ConstructSpec Changes
-
-| Field | Type | Default | Notes |
-|---|---|---|---|
-| `construct_class` | `str` | `"skill"` | New optional field. Valid values: `"skill"`, `"theatre"`, `"bridge"`. Unrecognized values default to `"skill"`. |
-
-No database migration required. `construct_class` is parsed from YAML at load time and lives on the in-memory `ConstructSpec` dataclass. It does not need a new column because it is derivable from the raw YAML content already stored in the contract pipeline.
-
-### 3.2 Theatre PlannedCheck Types
-
-All theatre check types use the existing `PlannedCheck` dataclass (from `check_planner.py` lines 23-31) without modification. The `check_type` field is a free string.
-
-| check_type | anchor_class | critical | Cardinality |
-|---|---|---|---|
-| `SETTLEMENT_ACCURACY` | `LIVE_EXTERNAL_EVIDENCE` | True | 1 per theatre template |
-| `ORACLE_CONSISTENCY` | `LIVE_EXTERNAL_EVIDENCE` | True | 1 per cross-validation source |
-| `CALIBRATION_VALIDITY` | `DETERMINISTIC_CHECK` | False | 1 total (if Brier scoring) |
-| `FUNCTIONAL_CORRECTNESS` | `DETERMINISTIC_CHECK` | False | 1 per theatre template |
-
-### 3.3 TheatreConstructMeta
-
-Transient data structure parsed from `construct.json`. Not stored in DB.
-
-```
-TheatreConstructMeta
-    name: str
-    theatre_templates: list[TheatreTemplate]
-    osint_sources: list[OsintSource]
-    verification_checks: list[VerificationCheck]
-    settlement_tiers: list[dict]
-    has_brier_scoring: bool
-    has_cross_validation: bool
-    oracle_names: list[str]
-```
-
-### 3.4 CreateContractRequest Changes
-
-| Field | Type | Notes |
-|---|---|---|
-| `construct_json` | `Optional[str]` | New optional field. Raw JSON string from theatre construct.json. |
-
----
-
-## 4. Integration Flow
-
-Step-by-step contract creation with theatre checks:
-
-### 4.1 API Request
-
-```
-POST /api/constructs/tremor/0.1.0/contract
-{
-    "yaml_content": "<construct.yaml with construct_class: theatre>",
-    "construct_json": "<raw JSON from tremor/spec/construct.json>"
-}
-```
-
-### 4.2 Route Handler (`construct_routes.py`)
-
-1. Resolve registration for `tremor:0.1.0`
-2. Parse `corpus_contents` (if any) into `CorpusSkill` objects
-3. Call `contract_svc.create_contract(registration_id, yaml_content, corpus_skills, construct_json=body.construct_json)`
-
-### 4.3 ContractService Pipeline
-
-1. **Parse** -- `spec_loader.load(yaml_content)` returns `ConstructSpec` with `construct_class="theatre"`
-2. **Idempotency check** -- compare `spec.spec_hash` against ACTIVE contract
-3. **Normalize** -- `policy_normalizer.normalize(spec)` classifies domain claims. Theatre domains (e.g., `seismic_intelligence`, `settlement_verification`) now resolve as precise because `theatre_policy_rules.py` registered them at import time.
-4. **Base checks** -- `check_planner.plan_checks(spec.slug, norm_result)` produces standard RUBRIC + BENCHMARK + ANCHOR checks
-5. **Security checks** -- if `corpus_skills` provided, merge security checks (unchanged from 037c)
-6. **Theatre checks** -- if `construct_json` provided AND `spec.construct_class == "theatre"`:
-   a. `parse_construct_json(construct_json)` extracts `TheatreConstructMeta`
-   b. `plan_theatre_checks(spec.slug, meta)` generates theatre-specific `PlannedCheck` entries
-   c. `merge_theatre_checks(planned, theatre_checks)` merges, deduplicates, sorts
-7. **Hash** -- `compute_contract_hash(spec_hash, planned)` -- the contract hash now includes theatre checks
-8. **Persist** -- store as `EvaluationContract`
-
-### 4.4 Result
-
-For TREMOR with 5 theatre templates, 2 cross-validation sources, and Brier scoring, the `planned_checks` array contains:
-
-- Base checks: 2 ANCHOR checks (PUBLIC_STANDARD, DETERMINISTIC_CHECK) + N RUBRIC checks
-- Theatre checks: 5 SETTLEMENT_ACCURACY + 2 ORACLE_CONSISTENCY + 1 CALIBRATION_VALIDITY + 5 FUNCTIONAL_CORRECTNESS = 13 theatre checks
-
-All sorted by `(check_type, domain, check_id)`.
-
----
-
-## 5. Construct JSON Schema
-
-### 5.1 Fields Read by Theatre Check Planner
-
-| Field Path (TREMOR) | Field Path (CORONA) | Type | Used For |
-|---|---|---|---|
-| `name` | `slug` or `name` | string | Construct identification |
-| `echelon.theatre_templates` | `theatre_templates` | array | SETTLEMENT_ACCURACY + FUNCTIONAL_CORRECTNESS checks |
-| `echelon.theatre_templates[].id` | `theatre_templates[].id` | string | Check ID namespacing |
-| `echelon.theatre_templates[].name` | `theatre_templates[].name` | string | Template identification |
-| `echelon.theatre_templates[].resolution` | `theatre_templates[].type` | string | Resolution type (binary/multi) |
-| `echelon.theatre_templates[].oracle` | `theatre_templates[].resolution` | string | Oracle reference |
-| `echelon.theatre_templates[].brier_type` | (absent) | string | Brier scoring type |
-| `echelon.osint_sources` | `data_sources` | array | ORACLE_CONSISTENCY checks |
-| `echelon.osint_sources[].id` | (derived from name) | string | Source ID |
-| `echelon.osint_sources[].role` | (absent, defaults primary) | string | primary vs cross_validation |
-| `echelon.verification_checks` | (absent) | array | Declared checks (informational) |
-| `echelon.settlement_tiers` | (absent) | array | Settlement tier metadata |
-| (absent) | `rlmf.exports` | array | Brier scoring detection fallback |
-
-### 5.2 CORONA Cross-Validation Source Detection
-
-CORONA's `data_sources` do not have a `role` field. Cross-validation is detected by:
-
-1. If a source has an explicit `role` field, use it
-2. Otherwise, the first source defaults to `"primary"` and subsequent sources default to `"primary"` as well
-
-To generate ORACLE_CONSISTENCY checks for CORONA, the construct.yaml (not construct.json) should declare cross-validation intent. Alternatively, the parser can infer cross-validation from the presence of multiple independent data sources. The implementation should default to treating all sources without a `role` field as `"primary"` -- the operator can add `role: "cross_validation"` to their construct.json to opt in to ORACLE_CONSISTENCY checks.
-
-**Update:** For CORONA specifically, `data_sources[1]` (NASA DONKI) and `data_sources[2]` (GFZ Potsdam) are clearly cross-validation sources for the primary NOAA SWPC feed. The parser should check for a `role` field first, and if absent, treat sources beyond the first as `"cross_validation"` when there are 2+ sources.
-
-### 5.3 Minimum Viable construct.json
-
+**`policy_json` schema:**
 ```json
 {
-    "name": "my-theatre",
-    "theatre_templates": [
-        {
-            "id": "template_1",
-            "name": "My Template",
-            "resolution": "binary",
-            "oracle": "Some Oracle"
-        }
-    ]
+    "settlement_divergence_threshold": 0.0,
+    "oracle_tolerance": 0.1,
+    "temporal_drift_hours": 24,
+    "scope_overlap_domains": ["seismic_event", "volcanic_activity"]
 }
 ```
 
-This produces: 1 SETTLEMENT_ACCURACY + 1 FUNCTIONAL_CORRECTNESS = 2 checks. No ORACLE_CONSISTENCY (no cross-validation sources) and no CALIBRATION_VALIDITY (no Brier scoring declared).
+#### CoherenceGroupMember
+
+```python
+class CoherenceGroupMember(Base):
+    __tablename__ = "coherence_group_members"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    coherence_group_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("coherence_groups.id"), nullable=False
+    )
+    theatre_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(30), nullable=False, default="primary")
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    group: Mapped["CoherenceGroup"] = relationship(back_populates="members")
+
+    __table_args__ = (
+        Index("ix_coherence_members_group", "coherence_group_id"),
+        Index("ix_coherence_members_theatre", "theatre_id"),
+    )
+```
+
+#### CrossTheatreParadox
+
+```python
+class CrossTheatreParadoxStatus(str, enum.Enum):
+    OPEN = "OPEN"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
+    RESOLVED = "RESOLVED"
+    DISMISSED = "DISMISSED"
+
+class CrossTheatreParadoxType(str, enum.Enum):
+    SETTLEMENT_DIVERGENCE = "SETTLEMENT_DIVERGENCE"
+    ORACLE_INCONSISTENCY = "ORACLE_INCONSISTENCY"
+    SCOPE_OVERLAP_GAP = "SCOPE_OVERLAP_GAP"
+    TEMPORAL_DRIFT = "TEMPORAL_DRIFT"
+
+class CrossTheatreParadoxSeverity(str, enum.Enum):
+    INFO = "INFO"
+    WATCH = "WATCH"
+    MATERIAL = "MATERIAL"
+    CRITICAL = "CRITICAL"
+
+class CrossTheatreParadox(Base):
+    __tablename__ = "cross_theatre_paradoxes"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    fact_anchor_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("fact_anchors.id"), nullable=False, index=True
+    )
+    coherence_group_id: Mapped[Optional[str]] = mapped_column(
+        String(50), ForeignKey("coherence_groups.id"), nullable=True
+    )
+    paradox_type: Mapped[CrossTheatreParadoxType] = mapped_column(
+        SQLEnum(CrossTheatreParadoxType), nullable=False
+    )
+    severity: Mapped[CrossTheatreParadoxSeverity] = mapped_column(
+        SQLEnum(CrossTheatreParadoxSeverity), nullable=False
+    )
+    theatre_a_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), nullable=False
+    )
+    theatre_b_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), nullable=False
+    )
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    resolution_status: Mapped[CrossTheatreParadoxStatus] = mapped_column(
+        SQLEnum(CrossTheatreParadoxStatus), default=CrossTheatreParadoxStatus.OPEN
+    )
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_cross_paradox_anchor", "fact_anchor_id"),
+        Index("ix_cross_paradox_theatres", "theatre_a_id", "theatre_b_id"),
+        Index("ix_cross_paradox_status", "resolution_status"),
+        Index("ix_cross_paradox_severity", "severity"),
+    )
+```
+
+**`evidence_json` schema:**
+```json
+{
+    "theatre_a_value": "M6.2",
+    "theatre_b_value": "M5.8",
+    "theatre_a_source": "usgs_neic",
+    "theatre_b_source": "emsc",
+    "delta": 0.4,
+    "threshold": 0.1,
+    "oracle_query_time_a": "2026-03-19T10:00:00Z",
+    "oracle_query_time_b": "2026-03-19T10:05:00Z"
+}
+```
+
+#### OracleResponse
+
+```python
+class OracleResponse(Base):
+    __tablename__ = "oracle_responses"
+
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    theatre_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("theatres.id"), nullable=False, index=True
+    )
+    source: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    event_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    value_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    queried_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    is_provisional: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_oracle_responses_source_event", "source", "event_id"),
+        Index("ix_oracle_responses_theatre", "theatre_id"),
+    )
+```
+
+**Design decisions:**
+- `is_provisional` flags USGS automatic (pre-reviewed) responses, enabling the context_038 rule: provisional → reviewed revision is INFO, not MATERIAL
+- `value_json` stores the full oracle response for provenance
+- Composite index on `(source, event_id)` for cross-theatre consistency queries
+
+### 3.2 Model Modifications
+
+#### WingFlapType Enum Extension
+
+Add to existing enum in `backend/database/models.py`:
+
+```python
+class WingFlapType(str, enum.Enum):
+    # ... existing 17 types unchanged ...
+    CROSS_THEATRE_PARADOX = "CROSS_THEATRE_PARADOX"  # NEW
+```
+
+The Alembic migration adds the value to the PostgreSQL enum type via `ALTER TYPE wingflaptype ADD VALUE 'CROSS_THEATRE_PARADOX'`.
+
+### 3.3 Alembic Migration
+
+**File:** `backend/alembic/versions/c038_cross_theatre_paradox.py`
+**Down revision:** `c037_evaluation_contracts`
+
+Creates:
+1. `fact_anchors` table with unique constraint on `(external_source, external_id)`
+2. `fact_anchor_links` table with FK to fact_anchors and theatres
+3. `coherence_groups` table with unique constraint on `name`
+4. `coherence_group_members` table with FK to coherence_groups and theatres
+5. `cross_theatre_paradoxes` table with FK to fact_anchors, coherence_groups, theatres
+6. `oracle_responses` table with FK to theatres
+7. ALTER TYPE `wingflaptype` ADD VALUE `CROSS_THEATRE_PARADOX`
 
 ---
 
-## 6. Risks and Mitigations
+## 4. Component Design
 
-### 6.1 Construct JSON Format Divergence
+### 4.1 FactAnchorService
 
-**Risk:** Future theatre constructs may use different JSON layouts than TREMOR/CORONA.
+**File:** `backend/services/fact_anchor_service.py`
 
-**Mitigation:** The parser uses fallback chains (`echelon.theatre_templates` or root `theatre_templates`; `echelon.osint_sources` or `data_sources`). Unknown keys are ignored. The `parse_construct_json` function is the single point of adaptation -- adding a new construct layout requires only extending the fallback logic in this one function.
+```python
+class FactAnchorService:
+    """CRUD and linking for FactAnchors — real-world event registry."""
 
-### 6.2 construct_class Misuse
+    def __init__(self, db: AsyncSession):
+        self._db = db
 
-**Risk:** A skill construct sets `construct_class: theatre` to get theatre checks.
+    async def get_or_create(
+        self,
+        anchor_type: str,
+        external_id: str,
+        external_source: str,
+        occurred_at: datetime,
+        location_json: Optional[dict] = None,
+        metadata_json: Optional[dict] = None,
+    ) -> FactAnchor:
+        """Upsert a FactAnchor by (external_source, external_id).
 
-**Mitigation:** Theatre checks are only generated when both conditions are true: `construct_class == "theatre"` AND `construct_json` is provided with valid theatre templates. A skill construct claiming to be a theatre but providing no construct.json (or one without `theatre_templates`) gets zero theatre checks.
+        Idempotent: returns existing anchor if already registered.
+        """
 
-### 6.3 Import-Time Side Effects
+    async def link_theatre(
+        self,
+        anchor_id: str,
+        theatre_id: str,
+        link_type: str,
+        linked_entity_id: str,
+        linked_entity_type: str,
+        link_confidence: float = 1.0,
+    ) -> FactAnchorLink:
+        """Link a theatre's settlement/evidence to a FactAnchor.
 
-**Risk:** Importing `theatre_policy_rules.py` mutates `KNOWN_PRECISE_DOMAINS`.
+        After linking, checks if multiple theatres now share this anchor
+        and triggers cross-theatre scanning if threshold reached (>= 2 theatres).
+        """
 
-**Mitigation:** This is an established pattern (see `security_policy_rules.py` line 118). The import happens in `contract_service.py` which is always loaded before any normalization runs. The domains are additive and never remove existing domains. Tests that validate normalization behavior should snapshot and restore `KNOWN_PRECISE_DOMAINS` in setUp/tearDown.
+    async def get_theatres_for_anchor(
+        self, anchor_id: str,
+    ) -> list[FactAnchorLink]:
+        """Get all theatre links for a FactAnchor."""
 
-### 6.4 Large construct.json
+    async def get_anchors_for_theatre(
+        self, theatre_id: str,
+        anchor_type: Optional[str] = None,
+    ) -> list[FactAnchorLink]:
+        """Get all FactAnchors linked to a theatre."""
+```
 
-**Risk:** A theatre construct ships a very large construct.json (many templates, many sources).
+**Key behavior:**
+- `get_or_create` is idempotent on `(external_source, external_id)` — concurrent theatre settlements for the same USGS event converge to one anchor
+- `link_theatre` triggers cross-theatre scanning when a second theatre links to the same anchor
+- The trigger is synchronous within the transaction — paradox detection is atomic with the linking operation
 
-**Mitigation:** Check generation is O(templates + sources) which is bounded by practical theatre design. TREMOR has 5 templates and 3 sources. Even a construct with 100 templates would only produce ~200 checks, well within reasonable bounds. The `seen_ids` dedup set prevents duplicates.
+### 4.2 CoherenceGroupService
 
-### 6.5 Hash Stability
+**File:** `backend/services/coherence_group_service.py`
 
-**Risk:** Adding theatre checks changes the contract hash for theatre constructs.
+```python
+class CoherenceGroupService:
+    """Management of CoherenceGroups and membership."""
 
-**Mitigation:** This is correct behavior. A theatre contract with theatre checks is a different contract than one without. The supersession logic in `contract_service.py` handles this: if the check plan changes, a new contract is created and the old one is superseded. Skill constructs are not affected because they never receive theatre checks.
+    def __init__(self, db: AsyncSession):
+        self._db = db
 
-### 6.6 Malformed construct.json
+    async def create_group(
+        self, name: str, group_type: str, policy_json: dict,
+    ) -> CoherenceGroup:
+        """Create a coherence group with policy thresholds."""
 
-**Risk:** A theatre construct provides invalid JSON in `construct_json`.
+    async def add_member(
+        self, group_id: str, theatre_id: str, role: str = "primary",
+    ) -> CoherenceGroupMember:
+        """Add a theatre to a coherence group."""
 
-**Mitigation:** The `parse_construct_json` call is wrapped in `try/except ValueError` in `contract_service.py`. On failure, it logs a warning and continues with base checks only. The contract is still created -- it just lacks theatre-specific checks.
+    async def get_groups_for_theatre(
+        self, theatre_id: str,
+    ) -> list[CoherenceGroup]:
+        """Get all coherence groups containing a theatre."""
+
+    async def get_group_members(
+        self, group_id: str,
+    ) -> list[CoherenceGroupMember]:
+        """Get all members of a coherence group."""
+```
+
+### 4.3 CrossTheatreParadoxScanner
+
+**File:** `backend/services/cross_theatre_paradox_scanner.py`
+
+```python
+class CrossTheatreParadoxScanner:
+    """Detects coherence failures across theatres sharing FactAnchors.
+
+    Four detection patterns:
+    1. Settlement divergence — opposite outcomes for same event
+    2. Oracle inconsistency — same source, different values
+    3. Scope overlap gap — expected correlated event absent
+    4. Temporal drift — settlement timing exceeds window
+    """
+
+    def __init__(self, db: AsyncSession):
+        self._db = db
+
+    async def scan_fact_anchor(
+        self, anchor_id: str,
+    ) -> list[CrossTheatreParadox]:
+        """Scan a FactAnchor for cross-theatre paradoxes.
+
+        Triggered when a new theatre link is added to an existing anchor.
+        Evaluates all pairwise comparisons between linked theatres.
+        Returns new paradox records (already persisted).
+        """
+
+    async def scan_coherence_group(
+        self, group_id: str,
+    ) -> list[CrossTheatreParadox]:
+        """Scan a CoherenceGroup for scope overlap gaps.
+
+        Evaluates whether group members have corresponding anchors
+        for events that the group policy expects to be correlated.
+        """
+
+    async def evaluate_settlement_divergence(
+        self,
+        anchor: FactAnchor,
+        link_a: FactAnchorLink,
+        link_b: FactAnchorLink,
+    ) -> Optional[CrossTheatreParadox]:
+        """Compare two theatres' settlements for the same anchor.
+
+        Severity logic:
+        - Both theatres ACTIVE/SETTLED with opposite outcomes → MATERIAL
+        - One theatre superseded/resolved → WATCH
+        - Same outcome → None (no paradox)
+        """
+
+    async def evaluate_oracle_inconsistency(
+        self,
+        anchor: FactAnchor,
+        link_a: FactAnchorLink,
+        link_b: FactAnchorLink,
+    ) -> Optional[CrossTheatreParadox]:
+        """Compare oracle responses for same event across theatres.
+
+        Uses OracleResponse records. Severity logic:
+        - Same source, delta > threshold → MATERIAL
+        - Same source, within tolerance → None
+        - Different sources, delta > threshold → WATCH
+        - Provisional → reviewed revision → INFO (context_038 rule)
+        """
+
+    async def evaluate_temporal_drift(
+        self,
+        anchor: FactAnchor,
+        link_a: FactAnchorLink,
+        link_b: FactAnchorLink,
+    ) -> Optional[CrossTheatreParadox]:
+        """Check if settlement timing diverges significantly.
+
+        Uses the coherence group's temporal_drift_hours threshold.
+        Severity: INFO if delta > window, WATCH if delta > 2x window.
+        """
+
+    async def evaluate_scope_overlap(
+        self,
+        group: CoherenceGroup,
+        anchor: FactAnchor,
+    ) -> Optional[CrossTheatreParadox]:
+        """Check if coherence group members all have links for an anchor.
+
+        Expected: if group policy includes anchor_type in
+        scope_overlap_domains, all primary members should have a link.
+        Missing link → WATCH (absence is suspicious, not contradictory).
+        """
+
+    def _classify_provisional_revision(
+        self,
+        response_a: OracleResponse,
+        response_b: OracleResponse,
+    ) -> CrossTheatreParadoxSeverity:
+        """Context_038 rule: provisional oracle revision is INFO, not MATERIAL.
+
+        If one response is_provisional and the other is not, and both
+        reference the same (source, event_id), this is a normal oracle
+        lifecycle event, not a material paradox.
+        """
+```
+
+**Deduplication:** Before persisting, check for existing OPEN record with same `(fact_anchor_id, theatre_a_id, theatre_b_id, paradox_type)`. If found, update severity if changed, otherwise skip.
+
+**Ordering convention:** `theatre_a_id < theatre_b_id` (lexicographic) to prevent (A,B) and (B,A) duplicates.
+
+### 4.4 OracleConsistencyMonitor
+
+**File:** `backend/services/oracle_consistency_monitor.py`
+
+```python
+@dataclass(frozen=True)
+class ConsistencyResult:
+    is_consistent: bool
+    source: str
+    event_id: str
+    responses: list[dict]  # [{theatre_id, value, queried_at, is_provisional}]
+    max_delta: Optional[float]
+    explanation: str
+
+@dataclass(frozen=True)
+class DivergenceRecord:
+    source: str
+    event_id: str
+    theatre_ids: list[str]
+    delta: float
+    detected_at: datetime
+
+
+class OracleConsistencyMonitor:
+    """Tracks oracle responses across theatres for consistency.
+
+    Records are created when theatres report oracle query results
+    (typically at settlement time). Does not poll oracles directly.
+    """
+
+    def __init__(self, db: AsyncSession):
+        self._db = db
+
+    async def record_response(
+        self,
+        theatre_id: str,
+        source: str,
+        event_id: str,
+        value_json: dict,
+        queried_at: datetime,
+        is_provisional: bool = False,
+    ) -> OracleResponse:
+        """Record an oracle response. Idempotent on (theatre_id, source, event_id)."""
+
+    async def check_consistency(
+        self, source: str, event_id: str,
+    ) -> ConsistencyResult:
+        """Check if all theatres that queried (source, event_id) agree."""
+
+    async def get_divergence_history(
+        self, source: str, window_hours: int = 168,
+    ) -> list[DivergenceRecord]:
+        """Get recent divergence events for a source (default: 7 days)."""
+```
+
+### 4.5 ParadoxRiskOrchestrator Extension
+
+**File:** `backend/services/paradox_risk_orchestrator.py` (MODIFIED)
+
+Add `cross_theatre_exposure` as a new optional parameter to `trigger_recompute`:
+
+```python
+async def trigger_recompute(
+    db,
+    theatre_id: str,
+    trigger_reason: str,
+    *,
+    # ... existing parameters unchanged ...
+    cross_theatre_exposure: Optional[int] = None,  # NEW
+    emit_ws: bool = False,
+) -> Optional[ParadoxRiskAssessment]:
+```
+
+**Factor computation:** When `cross_theatre_exposure` is not provided, query CrossTheatreParadox for OPEN records where `(theatre_a_id == theatre_id OR theatre_b_id == theatre_id) AND severity IN ('MATERIAL', 'CRITICAL')`.
+
+**Risk level floor:**
+- `cross_theatre_exposure >= 1` → minimum level WATCH
+- `cross_theatre_exposure >= 3` → minimum level HIGH
+- Applied after existing per-theatre assessment
+
+**Factors dict extension:**
+```python
+factors = {
+    # ... existing 5 factors unchanged ...
+    "cross_theatre_exposure": int,  # NEW
+}
+```
+
+**Materiality:** `cross_theatre_exposure` change triggers material delta.
+
+### 4.6 WebSocket Extension
+
+**File:** `backend/websockets/realtime_manager.py` (MODIFIED)
+
+```python
+async def broadcast_cross_theatre_paradox(
+    self,
+    paradox_id: str,
+    paradox_type: str,
+    severity: str,
+    theatre_a_id: str,
+    theatre_b_id: str,
+    fact_anchor_id: str,
+    description: str,
+) -> None:
+    """Broadcast CROSS_THEATRE_PARADOX_DETECTED to both theatre channels."""
+    data = {
+        "paradox_id": paradox_id,
+        "paradox_type": paradox_type,
+        "severity": severity,
+        "theatre_a_id": theatre_a_id,
+        "theatre_b_id": theatre_b_id,
+        "fact_anchor_id": fact_anchor_id,
+        "description": description,
+    }
+    await self.broadcast_to_channel(
+        f"theatre:{theatre_a_id}", "CROSS_THEATRE_PARADOX_DETECTED", data
+    )
+    await self.broadcast_to_channel(
+        f"theatre:{theatre_b_id}", "CROSS_THEATRE_PARADOX_DETECTED", data
+    )
+```
+
+**Emission gating:** Only for severity MATERIAL or CRITICAL.
+
+### 4.7 WingFlap Integration
+
+When CrossTheatreParadox is created with severity MATERIAL or CRITICAL, create a WingFlap for each affected theatre:
+
+```python
+async def _record_wingflap(
+    db: AsyncSession,
+    theatre_id: str,
+    paradox: CrossTheatreParadox,
+) -> None:
+    flap = WingFlap(
+        id=str(uuid4()),
+        timeline_id=theatre_id,  # WingFlap timeline_id = theatre scope
+        agent_id="system",
+        flap_type=WingFlapType.CROSS_THEATRE_PARADOX,
+        action=f"Cross-theatre {paradox.paradox_type.value}: {paradox.description[:200]}",
+        stability_delta=-0.15,
+        direction="DESTABILISE",
+        volume_usd=0.0,
+        timeline_stability=0.0,
+        timeline_price=0.0,
+    )
+    db.add(flap)
+```
 
 ---
 
-## 7. Files Touched Summary
+## 5. API Design
 
-### New Files
+### 5.1 FactAnchor Routes
 
-| File | Lines (est.) | Purpose |
-|---|---|---|
-| `backend/services/theatre_check_planner.py` | ~120 | Theatre-specific check planning + merge |
-| `backend/services/theatre_policy_rules.py` | ~160 | Domain registration + construct.json parsing |
-| `backend/tests/test_theatre_check_planner.py` | ~200 | Theatre planner unit tests |
-| `backend/tests/test_theatre_policy_rules.py` | ~180 | Domain registration + parsing tests |
-| `backend/tests/test_theatre_integration.py` | ~150 | Integration tests with TREMOR/CORONA fixtures, regression |
+**File:** `backend/api/fact_anchor_routes.py`
+**Router:** `APIRouter(prefix="/api/v1/fact-anchors", tags=["fact-anchors"])`
 
-### Modified Files
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/` | Required | Create or get FactAnchor (idempotent) |
+| `GET` | `/` | Public | List anchors (filter by type, source, time range) |
+| `GET` | `/{anchor_id}` | Public | Get anchor detail with links |
+| `POST` | `/{anchor_id}/link` | Required | Link a theatre to an anchor |
+| `GET` | `/{anchor_id}/paradoxes` | Public | Get cross-theatre paradoxes for anchor |
 
-| File | Change | Lines Changed (est.) |
-|---|---|---|
-| `backend/services/spec_loader.py` | Add `construct_class` field to `ConstructSpec` + parsing in `load()` | ~8 |
-| `backend/services/contract_service.py` | Add `construct_json` param + imports + theatre merge block | ~15 |
-| `backend/schemas/construct_schemas.py` | Add `construct_json` to `CreateContractRequest` | ~4 |
-| `backend/api/construct_routes.py` | Pass `construct_json` kwarg to `create_contract` | ~1 |
-| `backend/services/construct_anchor_mapper.py` | Append 4 theatre mapping rules to `_MAPPING_RULES` | ~24 |
+**Schemas** in `backend/schemas/fact_anchor_schemas.py`:
 
-### Explicitly NOT Modified
+```python
+class CreateFactAnchorRequest(BaseModel):
+    anchor_type: str
+    external_id: str
+    external_source: str
+    occurred_at: datetime
+    location_json: Optional[dict] = None
+    metadata_json: Optional[dict] = None
 
-| File | Reason |
-|---|---|
-| `backend/services/check_planner.py` | Base planner unchanged -- theatre checks merged caller-side |
-| `backend/services/policy_normalizer.py` | Core logic unchanged -- theatre domains registered via side-effect import |
-| `backend/services/security_check_planner.py` | Security planner unchanged |
-| `backend/services/security_policy_rules.py` | Security rules unchanged |
-| `backend/services/domain_pack_loader.py` | Corpus loader unchanged |
-| `backend/schemas/construct_anchor_schema.py` | AnchorClass enum unchanged -- all theatre anchors use existing values (LIVE_EXTERNAL_EVIDENCE, DETERMINISTIC_CHECK) |
-| Any Alembic migration | No new columns or tables needed |
+class LinkTheatreRequest(BaseModel):
+    theatre_id: str
+    link_type: str  # "settlement" | "evidence" | "oracle_query"
+    linked_entity_id: str
+    linked_entity_type: str
+    link_confidence: float = 1.0
+
+class FactAnchorResponse(BaseModel):
+    id: str
+    anchor_type: str
+    external_id: str
+    external_source: str
+    occurred_at: datetime
+    location_json: Optional[dict]
+    metadata_json: Optional[dict]
+    link_count: int
+    created_at: datetime
+
+class FactAnchorDetailResponse(FactAnchorResponse):
+    links: list[FactAnchorLinkResponse]
+
+class FactAnchorLinkResponse(BaseModel):
+    id: str
+    theatre_id: str
+    link_type: str
+    link_confidence: float
+    linked_entity_id: str
+    linked_entity_type: str
+    created_at: datetime
+```
+
+### 5.2 CoherenceGroup Routes
+
+**File:** `backend/api/coherence_group_routes.py`
+**Router:** `APIRouter(prefix="/api/v1/coherence-groups", tags=["coherence-groups"])`
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/` | Required | Create coherence group |
+| `GET` | `/` | Public | List groups |
+| `GET` | `/{group_id}` | Public | Get group with members |
+| `POST` | `/{group_id}/members` | Required | Add theatre to group |
+| `POST` | `/{group_id}/scan` | Required | Trigger scope overlap scan |
+
+### 5.3 CrossTheatreParadox Routes
+
+**File:** `backend/api/cross_theatre_paradox_routes.py`
+**Router:** `APIRouter(prefix="/api/v1/cross-theatre-paradoxes", tags=["cross-theatre-paradoxes"])`
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/` | Public | List paradoxes (filter by severity, status, theatre) |
+| `GET` | `/{paradox_id}` | Public | Get paradox detail |
+| `POST` | `/{paradox_id}/acknowledge` | Required | OPEN → ACKNOWLEDGED |
+| `POST` | `/{paradox_id}/resolve` | Required | → RESOLVED (requires note) |
+| `POST` | `/{paradox_id}/dismiss` | Required | → DISMISSED (requires note) |
+
+### 5.4 OracleConsistency Routes
+
+**File:** `backend/api/oracle_consistency_routes.py`
+**Router:** `APIRouter(prefix="/api/v1/oracle-consistency", tags=["oracle-consistency"])`
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/responses` | Required | Record oracle response from theatre |
+| `GET` | `/check/{source}/{event_id}` | Public | Check consistency for event |
+| `GET` | `/divergences/{source}` | Public | Get divergence history |
+
+---
+
+## 6. Integration Points
+
+### 6.1 Trigger Flow
+
+Primary trigger is `FactAnchorService.link_theatre()`:
+
+```
+Theatre settles → POST /api/v1/fact-anchors/{id}/link
+  → FactAnchorService.link_theatre()
+    → Count theatre links for this anchor
+    → If >= 2 theatres linked:
+      → CrossTheatreParadoxScanner.scan_fact_anchor(anchor_id)
+        → For each pair: evaluate_settlement_divergence()
+        → For each pair: evaluate_oracle_inconsistency()
+        → For each pair: evaluate_temporal_drift()
+        → For each new MATERIAL+ paradox:
+          → _record_wingflap() for both theatres
+          → ws_manager.broadcast_cross_theatre_paradox()
+          → trigger_recompute() for both theatres
+```
+
+### 6.2 Scope Overlap Trigger
+
+Separate path — triggered explicitly:
+
+```
+POST /api/v1/coherence-groups/{id}/scan
+  → CrossTheatreParadoxScanner.scan_coherence_group(group_id)
+    → For each anchor_type in policy.scope_overlap_domains:
+      → Get anchors linked by any group member
+      → For each anchor missing a link from a primary member:
+        → evaluate_scope_overlap()
+```
+
+### 6.3 Router Registration
+
+Add to app factory alongside existing routers:
+
+```python
+from backend.api.fact_anchor_routes import router as fact_anchor_router
+from backend.api.coherence_group_routes import router as coherence_group_router
+from backend.api.cross_theatre_paradox_routes import router as cross_paradox_router
+from backend.api.oracle_consistency_routes import router as oracle_consistency_router
+```
+
+---
+
+## 7. Technical Risks & Mitigations
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Pairwise comparison O(n^2) per anchor | Slow for many-theatre anchors | 2-5 theatres per anchor in practice. No premature optimization. |
+| WingFlap `timeline_id` naming | Conceptual confusion | Code comment documenting timeline_id = theatre scope |
+| Enum migration for WingFlapType | PostgreSQL DDL | Standard `ALTER TYPE ADD VALUE` in Alembic |
+| Concurrent anchor upsert race | Duplicate FactAnchor | Unique constraint + ON CONFLICT DO NOTHING |
+| Paradox deduplication | Duplicates from repeated scans | Dedup key with theatre_a < theatre_b ordering |
 
 ---
 
 ## 8. Sprint Mapping
 
-| Sprint | Scope | New/Changed Files |
-|---|---|---|
-| Sprint 0 | ConstructSpec `construct_class` field + parsing | `spec_loader.py`, `test_spec_loader_construct_class.py` |
-| Sprint 1 | Theatre policy rules + domain registration + construct.json parser | `theatre_policy_rules.py`, `test_theatre_policy_rules.py` |
-| Sprint 2 | Theatre check planner + anchor mapper + contract service wiring + API passthrough | `theatre_check_planner.py`, `construct_anchor_mapper.py`, `contract_service.py`, `construct_schemas.py`, `construct_routes.py`, `test_theatre_check_planner.py` |
-| Sprint 3 | Integration tests + TREMOR/CORONA fixtures + regression | `test_theatre_integration.py` |
+| Sprint | Focus | Deliverables |
+|--------|-------|-------------|
+| Sprint 0 | Schema + Migration | 6 new tables, 3 new enums, WingFlapType extension, Alembic migration c038, model tests |
+| Sprint 1 | Core Services | FactAnchorService (get_or_create, link_theatre, queries), CoherenceGroupService (CRUD, membership), OracleConsistencyMonitor (record, check, history) |
+| Sprint 2 | Scanner + Integration | CrossTheatreParadoxScanner (4 detection patterns, dedup, provisional rule), ParadoxRiskOrchestrator cross_theatre_exposure, WingFlap CROSS_THEATRE_PARADOX, WebSocket broadcast |
+| Sprint 3 | API Routes + TREMOR Fixture + Regression | 4 route files (~15 endpoints), TREMOR end-to-end fixture, full regression suite, router registration |
 
 ---
 
-## 9. After This Cycle Ships
+## 9. What This Cycle Does NOT Design
 
-1. Theatre constructs become first-class citizens in the contract system via `construct_class: theatre`
-2. Echelon can issue a higher-credibility certificate class for deterministic, externally anchored theatre operators
-3. 10 theatre-specific precise domains pass policy normalization without tier-capping
-4. 4 theatre-specific anchor mapping rules resolve theatre dimensions to LIVE_EXTERNAL_EVIDENCE and DETERMINISTIC_CHECK
-5. The system is ready for cross-theatre paradox detection in Cycle 038
+- **No real-time oracle polling** — oracles observed passively via settlement reports
+- **No settlement cascade** — paradox does not auto-invalidate certificates
+- **No automated resolution** — detection and recording only; resolution is manual
+- **No frontend surfaces** — API-only; visualization is future
+- **No changes to per-theatre Paradox Engine** — `backend/engines/paradox.py` untouched

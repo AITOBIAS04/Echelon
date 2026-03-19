@@ -103,6 +103,24 @@ class FactAnchorService:
                 "FactAnchor %s now has %d linked theatres — cross-theatre scan triggered",
                 anchor_id, distinct_count,
             )
+            # Wire scanner: detect paradoxes and trigger recompute for affected theatres
+            from backend.services.cross_theatre_paradox_scanner import (
+                CrossTheatreParadoxScanner,
+            )
+            from backend.services.paradox_risk_orchestrator import trigger_recompute
+
+            scanner = CrossTheatreParadoxScanner(self._db)
+            paradoxes = await scanner.scan_fact_anchor(anchor_id)
+
+            # Trigger recompute for each affected theatre
+            affected_theatres = set()
+            for p in paradoxes:
+                affected_theatres.add(p.theatre_a_id)
+                affected_theatres.add(p.theatre_b_id)
+            for tid in affected_theatres:
+                await trigger_recompute(
+                    self._db, tid, "cross_theatre_paradox_detected", emit_ws=True,
+                )
 
         return link, should_scan
 

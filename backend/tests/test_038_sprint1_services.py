@@ -212,11 +212,19 @@ class TestFactAnchorServiceLinkTheatre(unittest.TestCase):
         self.assertEqual(link.theatre_id, "t-1")
         self.assertFalse(should_scan)
 
-    def test_scan_trigger_at_two_theatres(self):
+    @patch("backend.services.paradox_risk_orchestrator.trigger_recompute", new_callable=AsyncMock)
+    @patch("backend.services.cross_theatre_paradox_scanner.CrossTheatreParadoxScanner")
+    def test_scan_trigger_at_two_theatres(self, MockScannerCls, mock_recompute):
         from backend.services.fact_anchor_service import FactAnchorService
 
         session = MockAsyncSession()
         session.queue_response(scalar=2)  # 2 distinct theatres
+
+        # Mock scanner to return empty list
+        mock_scanner_instance = AsyncMock()
+        mock_scanner_instance.scan_fact_anchor = AsyncMock(return_value=[])
+        MockScannerCls.return_value = mock_scanner_instance
+
         svc = FactAnchorService(session)
 
         _, should_scan = run_async(svc.link_theatre(
