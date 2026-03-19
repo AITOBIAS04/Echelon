@@ -102,6 +102,21 @@ _MAPPING_RULES: list[tuple[list[str], AnchorClass, str, str]] = [
         "recovery_guidance",
         "Verification against GOV.UK Design System validation and recovery guidance",
     ),
+    # ── Cycle-037c: Security Domain Pack Anchors ────────────────────────
+    # ATT&CK technique framework → public_standard (MITRE ATT&CK)
+    (
+        ["attack", "att_ck", "mitre", "technique", "tactic", "t1059", "t1566"],
+        AnchorClass.PUBLIC_STANDARD,
+        "attack_framework",
+        "Verification against MITRE ATT&CK technique and tactic taxonomy",
+    ),
+    # Security skill corpus → public_standard (structured cybersecurity skills)
+    (
+        ["security_skill", "skill_corpus", "cybersecurity_skill", "workflow_verification"],
+        AnchorClass.PUBLIC_STANDARD,
+        "security_skill_corpus",
+        "Verification against structured cybersecurity skill corpus with workflow verification",
+    ),
 ]
 
 
