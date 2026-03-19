@@ -1062,8 +1062,10 @@
     {
       "cycle_id": "cycle-037b",
       "label": "Multi-Evaluator Orchestration + Residual Scoring",
-      "status": "active",
+      "status": "archived",
       "created_at": "2026-03-18T22:12:00.264690+00:00",
+      "archived": "2026-03-19T01:36:00Z",
+      "archive_path": "grimoires/loa/archive/2026-03-19-multi-evaluator-orchestration",
       "prd": "grimoires/loa/prd.md",
       "sdd": "grimoires/loa/sdd.md",
       "sprint_plan": "grimoires/loa/sprint.md",
@@ -1099,7 +1101,7 @@
       ]
     }
   ],
-  "active_cycle": "cycle-037b",
+  "active_cycle": null,
   "active_bugfix": null,
   "global_sprint_counter": 98,
   "bugfix_cycles": [
