@@ -125,3 +125,117 @@ class TestProvenancePreservation:
         corona = make_corona_bundle()
         assert len(corona.provenance_refs) == 3
         assert "theatre:CALIBRATION_VALIDITY:brier" in corona.provenance_refs
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Sprint 1 — TREMOR Bundle Builder (4 tests)
+# ═══════════════════════════════════════════════════════════════════
+
+from backend.services.theatre_comparison_bundle_builder import build_comparison_bundle
+
+
+class TestTremorBundleBuilder:
+    """Verify TREMOR execution → bundle mapping."""
+
+    def test_identity_mapping(self):
+        """Builder extracts slug from result, version from fixture."""
+        result = make_tremor_execution_result()
+        fixture = make_tremor_fixture_input()
+        bundle = build_comparison_bundle(result, fixture, certificate_id="cert-t-001")
+
+        assert bundle.construct_slug == "tremor"
+        assert bundle.construct_version == "1.0.0"
+        assert bundle.certificate_id == "cert-t-001"
+
+    def test_settlement_outcomes_from_evidence(self):
+        """Settlement outcomes extracted from SETTLEMENT_ACCURACY checks."""
+        result = make_tremor_execution_result()
+        fixture = make_tremor_fixture_input()
+        bundle = build_comparison_bundle(result, fixture)
+
+        assert len(bundle.settlement_outcomes) == 2
+        assert bundle.settlement_outcomes["tmpl-eq-001"]["resolution"] == "CORRECT"
+        assert bundle.settlement_outcomes["tmpl-eq-002"]["resolution"] == "INCORRECT"
+        assert bundle.settlement_outcomes["tmpl-eq-002"]["predicted_outcome"] == "DOWN"
+        assert bundle.settlement_outcomes["tmpl-eq-002"]["actual_outcome"] == "UP"
+
+        # TREMOR has 1 FAILED settlement → DISPUTED
+        assert bundle.settlement_state == "DISPUTED"
+
+    def test_oracle_values_from_evidence(self):
+        """Oracle values extracted from ORACLE_CONSISTENCY checks."""
+        result = make_tremor_execution_result()
+        fixture = make_tremor_fixture_input()
+        bundle = build_comparison_bundle(result, fixture)
+
+        assert len(bundle.oracle_values) == 1
+        assert bundle.oracle_values["src-chainlink"]["value"] == 1.02
+        assert bundle.oracle_values["src-chainlink"]["is_provisional"] is False
+        assert bundle.oracle_source_ids == ["src-chainlink"]
+
+    def test_execution_summary_projection(self):
+        """Execution summary counts and checks projected from result."""
+        result = make_tremor_execution_result()
+        fixture = make_tremor_fixture_input()
+        bundle = build_comparison_bundle(result, fixture)
+
+        summary = bundle.execution_summary
+        assert summary.executed_count == 3  # 2 PASSED + 1 FAILED
+        assert summary.passed_count == 2    # tmpl-eq-001 + oracle
+        assert summary.failed_count == 1    # tmpl-eq-002
+        assert summary.has_critical_failures is True
+        assert len(summary.checks) == 3
+        assert len(bundle.provenance_refs) == 3
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Sprint 1 — CORONA Bundle Builder (4 tests)
+# ═══════════════════════════════════════════════════════════════════
+
+class TestCoronaBundleBuilder:
+    """Verify CORONA execution → bundle mapping."""
+
+    def test_identity_mapping(self):
+        """Builder extracts slug from result, version from fixture."""
+        result = make_corona_execution_result()
+        fixture = make_corona_fixture_input()
+        bundle = build_comparison_bundle(result, fixture)
+
+        assert bundle.construct_slug == "corona"
+        assert bundle.construct_version == "2.1.0"
+        assert bundle.certificate_id is None
+
+    def test_settlement_outcomes_all_passed(self):
+        """CORONA has 1 settlement check, all PASSED → SETTLED."""
+        result = make_corona_execution_result()
+        fixture = make_corona_fixture_input()
+        bundle = build_comparison_bundle(result, fixture)
+
+        assert len(bundle.settlement_outcomes) == 1
+        assert bundle.settlement_outcomes["tmpl-pandemic-001"]["resolution"] == "CORRECT"
+        assert bundle.settlement_state == "SETTLED"
+
+    def test_oracle_values_corona(self):
+        """CORONA oracle values extracted correctly."""
+        result = make_corona_execution_result()
+        fixture = make_corona_fixture_input()
+        bundle = build_comparison_bundle(result, fixture)
+
+        assert len(bundle.oracle_values) == 1
+        assert bundle.oracle_values["src-who"]["value"] == 0.85
+        assert bundle.oracle_source_ids == ["src-who"]
+
+    def test_confidence_signals_from_calibration(self):
+        """Confidence signals extracted from CALIBRATION_VALIDITY evidence."""
+        result = make_corona_execution_result()
+        fixture = make_corona_fixture_input()
+        bundle = build_comparison_bundle(result, fixture)
+
+        assert bundle.confidence_signals["brier_score"] == 0.18
+        assert bundle.confidence_signals["calibration_valid"] is True
+
+        # TREMOR has no calibration → empty signals
+        tremor_result = make_tremor_execution_result()
+        tremor_fixture = make_tremor_fixture_input()
+        tremor_bundle = build_comparison_bundle(tremor_result, tremor_fixture)
+        assert tremor_bundle.confidence_signals == {}
