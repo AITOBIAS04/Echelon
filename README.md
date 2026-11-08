@@ -1,51 +1,52 @@
 # Echelon
 
-**Principal-governed discovery and outcome-learning for agent work.**
+**An automated workforce that carries responsibilities, with malleable software through which the work is organised, performed and experienced.**
 
-Echelon helps teams make consequential agent work inspectable, challengeable and conditionally reusable. It captures bounded episodes of work with declared authority, evidence, constraints and outcome conditions—then permits only eligible, rights-aware learning from what reality resolves.
+Echelon is the working system behind an organisation's applications, not just the applications themselves:
 
-## Outrider
+- responsibilities that persist;
+- people and agents contributing within their roles;
+- software that expresses and supports the work;
+- memory that preserves relevant context and experience;
+- procedures and applications that can change as needs evolve; and
+- evaluation of whether those changes actually help.
 
-**Outrider** rides alongside the harness a team already runs. It does not control that harness by default.
+The application is neither a dashboard over agents nor a disposable generated interface. It is part of how the work is done, so changing its behaviour can change the working method, not merely its appearance.
+
+## One set of foundations, two expressions
+
+- **Shared foundations** for continuing activity and malleable software.
+- **Enterprise:** company work, shaped by section and sector. Responsibilities, evidence, permissions and useful interactions differ between, say, software development, finance and HR, and the foundations support that variation instead of forcing one generic workflow.
+- **Consumer:** personal and shared experiences, shaped by interests and preferences. A dashboard, a shared hobby app, a personal organiser, or a space that actively helps someone pursue an interest. Nobody has to call that a "workforce", but continuity, delegated activity, reusable capabilities and adaptation run underneath.
+
+Neither is a side project or a demo of the other, and they are not two separate systems. The consumer product is not an app builder bolted onto an enterprise engine.
+
+## The loop
+
+Echelon is built to carry more than trigger, worker, fix, lesson:
 
 ```text
-compatible harness
-→ declared adapter + preflight
-→ governed episode envelope
-→ evidence · outputs · participants · lineage
-→ declared outcome
-→ possible learning admission
+a responsibility continues
+  -> circumstances change
+  -> the workforce responds
+  -> the application supports the changed work
+  -> outcomes inform improvements to the method or the software
 ```
 
-An episode makes visible:
+Not every outcome should change the application automatically, and changes are evaluated before they are adopted. But the system supports that full relationship.
 
-- who and what was bound to the work;
-- what authority and capability limits applied;
-- which evidence and artifacts are admissible and available;
-- what can be replayed, challenged or withheld;
-- who may resolve the outcome; and
-- whether any residue is eligible for future reuse.
+## Malleable software
 
-A receipt records an event. It does not automatically establish truth, authority, correctness or a right to learn from the event.
-
-## Discovery, not trading
-
-Echelon is not a prediction market, trading venue, custody system or generic agent-control plane.
-
-Its discovery layer helps teams decide which uncertainty deserves bounded inquiry. Signals, attention pressure, model output and queue rank are requests for investigation—not evidence, truth or automatic authority to act.
-
-> Attention may request an envelope; it cannot create, bind or authorise an episode.
-
-## What compounds
-
-Echelon does not only calibrate who was right. It can calibrate the methods, procedures and compositions by which an outcome was produced, under explicit scope, evidence, authority, rights and replay conditions.
-
-That makes reusable capability conditional: an improvement discovered in one bounded episode may help another only when its provenance, runtime fit, permissions and admission conditions allow it.
+People and teams grow their software around their work and lives. Borrowing a useful capability from another creation and making it work in your own space is one way that happens. Others are changing behaviour, composing capabilities, collaborating, delegating activity and adapting an experience over time. Sharing a capability never shares someone's private data.
 
 ## Status
 
-Echelon is in active development. Product direction, integration availability and capability status are stated only under their declared evidence and authority ceilings. External systems may propose inputs; no external output becomes admitted truth, outcome authority or reusable capability automatically.
+Echelon is in active development, and claims stay proportional to what has been shown.
+
+- **First enterprise instance:** our own software-development workforce, which builds Echelon. It is a real instance of the product in one company section. One repaired problem shows only that episode; carrying continuing responsibilities, and extending to other sections and sectors, are the next things to demonstrate.
+- **First consumer instance:** a borrowing experience, where someone takes a capability from another creation into their own space. It is planned and has not yet run end to end.
+- Both are proven through bounded journeys with success criteria fixed in advance. The first setting is the product working, not everything the product is meant to become.
 
 ## Contact
 
-Built by Tobias Harber — [@tobiasjames_eth](https://x.com/tobiasjames_eth)
+Built by Tobias Harber. [@tobiasjames_eth](https://x.com/tobiasjames_eth)
